@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -309,14 +310,14 @@ const OrderNew = () => {
                     <div className="space-y-2">
                       <Label>Size</Label>
                       <Select 
-                        value={component.size} 
+                        value={component.size || undefined} 
                         onValueChange={(value) => handleComponentChange(index, 'size', value)}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select size" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Not Applicable</SelectItem>
+                          <SelectItem value="not_applicable">Not Applicable</SelectItem>
                           {componentOptions.size.map(option => (
                             <SelectItem key={option} value={option}>{option}</SelectItem>
                           ))}
@@ -326,14 +327,14 @@ const OrderNew = () => {
                     <div className="space-y-2">
                       <Label>Color</Label>
                       <Select 
-                        value={component.color} 
+                        value={component.color || undefined} 
                         onValueChange={(value) => handleComponentChange(index, 'color', value)}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select color" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Not Applicable</SelectItem>
+                          <SelectItem value="not_applicable">Not Applicable</SelectItem>
                           {componentOptions.color.map(option => (
                             <SelectItem key={option} value={option}>{option}</SelectItem>
                           ))}
@@ -343,14 +344,14 @@ const OrderNew = () => {
                     <div className="space-y-2">
                       <Label>GSM</Label>
                       <Select 
-                        value={component.gsm} 
+                        value={component.gsm || undefined} 
                         onValueChange={(value) => handleComponentChange(index, 'gsm', value)}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select GSM" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Not Applicable</SelectItem>
+                          <SelectItem value="not_applicable">Not Applicable</SelectItem>
                           {componentOptions.gsm.map(option => (
                             <SelectItem key={option} value={option}>{option}</SelectItem>
                           ))}
@@ -386,14 +387,14 @@ const OrderNew = () => {
                     <div className="space-y-2">
                       <Label>Size</Label>
                       <Select 
-                        value={component.size} 
+                        value={component.size || undefined} 
                         onValueChange={(value) => handleCustomComponentChange(index, 'size', value)}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select size" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Not Applicable</SelectItem>
+                          <SelectItem value="not_applicable">Not Applicable</SelectItem>
                           {componentOptions.size.map(option => (
                             <SelectItem key={option} value={option}>{option}</SelectItem>
                           ))}
@@ -403,14 +404,14 @@ const OrderNew = () => {
                     <div className="space-y-2">
                       <Label>Color</Label>
                       <Select 
-                        value={component.color} 
+                        value={component.color || undefined} 
                         onValueChange={(value) => handleCustomComponentChange(index, 'color', value)}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select color" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Not Applicable</SelectItem>
+                          <SelectItem value="not_applicable">Not Applicable</SelectItem>
                           {componentOptions.color.map(option => (
                             <SelectItem key={option} value={option}>{option}</SelectItem>
                           ))}
@@ -420,14 +421,14 @@ const OrderNew = () => {
                     <div className="space-y-2">
                       <Label>GSM</Label>
                       <Select 
-                        value={component.gsm} 
+                        value={component.gsm || undefined} 
                         onValueChange={(value) => handleCustomComponentChange(index, 'gsm', value)}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select GSM" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Not Applicable</SelectItem>
+                          <SelectItem value="not_applicable">Not Applicable</SelectItem>
                           {componentOptions.gsm.map(option => (
                             <SelectItem key={option} value={option}>{option}</SelectItem>
                           ))}
