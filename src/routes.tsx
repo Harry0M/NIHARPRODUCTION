@@ -7,21 +7,21 @@ import OrderNew from "./pages/Orders/OrderNew";
 import OrderDetail from "./pages/Orders/OrderDetail";
 import ProductionDashboard from "./pages/Production/ProductionDashboard";
 import CuttingJob from "./pages/Production/CuttingJob";
+import PrintingJob from "./pages/Production/PrintingJob";
+import StitchingJob from "./pages/Production/StitchingJob";
 import JobCardList from "./pages/Production/JobCardList";
 import JobCardNew from "./pages/Production/JobCardNew";
+import JobCardDetail from "./pages/Production/JobCardDetail";
+import Dispatch from "./pages/Production/Dispatch";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // Create placeholder components for routes that aren't yet implemented
-const PrintingJob = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Printing Job</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
-const StitchingJob = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Stitching Job</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
-const JobCardDetail = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Job Card Details</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 const VendorList = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Vendor List</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 const VendorNew = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">New Vendor</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 const SupplierList = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Supplier List</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 const SupplierNew = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">New Supplier</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
-const Dispatch = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Dispatch</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 const InventoryList = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Inventory List</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 const InventoryNew = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">New Inventory</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 const Settings = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Settings</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
@@ -87,6 +87,10 @@ const routes: RouteObject[] = [
             element: <StitchingJob />
           },
           {
+            path: "dispatch",
+            element: <Dispatch />
+          },
+          {
             path: "vendors",
             element: <VendorList />
           },
@@ -101,10 +105,6 @@ const routes: RouteObject[] = [
           {
             path: "suppliers/new",
             element: <SupplierNew />
-          },
-          {
-            path: "dispatch",
-            element: <Dispatch />
           },
           {
             path: "inventory",
