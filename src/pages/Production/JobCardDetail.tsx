@@ -13,6 +13,14 @@ import { Database } from "@/integrations/supabase/types";
 type JobStatus = Database['public']['Enums']['job_status'];
 type OrderStatus = Database['public']['Enums']['order_status'];
 
+interface Component {
+  id: string;
+  type: string;
+  size: string | null;
+  color: string | null;
+  gsm: string | null;
+}
+
 interface JobCardDetails {
   id: string;
   job_name: string;
@@ -27,13 +35,7 @@ interface JobCardDetails {
     bag_width: number;
     order_date: string;
     status: OrderStatus;
-    components: {
-      id: string;
-      type: string;
-      size: string | null;
-      color: string | null;
-      gsm: string | null;
-    }[];
+    components: Component[];
   };
   cutting_jobs: {
     id: string;
@@ -99,7 +101,18 @@ const JobCardDetail = () => {
         .single();
 
       if (error) throw error;
-      setJobCard(data as JobCardDetails);
+      
+      // Handle the case where components might not be an array
+      const safeData = {
+        ...data,
+        order: {
+          ...data.order,
+          // Ensure components is always an array
+          components: Array.isArray(data.order.components) ? data.order.components : []
+        }
+      };
+      
+      setJobCard(safeData as JobCardDetails);
     } catch (error: any) {
       toast({
         title: "Error fetching job card",
@@ -215,17 +228,18 @@ const JobCardDetail = () => {
               <div>
                 <h3 className="text-md font-medium mb-2">Components</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {jobCard.order.components?.map((component) => (
-                    <div key={component.id} className="border rounded-md p-3">
-                      <p className="text-sm font-medium capitalize">{component.type}</p>
-                      <div className="text-xs text-muted-foreground space-y-1 mt-1">
-                        {component.size && <p>Size: {component.size}</p>}
-                        {component.color && <p>Color: {component.color}</p>}
-                        {component.gsm && <p>GSM: {component.gsm}</p>}
+                  {jobCard.order.components?.length > 0 ? (
+                    jobCard.order.components.map((component) => (
+                      <div key={component.id} className="border rounded-md p-3">
+                        <p className="text-sm font-medium capitalize">{component.type}</p>
+                        <div className="text-xs text-muted-foreground space-y-1 mt-1">
+                          {component.size && <p>Size: {component.size}</p>}
+                          {component.color && <p>Color: {component.color}</p>}
+                          {component.gsm && <p>GSM: {component.gsm}</p>}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                  {!jobCard.order.components?.length && (
+                    ))
+                  ) : (
                     <p className="text-muted-foreground text-sm">No components specified</p>
                   )}
                 </div>
