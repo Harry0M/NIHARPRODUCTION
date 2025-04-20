@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -35,7 +34,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 
-// Define the valid order status types to match the database schema
+// Update the OrderStatus type to include "dispatched" as a valid value
 type OrderStatus = "pending" | "completed" | "in_production" | "cutting" | "printing" | "stitching" | "ready_for_dispatch" | "cancelled" | "dispatched";
 
 interface OrderWithJobStatus {
