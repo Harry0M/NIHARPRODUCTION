@@ -139,7 +139,18 @@ const StitchingJob = () => {
         if (jobCardError) throw jobCardError;
         if (!jobCardData) throw new Error("Job card not found");
         
-        setJobCard(jobCardData);
+        // Transform the data to match the JobCard interface
+        const transformedJobCard: JobCard = {
+          id: jobCardData.id,
+          job_name: jobCardData.job_name,
+          order: {
+            order_number: jobCardData.orders.order_number,
+            company_name: jobCardData.orders.company_name,
+            quantity: jobCardData.orders.quantity
+          }
+        };
+        
+        setJobCard(transformedJobCard);
         
         // Then check if there's an existing stitching job for this job card
         const { data: stitchingJob, error: stitchingJobError } = await supabase
@@ -153,7 +164,7 @@ const StitchingJob = () => {
         if (stitchingJob) {
           setExistingJob(stitchingJob);
           form.reset({
-            total_quantity: stitchingJob.total_quantity || jobCardData.orders.quantity,
+            total_quantity: stitchingJob.total_quantity || transformedJobCard.order.quantity,
             part_quantity: stitchingJob.part_quantity || null,
             border_quantity: stitchingJob.border_quantity || null,
             handle_quantity: stitchingJob.handle_quantity || null,
@@ -171,7 +182,7 @@ const StitchingJob = () => {
         } else {
           // Set defaults from job card
           form.reset({
-            total_quantity: jobCardData.orders.quantity,
+            total_quantity: transformedJobCard.order.quantity,
             part_quantity: null,
             border_quantity: null,
             handle_quantity: null,
@@ -214,7 +225,8 @@ const StitchingJob = () => {
     setLoading(true);
     
     try {
-      const stitchingJobData: Partial<StitchingJobData> = {
+      // Ensure job_card_id is always set and not optional
+      const stitchingJobData = {
         job_card_id: id,
         total_quantity: values.total_quantity,
         part_quantity: values.part_quantity,

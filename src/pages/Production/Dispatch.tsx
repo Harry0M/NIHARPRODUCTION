@@ -35,13 +35,16 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 
+// Define the valid order status types to match the database schema
+type OrderStatus = "pending" | "completed" | "in_production" | "cutting" | "printing" | "stitching" | "ready_for_dispatch" | "cancelled" | "dispatched";
+
 interface OrderWithJobStatus {
   id: string;
   order_number: string;
   company_name: string;
   quantity: number;
   rate: number | null;
-  status: string;
+  status: OrderStatus;
   created_at: string;
   job_cards: {
     id: string;
@@ -107,7 +110,7 @@ const Dispatch = () => {
     }
   };
   
-  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+  const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
       const { error } = await supabase
         .from('orders')
@@ -235,7 +238,7 @@ const Dispatch = () => {
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="in_production">In Progress</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="dispatched">Dispatched</SelectItem>
                 </SelectContent>

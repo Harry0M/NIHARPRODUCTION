@@ -130,7 +130,20 @@ const PrintingJob = () => {
         if (jobCardError) throw jobCardError;
         if (!jobCardData) throw new Error("Job card not found");
         
-        setJobCard(jobCardData);
+        // Transform the data to match the JobCard interface
+        const transformedJobCard: JobCard = {
+          id: jobCardData.id,
+          job_name: jobCardData.job_name,
+          order: {
+            order_number: jobCardData.orders.order_number,
+            company_name: jobCardData.orders.company_name,
+            bag_length: jobCardData.orders.bag_length,
+            bag_width: jobCardData.orders.bag_width,
+            quantity: jobCardData.orders.quantity
+          }
+        };
+        
+        setJobCard(transformedJobCard);
         
         // Then check if there's an existing printing job for this job card
         const { data: printingJob, error: printingJobError } = await supabase
@@ -146,8 +159,8 @@ const PrintingJob = () => {
           form.reset({
             pulling: printingJob.pulling || "",
             gsm: printingJob.gsm || "",
-            sheet_length: printingJob.sheet_length || jobCardData.orders.bag_length,
-            sheet_width: printingJob.sheet_width || jobCardData.orders.bag_width,
+            sheet_length: printingJob.sheet_length || transformedJobCard.order.bag_length,
+            sheet_width: printingJob.sheet_width || transformedJobCard.order.bag_width,
             worker_name: printingJob.worker_name || "",
             is_internal: printingJob.is_internal !== false, // default to true if null
             status: printingJob.status as JobStatus || "pending",
@@ -160,8 +173,8 @@ const PrintingJob = () => {
           form.reset({
             pulling: "",
             gsm: "",
-            sheet_length: jobCardData.orders.bag_length,
-            sheet_width: jobCardData.orders.bag_width,
+            sheet_length: transformedJobCard.order.bag_length,
+            sheet_width: transformedJobCard.order.bag_width,
             worker_name: "",
             is_internal: true,
             status: "pending",
@@ -234,7 +247,8 @@ const PrintingJob = () => {
     setLoading(true);
     
     try {
-      const printingJobData: Partial<PrintingJobData> = {
+      // Ensure job_card_id is always set and not optional
+      const printingJobData = {
         job_card_id: id,
         pulling: values.pulling || null,
         gsm: values.gsm || null,
