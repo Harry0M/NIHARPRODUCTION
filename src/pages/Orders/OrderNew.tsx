@@ -23,6 +23,7 @@ import {
 import { ArrowLeft, Plus, Trash } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
 
 // Define the component options for dropdowns
 const componentOptions = {
@@ -43,7 +44,7 @@ const OrderNew = () => {
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   
-  const [orderData, setOrderData] = useState({
+  const [formData, setFormData] = useState({
     company_name: "",
     quantity: "",
     bag_length: "",
@@ -64,7 +65,7 @@ const OrderNew = () => {
 
   const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setOrderData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleComponentChange = (index: number, field: string, value: string) => {
@@ -92,10 +93,10 @@ const OrderNew = () => {
   };
 
   const validateForm = () => {
-    if (!orderData.company_name) return "Company name is required";
-    if (!orderData.quantity || parseInt(orderData.quantity) <= 0) return "Valid quantity is required";
-    if (!orderData.bag_length || parseFloat(orderData.bag_length) <= 0) return "Valid bag length is required";
-    if (!orderData.bag_width || parseFloat(orderData.bag_width) <= 0) return "Valid bag width is required";
+    if (!formData.company_name) return "Company name is required";
+    if (!formData.quantity || parseInt(formData.quantity) <= 0) return "Valid quantity is required";
+    if (!formData.bag_length || parseFloat(formData.bag_length) <= 0) return "Valid bag length is required";
+    if (!formData.bag_width || parseFloat(formData.bag_width) <= 0) return "Valid bag width is required";
     
     // Check if at least one component has values
     const hasAnyComponentData = components.some(comp => comp.size || comp.color || comp.gsm);
@@ -122,16 +123,16 @@ const OrderNew = () => {
     setSubmitting(true);
     
     try {
-      // Insert the order first
+      // Insert the order first - note we removed order_number since it's auto-generated
       const { data: orderData, error: orderError } = await supabase
         .from("orders")
         .insert({
-          company_name: orderData.company_name,
-          quantity: parseInt(orderData.quantity),
-          bag_length: parseFloat(orderData.bag_length),
-          bag_width: parseFloat(orderData.bag_width),
-          rate: orderData.rate ? parseFloat(orderData.rate) : null,
-          special_instructions: orderData.special_instructions || null,
+          company_name: formData.company_name,
+          quantity: parseInt(formData.quantity),
+          bag_length: parseFloat(formData.bag_length),
+          bag_width: parseFloat(formData.bag_width),
+          rate: formData.rate ? parseFloat(formData.rate) : null,
+          special_instructions: formData.special_instructions || null,
         })
         .select()
         .single();
@@ -147,7 +148,7 @@ const OrderNew = () => {
       if (allComponents.length > 0) {
         const componentsToInsert = allComponents.map(comp => ({
           order_id: orderData.id,
-          type: comp.type,
+          type: comp.type as Database["public"]["Enums"]["component_type"],
           size: comp.size || null,
           color: comp.color || null,
           gsm: comp.gsm || null,
@@ -210,7 +211,7 @@ const OrderNew = () => {
                 <Input 
                   id="company_name" 
                   name="company_name"
-                  value={orderData.company_name}
+                  value={formData.company_name}
                   onChange={handleOrderChange}
                   placeholder="Client company name"
                   required
@@ -222,7 +223,7 @@ const OrderNew = () => {
                   id="quantity" 
                   name="quantity"
                   type="number"
-                  value={orderData.quantity}
+                  value={formData.quantity}
                   onChange={handleOrderChange}
                   placeholder="Number of bags"
                   required
@@ -238,7 +239,7 @@ const OrderNew = () => {
                   name="bag_length"
                   type="number"
                   step="0.01"
-                  value={orderData.bag_length}
+                  value={formData.bag_length}
                   onChange={handleOrderChange}
                   placeholder="Length in inches"
                   required
@@ -251,7 +252,7 @@ const OrderNew = () => {
                   name="bag_width"
                   type="number"
                   step="0.01"
-                  value={orderData.bag_width}
+                  value={formData.bag_width}
                   onChange={handleOrderChange}
                   placeholder="Width in inches"
                   required
@@ -264,7 +265,7 @@ const OrderNew = () => {
                   name="rate"
                   type="number"
                   step="0.01"
-                  value={orderData.rate}
+                  value={formData.rate}
                   onChange={handleOrderChange}
                   placeholder="Price per bag"
                 />
@@ -276,7 +277,7 @@ const OrderNew = () => {
               <Textarea 
                 id="special_instructions" 
                 name="special_instructions"
-                value={orderData.special_instructions}
+                value={formData.special_instructions}
                 onChange={handleOrderChange}
                 placeholder="Any additional notes or requirements"
                 rows={3}

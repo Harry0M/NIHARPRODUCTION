@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { 
@@ -23,6 +22,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Scissors } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
+
+type JobStatus = Database["public"]["Enums"]["job_status"];
 
 interface JobCard {
   id: string;
@@ -53,7 +55,7 @@ interface CuttingComponent {
   counter: string;
   rewinding: string;
   rate: string;
-  status: string;
+  status: JobStatus;
 }
 
 interface CuttingJob {
@@ -63,7 +65,7 @@ interface CuttingJob {
   consumption_meters: string;
   worker_name: string;
   is_internal: boolean;
-  status: string;
+  status: JobStatus;
   received_quantity: string;
 }
 
@@ -79,9 +81,10 @@ const CuttingJob = () => {
   
   const [cuttingData, setCuttingData] = useState({
     roll_width: "",
+    consumption_meters: "",
     worker_name: "",
     is_internal: true,
-    status: "pending",
+    status: "pending" as JobStatus,
     received_quantity: ""
   });
   
@@ -91,7 +94,6 @@ const CuttingJob = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch job card details with order
         const { data: jobCardData, error: jobCardError } = await supabase
           .from("job_cards")
           .select(`
@@ -119,7 +121,6 @@ const CuttingJob = () => {
         
         setJobCard(formattedJobCard);
         
-        // Fetch components for the order
         const { data: componentsData, error: componentsError } = await supabase
           .from("components")
           .select("id, type, size, color, gsm")
@@ -128,7 +129,6 @@ const CuttingJob = () => {
         if (componentsError) throw componentsError;
         setComponents(componentsData || []);
         
-        // Initialize component data
         const initialComponentData: CuttingComponent[] = componentsData.map(comp => ({
           component_id: comp.id,
           type: comp.type,
@@ -142,7 +142,6 @@ const CuttingJob = () => {
         
         setComponentData(initialComponentData);
         
-        // Check for existing cutting job
         const { data: existingJobData, error: existingJobError } = await supabase
           .from("cutting_jobs")
           .select("*")
@@ -171,7 +170,6 @@ const CuttingJob = () => {
             received_quantity: existingJobData.received_quantity?.toString() || ""
           });
           
-          // Fetch existing cutting components
           if (existingJobData.id) {
             const { data: componentsData, error: componentsError } = await supabase
               .from("cutting_components")
@@ -198,10 +196,8 @@ const CuttingJob = () => {
           }
         }
         
-        // Calculate consumption meters if bag dimensions exist
         if (jobCardData.orders.bag_length && jobCardData.orders.bag_width && jobCardData.orders.quantity) {
           const bagArea = (jobCardData.orders.bag_length * jobCardData.orders.bag_width);
-          // Formula: (length*width / 6339.39) * quantity
           const consumption = ((bagArea / 6339.39) * jobCardData.orders.quantity).toFixed(2);
           
           if (!existingJobData?.consumption_meters) {
@@ -237,7 +233,7 @@ const CuttingJob = () => {
     setCuttingData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSelectChange = (name: string, value: string) => {
+  const handleSelectChange = (name: string, value: JobStatus) => {
     setCuttingData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -245,7 +241,7 @@ const CuttingJob = () => {
     setCuttingData(prev => ({ ...prev, is_internal: checked }));
   };
 
-  const handleComponentChange = (index: number, field: string, value: string) => {
+  const handleComponentChange = (index: number, field: string, value: string | JobStatus) => {
     setComponentData(prev => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
@@ -256,7 +252,6 @@ const CuttingJob = () => {
   const calculateConsumptionMeters = () => {
     if (jobCard?.order.bag_length && jobCard?.order.bag_width && jobCard?.order.quantity) {
       const bagArea = (jobCard.order.bag_length * jobCard.order.bag_width);
-      // Formula: (length*width / 6339.39) * quantity
       return ((bagArea / 6339.39) * jobCard.order.quantity).toFixed(2);
     }
     return "";
@@ -265,9 +260,8 @@ const CuttingJob = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!jobCard) return;
+    if (!jobCard || !id) return;
     
-    // Validation
     if (!cuttingData.roll_width) {
       toast({
         title: "Validation Error",
@@ -283,7 +277,6 @@ const CuttingJob = () => {
       let cuttingJobId = existingJob?.id;
       
       if (!existingJob) {
-        // Create new cutting job
         const { data, error } = await supabase
           .from("cutting_jobs")
           .insert({
@@ -301,7 +294,6 @@ const CuttingJob = () => {
         if (error) throw error;
         cuttingJobId = data.id;
         
-        // Update job card status if needed
         if (cuttingData.status !== "pending") {
           await supabase
             .from("job_cards")
@@ -309,7 +301,6 @@ const CuttingJob = () => {
             .eq("id", id);
         }
       } else {
-        // Update existing cutting job
         const { error } = await supabase
           .from("cutting_jobs")
           .update({
@@ -324,14 +315,12 @@ const CuttingJob = () => {
           
         if (error) throw error;
         
-        // Update job card status if needed
         if (cuttingData.status === "completed") {
           await supabase
             .from("job_cards")
             .update({ status: "in_progress" })
             .eq("id", id);
             
-          // Also update order status if needed
           await supabase
             .from("orders")
             .update({ status: "cutting" })
@@ -339,9 +328,7 @@ const CuttingJob = () => {
         }
       }
       
-      // Handle component data
       if (cuttingJobId) {
-        // Delete existing components if updating
         if (existingJob && existingComponents.length > 0) {
           await supabase
             .from("cutting_components")
@@ -349,7 +336,6 @@ const CuttingJob = () => {
             .eq("cutting_job_id", existingJob.id);
         }
         
-        // Insert new components
         const componentsToInsert = componentData
           .filter(comp => comp.width || comp.height || comp.counter || comp.rewinding)
           .map(comp => ({
