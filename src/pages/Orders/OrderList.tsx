@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { 
@@ -37,7 +38,7 @@ import {
   MoreHorizontal, 
   Plus, 
   Search,
-  Package2 
+  Package2Icon // Fix: Corrected icon import
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -186,7 +187,8 @@ const OrderList = () => {
             <>
               {filteredOrders.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Package2 className="h-12 w-12 text-muted-foreground mb-4" />
+                  <Package2Icon className="h-12 w-12 text-muted-foreground mb-4" />
+                  {/* Fix: Changed Package2 to Package2Icon */}
                   <h3 className="text-lg font-medium">No orders found</h3>
                   <p className="text-muted-foreground mb-4">
                     {searchTerm || statusFilter !== "all"

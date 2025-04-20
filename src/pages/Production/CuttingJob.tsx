@@ -164,6 +164,7 @@ const CuttingJob = () => {
           
           setCuttingData({
             roll_width: existingJobData.roll_width?.toString() || "",
+            consumption_meters: existingJobData.consumption_meters?.toString() || "",
             worker_name: existingJobData.worker_name || "",
             is_internal: existingJobData.is_internal ?? true,
             status: existingJobData.status || "pending",

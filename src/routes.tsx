@@ -1,4 +1,3 @@
-
 import { RouteObject } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
@@ -7,22 +6,23 @@ import OrderNew from "./pages/Orders/OrderNew";
 import OrderDetail from "./pages/Orders/OrderDetail";
 import ProductionDashboard from "./pages/Production/ProductionDashboard";
 import CuttingJob from "./pages/Production/CuttingJob";
-import PrintingJob from "./pages/Production/PrintingJob";
-import StitchingJob from "./pages/Production/StitchingJob";
 import JobCardList from "./pages/Production/JobCardList";
 import JobCardNew from "./pages/Production/JobCardNew";
-import JobCardDetail from "./pages/Production/JobCardDetail";
-import VendorList from "./pages/Vendors/VendorList";
-import VendorNew from "./pages/Vendors/VendorNew";
-import SupplierList from "./pages/Vendors/SupplierList";
-import SupplierNew from "./pages/Vendors/SupplierNew";
-import Dispatch from "./pages/Dispatch/Dispatch";
-import InventoryList from "./pages/Inventory/InventoryList";
-import InventoryNew from "./pages/Inventory/InventoryNew";
-import Settings from "./pages/Settings/Settings";
+import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
-import NotFound from "./pages/NotFound";
+
+const PrintingJob = () => <div>Printing Job (Coming Soon)</div>;
+const StitchingJob = () => <div>Stitching Job (Coming Soon)</div>;
+const JobCardDetail = () => <div>Job Card Detail (Coming Soon)</div>;
+const VendorList = () => <div>Vendor List (Coming Soon)</div>;
+const VendorNew = () => <div>New Vendor (Coming Soon)</div>;
+const SupplierList = () => <div>Supplier List (Coming Soon)</div>;
+const SupplierNew = () => <div>New Supplier (Coming Soon)</div>;
+const Dispatch = () => <div>Dispatch (Coming Soon)</div>;
+const InventoryList = () => <div>Inventory List (Coming Soon)</div>;
+const InventoryNew = () => <div>New Inventory (Coming Soon)</div>;
+const Settings = () => <div>Settings (Coming Soon)</div>;
 
 const routes: RouteObject[] = [
   {
