@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -33,9 +34,10 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
+import { Database } from "@/integrations/supabase/types";
 
-// Update the OrderStatus type to include "dispatched" as a valid value
-type OrderStatus = "pending" | "completed" | "in_production" | "cutting" | "printing" | "stitching" | "ready_for_dispatch" | "cancelled" | "dispatched";
+// Extend the order status enum from the database for UI purposes
+type OrderStatus = Database['public']['Enums']['order_status'] | "dispatched";
 
 interface OrderWithJobStatus {
   id: string;
@@ -111,9 +113,17 @@ const Dispatch = () => {
   
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
+      // For database operations, we need to ensure we only use valid database enum values
+      // If newStatus is "dispatched", we map it to "ready_for_dispatch" for database storage
+      // since "dispatched" isn't in the database enum
+      const dbStatus: Database['public']['Enums']['order_status'] = 
+        newStatus === "dispatched" 
+          ? "ready_for_dispatch" 
+          : newStatus as Database['public']['Enums']['order_status'];
+      
       const { error } = await supabase
         .from('orders')
-        .update({ status: newStatus })
+        .update({ status: dbStatus })
         .eq('id', orderId);
       
       if (error) throw error;
