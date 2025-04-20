@@ -10,15 +10,21 @@ import {
   Database, 
   Settings,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Factory,
+  FileText,
+  ShoppingCart
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 const navItems = [
-  { name: "Dashboard", path: "/", icon: LayoutDashboard },
+  { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
   { name: "Orders", path: "/orders", icon: Package },
-  { name: "Production", path: "/production", icon: Layers },
+  { name: "Production", path: "/production", icon: Factory },
+  { name: "Job Cards", path: "/production/job-cards", icon: FileText },
   { name: "Vendors", path: "/vendors", icon: Users },
+  { name: "Suppliers", path: "/suppliers", icon: ShoppingCart },
   { name: "Dispatch", path: "/dispatch", icon: Truck },
   { name: "Inventory", path: "/inventory", icon: Database },
   { name: "Settings", path: "/settings", icon: Settings },
@@ -26,6 +32,7 @@ const navItems = [
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
+  const { signOut } = useAuth();
 
   return (
     <div
@@ -45,7 +52,7 @@ const Sidebar = () => {
           {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
         </button>
       </div>
-      <nav className="flex-1 py-4">
+      <nav className="flex-1 py-4 overflow-y-auto">
         <ul className="space-y-1 px-2">
           {navItems.map((item) => (
             <li key={item.name}>
@@ -70,14 +77,20 @@ const Sidebar = () => {
         </ul>
       </nav>
       <div className="p-4 border-t border-border">
-        <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-start")}>
+        <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-between")}>
           <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
             <span className="font-medium text-sm">BM</span>
           </div>
-          <div className={cn("ml-3 transition-opacity", collapsed ? "opacity-0 w-0" : "opacity-100")}>
-            <p className="text-sm font-medium">Admin User</p>
-            <p className="text-xs text-sidebar-foreground/70">admin@bagmaster.pro</p>
-          </div>
+          {!collapsed && (
+            <div className="ml-3">
+              <button 
+                onClick={signOut}
+                className="text-sm text-sidebar-foreground hover:text-primary transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

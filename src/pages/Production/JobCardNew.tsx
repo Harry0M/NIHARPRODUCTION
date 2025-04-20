@@ -1,0 +1,292 @@
+
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
+import { ArrowLeft, ClipboardList } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Order {
+  id: string;
+  order_number: string;
+  company_name: string;
+  quantity: number;
+  bag_length: number;
+  bag_width: number;
+}
+
+interface Component {
+  id: string;
+  type: string;
+  size: string | null;
+  color: string | null;
+  gsm: string | null;
+}
+
+const JobCardNew = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const orderId = searchParams.get('orderId');
+  
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [components, setComponents] = useState<Component[]>([]);
+  const [jobName, setJobName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(false);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      setFetching(true);
+      try {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('id, order_number, company_name, quantity, bag_length, bag_width')
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        setOrders(data || []);
+        
+        if (orderId) {
+          const selectedOrder = data?.find(order => order.id === orderId);
+          if (selectedOrder) {
+            setSelectedOrder(selectedOrder);
+            setJobName(`Job for ${selectedOrder.company_name} - Order ${selectedOrder.order_number}`);
+            fetchOrderComponents(orderId);
+          }
+        }
+      } catch (error: any) {
+        toast({
+          title: "Error fetching orders",
+          description: error.message,
+          variant: "destructive",
+        });
+      } finally {
+        setFetching(false);
+      }
+    };
+
+    fetchOrders();
+  }, [orderId]);
+
+  const fetchOrderComponents = async (orderId: string) => {
+    setFetching(true);
+    try {
+      const { data, error } = await supabase
+        .from('components')
+        .select('id, type, size, color, gsm')
+        .eq('order_id', orderId);
+      
+      if (error) throw error;
+      
+      setComponents(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Error fetching components",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setFetching(false);
+    }
+  };
+
+  const handleOrderSelect = (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    setSelectedOrder(order || null);
+    
+    if (order) {
+      setJobName(`Job for ${order.company_name} - Order ${order.order_number}`);
+      fetchOrderComponents(orderId);
+    } else {
+      setComponents([]);
+      setJobName("");
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedOrder) {
+      toast({
+        title: "Missing Information",
+        description: "Please select an order",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!jobName) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide a job name",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      const { data, error } = await supabase
+        .from('job_cards')
+        .insert({
+          order_id: selectedOrder.id,
+          job_name: jobName
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Job Card Created",
+        description: "The job card has been created successfully",
+      });
+      
+      navigate(`/production/job-cards/${data.id}`);
+    } catch (error: any) {
+      toast({
+        title: "Error creating job card",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="gap-1"
+          onClick={() => navigate("/production/job-cards")}
+        >
+          <ArrowLeft size={16} />
+          Back
+        </Button>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">New Job Card</h1>
+          <p className="text-muted-foreground">Create a new job card for production</p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardList size={18} />
+              Job Card Information
+            </CardTitle>
+            <CardDescription>Select an order and provide job details</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="order">Order</Label>
+              <Select
+                value={selectedOrder?.id || ""}
+                onValueChange={handleOrderSelect}
+                disabled={fetching || Boolean(orderId)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an order" />
+                </SelectTrigger>
+                <SelectContent>
+                  {orders.map(order => (
+                    <SelectItem key={order.id} value={order.id}>
+                      {order.order_number} - {order.company_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedOrder && (
+              <div className="p-4 border rounded-md space-y-4">
+                <h3 className="font-medium">Order Details</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Company:</span>
+                    <p>{selectedOrder.company_name}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Quantity:</span>
+                    <p>{selectedOrder.quantity.toLocaleString()} bags</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Size:</span>
+                    <p>{selectedOrder.bag_length} × {selectedOrder.bag_width} inches</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="job_name">Job Name</Label>
+              <Input 
+                id="job_name" 
+                name="job_name"
+                value={jobName}
+                onChange={(e) => setJobName(e.target.value)}
+                placeholder="Enter job card name"
+                required
+              />
+            </div>
+
+            {components.length > 0 && (
+              <div className="p-4 border rounded-md space-y-4">
+                <h3 className="font-medium">Components</h3>
+                <div className="grid gap-4">
+                  {components.map((component) => (
+                    <div key={component.id} className="text-sm">
+                      <span className="font-medium capitalize">{component.type}:</span>{" "}
+                      {component.size && <span>Size: {component.size}, </span>}
+                      {component.color && <span>Color: {component.color}, </span>}
+                      {component.gsm && <span>GSM: {component.gsm}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+          <CardFooter className="flex justify-end gap-3 pt-6">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={() => navigate("/production/job-cards")}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? "Creating..." : "Create Job Card"}
+            </Button>
+          </CardFooter>
+        </Card>
+      </form>
+    </div>
+  );
+};
+
+export default JobCardNew;

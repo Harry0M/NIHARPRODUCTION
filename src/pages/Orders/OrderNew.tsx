@@ -1,301 +1,459 @@
 
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Plus, Trash } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
+import { ArrowLeft, Plus, Trash } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+
+// Define the component options for dropdowns
+const componentOptions = {
+  size: ["S", "M", "L", "XL", "XXL", "Custom"],
+  color: ["Red", "Blue", "Green", "Black", "White", "Yellow", "Brown", "Orange", "Purple", "Gray", "Custom"],
+  gsm: ["70", "80", "90", "100", "120", "140", "160", "180", "200", "250", "300", "Custom"]
+};
+
+interface ComponentData {
+  type: string;
+  size: string;
+  color: string;
+  gsm: string;
+  details?: string;
+}
 
 const OrderNew = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    customer: "",
-    email: "",
-    phone: "",
-    productType: "",
+  const [submitting, setSubmitting] = useState(false);
+  
+  const [orderData, setOrderData] = useState({
+    company_name: "",
     quantity: "",
-    bagLength: "",
-    bagWidth: "",
-    color: "",
-    gsm: "",
-    specialInstructions: "",
-    components: [
-      { type: "Border", details: "" },
-      { type: "Handle", details: "" },
-    ]
+    bag_length: "",
+    bag_width: "",
+    rate: "",
+    special_instructions: ""
   });
+  
+  const [components, setComponents] = useState<ComponentData[]>([
+    { type: "part", size: "", color: "", gsm: "" },
+    { type: "border", size: "", color: "", gsm: "" },
+    { type: "handle", size: "", color: "", gsm: "" },
+    { type: "chain", size: "", color: "", gsm: "" },
+    { type: "runner", size: "", color: "", gsm: "" }
+  ]);
+  
+  const [customComponents, setCustomComponents] = useState<ComponentData[]>([]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setOrderData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleComponentChange = (index: number, field: string, value: string) => {
-    const updatedComponents = [...formData.components];
-    updatedComponents[index] = { ...updatedComponents[index], [field]: value };
-    setFormData(prev => ({ ...prev, components: updatedComponents }));
+    setComponents(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
   };
 
-  const addComponent = () => {
-    setFormData(prev => ({
-      ...prev,
-      components: [...prev.components, { type: "", details: "" }]
-    }));
+  const handleCustomComponentChange = (index: number, field: string, value: string) => {
+    setCustomComponents(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
   };
 
-  const removeComponent = (index: number) => {
-    const updatedComponents = formData.components.filter((_, i) => i !== index);
-    setFormData(prev => ({ ...prev, components: updatedComponents }));
+  const addCustomComponent = () => {
+    setCustomComponents(prev => [...prev, { type: "custom", size: "", color: "", gsm: "", details: "" }]);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const removeCustomComponent = (index: number) => {
+    setCustomComponents(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const validateForm = () => {
+    if (!orderData.company_name) return "Company name is required";
+    if (!orderData.quantity || parseInt(orderData.quantity) <= 0) return "Valid quantity is required";
+    if (!orderData.bag_length || parseFloat(orderData.bag_length) <= 0) return "Valid bag length is required";
+    if (!orderData.bag_width || parseFloat(orderData.bag_width) <= 0) return "Valid bag width is required";
+    
+    // Check if at least one component has values
+    const hasAnyComponentData = components.some(comp => comp.size || comp.color || comp.gsm);
+    if (!hasAnyComponentData && customComponents.length === 0) {
+      return "At least one component detail is required";
+    }
+    
+    return null;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Submitting form data:", formData);
-    // Here you would normally send the data to your API
-    // For now, we'll just simulate success and redirect
-    setTimeout(() => {
-      navigate("/orders");
-    }, 1000);
+    
+    const validationError = validateForm();
+    if (validationError) {
+      toast({
+        title: "Validation Error",
+        description: validationError,
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setSubmitting(true);
+    
+    try {
+      // Insert the order first
+      const { data: orderData, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          company_name: orderData.company_name,
+          quantity: parseInt(orderData.quantity),
+          bag_length: parseFloat(orderData.bag_length),
+          bag_width: parseFloat(orderData.bag_width),
+          rate: orderData.rate ? parseFloat(orderData.rate) : null,
+          special_instructions: orderData.special_instructions || null,
+        })
+        .select()
+        .single();
+      
+      if (orderError) throw orderError;
+      
+      // Then insert all components
+      const allComponents = [
+        ...components.filter(comp => comp.size || comp.color || comp.gsm),
+        ...customComponents.filter(comp => comp.size || comp.color || comp.gsm)
+      ];
+
+      if (allComponents.length > 0) {
+        const componentsToInsert = allComponents.map(comp => ({
+          order_id: orderData.id,
+          type: comp.type,
+          size: comp.size || null,
+          color: comp.color || null,
+          gsm: comp.gsm || null,
+          details: comp.details || null
+        }));
+
+        const { error: componentsError } = await supabase
+          .from("components")
+          .insert(componentsToInsert);
+        
+        if (componentsError) throw componentsError;
+      }
+
+      toast({
+        title: "Order Created",
+        description: `Order number ${orderData.order_number} has been created successfully`,
+      });
+      
+      navigate(`/orders/${orderData.id}`);
+      
+    } catch (error: any) {
+      toast({
+        title: "Error creating order",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="gap-1"
+          onClick={() => navigate("/orders")}
+        >
+          <ArrowLeft size={16} />
+          Back
+        </Button>
         <div>
           <h1 className="text-3xl font-bold tracking-tight">New Order</h1>
-          <p className="text-muted-foreground">Create a new manufacturing order</p>
+          <p className="text-muted-foreground">Create a new bag manufacturing order</p>
         </div>
-        <Button variant="outline" asChild>
-          <Link to="/orders">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Orders
-          </Link>
-        </Button>
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <div className="grid gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Customer Information</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="customer">Customer Name</Label>
-                  <Input
-                    id="customer"
-                    name="customer"
-                    placeholder="Enter customer name"
-                    required
-                    value={formData.customer}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="customer@example.com"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                  />
-                </div>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Order Details</CardTitle>
+            <CardDescription>Enter the basic information for this order</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="company_name">Company Name</Label>
+                <Input 
+                  id="company_name" 
+                  name="company_name"
+                  value={orderData.company_name}
+                  onChange={handleOrderChange}
+                  placeholder="Client company name"
+                  required
+                />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    placeholder="Enter phone number"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="quantity">Order Quantity</Label>
+                <Input 
+                  id="quantity" 
+                  name="quantity"
+                  type="number"
+                  value={orderData.quantity}
+                  onChange={handleOrderChange}
+                  placeholder="Number of bags"
+                  required
+                />
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Order Details</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="productType">Product Type</Label>
-                  <Select
-                    onValueChange={(value) => handleSelectChange("productType", value)}
-                    value={formData.productType}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select product type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="canvas">Canvas Bag</SelectItem>
-                      <SelectItem value="jute">Jute Bag</SelectItem>
-                      <SelectItem value="cotton">Cotton Bag</SelectItem>
-                      <SelectItem value="paper">Paper Bag</SelectItem>
-                      <SelectItem value="nonwoven">Non-woven Bag</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="quantity">Quantity</Label>
-                  <Input
-                    id="quantity"
-                    name="quantity"
-                    type="number"
-                    min="1"
-                    placeholder="Enter quantity"
-                    required
-                    value={formData.quantity}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="gsm">GSM</Label>
-                  <Input
-                    id="gsm"
-                    name="gsm"
-                    placeholder="Enter GSM"
-                    value={formData.gsm}
-                    onChange={handleInputChange}
-                  />
-                </div>
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bag_length">Bag Length (inches)</Label>
+                <Input 
+                  id="bag_length" 
+                  name="bag_length"
+                  type="number"
+                  step="0.01"
+                  value={orderData.bag_length}
+                  onChange={handleOrderChange}
+                  placeholder="Length in inches"
+                  required
+                />
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="bagLength">Bag Length (cm)</Label>
-                  <Input
-                    id="bagLength"
-                    name="bagLength"
-                    type="number"
-                    placeholder="Enter length"
-                    required
-                    value={formData.bagLength}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bagWidth">Bag Width (cm)</Label>
-                  <Input
-                    id="bagWidth"
-                    name="bagWidth"
-                    type="number"
-                    placeholder="Enter width"
-                    required
-                    value={formData.bagWidth}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="color">Color</Label>
-                  <Input
-                    id="color"
-                    name="color"
-                    placeholder="Enter color"
-                    value={formData.color}
-                    onChange={handleInputChange}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="bag_width">Bag Width (inches)</Label>
+                <Input 
+                  id="bag_width" 
+                  name="bag_width"
+                  type="number"
+                  step="0.01"
+                  value={orderData.bag_width}
+                  onChange={handleOrderChange}
+                  placeholder="Width in inches"
+                  required
+                />
               </div>
-            </CardContent>
-          </Card>
+              <div className="space-y-2">
+                <Label htmlFor="rate">Rate per Bag (optional)</Label>
+                <Input 
+                  id="rate" 
+                  name="rate"
+                  type="number"
+                  step="0.01"
+                  value={orderData.rate}
+                  onChange={handleOrderChange}
+                  placeholder="Price per bag"
+                />
+              </div>
+            </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Components</CardTitle>
-              <Button type="button" variant="outline" size="sm" onClick={addComponent}>
-                <Plus className="mr-2 h-4 w-4" /> Add Component
-              </Button>
-            </CardHeader>
-            <CardContent className="grid gap-6">
-              {formData.components.map((component, index) => (
-                <div key={index} className="space-y-4">
-                  {index > 0 && <Separator className="my-4" />}
+            <div className="space-y-2">
+              <Label htmlFor="special_instructions">Special Instructions (optional)</Label>
+              <Textarea 
+                id="special_instructions" 
+                name="special_instructions"
+                value={orderData.special_instructions}
+                onChange={handleOrderChange}
+                placeholder="Any additional notes or requirements"
+                rows={3}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Bag Components</CardTitle>
+            <CardDescription>Specify the details for each bag component</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {components.map((component, index) => (
+                <div key={index} className="p-4 border rounded-md space-y-4">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-medium">Component {index + 1}</h4>
-                    {index > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeComponent(index)}
-                      >
-                        <Trash className="h-4 w-4 text-destructive" />
-                      </Button>
-                    )}
+                    <h3 className="text-lg font-medium capitalize">{component.type}</h3>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid md:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor={`component-${index}-type`}>Type</Label>
-                      <Select
-                        value={component.type}
-                        onValueChange={(value) => handleComponentChange(index, "type", value)}
+                      <Label>Size</Label>
+                      <Select 
+                        value={component.size} 
+                        onValueChange={(value) => handleComponentChange(index, 'size', value)}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select component type" />
+                          <SelectValue placeholder="Select size" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Border">Border</SelectItem>
-                          <SelectItem value="Handle">Handle</SelectItem>
-                          <SelectItem value="Chain">Chain</SelectItem>
-                          <SelectItem value="Runner">Runner</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
+                          <SelectItem value="">Not Applicable</SelectItem>
+                          {componentOptions.size.map(option => (
+                            <SelectItem key={option} value={option}>{option}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor={`component-${index}-details`}>Details</Label>
-                      <Input
-                        id={`component-${index}-details`}
-                        placeholder="Enter details"
-                        value={component.details}
-                        onChange={(e) => handleComponentChange(index, "details", e.target.value)}
-                      />
+                      <Label>Color</Label>
+                      <Select 
+                        value={component.color} 
+                        onValueChange={(value) => handleComponentChange(index, 'color', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select color" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Not Applicable</SelectItem>
+                          {componentOptions.color.map(option => (
+                            <SelectItem key={option} value={option}>{option}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>GSM</Label>
+                      <Select 
+                        value={component.gsm} 
+                        onValueChange={(value) => handleComponentChange(index, 'gsm', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select GSM" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Not Applicable</SelectItem>
+                          {componentOptions.gsm.map(option => (
+                            <SelectItem key={option} value={option}>{option}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
               ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Additional Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <Label htmlFor="specialInstructions">Special Instructions</Label>
-                <Textarea
-                  id="specialInstructions"
-                  name="specialInstructions"
-                  placeholder="Enter any special instructions or notes"
-                  rows={3}
-                  value={formData.specialInstructions}
-                  onChange={handleInputChange}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex justify-end gap-4">
-            <Button variant="outline" type="button" onClick={() => navigate("/orders")}>Cancel</Button>
-            <Button type="submit">Create Order</Button>
-          </div>
-        </div>
+              
+              {customComponents.map((component, index) => (
+                <div key={`custom-${index}`} className="p-4 border rounded-md space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium">Custom Component</h3>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => removeCustomComponent(index)}
+                    >
+                      <Trash size={16} className="text-destructive" />
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Details</Label>
+                    <Input 
+                      placeholder="Component description" 
+                      value={component.details || ''}
+                      onChange={(e) => handleCustomComponentChange(index, 'details', e.target.value)}
+                    />
+                  </div>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Size</Label>
+                      <Select 
+                        value={component.size} 
+                        onValueChange={(value) => handleCustomComponentChange(index, 'size', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select size" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Not Applicable</SelectItem>
+                          {componentOptions.size.map(option => (
+                            <SelectItem key={option} value={option}>{option}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Color</Label>
+                      <Select 
+                        value={component.color} 
+                        onValueChange={(value) => handleCustomComponentChange(index, 'color', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select color" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Not Applicable</SelectItem>
+                          {componentOptions.color.map(option => (
+                            <SelectItem key={option} value={option}>{option}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>GSM</Label>
+                      <Select 
+                        value={component.gsm} 
+                        onValueChange={(value) => handleCustomComponentChange(index, 'gsm', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select GSM" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Not Applicable</SelectItem>
+                          {componentOptions.gsm.map(option => (
+                            <SelectItem key={option} value={option}>{option}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full flex items-center justify-center gap-1"
+                onClick={addCustomComponent}
+              >
+                <Plus size={16} />
+                Add Custom Component
+              </Button>
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-end gap-3 pt-6">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={() => navigate("/orders")}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? "Creating..." : "Create Order"}
+            </Button>
+          </CardFooter>
+        </Card>
       </form>
     </div>
   );

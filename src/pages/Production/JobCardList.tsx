@@ -31,51 +31,62 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { 
-  ArrowUpDown, 
-  ChevronDown, 
-  Eye, 
-  MoreHorizontal, 
-  Plus, 
-  Search 
-} from "lucide-react";
+import { FileText, MoreHorizontal, Plus, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
-interface Order {
+interface JobCard {
   id: string;
-  order_number: string;
-  company_name: string;
-  quantity: number;
-  bag_length: number;
-  bag_width: number;
-  order_date: string;
+  job_name: string;
   status: string;
-  rate: number | null;
   created_at: string;
+  order: {
+    order_number: string;
+    company_name: string;
+  };
 }
 
-const OrderList = () => {
-  const [orders, setOrders] = useState<Order[]>([]);
+const JobCardList = () => {
+  const [jobCards, setJobCards] = useState<JobCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
   useEffect(() => {
-    const fetchOrders = async () => {
+    const fetchJobCards = async () => {
       setLoading(true);
       try {
         const { data, error } = await supabase
-          .from('orders')
-          .select('*')
+          .from('job_cards')
+          .select(`
+            id, 
+            job_name, 
+            status, 
+            created_at,
+            orders (
+              order_number,
+              company_name
+            )
+          `)
           .order('created_at', { ascending: false });
         
         if (error) throw error;
         
-        setOrders(data || []);
+        const formattedData = data?.map(item => ({
+          id: item.id,
+          job_name: item.job_name,
+          status: item.status,
+          created_at: item.created_at,
+          order: {
+            order_number: item.orders.order_number,
+            company_name: item.orders.company_name
+          }
+        }));
+        
+        setJobCards(formattedData || []);
       } catch (error: any) {
         toast({
-          title: "Error fetching orders",
+          title: "Error fetching job cards",
           description: error.message,
           variant: "destructive",
         });
@@ -84,16 +95,17 @@ const OrderList = () => {
       }
     };
 
-    fetchOrders();
+    fetchJobCards();
   }, []);
 
-  const filteredOrders = orders.filter(order => {
+  const filteredJobCards = jobCards.filter(jobCard => {
     const matchesSearch = (
-      order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.company_name.toLowerCase().includes(searchTerm.toLowerCase())
+      jobCard.job_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      jobCard.order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      jobCard.order.company_name.toLowerCase().includes(searchTerm.toLowerCase())
     );
     
-    const matchesStatus = statusFilter === "all" || order.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || jobCard.status === statusFilter;
     
     return matchesSearch && matchesStatus;
   });
@@ -106,15 +118,8 @@ const OrderList = () => {
     switch (status) {
       case "completed":
         return "bg-green-100 text-green-800";
-      case "ready_for_dispatch":
-        return "bg-blue-100 text-blue-800";
-      case "in_production":
-      case "cutting":
-      case "printing":
-      case "stitching":
+      case "in_progress":
         return "bg-amber-100 text-amber-800";
-      case "cancelled":
-        return "bg-red-100 text-red-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -128,21 +133,21 @@ const OrderList = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Orders</h1>
-          <p className="text-muted-foreground">Manage and track your manufacturing orders</p>
+          <h1 className="text-3xl font-bold tracking-tight">Job Cards</h1>
+          <p className="text-muted-foreground">Manage production job cards</p>
         </div>
-        <Link to="/orders/new">
+        <Link to="/production/job-cards/new">
           <Button className="flex items-center gap-1">
             <Plus size={16} />
-            New Order
+            New Job Card
           </Button>
         </Link>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>All Orders</CardTitle>
-          <CardDescription>A list of all your bag manufacturing orders</CardDescription>
+          <CardTitle>All Job Cards</CardTitle>
+          <CardDescription>Production job cards for all orders</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between mb-6">
@@ -150,7 +155,7 @@ const OrderList = () => {
               <div className="relative w-64">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search orders..."
+                  placeholder="Search job cards..."
                   className="pl-8"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -166,13 +171,8 @@ const OrderList = () => {
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="in_production">In Production</SelectItem>
-                  <SelectItem value="cutting">Cutting</SelectItem>
-                  <SelectItem value="printing">Printing</SelectItem>
-                  <SelectItem value="stitching">Stitching</SelectItem>
-                  <SelectItem value="ready_for_dispatch">Ready for Dispatch</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -184,19 +184,19 @@ const OrderList = () => {
             </div>
           ) : (
             <>
-              {filteredOrders.length === 0 ? (
+              {filteredJobCards.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Package className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium">No orders found</h3>
+                  <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium">No job cards found</h3>
                   <p className="text-muted-foreground mb-4">
                     {searchTerm || statusFilter !== "all"
                       ? "Try changing your search or filter"
-                      : "Create your first order to get started"}
+                      : "Create your first job card to get started"}
                   </p>
-                  <Link to="/orders/new">
+                  <Link to="/production/job-cards/new">
                     <Button>
                       <Plus className="mr-1 h-4 w-4" />
-                      New Order
+                      New Job Card
                     </Button>
                   </Link>
                 </div>
@@ -205,38 +205,34 @@ const OrderList = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[180px]">Order Number</TableHead>
+                        <TableHead className="w-[180px]">Job Card</TableHead>
+                        <TableHead>Order</TableHead>
                         <TableHead>Company</TableHead>
-                        <TableHead className="text-right">Quantity</TableHead>
-                        <TableHead className="text-right">Size (in)</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Date</TableHead>
+                        <TableHead className="text-right">Created</TableHead>
                         <TableHead className="w-[80px]"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredOrders.map((order) => (
-                        <TableRow key={order.id}>
+                      {filteredJobCards.map((jobCard) => (
+                        <TableRow key={jobCard.id}>
                           <TableCell className="font-medium">
                             <Link 
-                              to={`/orders/${order.id}`}
+                              to={`/production/job-cards/${jobCard.id}`}
                               className="hover:text-primary hover:underline"
                             >
-                              {order.order_number}
+                              {jobCard.job_name}
                             </Link>
                           </TableCell>
-                          <TableCell>{order.company_name}</TableCell>
-                          <TableCell className="text-right">{order.quantity.toLocaleString()}</TableCell>
-                          <TableCell className="text-right">
-                            {order.bag_length} × {order.bag_width}
-                          </TableCell>
+                          <TableCell>{jobCard.order.order_number}</TableCell>
+                          <TableCell>{jobCard.order.company_name}</TableCell>
                           <TableCell>
-                            <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(order.status)}`}>
-                              {getStatusDisplay(order.status)}
+                            <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(jobCard.status)}`}>
+                              {getStatusDisplay(jobCard.status)}
                             </span>
                           </TableCell>
                           <TableCell className="text-right">
-                            {formatDate(order.order_date)}
+                            {formatDate(jobCard.created_at)}
                           </TableCell>
                           <TableCell>
                             <DropdownMenu>
@@ -247,13 +243,23 @@ const OrderList = () => {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem asChild>
-                                  <Link to={`/orders/${order.id}`}>
-                                    <Eye className="mr-2 h-4 w-4" /> View Details
+                                  <Link to={`/production/job-cards/${jobCard.id}`}>
+                                    View Details
                                   </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem asChild>
-                                  <Link to={`/production/job-cards/new?orderId=${order.id}`}>
-                                    <Plus className="mr-2 h-4 w-4" /> Create Job Card
+                                  <Link to={`/production/cutting/${jobCard.id}`}>
+                                    Cutting
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                  <Link to={`/production/printing/${jobCard.id}`}>
+                                    Printing
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                  <Link to={`/production/stitching/${jobCard.id}`}>
+                                    Stitching
                                   </Link>
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
@@ -273,4 +279,4 @@ const OrderList = () => {
   );
 };
 
-export default OrderList;
+export default JobCardList;
