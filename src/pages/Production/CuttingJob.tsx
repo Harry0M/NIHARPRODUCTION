@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { 
@@ -69,6 +70,15 @@ interface CuttingJob {
   received_quantity: string;
 }
 
+interface CuttingData {
+  roll_width: string;
+  consumption_meters: string;
+  worker_name: string;
+  is_internal: boolean;
+  status: JobStatus;
+  received_quantity: string;
+}
+
 const CuttingJob = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -79,12 +89,12 @@ const CuttingJob = () => {
   const [existingJob, setExistingJob] = useState<CuttingJob | null>(null);
   const [existingComponents, setExistingComponents] = useState<CuttingComponent[]>([]);
   
-  const [cuttingData, setCuttingData] = useState({
+  const [cuttingData, setCuttingData] = useState<CuttingData>({
     roll_width: "",
     consumption_meters: "",
     worker_name: "",
     is_internal: true,
-    status: "pending" as JobStatus,
+    status: "pending",
     received_quantity: ""
   });
   

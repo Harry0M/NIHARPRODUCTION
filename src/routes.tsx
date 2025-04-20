@@ -1,3 +1,4 @@
+
 import { RouteObject } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
@@ -12,17 +13,18 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-const PrintingJob = () => <div>Printing Job (Coming Soon)</div>;
-const StitchingJob = () => <div>Stitching Job (Coming Soon)</div>;
-const JobCardDetail = () => <div>Job Card Detail (Coming Soon)</div>;
-const VendorList = () => <div>Vendor List (Coming Soon)</div>;
-const VendorNew = () => <div>New Vendor (Coming Soon)</div>;
-const SupplierList = () => <div>Supplier List (Coming Soon)</div>;
-const SupplierNew = () => <div>New Supplier (Coming Soon)</div>;
-const Dispatch = () => <div>Dispatch (Coming Soon)</div>;
-const InventoryList = () => <div>Inventory List (Coming Soon)</div>;
-const InventoryNew = () => <div>New Inventory (Coming Soon)</div>;
-const Settings = () => <div>Settings (Coming Soon)</div>;
+// Create placeholder components for routes that aren't yet implemented
+const PrintingJob = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Printing Job</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
+const StitchingJob = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Stitching Job</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
+const JobCardDetail = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Job Card Details</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
+const VendorList = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Vendor List</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
+const VendorNew = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">New Vendor</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
+const SupplierList = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Supplier List</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
+const SupplierNew = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">New Supplier</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
+const Dispatch = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Dispatch</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
+const InventoryList = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Inventory List</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
+const InventoryNew = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">New Inventory</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
+const Settings = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Settings</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 
 const routes: RouteObject[] = [
   {
