@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { 
@@ -69,20 +70,15 @@ interface CuttingJob {
   received_quantity: string;
 }
 
-interface CuttingData {
-  roll_width: string;
-  consumption_meters: string;
-  worker_name: string;
-  is_internal: boolean;
-  status: JobStatus;
-  received_quantity: string;
-}
-
 const CuttingJob = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [jobCard, setJobCard] = useState<JobCard | null>(null);
+  const [components, setComponents] = useState<Component[]>([]);
+  const [existingJob, setExistingJob] = useState<CuttingJob | null>(null);
+  const [existingComponents, setExistingComponents] = useState<CuttingComponent[]>([]);
   
   const [cuttingData, setCuttingData] = useState<{
     roll_width: string;
@@ -517,7 +513,7 @@ const CuttingJob = () => {
                   <Label htmlFor="status">Status</Label>
                   <Select
                     value={cuttingData.status}
-                    onValueChange={(value) => handleSelectChange("status", value)}
+                    onValueChange={(value: JobStatus) => handleSelectChange("status", value)}
                   >
                     <SelectTrigger id="status">
                       <SelectValue placeholder="Select status" />
@@ -614,7 +610,7 @@ const CuttingJob = () => {
                       <Label>Status</Label>
                       <Select
                         value={componentData[index]?.status || "pending"}
-                        onValueChange={(value) => handleComponentChange(index, "status", value)}
+                        onValueChange={(value: JobStatus) => handleComponentChange(index, "status", value)}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select status" />
