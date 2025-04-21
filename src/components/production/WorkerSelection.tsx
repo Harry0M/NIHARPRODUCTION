@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Database } from '@/integrations/supabase/types';
 
 export interface Worker {
   id: string;
@@ -34,7 +35,8 @@ export const WorkerSelection = ({
           const { data, error } = await supabase
             .from('profiles')
             .select('id, first_name, last_name, company_name, role')
-            .eq('role', serviceType);
+            // Cast serviceType to the specific user_role type expected by the database
+            .eq('role', serviceType as Database['public']['Enums']['user_role']);
 
           if (error) throw error;
 
@@ -52,7 +54,7 @@ export const WorkerSelection = ({
           // Query vendors table for external workers
           const { data, error } = await supabase
             .from('vendors')
-            .select('id, name, company_name, service_type')
+            .select('*')  // Select all columns to avoid column name mismatches
             .eq('service_type', serviceType);
 
           if (error) throw error;
