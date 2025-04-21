@@ -3,28 +3,20 @@ import { useNavigate } from "react-router-dom";
 import { 
   Card, 
   CardContent, 
-  CardDescription, 
   CardFooter, 
   CardHeader, 
-  CardTitle 
+  CardTitle, 
+  CardDescription 
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
-import { ArrowLeft, Plus, Trash } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
+import { OrderDetailsForm } from "@/components/orders/OrderDetailsForm";
+import { ComponentForm } from "@/components/orders/ComponentForm";
+import { CustomComponentSection } from "@/components/orders/CustomComponentSection";
 
-// Define the component options for dropdowns
 const componentOptions = {
   color: ["Red", "Blue", "Green", "Black", "White", "Yellow", "Brown", "Orange", "Purple", "Gray", "Custom"],
   gsm: ["70", "80", "90", "100", "120", "140", "160", "180", "200", "250", "300", "Custom"]
@@ -32,7 +24,7 @@ const componentOptions = {
 
 interface ComponentData {
   type: string;
-  name?: string; // Add name field for custom components
+  name?: string;
   width: string;
   length: string;
   color: string;
@@ -76,7 +68,6 @@ const OrderNew = () => {
     });
   };
 
-  // Update custom component handling
   const [customComponents, setCustomComponents] = useState<ComponentData[]>([]);
 
   const handleCustomComponentChange = (index: number, field: string, value: string) => {
@@ -109,7 +100,6 @@ const OrderNew = () => {
     if (!formData.bag_length || parseFloat(formData.bag_length) <= 0) return "Valid bag length is required";
     if (!formData.bag_width || parseFloat(formData.bag_width) <= 0) return "Valid bag width is required";
     
-    // Check if at least one component has values
     const hasAnyComponentData = components.some(comp => comp.length || comp.width || comp.color || comp.gsm);
     if (!hasAnyComponentData && customComponents.length === 0) {
       return "At least one component detail is required";
@@ -118,81 +108,6 @@ const OrderNew = () => {
     return null;
   };
 
-  // Update the component rendering in JSX for standard components
-  const renderComponentFields = (component: ComponentData, index: number, isCustom: boolean = false) => {
-    const handleChange = isCustom ? handleCustomComponentChange : handleComponentChange;
-    
-    return (
-      <div className="grid md:grid-cols-4 gap-4">
-        {isCustom && (
-          <div className="space-y-2">
-            <Label>Component Name</Label>
-            <Input
-              placeholder="Enter component name"
-              value={component.name || ''}
-              onChange={(e) => handleChange(index, 'name', e.target.value)}
-            />
-          </div>
-        )}
-        <div className="space-y-2">
-          <Label>Length</Label>
-          <Input
-            type="number"
-            step="0.01"
-            placeholder="Length in inches"
-            value={component.length || ''}
-            onChange={(e) => handleChange(index, 'length', e.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Width</Label>
-          <Input
-            type="number"
-            step="0.01"
-            placeholder="Width in inches"
-            value={component.width || ''}
-            onChange={(e) => handleChange(index, 'width', e.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Color</Label>
-          <Select 
-            value={component.color || undefined} 
-            onValueChange={(value) => handleChange(index, 'color', value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select color" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="not_applicable">Not Applicable</SelectItem>
-              {componentOptions.color.map(option => (
-                <SelectItem key={option} value={option}>{option}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label>GSM</Label>
-          <Select 
-            value={component.gsm || undefined} 
-            onValueChange={(value) => handleChange(index, 'gsm', value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select GSM" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="not_applicable">Not Applicable</SelectItem>
-              {componentOptions.gsm.map(option => (
-                <SelectItem key={option} value={option}>{option}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-    );
-  };
-
-  // Update submit handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -209,12 +124,8 @@ const OrderNew = () => {
     setSubmitting(true);
     
     try {
-      // Generate a temporary order number just to satisfy TypeScript
-      // This will be replaced by the database trigger
       const tempOrderNumber = `TEMP-${Date.now()}`;
       
-      // Insert the order with order_number field to satisfy TypeScript
-      // The actual order_number will be generated by the database trigger
       const { data: orderData, error: orderError } = await supabase
         .from("orders")
         .insert({
@@ -224,14 +135,13 @@ const OrderNew = () => {
           bag_width: parseFloat(formData.bag_width),
           rate: formData.rate ? parseFloat(formData.rate) : null,
           special_instructions: formData.special_instructions || null,
-          order_number: tempOrderNumber // Temporary value that will be overwritten by DB trigger
+          order_number: tempOrderNumber
         })
         .select()
         .single();
       
       if (orderError) throw orderError;
       
-      // Update the component data structure for database
       const allComponents = [
         ...components.filter(comp => comp.length || comp.width || comp.color || comp.gsm),
         ...customComponents.filter(comp => comp.length || comp.width || comp.color || comp.gsm)
@@ -298,92 +208,10 @@ const OrderNew = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Order Details</CardTitle>
-            <CardDescription>Enter the basic information for this order</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="company_name">Company Name</Label>
-                <Input 
-                  id="company_name" 
-                  name="company_name"
-                  value={formData.company_name}
-                  onChange={handleOrderChange}
-                  placeholder="Client company name"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="quantity">Order Quantity</Label>
-                <Input 
-                  id="quantity" 
-                  name="quantity"
-                  type="number"
-                  value={formData.quantity}
-                  onChange={handleOrderChange}
-                  placeholder="Number of bags"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="bag_length">Bag Length (inches)</Label>
-                <Input 
-                  id="bag_length" 
-                  name="bag_length"
-                  type="number"
-                  step="0.01"
-                  value={formData.bag_length}
-                  onChange={handleOrderChange}
-                  placeholder="Length in inches"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="bag_width">Bag Width (inches)</Label>
-                <Input 
-                  id="bag_width" 
-                  name="bag_width"
-                  type="number"
-                  step="0.01"
-                  value={formData.bag_width}
-                  onChange={handleOrderChange}
-                  placeholder="Width in inches"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="rate">Rate per Bag (optional)</Label>
-                <Input 
-                  id="rate" 
-                  name="rate"
-                  type="number"
-                  step="0.01"
-                  value={formData.rate}
-                  onChange={handleOrderChange}
-                  placeholder="Price per bag"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="special_instructions">Special Instructions (optional)</Label>
-              <Textarea 
-                id="special_instructions" 
-                name="special_instructions"
-                value={formData.special_instructions}
-                onChange={handleOrderChange}
-                placeholder="Any additional notes or requirements"
-                rows={3}
-              />
-            </div>
-          </CardContent>
-        </Card>
+        <OrderDetailsForm 
+          formData={formData}
+          handleOrderChange={handleOrderChange}
+        />
 
         <Card>
           <CardHeader>
@@ -397,44 +225,22 @@ const OrderNew = () => {
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-medium capitalize">{component.type}</h3>
                   </div>
-                  {renderComponentFields(component, index)}
+                  <ComponentForm
+                    component={component}
+                    index={index}
+                    componentOptions={componentOptions}
+                    handleChange={handleComponentChange}
+                  />
                 </div>
               ))}
               
-              {customComponents.map((component, index) => (
-                <div key={`custom-${index}`} className="p-4 border rounded-md space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium">Custom Component</h3>
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => removeCustomComponent(index)}
-                    >
-                      <Trash size={16} className="text-destructive" />
-                    </Button>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Details</Label>
-                    <Input 
-                      placeholder="Component description" 
-                      value={component.details || ''}
-                      onChange={(e) => handleCustomComponentChange(index, 'details', e.target.value)}
-                    />
-                  </div>
-                  {renderComponentFields(component, index, true)}
-                </div>
-              ))}
-              
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full flex items-center justify-center gap-1"
-                onClick={addCustomComponent}
-              >
-                <Plus size={16} />
-                Add Custom Component
-              </Button>
+              <CustomComponentSection
+                customComponents={customComponents}
+                componentOptions={componentOptions}
+                handleCustomComponentChange={handleCustomComponentChange}
+                addCustomComponent={addCustomComponent}
+                removeCustomComponent={removeCustomComponent}
+              />
             </div>
           </CardContent>
           <CardFooter className="flex justify-end gap-3 pt-6">
