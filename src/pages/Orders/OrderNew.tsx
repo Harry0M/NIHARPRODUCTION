@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -27,14 +26,15 @@ import { Database } from "@/integrations/supabase/types";
 
 // Define the component options for dropdowns
 const componentOptions = {
-  size: ["S", "M", "L", "XL", "XXL", "Custom"],
   color: ["Red", "Blue", "Green", "Black", "White", "Yellow", "Brown", "Orange", "Purple", "Gray", "Custom"],
   gsm: ["70", "80", "90", "100", "120", "140", "160", "180", "200", "250", "300", "Custom"]
 };
 
 interface ComponentData {
   type: string;
-  size: string;
+  name?: string; // Add name field for custom components
+  width: string;
+  length: string;
   color: string;
   gsm: string;
   details?: string;
@@ -56,15 +56,13 @@ const OrderNew = () => {
   });
   
   const [components, setComponents] = useState<ComponentData[]>([
-    { type: "part", size: "", color: "", gsm: "" },
-    { type: "border", size: "", color: "", gsm: "" },
-    { type: "handle", size: "", color: "", gsm: "" },
-    { type: "chain", size: "", color: "", gsm: "" },
-    { type: "runner", size: "", color: "", gsm: "" }
+    { type: "part", width: "", length: "", color: "", gsm: "" },
+    { type: "border", width: "", length: "", color: "", gsm: "" },
+    { type: "handle", width: "", length: "", color: "", gsm: "" },
+    { type: "chain", width: "", length: "", color: "", gsm: "" },
+    { type: "runner", width: "", length: "", color: "", gsm: "" }
   ]);
   
-  const [customComponents, setCustomComponents] = useState<ComponentData[]>([]);
-
   const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -78,6 +76,9 @@ const OrderNew = () => {
     });
   };
 
+  // Update custom component handling
+  const [customComponents, setCustomComponents] = useState<ComponentData[]>([]);
+
   const handleCustomComponentChange = (index: number, field: string, value: string) => {
     setCustomComponents(prev => {
       const updated = [...prev];
@@ -87,7 +88,15 @@ const OrderNew = () => {
   };
 
   const addCustomComponent = () => {
-    setCustomComponents(prev => [...prev, { type: "custom", size: "", color: "", gsm: "", details: "" }]);
+    setCustomComponents(prev => [...prev, { 
+      type: "custom",
+      name: "",
+      width: "",
+      length: "",
+      color: "",
+      gsm: "",
+      details: ""
+    }]);
   };
 
   const removeCustomComponent = (index: number) => {
@@ -101,7 +110,7 @@ const OrderNew = () => {
     if (!formData.bag_width || parseFloat(formData.bag_width) <= 0) return "Valid bag width is required";
     
     // Check if at least one component has values
-    const hasAnyComponentData = components.some(comp => comp.size || comp.color || comp.gsm);
+    const hasAnyComponentData = components.some(comp => comp.length || comp.width || comp.color || comp.gsm);
     if (!hasAnyComponentData && customComponents.length === 0) {
       return "At least one component detail is required";
     }
@@ -109,6 +118,81 @@ const OrderNew = () => {
     return null;
   };
 
+  // Update the component rendering in JSX for standard components
+  const renderComponentFields = (component: ComponentData, index: number, isCustom: boolean = false) => {
+    const handleChange = isCustom ? handleCustomComponentChange : handleComponentChange;
+    
+    return (
+      <div className="grid md:grid-cols-4 gap-4">
+        {isCustom && (
+          <div className="space-y-2">
+            <Label>Component Name</Label>
+            <Input
+              placeholder="Enter component name"
+              value={component.name || ''}
+              onChange={(e) => handleChange(index, 'name', e.target.value)}
+            />
+          </div>
+        )}
+        <div className="space-y-2">
+          <Label>Length</Label>
+          <Input
+            type="number"
+            step="0.01"
+            placeholder="Length in inches"
+            value={component.length || ''}
+            onChange={(e) => handleChange(index, 'length', e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Width</Label>
+          <Input
+            type="number"
+            step="0.01"
+            placeholder="Width in inches"
+            value={component.width || ''}
+            onChange={(e) => handleChange(index, 'width', e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Color</Label>
+          <Select 
+            value={component.color || undefined} 
+            onValueChange={(value) => handleChange(index, 'color', value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select color" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="not_applicable">Not Applicable</SelectItem>
+              {componentOptions.color.map(option => (
+                <SelectItem key={option} value={option}>{option}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>GSM</Label>
+          <Select 
+            value={component.gsm || undefined} 
+            onValueChange={(value) => handleChange(index, 'gsm', value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select GSM" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="not_applicable">Not Applicable</SelectItem>
+              {componentOptions.gsm.map(option => (
+                <SelectItem key={option} value={option}>{option}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    );
+  };
+
+  // Update submit handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -147,11 +231,18 @@ const OrderNew = () => {
       
       if (orderError) throw orderError;
       
-      // Then insert all components
+      // Update the component data structure for database
       const allComponents = [
-        ...components.filter(comp => comp.size || comp.color || comp.gsm),
-        ...customComponents.filter(comp => comp.size || comp.color || comp.gsm)
-      ];
+        ...components.filter(comp => comp.length || comp.width || comp.color || comp.gsm),
+        ...customComponents.filter(comp => comp.length || comp.width || comp.color || comp.gsm)
+      ].map(comp => ({
+        order_id: orderData.id,
+        type: comp.type === 'custom' ? (comp.name || 'Custom Component') : comp.type,
+        size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
+        color: comp.color || null,
+        gsm: comp.gsm || null,
+        details: comp.details || null
+      }));
 
       if (allComponents.length > 0) {
         const componentsToInsert = allComponents.map(comp => ({
@@ -306,59 +397,7 @@ const OrderNew = () => {
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-medium capitalize">{component.type}</h3>
                   </div>
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label>Size</Label>
-                      <Select 
-                        value={component.size || undefined} 
-                        onValueChange={(value) => handleComponentChange(index, 'size', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select size" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="not_applicable">Not Applicable</SelectItem>
-                          {componentOptions.size.map(option => (
-                            <SelectItem key={option} value={option}>{option}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Color</Label>
-                      <Select 
-                        value={component.color || undefined} 
-                        onValueChange={(value) => handleComponentChange(index, 'color', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select color" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="not_applicable">Not Applicable</SelectItem>
-                          {componentOptions.color.map(option => (
-                            <SelectItem key={option} value={option}>{option}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>GSM</Label>
-                      <Select 
-                        value={component.gsm || undefined} 
-                        onValueChange={(value) => handleComponentChange(index, 'gsm', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select GSM" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="not_applicable">Not Applicable</SelectItem>
-                          {componentOptions.gsm.map(option => (
-                            <SelectItem key={option} value={option}>{option}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+                  {renderComponentFields(component, index)}
                 </div>
               ))}
               
@@ -383,59 +422,7 @@ const OrderNew = () => {
                       onChange={(e) => handleCustomComponentChange(index, 'details', e.target.value)}
                     />
                   </div>
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label>Size</Label>
-                      <Select 
-                        value={component.size || undefined} 
-                        onValueChange={(value) => handleCustomComponentChange(index, 'size', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select size" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="not_applicable">Not Applicable</SelectItem>
-                          {componentOptions.size.map(option => (
-                            <SelectItem key={option} value={option}>{option}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Color</Label>
-                      <Select 
-                        value={component.color || undefined} 
-                        onValueChange={(value) => handleCustomComponentChange(index, 'color', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select color" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="not_applicable">Not Applicable</SelectItem>
-                          {componentOptions.color.map(option => (
-                            <SelectItem key={option} value={option}>{option}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>GSM</Label>
-                      <Select 
-                        value={component.gsm || undefined} 
-                        onValueChange={(value) => handleCustomComponentChange(index, 'gsm', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select GSM" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="not_applicable">Not Applicable</SelectItem>
-                          {componentOptions.gsm.map(option => (
-                            <SelectItem key={option} value={option}>{option}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+                  {renderComponentFields(component, index, true)}
                 </div>
               ))}
               
