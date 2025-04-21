@@ -19,6 +19,7 @@ interface OrderDetailsFormProps {
     bag_width: string;
     rate: string;
     special_instructions: string;
+    order_date?: string;
   };
   handleOrderChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
 }
@@ -85,7 +86,7 @@ export const OrderDetailsForm = ({ formData, handleOrderChange }: OrderDetailsFo
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="rate">Rate per Bag (optional)</Label>
+            <Label htmlFor="rate">Rate per Bag</Label>
             <Input 
               id="rate" 
               name="rate"
@@ -97,6 +98,21 @@ export const OrderDetailsForm = ({ formData, handleOrderChange }: OrderDetailsFo
             />
           </div>
         </div>
+
+        {formData.order_date !== undefined && (
+          <div className="space-y-2">
+            <Label htmlFor="order_date">Order Date</Label>
+            <Input 
+              id="order_date"
+              name="order_date"
+              type="date"
+              value={formData.order_date}
+              onChange={handleOrderChange}
+              placeholder="Order date"
+              required
+            />
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="special_instructions">Special Instructions (optional)</Label>

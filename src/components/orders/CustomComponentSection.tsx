@@ -46,14 +46,6 @@ export const CustomComponentSection = ({
               <Trash size={16} className="text-destructive" />
             </Button>
           </div>
-          <div className="space-y-2">
-            <Label>Details</Label>
-            <Input 
-              placeholder="Component description" 
-              value={component.details || ''}
-              onChange={(e) => handleCustomComponentChange(index, 'details', e.target.value)}
-            />
-          </div>
           <ComponentForm
             component={component}
             index={index}

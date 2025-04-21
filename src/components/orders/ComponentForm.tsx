@@ -44,11 +44,12 @@ export const ComponentForm = ({
             placeholder="Enter component name"
             value={component.name || ''}
             onChange={(e) => handleChange(index, 'name', e.target.value)}
+            required={isCustom}
           />
         </div>
       )}
       <div className="space-y-2">
-        <Label>Length</Label>
+        <Label>Length (inches)</Label>
         <Input
           type="number"
           step="0.01"
@@ -58,7 +59,7 @@ export const ComponentForm = ({
         />
       </div>
       <div className="space-y-2">
-        <Label>Width</Label>
+        <Label>Width (inches)</Label>
         <Input
           type="number"
           step="0.01"
