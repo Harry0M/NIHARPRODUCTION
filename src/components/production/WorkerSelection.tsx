@@ -35,7 +35,7 @@ export const WorkerSelection = ({
         // Query the appropriate table
         const { data, error } = await supabase
           .from(tableName)
-          .select('id, name, company_name, service_type')
+          .select('id, first_name, last_name, company_name, service_type')
           .eq(workerType === 'internal' ? 'role' : 'service_type', serviceType);
 
         if (error) throw error;
@@ -44,8 +44,10 @@ export const WorkerSelection = ({
           // Transform the data to fit our Worker interface
           const transformedData: Worker[] = data.map(item => ({
             id: item.id,
-            // Use company_name for vendors or name for profiles
-            name: item.name || item.company_name || 'Unnamed',
+            // Use company_name for vendors or concatenate first_name and last_name for profiles
+            name: workerType === 'external' 
+              ? (item.company_name || 'Unnamed Vendor') 
+              : (`${item.first_name || ''} ${item.last_name || ''}`.trim() || 'Unnamed Worker'),
             type: workerType,
             service_type: item.service_type
           }));
