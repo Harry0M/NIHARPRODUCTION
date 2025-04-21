@@ -62,7 +62,8 @@ export const WorkerSelection = ({
           if (data) {
             const transformedData: Worker[] = data.map(item => ({
               id: item.id,
-              name: item.company_name || item.name || 'Unnamed Vendor',
+              // Use only the name property for vendors as company_name doesn't exist
+              name: item.name || 'Unnamed Vendor',
               type: workerType,
               service_type: item.service_type
             }));
