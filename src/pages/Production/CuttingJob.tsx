@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { 
@@ -12,18 +11,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Scissors } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
+import { WorkerSelection } from "@/components/production/WorkerSelection";
+import { ConsumptionCalculator } from "@/components/production/ConsumptionCalculator";
 
 type JobStatus = Database["public"]["Enums"]["job_status"];
 
@@ -258,6 +253,21 @@ const CuttingJob = () => {
     });
   };
 
+  const handleConsumptionCalculated = (meters: number) => {
+    setCuttingData(prev => ({
+      ...prev,
+      consumption_meters: meters.toString()
+    }));
+  };
+
+  const handleWorkerSelect = (workerId: string) => {
+    const selectedWorker = workerId ? workerId : "";
+    setCuttingData(prev => ({
+      ...prev,
+      worker_name: selectedWorker
+    }));
+  };
+
   const calculateConsumptionMeters = () => {
     if (jobCard?.order.bag_length && jobCard?.order.bag_width && jobCard?.order.quantity) {
       const bagArea = (jobCard.order.bag_length * jobCard.order.bag_width);
@@ -463,31 +473,13 @@ const CuttingJob = () => {
           <CardContent>
             <form id="cutting-form" onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="roll_width">Roll Width</Label>
-                  <Input 
-                    id="roll_width" 
-                    name="roll_width"
-                    type="number"
-                    step="0.01"
-                    placeholder="Enter roll width"
-                    value={cuttingData.roll_width}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="consumption_meters">Consumption (meters)</Label>
-                  <Input 
-                    id="consumption_meters" 
-                    name="consumption_meters"
-                    type="number"
-                    step="0.01"
-                    placeholder="Calculated consumption"
-                    value={cuttingData.consumption_meters || calculateConsumptionMeters()}
-                    onChange={handleInputChange}
-                  />
-                </div>
+                <ConsumptionCalculator
+                  length={jobCard.order.bag_length}
+                  width={jobCard.order.bag_width}
+                  quantity={jobCard.order.quantity}
+                  onConsumptionCalculated={handleConsumptionCalculated}
+                />
+                
                 <div className="space-y-2">
                   <Label htmlFor="received_quantity">Received Quantity</Label>
                   <Input 
@@ -499,16 +491,23 @@ const CuttingJob = () => {
                     onChange={handleInputChange}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="worker_name">Worker/Company Name</Label>
-                  <Input 
-                    id="worker_name" 
-                    name="worker_name"
-                    placeholder="Name of cutting worker or company"
-                    value={cuttingData.worker_name}
-                    onChange={handleInputChange}
+
+                <div className="flex items-center space-x-2 pt-8">
+                  <Checkbox 
+                    id="is_internal" 
+                    checked={cuttingData.is_internal}
+                    onCheckedChange={handleCheckboxChange}
                   />
+                  <Label htmlFor="is_internal">Internal Cutting (In-house)</Label>
                 </div>
+
+                <WorkerSelection
+                  workerType={cuttingData.is_internal ? 'internal' : 'external'}
+                  serviceType="cutting"
+                  onWorkerSelect={handleWorkerSelect}
+                  selectedWorkerId={cuttingData.worker_name}
+                />
+
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
                   <Select
@@ -524,14 +523,6 @@ const CuttingJob = () => {
                       <SelectItem value="completed">Completed</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="flex items-center space-x-2 pt-8">
-                  <Checkbox 
-                    id="is_internal" 
-                    checked={cuttingData.is_internal}
-                    onCheckedChange={handleCheckboxChange}
-                  />
-                  <Label htmlFor="is_internal">Internal Cutting (In-house)</Label>
                 </div>
               </div>
             </form>
