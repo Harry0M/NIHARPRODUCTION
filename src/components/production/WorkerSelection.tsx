@@ -29,15 +29,28 @@ export const WorkerSelection = ({
   useEffect(() => {
     const fetchWorkers = async () => {
       try {
+        // For internal workers, use profiles table. For external workers, use vendors table
+        const tableName = workerType === 'internal' ? 'profiles' : 'vendors';
+        
+        // Query the appropriate table
         const { data, error } = await supabase
-          .from(workerType === 'internal' ? 'workers' : 'vendors')
-          .select('id, name, type')
-          .eq('type', serviceType);
+          .from(tableName)
+          .select('id, name, company_name, service_type')
+          .eq(workerType === 'internal' ? 'role' : 'service_type', serviceType);
 
         if (error) throw error;
 
         if (data) {
-          setWorkers(data as Worker[]);
+          // Transform the data to fit our Worker interface
+          const transformedData: Worker[] = data.map(item => ({
+            id: item.id,
+            // Use company_name for vendors or name for profiles
+            name: item.name || item.company_name || 'Unnamed',
+            type: workerType,
+            service_type: item.service_type
+          }));
+          
+          setWorkers(transformedData);
         }
       } catch (error) {
         console.error('Error fetching workers:', error);

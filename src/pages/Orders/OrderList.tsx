@@ -9,6 +9,9 @@ import { Eye, MoreHorizontal, Package2Icon, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Database } from "@/integrations/supabase/types";
+
+type OrderStatus = Database["public"]["Enums"]["order_status"];
 
 interface Order {
   id: string;
@@ -18,7 +21,7 @@ interface Order {
   bag_length: number;
   bag_width: number;
   order_date: string;
-  status: string;
+  status: OrderStatus;
   rate: number | null;
   created_at: string;
 }
@@ -50,7 +53,7 @@ const OrderList = () => {
         let query = supabase.from('orders').select('*');
 
         if (filters.status !== 'all') {
-          query = query.eq('status', filters.status);
+          query = query.eq('status', filters.status as OrderStatus);
         }
 
         if (filters.dateRange.from) {
