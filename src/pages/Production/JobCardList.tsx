@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { 
   Table, 
   TableBody, 
@@ -51,6 +51,7 @@ const JobCardList = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchJobCards = async () => {
@@ -127,6 +128,11 @@ const JobCardList = () => {
 
   const getStatusDisplay = (status: string) => {
     return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  // Handle navigation with history state
+  const handleNavigation = (path: string) => {
+    navigate(path, { state: { from: "job-card-list" } });
   };
 
   return (
@@ -242,25 +248,17 @@ const JobCardList = () => {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem asChild>
-                                  <Link to={`/production/job-cards/${jobCard.id}`}>
-                                    View Details
-                                  </Link>
+                                <DropdownMenuItem onClick={() => handleNavigation(`/production/job-cards/${jobCard.id}`)}>
+                                  View Details
                                 </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                  <Link to={`/production/cutting/${jobCard.id}`}>
-                                    Cutting
-                                  </Link>
+                                <DropdownMenuItem onClick={() => handleNavigation(`/production/cutting/${jobCard.id}`)}>
+                                  Cutting
                                 </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                  <Link to={`/production/printing/${jobCard.id}`}>
-                                    Printing
-                                  </Link>
+                                <DropdownMenuItem onClick={() => handleNavigation(`/production/printing/${jobCard.id}`)}>
+                                  Printing
                                 </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                  <Link to={`/production/stitching/${jobCard.id}`}>
-                                    Stitching
-                                  </Link>
+                                <DropdownMenuItem onClick={() => handleNavigation(`/production/stitching/${jobCard.id}`)}>
+                                  Stitching
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>

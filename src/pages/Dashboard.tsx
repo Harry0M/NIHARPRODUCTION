@@ -2,6 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { BarChart, Package, Truck, Users } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const statsCards = [
   {
@@ -9,28 +10,32 @@ const statsCards = [
     value: "24",
     icon: Package,
     change: "+5% from last month",
-    positive: true
+    positive: true,
+    linkTo: "/orders?status=in_production"
   },
   {
     title: "In Production",
     value: "18",
     icon: Layers,
     change: "+12% from last month",
-    positive: true
+    positive: true,
+    linkTo: "/production"
   },
   {
     title: "Ready for Dispatch",
     value: "6",
     icon: Truck,
     change: "-2% from last month",
-    positive: false
+    positive: false,
+    linkTo: "/orders?status=ready_for_dispatch"
   },
   {
     title: "Active Vendors",
     value: "12",
     icon: Users,
     change: "No change",
-    positive: null
+    positive: null,
+    linkTo: "/vendors"
   }
 ];
 
@@ -114,18 +119,20 @@ const Dashboard = () => {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {statsCards.map((card) => (
-          <Card key={card.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-              <card.icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{card.value}</div>
-              <p className={`text-xs ${card.positive === true ? 'text-green-500' : card.positive === false ? 'text-red-500' : 'text-muted-foreground'}`}>
-                {card.change}
-              </p>
-            </CardContent>
-          </Card>
+          <Link key={card.title} to={card.linkTo} className="block">
+            <Card className="hover:border-primary hover:shadow-md transition-all duration-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
+                <card.icon className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{card.value}</div>
+                <p className={`text-xs ${card.positive === true ? 'text-green-500' : card.positive === false ? 'text-red-500' : 'text-muted-foreground'}`}>
+                  {card.change}
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
 
@@ -180,7 +187,11 @@ const Dashboard = () => {
               </thead>
               <tbody>
                 {recentOrders.map((order) => (
-                  <tr key={order.id} className="border-b hover:bg-muted/50">
+                  <tr 
+                    key={order.id} 
+                    className="border-b hover:bg-muted/50 cursor-pointer"
+                    onClick={() => window.location.href = `/orders/${order.id}`}
+                  >
                     <td className="py-3 px-4">{order.id}</td>
                     <td className="py-3 px-4">{order.customer}</td>
                     <td className="py-3 px-4">{order.product}</td>
