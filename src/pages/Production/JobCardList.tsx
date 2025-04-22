@@ -130,9 +130,21 @@ const JobCardList = () => {
     return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  // Handle navigation with history state
-  const handleNavigation = (path: string) => {
-    navigate(path, { state: { from: "job-card-list" } });
+  // Fixed: Use direct navigation without state to avoid issues with back button
+  const handleViewDetails = (jobId: string) => {
+    navigate(`/production/job-cards/${jobId}`);
+  };
+
+  const handleCuttingClick = (jobId: string) => {
+    navigate(`/production/cutting/${jobId}`);
+  };
+
+  const handlePrintingClick = (jobId: string) => {
+    navigate(`/production/printing/${jobId}`);
+  };
+
+  const handleStitchingClick = (jobId: string) => {
+    navigate(`/production/stitching/${jobId}`);
   };
 
   return (
@@ -223,12 +235,13 @@ const JobCardList = () => {
                       {filteredJobCards.map((jobCard) => (
                         <TableRow key={jobCard.id}>
                           <TableCell className="font-medium">
-                            <Link 
-                              to={`/production/job-cards/${jobCard.id}`}
-                              className="hover:text-primary hover:underline"
+                            <Button 
+                              variant="link" 
+                              className="p-0 h-auto font-medium text-left"
+                              onClick={() => handleViewDetails(jobCard.id)}
                             >
                               {jobCard.job_name}
-                            </Link>
+                            </Button>
                           </TableCell>
                           <TableCell>{jobCard.order.order_number}</TableCell>
                           <TableCell>{jobCard.order.company_name}</TableCell>
@@ -248,16 +261,16 @@ const JobCardList = () => {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleNavigation(`/production/job-cards/${jobCard.id}`)}>
+                                <DropdownMenuItem onClick={() => handleViewDetails(jobCard.id)}>
                                   View Details
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleNavigation(`/production/cutting/${jobCard.id}`)}>
+                                <DropdownMenuItem onClick={() => handleCuttingClick(jobCard.id)}>
                                   Cutting
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleNavigation(`/production/printing/${jobCard.id}`)}>
+                                <DropdownMenuItem onClick={() => handlePrintingClick(jobCard.id)}>
                                   Printing
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleNavigation(`/production/stitching/${jobCard.id}`)}>
+                                <DropdownMenuItem onClick={() => handleStitchingClick(jobCard.id)}>
                                   Stitching
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
