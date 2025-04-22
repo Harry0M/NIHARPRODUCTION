@@ -292,6 +292,56 @@ export type Database = {
           },
         ]
       }
+      order_dispatches: {
+        Row: {
+          created_at: string | null
+          delivery_address: string
+          delivery_date: string
+          id: string
+          notes: string | null
+          order_id: string
+          quality_checked: boolean
+          quantity_checked: boolean
+          recipient_name: string
+          tracking_number: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          delivery_address: string
+          delivery_date: string
+          id?: string
+          notes?: string | null
+          order_id: string
+          quality_checked?: boolean
+          quantity_checked?: boolean
+          recipient_name: string
+          tracking_number?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          delivery_address?: string
+          delivery_date?: string
+          id?: string
+          notes?: string | null
+          order_id?: string
+          quality_checked?: boolean
+          quantity_checked?: boolean
+          recipient_name?: string
+          tracking_number?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_dispatches_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           bag_length: number
