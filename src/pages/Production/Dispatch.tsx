@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -113,9 +112,6 @@ const Dispatch = () => {
   
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
-      // For database operations, we need to ensure we only use valid database enum values
-      // If newStatus is "dispatched", we map it to "ready_for_dispatch" for database storage
-      // since "dispatched" isn't in the database enum
       const dbStatus: Database['public']['Enums']['order_status'] = 
         newStatus === "dispatched" 
           ? "ready_for_dispatch" 
@@ -128,7 +124,6 @@ const Dispatch = () => {
       
       if (error) throw error;
       
-      // Update local state
       setOrders(prevOrders => 
         prevOrders.map(order => 
           order.id === orderId 
@@ -151,27 +146,21 @@ const Dispatch = () => {
   };
   
   const isOrderReadyForDispatch = (order: OrderWithJobStatus): boolean => {
-    // If there are no job cards, it's not ready
     if (!order.job_cards || order.job_cards.length === 0) return false;
     
-    // Check if all job processes are completed
     for (const jobCard of order.job_cards) {
-      // Check cutting status
       const hasCuttingJobs = jobCard.cutting_jobs && jobCard.cutting_jobs.length > 0;
       const allCuttingCompleted = hasCuttingJobs && 
         jobCard.cutting_jobs?.every(job => job.status === 'completed');
       
-      // Check printing status
       const hasPrintingJobs = jobCard.printing_jobs && jobCard.printing_jobs.length > 0;
       const allPrintingCompleted = hasPrintingJobs && 
         jobCard.printing_jobs?.every(job => job.status === 'completed');
       
-      // Check stitching status
       const hasStitchingJobs = jobCard.stitching_jobs && jobCard.stitching_jobs.length > 0;
       const allStitchingCompleted = hasStitchingJobs && 
         jobCard.stitching_jobs?.every(job => job.status === 'completed');
       
-      // If any process exists but isn't completed, order is not ready for dispatch
       if ((hasCuttingJobs && !allCuttingCompleted) ||
           (hasPrintingJobs && !allPrintingCompleted) ||
           (hasStitchingJobs && !allStitchingCompleted)) {
@@ -195,6 +184,10 @@ const Dispatch = () => {
     }
   };
   
+  const handleStartDispatchProcess = (orderId: string) => {
+    navigate(`/dispatch/${orderId}`);
+  };
+
   const filteredOrders = orders.filter(order => {
     const matchesSearch = (
       order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -327,9 +320,9 @@ const Dispatch = () => {
                                 {!isDispatched && readyForDispatch && (
                                   <Button
                                     size="sm"
-                                    onClick={() => updateOrderStatus(order.id, "dispatched")}
+                                    onClick={() => handleStartDispatchProcess(order.id)}
                                   >
-                                    Mark Dispatched
+                                    Dispatch Order
                                   </Button>
                                 )}
                                 {isDispatched && (

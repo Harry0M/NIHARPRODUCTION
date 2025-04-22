@@ -248,6 +248,50 @@ export type Database = {
           },
         ]
       }
+      order_components: {
+        Row: {
+          color: string | null
+          component_type: string
+          created_at: string | null
+          custom_name: string | null
+          gsm: number | null
+          id: string
+          order_id: string | null
+          size: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          color?: string | null
+          component_type: string
+          created_at?: string | null
+          custom_name?: string | null
+          gsm?: number | null
+          id?: string
+          order_id?: string | null
+          size?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string | null
+          component_type?: string
+          created_at?: string | null
+          custom_name?: string | null
+          gsm?: number | null
+          id?: string
+          order_id?: string | null
+          size?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_components_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           bag_length: number

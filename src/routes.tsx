@@ -1,4 +1,3 @@
-
 import { RouteObject } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
@@ -17,7 +16,6 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-// Create placeholder components for routes that aren't yet implemented
 const VendorList = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Vendor List</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 const VendorNew = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">New Vendor</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 const SupplierList = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Supplier List</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
@@ -25,6 +23,8 @@ const SupplierNew = () => <div className="p-8 text-center"><h1 className="text-2
 const InventoryList = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Inventory List</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 const InventoryNew = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">New Inventory</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 const Settings = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Settings</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
+
+const DispatchDetail = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Dispatch Detail</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 
 const routes: RouteObject[] = [
   {
@@ -89,6 +89,10 @@ const routes: RouteObject[] = [
           {
             path: "dispatch",
             element: <Dispatch />
+          },
+          {
+            path: "dispatch/:id",
+            element: <DispatchDetail />
           },
           {
             path: "vendors",
