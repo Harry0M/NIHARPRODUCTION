@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { 
@@ -109,6 +110,7 @@ const PrintingJob = () => {
       
       setFetching(true);
       try {
+        // First fetch the job card details
         const { data: jobCardData, error: jobCardError } = await supabase
           .from('job_cards')
           .select(`
@@ -128,6 +130,7 @@ const PrintingJob = () => {
         if (jobCardError) throw jobCardError;
         if (!jobCardData) throw new Error("Job card not found");
         
+        // Transform the data to match the JobCard interface
         const transformedJobCard: JobCard = {
           id: jobCardData.id,
           job_name: jobCardData.job_name,
@@ -142,6 +145,7 @@ const PrintingJob = () => {
         
         setJobCard(transformedJobCard);
         
+        // Then check if there's an existing printing job for this job card
         const { data: printingJob, error: printingJobError } = await supabase
           .from('printing_jobs')
           .select('*')
@@ -158,13 +162,14 @@ const PrintingJob = () => {
             sheet_length: printingJob.sheet_length || transformedJobCard.order.bag_length,
             sheet_width: printingJob.sheet_width || transformedJobCard.order.bag_width,
             worker_name: printingJob.worker_name || "",
-            is_internal: printingJob.is_internal !== false,
+            is_internal: printingJob.is_internal !== false, // default to true if null
             status: printingJob.status as JobStatus || "pending",
             rate: printingJob.rate || null,
             expected_completion_date: printingJob.expected_completion_date ? new Date(printingJob.expected_completion_date) : null
           });
           setPrintImage(printingJob.print_image);
         } else {
+          // Set defaults from job card
           form.reset({
             pulling: "",
             gsm: "",
@@ -195,6 +200,7 @@ const PrintingJob = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     
+    // Check file type
     if (!file.type.startsWith('image/')) {
       toast({
         title: "Invalid file type",
@@ -207,9 +213,12 @@ const PrintingJob = () => {
     setLoading(true);
     
     try {
+      // Create a URL for preview
       const imageUrl = URL.createObjectURL(file);
       setPrintImage(imageUrl);
       
+      // TODO: In a real application, you would upload this to storage
+      // For now, we're just storing the URL for demonstration purposes
       toast({
         title: "Image selected",
         description: "The print image has been selected",
@@ -238,6 +247,7 @@ const PrintingJob = () => {
     setLoading(true);
     
     try {
+      // Ensure job_card_id is always set and not optional
       const printingJobData = {
         job_card_id: id,
         pulling: values.pulling || null,
@@ -255,6 +265,7 @@ const PrintingJob = () => {
       let result;
       
       if (existingJob) {
+        // Update existing job
         const { data, error } = await supabase
           .from('printing_jobs')
           .update(printingJobData)
@@ -270,6 +281,7 @@ const PrintingJob = () => {
           description: "The printing job has been updated successfully",
         });
       } else {
+        // Create new job
         const { data, error } = await supabase
           .from('printing_jobs')
           .insert(printingJobData)
@@ -285,12 +297,14 @@ const PrintingJob = () => {
         });
       }
       
+      // Update job card status if needed
       await supabase
         .from('job_cards')
         .update({ status: values.status })
         .eq('id', id);
         
-      navigate(`/production/job-cards/${id}`);
+      // Redirect to the job cards list
+      navigate('/production/job-cards');
       
     } catch (error: any) {
       toast({
@@ -303,14 +317,6 @@ const PrintingJob = () => {
     }
   };
 
-  const handleGoBack = () => {
-    if (id) {
-      navigate(`/production/job-cards/${id}`);
-    } else {
-      navigate("/production/job-cards");
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
@@ -318,7 +324,7 @@ const PrintingJob = () => {
           variant="ghost" 
           size="sm" 
           className="gap-1"
-          onClick={handleGoBack}
+          onClick={() => navigate("/production/job-cards")}
         >
           <ArrowLeft size={16} />
           Back
@@ -606,7 +612,7 @@ const PrintingJob = () => {
                 <Button 
                   type="button" 
                   variant="outline"
-                  onClick={handleGoBack}
+                  onClick={() => navigate("/production/job-cards")}
                 >
                   Cancel
                 </Button>
