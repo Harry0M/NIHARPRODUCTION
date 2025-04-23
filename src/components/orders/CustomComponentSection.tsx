@@ -12,6 +12,7 @@ export interface CustomComponent {
   gsm?: string;
   width?: string;
   length?: string;
+  details?: string;
 }
 
 export interface CustomComponentSectionProps {
@@ -19,7 +20,7 @@ export interface CustomComponentSectionProps {
   onChange: (index: number, field: string, value: string) => void;
   onRemove: (index: number) => void;
   // Add compatibility with OrderEdit.tsx
-  customComponents?: any[];
+  customComponents?: CustomComponent[];
   componentOptions?: { color: string[]; gsm: string[] };
   handleCustomComponentChange?: (index: number, field: string, value: string) => void;
   addCustomComponent?: () => void;
