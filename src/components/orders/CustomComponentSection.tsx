@@ -1,39 +1,28 @@
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Plus, Trash } from "lucide-react";
+import { Trash } from "lucide-react";
+import { CustomComponent } from "@/pages/Orders/OrderNew";
 import { ComponentForm } from "./ComponentForm";
 
 interface CustomComponentSectionProps {
-  customComponents: Array<{
-    type: string;
-    name?: string;
-    width: string;
-    length: string;
-    color: string;
-    gsm: string;
-    details?: string;
-  }>;
-  componentOptions: {
-    color: string[];
-    gsm: string[];
-  };
-  handleCustomComponentChange: (index: number, field: string, value: string) => void;
-  addCustomComponent: () => void;
-  removeCustomComponent: (index: number) => void;
+  components: CustomComponent[];
+  onChange: (index: number, field: string, value: string) => void;
+  onRemove: (index: number) => void;
 }
 
 export const CustomComponentSection = ({
-  customComponents,
-  componentOptions,
-  handleCustomComponentChange,
-  addCustomComponent,
-  removeCustomComponent
+  components,
+  onChange,
+  onRemove
 }: CustomComponentSectionProps) => {
+  const componentOptions = {
+    color: ["White", "Black", "Red", "Blue", "Green", "Yellow"],
+    gsm: ["80", "100", "120", "150", "180", "200", "250"]
+  };
+
   return (
     <>
-      {customComponents.map((component, index) => (
+      {components.map((component, index) => (
         <div key={`custom-${index}`} className="p-4 border rounded-md space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-medium">Custom Component</h3>
@@ -41,30 +30,33 @@ export const CustomComponentSection = ({
               type="button" 
               variant="ghost" 
               size="sm" 
-              onClick={() => removeCustomComponent(index)}
+              onClick={() => onRemove(index)}
             >
               <Trash size={16} className="text-destructive" />
             </Button>
           </div>
           <ComponentForm
-            component={component}
+            component={{
+              ...component,
+              width: component.width || "",
+              length: component.length || "",
+              color: component.color || "",
+              gsm: component.gsm || "",
+              name: component.customName
+            }}
             index={index}
             isCustom={true}
             componentOptions={componentOptions}
-            handleChange={handleCustomComponentChange}
+            handleChange={onChange}
           />
         </div>
       ))}
       
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full flex items-center justify-center gap-1"
-        onClick={addCustomComponent}
-      >
-        <Plus size={16} />
-        Add Custom Component
-      </Button>
+      {components.length === 0 && (
+        <div className="p-4 border border-dashed rounded-md text-center text-muted-foreground">
+          No custom components added yet
+        </div>
+      )}
     </>
   );
 };
