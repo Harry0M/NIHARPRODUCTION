@@ -40,7 +40,7 @@ const AppRoutes = () => {
             console.log("User role:", profileData?.role || "Not set");
             
             // Update user context with role information
-            if (data.session?.user && setUser) {
+            if (data.session?.user) {
               setUser({
                 ...data.session.user,
                 role: profileData?.role || 'production'
