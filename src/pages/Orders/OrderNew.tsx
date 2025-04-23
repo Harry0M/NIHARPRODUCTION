@@ -207,77 +207,79 @@ const OrderNew = () => {
             <CardDescription>Specify the details for each component of the bag</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 gap-6">
-              <h2 className="text-lg font-medium">Standard Components</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <ComponentForm
-                  title="Part"
-                  component={components.part || { type: "part", width: "", length: "", color: "", gsm: "" }}
-                  index={0}
-                  componentOptions={componentOptions}
-                  handleChange={() => {}}
-                  onChange={(field, value) => handleComponentChange("part", field, value)}
-                />
+            <div className="space-y-8">
+              <div className="space-y-6">
+                <h2 className="text-lg font-medium">Standard Components</h2>
+                <div className="divide-y divide-border">
+                  <ComponentForm
+                    title="Part"
+                    component={components.part || { type: "part", width: "", length: "", color: "", gsm: "" }}
+                    index={0}
+                    componentOptions={componentOptions}
+                    onChange={(field, value) => handleComponentChange("part", field, value)}
+                    handleChange={() => {}}
+                  />
+                  
+                  <ComponentForm
+                    title="Border"
+                    component={components.border || { type: "border", width: "", length: "", color: "", gsm: "" }}
+                    index={1}
+                    componentOptions={componentOptions}
+                    onChange={(field, value) => handleComponentChange("border", field, value)}
+                    handleChange={() => {}}
+                  />
+                  
+                  <ComponentForm
+                    title="Handle"
+                    component={components.handle || { type: "handle", width: "", length: "", color: "", gsm: "" }}
+                    index={2}
+                    componentOptions={componentOptions}
+                    onChange={(field, value) => handleComponentChange("handle", field, value)}
+                    handleChange={() => {}}
+                  />
+                  
+                  <ComponentForm
+                    title="Chain"
+                    component={components.chain || { type: "chain", width: "", length: "", color: "", gsm: "" }}
+                    index={3}
+                    componentOptions={componentOptions}
+                    onChange={(field, value) => handleComponentChange("chain", field, value)}
+                    handleChange={() => {}}
+                  />
+                  
+                  <ComponentForm
+                    title="Runner"
+                    component={components.runner || { type: "runner", width: "", length: "", color: "", gsm: "" }}
+                    index={4}
+                    componentOptions={componentOptions}
+                    onChange={(field, value) => handleComponentChange("runner", field, value)}
+                    handleChange={() => {}}
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-medium">Custom Components</h2>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-1"
+                    onClick={addCustomComponent}
+                  >
+                    <Plus size={16} />
+                    Add Custom Component
+                  </Button>
+                </div>
                 
-                <ComponentForm
-                  title="Border"
-                  component={components.border || { type: "border", width: "", length: "", color: "", gsm: "" }}
-                  index={1}
+                <CustomComponentSection
+                  customComponents={customComponents}
                   componentOptions={componentOptions}
-                  handleChange={() => {}}
-                  onChange={(field, value) => handleComponentChange("border", field, value)}
-                />
-                
-                <ComponentForm
-                  title="Handle"
-                  component={components.handle || { type: "handle", width: "", length: "", color: "", gsm: "" }}
-                  index={2}
-                  componentOptions={componentOptions}
-                  handleChange={() => {}}
-                  onChange={(field, value) => handleComponentChange("handle", field, value)}
-                />
-                
-                <ComponentForm
-                  title="Chain"
-                  component={components.chain || { type: "chain", width: "", length: "", color: "", gsm: "" }}
-                  index={3}
-                  componentOptions={componentOptions}
-                  handleChange={() => {}}
-                  onChange={(field, value) => handleComponentChange("chain", field, value)}
-                />
-                
-                <ComponentForm
-                  title="Runner"
-                  component={components.runner || { type: "runner", width: "", length: "", color: "", gsm: "" }}
-                  index={4}
-                  componentOptions={componentOptions}
-                  handleChange={() => {}}
-                  onChange={(field, value) => handleComponentChange("runner", field, value)}
+                  handleCustomComponentChange={handleCustomComponentChange}
+                  removeCustomComponent={removeCustomComponent}
                 />
               </div>
-            </div>
-            
-            <div className="space-y-4 mt-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-medium">Custom Components</h2>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-1"
-                  onClick={addCustomComponent}
-                >
-                  <Plus size={16} />
-                  Add Custom Component
-                </Button>
-              </div>
-            
-              <CustomComponentSection
-                components={customComponents}
-                onChange={handleCustomComponentChange}
-                onRemove={removeCustomComponent}
-                componentOptions={componentOptions}
-              />
             </div>
           </CardContent>
           <CardFooter>

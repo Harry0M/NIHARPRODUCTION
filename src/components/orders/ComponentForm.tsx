@@ -1,4 +1,3 @@
-
 import { 
   Select,
   SelectContent,
@@ -43,7 +42,6 @@ export const ComponentForm = ({
   handleChange,
   onChange
 }: ComponentFormProps) => {
-  // Use either the direct onChange or the handleChange with index
   const onFieldChange = (field: string, value: string) => {
     if (onChange) {
       onChange(field, value);
@@ -53,9 +51,9 @@ export const ComponentForm = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="py-4 first:pt-0 last:pb-0">
       {title && !isCustom && (
-        <h3 className="font-medium">{title}</h3>
+        <h3 className="font-medium mb-4">{title}</h3>
       )}
       <div className="grid md:grid-cols-4 gap-4">
         {isCustom && (
