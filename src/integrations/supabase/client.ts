@@ -19,6 +19,22 @@ export const supabase = createClient<Database>(
     auth: {
       persistSession: true,
       autoRefreshToken: true,
+      detectSessionInUrl: true,
+      flowType: 'implicit',
+    },
+    global: {
+      headers: {
+        'X-Client-Info': 'lovable-app',
+      },
     },
   }
 );
+
+// Log authentication status on client initialization
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN') {
+    console.log('User signed in:', session?.user?.id);
+  } else if (event === 'SIGNED_OUT') {
+    console.log('User signed out');
+  }
+});

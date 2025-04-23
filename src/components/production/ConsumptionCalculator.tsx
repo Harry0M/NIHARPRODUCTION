@@ -24,15 +24,16 @@ export const ConsumptionCalculator = ({
   quantity,
   onConsumptionCalculated
 }: ConsumptionCalculatorProps) => {
-  const [rollWidth, setRollWidth] = useState<number>(0);
   const [consumption, setConsumption] = useState<number>(0);
+  const [localRollWidth, setLocalRollWidth] = useState<string>('');
 
   // Calculate consumption in meters based on formula: [(length*width)/(6339.39)]*quantity
   useEffect(() => {
     if (length && width && quantity) {
       const calculatedConsumption = ((length * width) / 6339.39) * quantity;
-      setConsumption(Math.round(calculatedConsumption * 100) / 100);
-      onConsumptionCalculated(Math.round(calculatedConsumption * 100) / 100);
+      const roundedConsumption = Math.round(calculatedConsumption * 100) / 100;
+      setConsumption(roundedConsumption);
+      onConsumptionCalculated(roundedConsumption);
     } else {
       setConsumption(0);
       onConsumptionCalculated(0);
@@ -53,16 +54,19 @@ export const ConsumptionCalculator = ({
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="roll_width">Roll Width (inches)</Label>
+            <Label htmlFor="local_roll_width">Roll Width (inches)</Label>
             <Input 
-              id="roll_width" 
+              id="local_roll_width" 
               type="number"
               min="0"
               step="0.01"
-              value={rollWidth || ''}
-              onChange={(e) => setRollWidth(parseFloat(e.target.value) || 0)}
+              value={localRollWidth}
+              onChange={(e) => setLocalRollWidth(e.target.value)}
               placeholder="Enter roll width"
             />
+            <p className="text-xs text-muted-foreground">
+              This is for calculation purposes only. Enter the required Roll Width in the main form.
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="consumption">Consumption (meters)</Label>

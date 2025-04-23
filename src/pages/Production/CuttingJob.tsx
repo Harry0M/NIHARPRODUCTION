@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { 
@@ -76,6 +75,7 @@ const CuttingJob = () => {
   const [existingJob, setExistingJob] = useState<CuttingJob | null>(null);
   const [existingComponents, setExistingComponents] = useState<CuttingComponent[]>([]);
   
+  // Initialize with explicit default value for roll_width
   const [cuttingData, setCuttingData] = useState<{
     roll_width: string;
     consumption_meters: string;
@@ -286,8 +286,8 @@ const CuttingJob = () => {
     console.log("Form submission data:", cuttingData);
     console.log("Roll width value:", cuttingData.roll_width);
     
-    // Convert to ensure we have a string with content
-    const rollWidthValue = String(cuttingData.roll_width).trim();
+    // Get the roll width value and ensure it's a non-empty string
+    const rollWidthValue = String(cuttingData.roll_width || "").trim();
     
     if (!rollWidthValue) {
       toast({
@@ -304,6 +304,7 @@ const CuttingJob = () => {
       let cuttingJobId = existingJob?.id;
       
       if (!existingJob) {
+        // For new job creation
         const { data, error } = await supabase
           .from("cutting_jobs")
           .insert({
@@ -318,7 +319,11 @@ const CuttingJob = () => {
           .select()
           .single();
           
-        if (error) throw error;
+        if (error) {
+          console.error("Insert error:", error);
+          throw error;
+        }
+        
         cuttingJobId = data.id;
         
         if (cuttingData.status !== "pending") {
@@ -328,6 +333,7 @@ const CuttingJob = () => {
             .eq("id", id);
         }
       } else {
+        // For updating existing job
         const { error } = await supabase
           .from("cutting_jobs")
           .update({
@@ -340,7 +346,10 @@ const CuttingJob = () => {
           })
           .eq("id", existingJob.id);
           
-        if (error) throw error;
+        if (error) {
+          console.error("Update error:", error);
+          throw error;
+        }
         
         if (cuttingData.status === "completed") {
           await supabase
@@ -392,6 +401,7 @@ const CuttingJob = () => {
       
       navigate(`/production/job-cards/${id}`);
     } catch (error: any) {
+      console.error("Form submission error:", error);
       toast({
         title: "Error saving cutting job",
         description: error.message,
@@ -441,12 +451,13 @@ const CuttingJob = () => {
             Cutting Job
           </h1>
           <p className="text-muted-foreground">
-            {existingJob ? "Update" : "Create"} cutting job for {jobCard.job_name}
+            {existingJob ? "Update" : "Create"} cutting job for {jobCard?.job_name}
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Order information card */}
         <Card className="md:col-span-3">
           <CardHeader>
             <CardTitle>Order Information</CardTitle>
@@ -483,7 +494,7 @@ const CuttingJob = () => {
             <form id="cutting-form" onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="roll_width">Roll Width (Required)</Label>
+                  <Label htmlFor="roll_width" className="text-primary font-medium">Roll Width (Required) *</Label>
                   <Input 
                     id="roll_width" 
                     name="roll_width"
@@ -493,14 +504,15 @@ const CuttingJob = () => {
                     value={cuttingData.roll_width}
                     onChange={handleInputChange}
                     required
-                    className="border-primary"
+                    className="border-2 border-primary focus:ring-2 focus:ring-primary"
+                    aria-required="true"
                   />
                 </div>
                 
                 <ConsumptionCalculator
-                  length={jobCard.order.bag_length}
-                  width={jobCard.order.bag_width}
-                  quantity={jobCard.order.quantity}
+                  length={jobCard?.order.bag_length || 0}
+                  width={jobCard?.order.bag_width || 0}
+                  quantity={jobCard?.order.quantity || 0}
                   onConsumptionCalculated={handleConsumptionCalculated}
                 />
                 
@@ -553,6 +565,7 @@ const CuttingJob = () => {
           </CardContent>
         </Card>
 
+        {/* Component cutting details card */}
         <Card className="md:col-span-3">
           <CardHeader>
             <CardTitle>Component Cutting Details</CardTitle>
