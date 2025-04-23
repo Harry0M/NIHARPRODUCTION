@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { 
@@ -10,28 +9,21 @@ import {
   CardDescription 
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { OrderDetailsForm } from "@/components/orders/OrderDetailsForm";
-import { ComponentForm } from "@/components/orders/ComponentForm";
-import { CustomComponentSection } from "@/components/orders/CustomComponentSection";
+import { ComponentForm, ComponentProps } from "@/components/orders/ComponentForm";
+import { CustomComponent, CustomComponentSection } from "@/components/orders/CustomComponentSection";
 
 const componentOptions = {
   color: ["Red", "Blue", "Green", "Black", "White", "Yellow", "Brown", "Orange", "Purple", "Gray", "Custom"],
   gsm: ["70", "80", "90", "100", "120", "140", "160", "180", "200", "250", "300", "Custom"]
 };
 
-interface ComponentData {
+interface ComponentData extends ComponentProps {
   id?: string;
-  type: string;
-  name?: string;
-  width: string;
-  length: string;
-  color: string;
-  gsm: string;
-  details?: string;
 }
 
 type ComponentType = Database["public"]["Enums"]["component_type"];
@@ -60,7 +52,7 @@ const OrderEdit = () => {
     { type: "runner", width: "", length: "", color: "", gsm: "" }
   ]);
   
-  const [customComponents, setCustomComponents] = useState<ComponentData[]>([]);
+  const [customComponents, setCustomComponents] = useState<CustomComponent[]>([]);
   
   useEffect(() => {
     const fetchOrderData = async () => {
@@ -96,7 +88,7 @@ const OrderEdit = () => {
         
         // Process components
         const standardComponents = ["part", "border", "handle", "chain", "runner"];
-        const fetchedCustomComponents: ComponentData[] = [];
+        const fetchedCustomComponents: CustomComponent[] = [];
         
         // Initialize components with fetched data
         const updatedComponents = [...components];
@@ -127,7 +119,7 @@ const OrderEdit = () => {
           } else {
             fetchedCustomComponents.push({
               ...componentData,
-              name: comp.type !== "custom" ? comp.type : "",
+              customName: comp.type !== "custom" ? comp.type : comp.details || "",
             });
           }
         });
@@ -173,13 +165,13 @@ const OrderEdit = () => {
 
   const addCustomComponent = () => {
     setCustomComponents(prev => [...prev, { 
+      id: Math.random().toString(),
       type: "custom",
-      name: "",
+      customName: "",
       width: "",
       length: "",
       color: "",
       gsm: "",
-      details: ""
     }]);
   };
 
@@ -244,9 +236,9 @@ const OrderEdit = () => {
       if (allComponents.length > 0) {
         const componentsToInsert = allComponents.map(comp => {
           // For custom components, use the name as type if provided
-          const componentType = comp.type === "custom" && comp.name 
-            ? comp.name as ComponentType 
-            : comp.type as ComponentType;
+          const componentType = comp.type === "custom" && comp.customName 
+            ? 'custom' 
+            : comp.type;
             
           return {
             order_id: id,
@@ -254,7 +246,7 @@ const OrderEdit = () => {
             size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
             color: comp.color || null,
             gsm: comp.gsm || null,
-            details: comp.details || null
+            details: comp.customName || comp.details || null
           };
         });
 
@@ -336,13 +328,27 @@ const OrderEdit = () => {
                 </div>
               ))}
               
-              <CustomComponentSection
-                customComponents={customComponents}
-                componentOptions={componentOptions}
-                handleCustomComponentChange={handleCustomComponentChange}
-                addCustomComponent={addCustomComponent}
-                removeCustomComponent={removeCustomComponent}
-              />
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-medium">Custom Components</h2>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-1"
+                    onClick={addCustomComponent}
+                  >
+                    <Plus size={16} />
+                    Add Custom Component
+                  </Button>
+                </div>
+
+                <CustomComponentSection
+                  components={customComponents}
+                  onChange={handleCustomComponentChange}
+                  onRemove={removeCustomComponent}
+                />
+              </div>
             </div>
           </CardContent>
           <CardFooter className="flex justify-end gap-3 pt-6">

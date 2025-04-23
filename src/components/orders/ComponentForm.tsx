@@ -9,16 +9,20 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+export interface ComponentProps {
+  id?: string;
+  type: string;
+  width?: string;
+  length?: string;
+  color?: string;
+  gsm?: string;
+  name?: string;
+  customName?: string;
+  details?: string;
+}
+
 interface ComponentFormProps {
-  component: {
-    type: string;
-    width: string;
-    length: string;
-    color: string;
-    gsm: string;
-    name?: string;
-    details?: string;
-  };
+  component: ComponentProps;
   index: number;
   isCustom?: boolean;
   componentOptions: {
@@ -27,6 +31,7 @@ interface ComponentFormProps {
   };
   title?: string;
   handleChange: (index: number, field: string, value: string) => void;
+  onChange?: (field: string, value: string) => void; // For direct onChange callbacks
 }
 
 export const ComponentForm = ({ 
@@ -35,8 +40,18 @@ export const ComponentForm = ({
   isCustom = false, 
   componentOptions,
   title,
-  handleChange 
+  handleChange,
+  onChange
 }: ComponentFormProps) => {
+  // Use either the direct onChange or the handleChange with index
+  const onFieldChange = (field: string, value: string) => {
+    if (onChange) {
+      onChange(field, value);
+    } else {
+      handleChange(index, field, value);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {title && !isCustom && (
@@ -48,8 +63,8 @@ export const ComponentForm = ({
             <Label>Component Name</Label>
             <Input
               placeholder="Enter component name"
-              value={component.name || ''}
-              onChange={(e) => handleChange(index, 'customName', e.target.value)}
+              value={component.name || component.customName || ''}
+              onChange={(e) => onFieldChange('customName', e.target.value)}
               required={isCustom}
             />
           </div>
@@ -61,7 +76,7 @@ export const ComponentForm = ({
             step="0.01"
             placeholder="Length in inches"
             value={component.length || ''}
-            onChange={(e) => handleChange(index, 'length', e.target.value)}
+            onChange={(e) => onFieldChange('length', e.target.value)}
           />
         </div>
         <div className="space-y-2">
@@ -71,14 +86,14 @@ export const ComponentForm = ({
             step="0.01"
             placeholder="Width in inches"
             value={component.width || ''}
-            onChange={(e) => handleChange(index, 'width', e.target.value)}
+            onChange={(e) => onFieldChange('width', e.target.value)}
           />
         </div>
         <div className="space-y-2">
           <Label>Color</Label>
           <Select 
             value={component.color || undefined} 
-            onValueChange={(value) => handleChange(index, 'color', value)}
+            onValueChange={(value) => onFieldChange('color', value)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select color" />
@@ -95,7 +110,7 @@ export const ComponentForm = ({
           <Label>GSM</Label>
           <Select 
             value={component.gsm || undefined} 
-            onValueChange={(value) => handleChange(index, 'gsm', value)}
+            onValueChange={(value) => onFieldChange('gsm', value)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select GSM" />

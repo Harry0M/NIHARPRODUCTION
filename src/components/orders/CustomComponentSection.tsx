@@ -1,28 +1,57 @@
 
 import { Button } from "@/components/ui/button";
 import { Trash } from "lucide-react";
-import { CustomComponent } from "@/pages/Orders/OrderNew";
 import { ComponentForm } from "./ComponentForm";
 
-interface CustomComponentSectionProps {
+export interface CustomComponent {
+  id: string;
+  type: string;
+  customName?: string;
+  size?: string;
+  color?: string;
+  gsm?: string;
+  width?: string;
+  length?: string;
+}
+
+export interface CustomComponentSectionProps {
   components: CustomComponent[];
   onChange: (index: number, field: string, value: string) => void;
   onRemove: (index: number) => void;
+  // Add compatibility with OrderEdit.tsx
+  customComponents?: any[];
+  componentOptions?: { color: string[]; gsm: string[] };
+  handleCustomComponentChange?: (index: number, field: string, value: string) => void;
+  addCustomComponent?: () => void;
+  removeCustomComponent?: (index: number) => void;
 }
 
 export const CustomComponentSection = ({
   components,
   onChange,
-  onRemove
+  onRemove,
+  // Support for OrderEdit.tsx props
+  customComponents,
+  componentOptions: propComponentOptions,
+  handleCustomComponentChange,
+  removeCustomComponent
 }: CustomComponentSectionProps) => {
-  const componentOptions = {
+  // Use the provided components or fallback to customComponents for compatibility
+  const itemsToRender = components || customComponents || [];
+  
+  // Default component options if not provided
+  const componentOptions = propComponentOptions || {
     color: ["White", "Black", "Red", "Blue", "Green", "Yellow"],
     gsm: ["80", "100", "120", "150", "180", "200", "250"]
   };
+  
+  // Use the provided handlers or fallbacks for compatibility
+  const handleChange = onChange || handleCustomComponentChange;
+  const handleRemove = onRemove || removeCustomComponent;
 
   return (
     <>
-      {components.map((component, index) => (
+      {itemsToRender.map((component, index) => (
         <div key={`custom-${index}`} className="p-4 border rounded-md space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-medium">Custom Component</h3>
@@ -30,7 +59,7 @@ export const CustomComponentSection = ({
               type="button" 
               variant="ghost" 
               size="sm" 
-              onClick={() => onRemove(index)}
+              onClick={() => handleRemove && handleRemove(index)}
             >
               <Trash size={16} className="text-destructive" />
             </Button>
@@ -47,12 +76,12 @@ export const CustomComponentSection = ({
             index={index}
             isCustom={true}
             componentOptions={componentOptions}
-            handleChange={onChange}
+            handleChange={handleChange as any}
           />
         </div>
       ))}
       
-      {components.length === 0 && (
+      {itemsToRender.length === 0 && (
         <div className="p-4 border border-dashed rounded-md text-center text-muted-foreground">
           No custom components added yet
         </div>

@@ -6,22 +6,12 @@ import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/components/ui/button";
 import { OrderDetailsForm } from "@/components/orders/OrderDetailsForm";
 import { ComponentForm } from "@/components/orders/ComponentForm";
-import { CustomComponentSection } from "@/components/orders/CustomComponentSection";
+import { CustomComponentSection, CustomComponent } from "@/components/orders/CustomComponentSection";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 // Define component types for our order form
 export type ComponentType = "part" | "border" | "handle" | "chain" | "runner" | "custom";
-export type CustomComponent = {
-  id: string;
-  type: ComponentType;
-  customName?: string;
-  size?: string;
-  color?: string;
-  gsm?: string;
-  width?: string;
-  length?: string;
-};
 
 const OrderNew = () => {
   const navigate = useNavigate();
@@ -136,12 +126,17 @@ const OrderNew = () => {
       
       if (allComponents.length > 0) {
         for (const comp of allComponents) {
+          // Define allowable component type values that match the database enum
+          const componentType = comp.type === 'custom' ? 'custom' : 
+            (['part', 'border', 'handle', 'chain', 'runner'].includes(comp.type) ? 
+              comp.type : 'custom');
+
           const { error: componentError } = await supabase
             .from("components")
             .insert({
               order_id: orderData.id,
-              type: comp.type === 'custom' ? (comp.customName || 'custom') : comp.type,
-              size: comp.size || null,
+              type: componentType,
+              size: (comp.length && comp.width) ? `${comp.length}x${comp.width}` : null,
               color: comp.color || null,
               gsm: comp.gsm || null,
               details: comp.type === 'custom' ? comp.customName : null
@@ -177,6 +172,18 @@ const OrderNew = () => {
     }
   };
 
+  // Prepare components for the ComponentForm
+  const getComponentWithDefaults = (componentType: ComponentType) => {
+    const component = components[componentType] || { id: uuidv4(), type: componentType, width: "", length: "", color: "", gsm: "" };
+    return {
+      ...component,
+      width: component.width || "",
+      length: component.length || "",
+      color: component.color || "",
+      gsm: component.gsm || ""
+    };
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -208,7 +215,7 @@ const OrderNew = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <ComponentForm
               title="Part"
-              component={components.part || { id: uuidv4(), type: "part", width: "", length: "", color: "", gsm: "" }}
+              component={getComponentWithDefaults("part")}
               index={0}
               isCustom={false}
               componentOptions={componentOptions}
@@ -216,7 +223,7 @@ const OrderNew = () => {
             />
             <ComponentForm
               title="Border"
-              component={components.border || { id: uuidv4(), type: "border", width: "", length: "", color: "", gsm: "" }}
+              component={getComponentWithDefaults("border")}
               index={0}
               isCustom={false}
               componentOptions={componentOptions}
@@ -224,7 +231,7 @@ const OrderNew = () => {
             />
             <ComponentForm
               title="Handle"
-              component={components.handle || { id: uuidv4(), type: "handle", width: "", length: "", color: "", gsm: "" }}
+              component={getComponentWithDefaults("handle")}
               index={0}
               isCustom={false}
               componentOptions={componentOptions}
@@ -232,7 +239,7 @@ const OrderNew = () => {
             />
             <ComponentForm
               title="Chain"
-              component={components.chain || { id: uuidv4(), type: "chain", width: "", length: "", color: "", gsm: "" }}
+              component={getComponentWithDefaults("chain")}
               index={0}
               isCustom={false}
               componentOptions={componentOptions}
@@ -240,7 +247,7 @@ const OrderNew = () => {
             />
             <ComponentForm
               title="Runner"
-              component={components.runner || { id: uuidv4(), type: "runner", width: "", length: "", color: "", gsm: "" }}
+              component={getComponentWithDefaults("runner")}
               index={0}
               isCustom={false}
               componentOptions={componentOptions}
@@ -264,40 +271,11 @@ const OrderNew = () => {
             </Button>
           </div>
 
-          {customComponents.map((component, index) => (
-            <div key={`custom-${index}`} className="p-4 border rounded-md space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium">Custom Component</h3>
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => removeCustomComponent(index)}
-                >
-                  <Plus size={16} className="text-destructive" />
-                </Button>
-              </div>
-              <ComponentForm
-                component={{...component, width: component.width || "", length: component.length || "", color: component.color || "", gsm: component.gsm || ""}}
-                index={index}
-                isCustom={true}
-                componentOptions={componentOptions}
-                handleChange={handleCustomComponentChange}
-              />
-            </div>
-          ))}
-          
-          {customComponents.length === 0 && (
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full flex items-center justify-center gap-1"
-              onClick={addCustomComponent}
-            >
-              <Plus size={16} />
-              Add Custom Component
-            </Button>
-          )}
+          <CustomComponentSection
+            components={customComponents}
+            onChange={handleCustomComponentChange}
+            onRemove={removeCustomComponent}
+          />
         </div>
 
         <div className="flex justify-end gap-2">
