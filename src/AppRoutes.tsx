@@ -16,6 +16,11 @@ const AppRoutes = () => {
       try {
         const { data } = await supabase.auth.getSession();
         console.log("Session check:", data.session ? "Authenticated" : "Not authenticated");
+        
+        // Add this for debugging
+        if (data.session) {
+          console.log("User ID:", data.session.user.id);
+        }
       } catch (error) {
         console.error("Error checking session:", error);
       } finally {

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { 
@@ -143,7 +142,73 @@ const OrderDetail = () => {
   const handleDeleteOrder = async () => {
     setDeleteLoading(true);
     try {
-      // First delete all components associated with the order
+      console.log("Attempting to delete order with ID:", id);
+      
+      // First check if job cards exist for this order
+      const { data: jobCardsData, error: jobCardsCheckError } = await supabase
+        .from("job_cards")
+        .select("id")
+        .eq("order_id", id);
+      
+      if (jobCardsCheckError) throw jobCardsCheckError;
+      
+      if (jobCardsData && jobCardsData.length > 0) {
+        // Delete related cutting jobs and components
+        for (const jobCard of jobCardsData) {
+          // Delete cutting components
+          const { data: cuttingJobs, error: cuttingJobsError } = await supabase
+            .from("cutting_jobs")
+            .select("id")
+            .eq("job_card_id", jobCard.id);
+            
+          if (cuttingJobsError) throw cuttingJobsError;
+          
+          if (cuttingJobs && cuttingJobs.length > 0) {
+            for (const cuttingJob of cuttingJobs) {
+              const { error: delCuttingComponentsError } = await supabase
+                .from("cutting_components")
+                .delete()
+                .eq("cutting_job_id", cuttingJob.id);
+                
+              if (delCuttingComponentsError) throw delCuttingComponentsError;
+            }
+            
+            // Delete cutting jobs
+            const { error: delCuttingJobsError } = await supabase
+              .from("cutting_jobs")
+              .delete()
+              .eq("job_card_id", jobCard.id);
+              
+            if (delCuttingJobsError) throw delCuttingJobsError;
+          }
+          
+          // Delete printing jobs
+          const { error: delPrintingJobsError } = await supabase
+            .from("printing_jobs")
+            .delete()
+            .eq("job_card_id", jobCard.id);
+            
+          if (delPrintingJobsError) throw delPrintingJobsError;
+          
+          // Delete stitching jobs
+          const { error: delStitchingJobsError } = await supabase
+            .from("stitching_jobs")
+            .delete()
+            .eq("job_card_id", jobCard.id);
+            
+          if (delStitchingJobsError) throw delStitchingJobsError;
+        }
+        
+        // Delete job cards
+        const { error: delJobCardsError } = await supabase
+          .from("job_cards")
+          .delete()
+          .eq("order_id", id);
+          
+        if (delJobCardsError) throw delJobCardsError;
+      }
+      
+      // Delete order components
       const { error: componentsError } = await supabase
         .from("components")
         .delete()
@@ -151,13 +216,13 @@ const OrderDetail = () => {
       
       if (componentsError) throw componentsError;
       
-      // Then delete job cards associated with the order (this will cascade to delete related jobs)
-      const { error: jobCardsError } = await supabase
-        .from("job_cards")
+      // Delete dispatches
+      const { error: dispatchesError } = await supabase
+        .from("order_dispatches")
         .delete()
         .eq("order_id", id);
-      
-      if (jobCardsError) throw jobCardsError;
+        
+      if (dispatchesError) throw dispatchesError;
       
       // Finally delete the order
       const { error } = await supabase
@@ -167,6 +232,7 @@ const OrderDetail = () => {
         
       if (error) throw error;
       
+      console.log("Order deleted successfully");
       toast({
         title: "Order Deleted",
         description: "The order has been successfully deleted"
@@ -174,6 +240,7 @@ const OrderDetail = () => {
       
       navigate("/orders");
     } catch (error: any) {
+      console.error("Error deleting order:", error);
       toast({
         title: "Error deleting order",
         description: error.message,
