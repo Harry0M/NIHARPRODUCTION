@@ -1,16 +1,22 @@
 
-import { Navigate } from "react-router-dom";
+import React, { ReactNode } from "react";
+import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { hasPermission } from "@/utils/roleAccess";
 
 interface RoleBasedRouteProps {
-  children: React.ReactNode;
-  requiredFeature?: string;
+  allowedRoles: string[];
+  redirectTo?: string;
+  children?: ReactNode;
 }
 
-const RoleBasedRoute = ({ children, requiredFeature }: RoleBasedRouteProps) => {
+const RoleBasedRoute = ({
+  allowedRoles,
+  redirectTo = "/dashboard",
+  children
+}: RoleBasedRouteProps) => {
   const { user, loading } = useAuth();
 
+  // Show loading state if still checking authentication
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -19,15 +25,16 @@ const RoleBasedRoute = ({ children, requiredFeature }: RoleBasedRouteProps) => {
     );
   }
 
-  if (!user) {
-    return <Navigate to="/auth" replace />;
+  // Check if user has the required role
+  const hasRequiredRole = user && allowedRoles.includes(user.role || 'production');
+
+  // Redirect if user doesn't have the required role
+  if (!hasRequiredRole) {
+    return <Navigate to={redirectTo} replace />;
   }
 
-  if (requiredFeature && !hasPermission(user.role, requiredFeature)) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return <>{children}</>;
+  // Render children or outlet
+  return children ? <>{children}</> : <Outlet />;
 };
 
 export default RoleBasedRoute;

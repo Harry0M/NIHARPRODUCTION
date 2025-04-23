@@ -1,6 +1,6 @@
+
 import { RouteObject } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout";
-import RoleBasedRoute from "./components/RoleBasedRoute";
 import Dashboard from "./pages/Dashboard";
 import OrderList from "./pages/Orders/OrderList";
 import OrderNew from "./pages/Orders/OrderNew";
@@ -22,6 +22,7 @@ import SupplierNew from "./pages/SupplierNew";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
+import RoleBasedRoute from "./components/RoleBasedRoute";
 
 // Placeholder for future development
 const InventoryList = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Inventory List</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
@@ -34,95 +35,116 @@ const routes: RouteObject[] = [
     element: <Auth />
   },
   {
-    element: <RoleBasedRoute><AppLayout /></RoleBasedRoute>,
+    element: <ProtectedRoute />,
     children: [
       {
-        path: "",
-        element: <Dashboard />
-      },
-      {
-        path: "dashboard",
-        element: <Dashboard />
-      },
-      {
-        path: "orders",
-        element: <RoleBasedRoute requiredFeature="orders"><OrderList /></RoleBasedRoute>
-      },
-      {
-        path: "orders/new",
-        element: <RoleBasedRoute requiredFeature="orders"><OrderNew /></RoleBasedRoute>
-      },
-      {
-        path: "orders/:id",
-        element: <RoleBasedRoute requiredFeature="orders"><OrderDetail /></RoleBasedRoute>
-      },
-      {
-        path: "orders/:id/edit",
-        element: <RoleBasedRoute requiredFeature="orders"><OrderEdit /></RoleBasedRoute>
-      },
-      {
-        path: "production",
-        element: <RoleBasedRoute requiredFeature="production"><ProductionDashboard /></RoleBasedRoute>
-      },
-      {
-        path: "production/job-cards",
-        element: <RoleBasedRoute requiredFeature="production"><JobCardList /></RoleBasedRoute>
-      },
-      {
-        path: "production/job-cards/new",
-        element: <RoleBasedRoute requiredFeature="production"><JobCardNew /></RoleBasedRoute>
-      },
-      {
-        path: "production/job-cards/:id",
-        element: <RoleBasedRoute requiredFeature="production"><JobCardDetail /></RoleBasedRoute>
-      },
-      {
-        path: "production/cutting/:id",
-        element: <RoleBasedRoute requiredFeature="production"><CuttingJob /></RoleBasedRoute>
-      },
-      {
-        path: "production/printing/:id",
-        element: <RoleBasedRoute requiredFeature="production"><PrintingJob /></RoleBasedRoute>
-      },
-      {
-        path: "production/stitching/:id",
-        element: <RoleBasedRoute requiredFeature="production"><StitchingJob /></RoleBasedRoute>
-      },
-      {
-        path: "dispatch",
-        element: <RoleBasedRoute requiredFeature="orders"><Dispatch /></RoleBasedRoute>
-      },
-      {
-        path: "dispatch/:id",
-        element: <RoleBasedRoute requiredFeature="orders"><DispatchDetail /></RoleBasedRoute>
-      },
-      {
-        path: "vendors",
-        element: <RoleBasedRoute requiredFeature="vendors"><VendorList /></RoleBasedRoute>
-      },
-      {
-        path: "vendors/new",
-        element: <RoleBasedRoute requiredFeature="vendors"><VendorNew /></RoleBasedRoute>
-      },
-      {
-        path: "suppliers",
-        element: <RoleBasedRoute requiredFeature="suppliers"><SupplierList /></RoleBasedRoute>
-      },
-      {
-        path: "suppliers/new",
-        element: <RoleBasedRoute requiredFeature="suppliers"><SupplierNew /></RoleBasedRoute>
-      },
-      {
-        path: "inventory",
-        element: <RoleBasedRoute requiredFeature="inventory"><InventoryList /></RoleBasedRoute>
-      },
-      {
-        path: "inventory/new",
-        element: <RoleBasedRoute requiredFeature="inventory"><InventoryNew /></RoleBasedRoute>
-      },
-      {
-        path: "settings",
-        element: <RoleBasedRoute requiredFeature="settings"><Settings /></RoleBasedRoute>
+        path: "/",
+        element: <AppLayout />,
+        children: [
+          {
+            path: "",
+            element: <Dashboard />
+          },
+          {
+            path: "dashboard",
+            element: <Dashboard />
+          },
+          // Routes accessible by all roles
+          {
+            path: "orders",
+            element: <OrderList />
+          },
+          {
+            path: "orders/:id",
+            element: <OrderDetail />
+          },
+          {
+            path: "production",
+            element: <ProductionDashboard />
+          },
+          {
+            path: "production/job-cards",
+            element: <JobCardList />
+          },
+          {
+            path: "production/job-cards/:id",
+            element: <JobCardDetail />
+          },
+          {
+            path: "production/cutting/:id",
+            element: <CuttingJob />
+          },
+          {
+            path: "production/printing/:id",
+            element: <PrintingJob />
+          },
+          {
+            path: "production/stitching/:id",
+            element: <StitchingJob />
+          },
+          {
+            path: "dispatch",
+            element: <Dispatch />
+          },
+          {
+            path: "dispatch/:id",
+            element: <DispatchDetail />
+          },
+          
+          // Admin and manager only routes
+          {
+            element: <RoleBasedRoute allowedRoles={['admin', 'manager']} />,
+            children: [
+              {
+                path: "orders/new",
+                element: <OrderNew />
+              },
+              {
+                path: "orders/:id/edit",
+                element: <OrderEdit />
+              },
+              {
+                path: "production/job-cards/new",
+                element: <JobCardNew />
+              },
+              {
+                path: "vendors",
+                element: <VendorList />
+              },
+              {
+                path: "vendors/new",
+                element: <VendorNew />
+              },
+              {
+                path: "suppliers",
+                element: <SupplierList />
+              },
+              {
+                path: "suppliers/new",
+                element: <SupplierNew />
+              },
+            ]
+          },
+          
+          // Admin only routes
+          {
+            element: <RoleBasedRoute allowedRoles={['admin']} />,
+            children: [
+              {
+                path: "inventory",
+                element: <InventoryList />
+              },
+              {
+                path: "inventory/new",
+                element: <InventoryNew />
+              },
+              {
+                path: "settings",
+                element: <Settings />
+              }
+            ]
+          }
+        ]
       }
     ]
   },

@@ -13,8 +13,17 @@ import {
 const Header = () => {
   const { user } = useAuth();
   const location = useLocation();
+  
+  // Get user's role, default to 'production' if not set
+  const userRole = user?.role || 'production';
+  
+  // Check if user has permissions to create resources
+  const canCreateResources = ['admin', 'manager'].includes(userRole);
 
   const getActionButton = () => {
+    // Only show action buttons if user has appropriate permissions
+    if (!canCreateResources) return null;
+    
     if (location.pathname === '/orders') {
       return (
         <Link to="/orders/new">
@@ -59,7 +68,7 @@ const Header = () => {
       );
     }
     
-    if (location.pathname === '/inventory') {
+    if (location.pathname === '/inventory' && userRole === 'admin') {
       return (
         <Link to="/inventory/new">
           <Button size="sm" className="gap-1">
@@ -118,7 +127,12 @@ const Header = () => {
         
         {user && (
           <span className="text-sm hidden md:inline-block">
-            {user.email}
+            {user.email} 
+            {userRole && (
+              <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-primary/10 text-primary">
+                {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
+              </span>
+            )}
           </span>
         )}
       </div>

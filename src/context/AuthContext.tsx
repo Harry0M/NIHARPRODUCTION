@@ -1,9 +1,13 @@
 
 import React, { createContext, useState, useEffect, useContext, ReactNode } from "react";
-import { Session } from "@supabase/supabase-js";
+import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { ExtendedUser } from "@/utils/roleAccess";
+
+// Extend the User type to include role information
+interface ExtendedUser extends User {
+  role?: 'admin' | 'production' | 'manager' | 'vendor';
+}
 
 interface AuthContextProps {
   session: Session | null;
@@ -22,28 +26,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Setup the auth subscription
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         setSession(currentSession);
         
+        // If we have a session, fetch the user's role from the profiles table
         if (currentSession?.user) {
-          // Fetch user role from profiles
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', currentSession.user.id)
-            .single();
-          
-          setUser({
-            ...currentSession.user,
-            role: profile?.role || 'production'
-          });
+          try {
+            const { data: profileData, error } = await supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', currentSession.user.id)
+              .single();
+            
+            if (error) {
+              console.error("Error fetching user role:", error);
+              setUser({
+                ...currentSession.user,
+                role: 'production'
+              });
+            } else {
+              // Set the user with role information
+              setUser({
+                ...currentSession.user,
+                role: profileData?.role || 'production'
+              });
+            }
+          } catch (err) {
+            console.error("Error in auth state change:", err);
+            setUser({
+              ...currentSession.user,
+              role: 'production'
+            });
+          }
         } else {
           setUser(null);
         }
         
         setLoading(false);
         
+        // Sync auth state with routes
         if (event === "SIGNED_OUT") {
           navigate("/auth");
         } else if (event === "SIGNED_IN" && window.location.pathname === "/auth") {
@@ -57,18 +80,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       setSession(currentSession);
       
+      // If we have a session, fetch the user's role
       if (currentSession?.user) {
-        // Fetch user role from profiles
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', currentSession.user.id)
-          .single();
-        
-        setUser({
-          ...currentSession.user,
-          role: profile?.role || 'production'
-        });
+        try {
+          const { data: profileData, error } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', currentSession.user.id)
+            .single();
+          
+          if (error) {
+            console.error("Error fetching user role:", error);
+            setUser({
+              ...currentSession.user,
+              role: 'production'
+            });
+          } else {
+            // Set the user with role information
+            setUser({
+              ...currentSession.user,
+              role: profileData?.role || 'production'
+            });
+          }
+        } catch (err) {
+          console.error("Error initializing auth:", err);
+          setUser({
+            ...currentSession.user,
+            role: 'production'
+          });
+        }
+      } else {
+        setUser(null);
       }
       
       setLoading(false);
