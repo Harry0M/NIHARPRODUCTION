@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { 
@@ -144,18 +145,21 @@ const OrderDetail = () => {
     try {
       console.log("Attempting to delete order with ID:", id);
       
-      // First check if job cards exist for this order
-      const { data: jobCardsData, error: jobCardsCheckError } = await supabase
+      // First delete related records in a specific sequence
+      
+      // 1. Delete all cutting components related to this order's job cards
+      // First get all job cards for this order
+      const { data: jobCardsData, error: jobCardsError } = await supabase
         .from("job_cards")
         .select("id")
         .eq("order_id", id);
       
-      if (jobCardsCheckError) throw jobCardsCheckError;
+      if (jobCardsError) throw jobCardsError;
       
+      // For each job card, delete cutting components and related jobs
       if (jobCardsData && jobCardsData.length > 0) {
-        // Delete related cutting jobs and components
         for (const jobCard of jobCardsData) {
-          // Delete cutting components
+          // Get cutting jobs for this job card
           const { data: cuttingJobs, error: cuttingJobsError } = await supabase
             .from("cutting_jobs")
             .select("id")
@@ -163,6 +167,7 @@ const OrderDetail = () => {
             
           if (cuttingJobsError) throw cuttingJobsError;
           
+          // Delete cutting components for each cutting job
           if (cuttingJobs && cuttingJobs.length > 0) {
             for (const cuttingJob of cuttingJobs) {
               const { error: delCuttingComponentsError } = await supabase
@@ -208,7 +213,7 @@ const OrderDetail = () => {
         if (delJobCardsError) throw delJobCardsError;
       }
       
-      // Delete order components
+      // 2. Delete order components
       const { error: componentsError } = await supabase
         .from("components")
         .delete()
@@ -216,7 +221,7 @@ const OrderDetail = () => {
       
       if (componentsError) throw componentsError;
       
-      // Delete dispatches
+      // 3. Delete dispatches
       const { error: dispatchesError } = await supabase
         .from("order_dispatches")
         .delete()
@@ -224,7 +229,7 @@ const OrderDetail = () => {
         
       if (dispatchesError) throw dispatchesError;
       
-      // Finally delete the order
+      // 4. Finally delete the order itself
       const { error } = await supabase
         .from("orders")
         .delete()
