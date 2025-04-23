@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 
 // Extend the User type to include role information
 interface ExtendedUser extends User {
-  role?: 'admin' | 'production' | 'manager';
+  role?: 'admin' | 'production' | 'manager' | 'vendor';
 }
 
 interface AuthContextProps {
@@ -42,7 +42,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             
             if (error) {
               console.error("Error fetching user role:", error);
-              setUser(currentSession?.user ?? null);
+              setUser({
+                ...currentSession.user,
+                role: 'production'
+              });
             } else {
               // Set the user with role information
               setUser({
@@ -52,7 +55,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
           } catch (err) {
             console.error("Error in auth state change:", err);
-            setUser(currentSession?.user ?? null);
+            setUser({
+              ...currentSession.user,
+              role: 'production'
+            });
           }
         } else {
           setUser(null);
@@ -85,7 +91,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
           if (error) {
             console.error("Error fetching user role:", error);
-            setUser(currentSession?.user ?? null);
+            setUser({
+              ...currentSession.user,
+              role: 'production'
+            });
           } else {
             // Set the user with role information
             setUser({
@@ -95,7 +104,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         } catch (err) {
           console.error("Error initializing auth:", err);
-          setUser(currentSession?.user ?? null);
+          setUser({
+            ...currentSession.user,
+            role: 'production'
+          });
         }
       } else {
         setUser(null);

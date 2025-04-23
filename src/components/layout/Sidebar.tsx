@@ -20,8 +20,8 @@ import { useAuth } from "@/context/AuthContext";
 
 // Define nav items with role-based access
 const navItems = [
-  { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, roles: ['admin', 'manager', 'production'] },
-  { name: "Orders", path: "/orders", icon: Package, roles: ['admin', 'manager', 'production'] },
+  { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, roles: ['admin', 'manager', 'production', 'vendor'] },
+  { name: "Orders", path: "/orders", icon: Package, roles: ['admin', 'manager', 'production', 'vendor'] },
   { name: "Production", path: "/production", icon: Factory, roles: ['admin', 'manager', 'production'] },
   { name: "Job Cards", path: "/production/job-cards", icon: FileText, roles: ['admin', 'manager', 'production'] },
   { name: "Vendors", path: "/vendors", icon: Users, roles: ['admin', 'manager'] },
