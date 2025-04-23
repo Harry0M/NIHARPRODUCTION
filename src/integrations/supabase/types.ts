@@ -216,6 +216,7 @@ export type Database = {
           created_by: string | null
           id: string
           job_name: string
+          job_number: string | null
           order_id: string
           status: Database["public"]["Enums"]["job_status"] | null
           updated_at: string
@@ -225,6 +226,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           job_name: string
+          job_number?: string | null
           order_id: string
           status?: Database["public"]["Enums"]["job_status"] | null
           updated_at?: string
@@ -234,6 +236,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           job_name?: string
+          job_number?: string | null
           order_id?: string
           status?: Database["public"]["Enums"]["job_status"] | null
           updated_at?: string
