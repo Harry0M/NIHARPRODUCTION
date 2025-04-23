@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { 
@@ -16,9 +17,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
-import { hasPermission } from "@/utils/roleAccess";
+import { hasPermission, UserRole } from "@/utils/roleAccess";
 
-const getNavItems = (userRole: string) => {
+const getNavItems = (userRole: UserRole) => {
   const allNavItems = [
     { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { name: "Orders", path: "/orders", icon: Package, feature: "orders" },
