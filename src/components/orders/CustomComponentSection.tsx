@@ -16,21 +16,25 @@ export interface CustomComponent {
 }
 
 export interface CustomComponentSectionProps {
-  components: CustomComponent[];
-  onChange: (index: number, field: string, value: string) => void;
-  onRemove: (index: number) => void;
-  // Add compatibility with OrderEdit.tsx
+  // Standard props approach
+  components?: CustomComponent[];
+  onChange?: (index: number, field: string, value: string) => void;
+  onRemove?: (index: number) => void;
+  
+  // Alternative props for OrderEdit.tsx compatibility
   customComponents?: CustomComponent[];
   componentOptions?: { color: string[]; gsm: string[] };
   handleCustomComponentChange?: (index: number, field: string, value: string) => void;
-  addCustomComponent?: () => void;
   removeCustomComponent?: (index: number) => void;
+  addCustomComponent?: () => void;
 }
 
 export const CustomComponentSection = ({
+  // Use either provided props pattern
   components,
   onChange,
   onRemove,
+  
   // Support for OrderEdit.tsx props
   customComponents,
   componentOptions: propComponentOptions,
@@ -53,7 +57,7 @@ export const CustomComponentSection = ({
   return (
     <>
       {itemsToRender.map((component, index) => (
-        <div key={`custom-${index}`} className="p-4 border rounded-md space-y-4">
+        <div key={`custom-${component.id || index}`} className="p-4 border rounded-md space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-medium">Custom Component</h3>
             <Button 
@@ -72,7 +76,7 @@ export const CustomComponentSection = ({
               length: component.length || "",
               color: component.color || "",
               gsm: component.gsm || "",
-              name: component.customName
+              name: component.customName || component.details
             }}
             index={index}
             isCustom={true}

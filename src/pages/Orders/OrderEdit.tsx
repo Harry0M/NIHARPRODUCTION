@@ -346,10 +346,10 @@ const OrderEdit = () => {
                 </div>
 
                 <CustomComponentSection
-                  customComponents={customComponents}
+                  components={customComponents}
+                  onChange={handleCustomComponentChange}
+                  onRemove={removeCustomComponent}
                   componentOptions={componentOptions}
-                  handleCustomComponentChange={handleCustomComponentChange}
-                  removeCustomComponent={removeCustomComponent}
                 />
               </div>
             </div>
