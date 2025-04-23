@@ -9,6 +9,8 @@ import { Database } from "@/integrations/supabase/types";
 import { OrderInfoCard } from "./JobCardDetail/OrderInfoCard";
 import { ProductionTimelineCard } from "./JobCardDetail/ProductionTimelineCard";
 import { ProductionProgressCard } from "./JobCardDetail/ProductionProgressCard";
+import { DownloadButton } from "@/components/DownloadButton";
+import { downloadAsCSV, formatDataForCSV } from "@/utils/downloadUtils";
 
 type JobStatus = Database['public']['Enums']['job_status'];
 type OrderStatus = Database['public']['Enums']['order_status'];
@@ -158,6 +160,25 @@ const JobCardDetail = () => {
     }
   };
 
+  const handleDownloadJobDetails = () => {
+    if (!jobCard) return;
+    
+    const jobDetails = {
+      job_name: jobCard.job_name,
+      order_number: jobCard.order.order_number,
+      company_name: jobCard.order.company_name,
+      status: jobCard.status,
+      order_quantity: jobCard.order.quantity,
+      bag_size: `${jobCard.order.bag_length}x${jobCard.order.bag_width}`,
+      cutting_status: jobCard.cutting_jobs?.[0]?.status || 'Not started',
+      printing_status: jobCard.printing_jobs?.[0]?.status || 'Not started',
+      stitching_status: jobCard.stitching_jobs?.[0]?.status || 'Not started',
+      created_date: new Date(jobCard.created_at).toLocaleDateString()
+    };
+
+    downloadAsCSV([jobDetails], `job-card-${jobCard.job_name}`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
@@ -178,6 +199,12 @@ const JobCardDetail = () => {
               {getStatusBadge(jobCard.status)}
             </div>
           )}
+        </div>
+        <div className="ml-auto">
+          <DownloadButton 
+            onClick={handleDownloadJobDetails}
+            label="Download Details" 
+          />
         </div>
       </div>
       

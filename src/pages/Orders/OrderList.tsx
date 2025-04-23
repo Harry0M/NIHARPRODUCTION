@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -21,6 +20,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Database } from "@/integrations/supabase/types";
+import { DownloadButton } from "@/components/DownloadButton";
+import { downloadAsCSV, formatDataForCSV } from "@/utils/downloadUtils";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -296,6 +297,11 @@ const OrderList = () => {
     </Card>
   );
 
+  const handleDownloadOrders = () => {
+    const formattedOrders = orders.map(order => formatDataForCSV(order));
+    downloadAsCSV(formattedOrders, 'orders-list');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -303,12 +309,18 @@ const OrderList = () => {
           <h1 className="text-3xl font-bold tracking-tight">Orders</h1>
           <p className="text-muted-foreground">Manage and track your manufacturing orders</p>
         </div>
-        <Link to="/orders/new">
-          <Button className="w-full md:w-auto">
-            <Plus className="h-4 w-4 mr-1" />
-            New Order
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <DownloadButton 
+            onClick={handleDownloadOrders} 
+            label="Download Orders"
+          />
+          <Link to="/orders/new">
+            <Button className="w-full md:w-auto">
+              <Plus className="h-4 w-4 mr-1" />
+              New Order
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <Card>
