@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -125,6 +126,9 @@ const OrderNew = () => {
     setSubmitting(true);
     
     try {
+      // Generate a temporary order number (will be replaced by DB trigger)
+      const tempOrderNumber = `ORD-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+      
       const { data: orderData, error: orderError } = await supabase
         .from("orders")
         .insert({
@@ -134,7 +138,8 @@ const OrderNew = () => {
           bag_width: parseFloat(formData.bag_width),
           rate: formData.rate ? parseFloat(formData.rate) : null,
           special_instructions: formData.special_instructions || null,
-          order_date: formData.order_date
+          order_date: formData.order_date,
+          order_number: tempOrderNumber // Add this required field
         })
         .select()
         .single();
