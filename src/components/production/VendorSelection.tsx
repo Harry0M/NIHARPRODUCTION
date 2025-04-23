@@ -30,9 +30,11 @@ export const VendorSelection = ({
   const [open, setOpen] = useState(false);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [isManualInput, setIsManualInput] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchVendors = async () => {
+      setLoading(true);
       try {
         const { data, error } = await supabase
           .from('vendors')
@@ -50,6 +52,8 @@ export const VendorSelection = ({
       } catch (error) {
         console.error('Exception when fetching vendors:', error);
         setVendors([]);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -92,33 +96,41 @@ export const VendorSelection = ({
             aria-expanded={open}
             className="w-full justify-between"
             type="button"
+            disabled={loading}
           >
-            {value
-              ? vendors.find((vendor) => vendor.name === value)?.name || value
-              : placeholder}
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <span className="h-4 w-4 rounded-full border-2 border-primary border-r-transparent animate-spin"></span>
+                Loading...
+              </span>
+            ) : value ? (
+              vendors.find((vendor) => vendor.name === value)?.name || value
+            ) : (
+              placeholder
+            )}
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-full min-w-[200px] p-0">
-          <Command>
-            <CommandInput placeholder={`Search ${serviceType} vendors...`} />
-            <CommandGroup>
-              {vendors.map((vendor) => (
-                <CommandItem
-                  key={vendor.id}
-                  value={vendor.name}
-                  onSelect={handleSelect}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      value === vendor.name ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  {vendor.name}
-                </CommandItem>
-              ))}
-              {vendors.length > 0 && (
+          {vendors.length > 0 ? (
+            <Command>
+              <CommandInput placeholder={`Search ${serviceType} vendors...`} />
+              <CommandGroup>
+                {vendors.map((vendor) => (
+                  <CommandItem
+                    key={vendor.id}
+                    value={vendor.name}
+                    onSelect={handleSelect}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        value === vendor.name ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    {vendor.name}
+                  </CommandItem>
+                ))}
                 <CommandItem
                   value="manual-input"
                   onSelect={() => {
@@ -130,22 +142,47 @@ export const VendorSelection = ({
                   <Check className="mr-2 h-4 w-4 opacity-0" />
                   Enter manually
                 </CommandItem>
+              </CommandGroup>
+              <CommandEmpty>
+                <div className="py-3 px-2 text-center text-sm">
+                  No vendor found
+                  <Button
+                    variant="ghost"
+                    className="mt-2 w-full"
+                    onClick={() => {
+                      setIsManualInput(true);
+                      setOpen(false);
+                    }}
+                  >
+                    Enter manually
+                  </Button>
+                </div>
+              </CommandEmpty>
+            </Command>
+          ) : (
+            <div className="p-4 text-sm">
+              {loading ? (
+                <div className="flex justify-center items-center py-2">
+                  <span className="h-4 w-4 mr-2 rounded-full border-2 border-primary border-r-transparent animate-spin"></span>
+                  Loading vendors...
+                </div>
+              ) : (
+                <>
+                  <p className="text-center mb-2">No vendors found</p>
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() => {
+                      setIsManualInput(true);
+                      setOpen(false);
+                    }}
+                  >
+                    Enter manually
+                  </Button>
+                </>
               )}
-            </CommandGroup>
-            <CommandEmpty>
-              No vendor found.
-              <Button
-                variant="ghost"
-                className="mt-2 w-full"
-                onClick={() => {
-                  setIsManualInput(true);
-                  setOpen(false);
-                }}
-              >
-                Enter manually
-              </Button>
-            </CommandEmpty>
-          </Command>
+            </div>
+          )}
         </PopoverContent>
       </Popover>
     </div>
