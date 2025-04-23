@@ -1,9 +1,11 @@
+
 import { RouteObject } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import OrderList from "./pages/Orders/OrderList";
 import OrderNew from "./pages/Orders/OrderNew";
 import OrderDetail from "./pages/Orders/OrderDetail";
+import OrderEdit from "./pages/Orders/OrderEdit";
 import ProductionDashboard from "./pages/Production/ProductionDashboard";
 import CuttingJob from "./pages/Production/CuttingJob";
 import PrintingJob from "./pages/Production/PrintingJob";
@@ -12,6 +14,7 @@ import JobCardList from "./pages/Production/JobCardList";
 import JobCardNew from "./pages/Production/JobCardNew";
 import JobCardDetail from "./pages/Production/JobCardDetail";
 import Dispatch from "./pages/Production/Dispatch";
+import DispatchDetail from "./pages/Production/DispatchDetail";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -23,8 +26,6 @@ const SupplierNew = () => <div className="p-8 text-center"><h1 className="text-2
 const InventoryList = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Inventory List</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 const InventoryNew = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">New Inventory</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 const Settings = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Settings</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
-
-const DispatchDetail = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Dispatch Detail</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 
 const routes: RouteObject[] = [
   {
@@ -57,6 +58,10 @@ const routes: RouteObject[] = [
           {
             path: "orders/:id",
             element: <OrderDetail />
+          },
+          {
+            path: "orders/:id/edit",
+            element: <OrderEdit />
           },
           {
             path: "production",

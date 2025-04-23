@@ -143,6 +143,23 @@ const OrderDetail = () => {
   const handleDeleteOrder = async () => {
     setDeleteLoading(true);
     try {
+      // First delete all components associated with the order
+      const { error: componentsError } = await supabase
+        .from("components")
+        .delete()
+        .eq("order_id", id);
+      
+      if (componentsError) throw componentsError;
+      
+      // Then delete job cards associated with the order (this will cascade to delete related jobs)
+      const { error: jobCardsError } = await supabase
+        .from("job_cards")
+        .delete()
+        .eq("order_id", id);
+      
+      if (jobCardsError) throw jobCardsError;
+      
+      // Finally delete the order
       const { error } = await supabase
         .from("orders")
         .delete()
