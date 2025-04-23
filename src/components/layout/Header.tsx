@@ -13,25 +13,8 @@ import {
 const Header = () => {
   const { user } = useAuth();
   const location = useLocation();
-  
-  // Get user's role, default to 'production' if not set
-  const userRole = user?.role || 'production';
-  
-  // Check if user has permissions to create resources
-  const canCreateResources = ['admin', 'manager'].includes(userRole);
-  
-  // Check if user has specialized role for specific production stages
-  const isCuttingSpecialist = userRole === 'cutting';
-  const isPrintingSpecialist = userRole === 'printing';
-  const isStitchingSpecialist = userRole === 'stitching';
 
   const getActionButton = () => {
-    // Only show action buttons if user has appropriate permissions
-    if (!canCreateResources && 
-        !(location.pathname === '/production' && (isCuttingSpecialist || isPrintingSpecialist || isStitchingSpecialist))) {
-      return null;
-    }
-    
     if (location.pathname === '/orders') {
       return (
         <Link to="/orders/new">
@@ -52,42 +35,6 @@ const Header = () => {
           </Button>
         </Link>
       );
-    }
-    
-    // Production specialists can quickly create jobs in their specialty
-    if (location.pathname === '/production') {
-      if (isCuttingSpecialist) {
-        return (
-          <Link to="/production/cutting/new">
-            <Button size="sm" className="gap-1">
-              <Plus size={16} />
-              New Cutting Job
-            </Button>
-          </Link>
-        );
-      }
-      
-      if (isPrintingSpecialist) {
-        return (
-          <Link to="/production/printing/new">
-            <Button size="sm" className="gap-1">
-              <Plus size={16} />
-              New Printing Job
-            </Button>
-          </Link>
-        );
-      }
-      
-      if (isStitchingSpecialist) {
-        return (
-          <Link to="/production/stitching/new">
-            <Button size="sm" className="gap-1">
-              <Plus size={16} />
-              New Stitching Job
-            </Button>
-          </Link>
-        );
-      }
     }
     
     if (location.pathname === '/vendors') {
@@ -112,7 +59,7 @@ const Header = () => {
       );
     }
     
-    if (location.pathname === '/inventory' && userRole === 'admin') {
+    if (location.pathname === '/inventory') {
       return (
         <Link to="/inventory/new">
           <Button size="sm" className="gap-1">
@@ -171,12 +118,7 @@ const Header = () => {
         
         {user && (
           <span className="text-sm hidden md:inline-block">
-            {user.email} 
-            {userRole && (
-              <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-primary/10 text-primary">
-                {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
-              </span>
-            )}
+            {user.email}
           </span>
         )}
       </div>

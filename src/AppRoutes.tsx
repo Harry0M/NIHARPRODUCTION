@@ -18,8 +18,7 @@ const AppRoutes = () => {
         
         if (error) {
           console.error("Session check error:", error);
-          setIsLoading(false);
-          return;
+          throw error;
         }
         
         console.log("Session check:", data.session ? "Authenticated" : "Not authenticated");
