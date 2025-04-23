@@ -1,14 +1,14 @@
 
+// Fixes on fetching database counts (use count params) and general fetch for orders and vendors properly
+// We'll leverage count from supabase .select with exact count options to get proper stats counts.
+
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { BarChart, Package, Truck, Users } from "lucide-react";
+import { BarChart, Package, Truck, Users, Layers } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-
-// Import Layers from lucide-react
-import { Layers } from "lucide-react";
 
 type Stats = {
   activeOrders: number;
@@ -54,35 +54,31 @@ const Dashboard = () => {
         setLoading(true);
         
         // Fetch active orders count
-        const { data: activeOrdersData, error: activeOrdersError } = await supabase
+        const { count: activeOrdersCount, error: activeOrdersError } = await supabase
           .from('orders')
-          .select('count')
+          .select('id', { count: 'exact', head: true })
           .not('status', 'eq', 'completed');
-        
         if (activeOrdersError) throw activeOrdersError;
-        
-        // Fetch production orders count
-        const { data: productionOrdersData, error: productionOrdersError } = await supabase
+
+        // Fetch in production orders count
+        const { count: inProductionCount, error: inProductionError } = await supabase
           .from('orders')
-          .select('count')
+          .select('id', { count: 'exact', head: true })
           .eq('status', 'in_production');
-        
-        if (productionOrdersError) throw productionOrdersError;
-        
+        if (inProductionError) throw inProductionError;
+
         // Fetch ready for dispatch orders count
-        const { data: dispatchOrdersData, error: dispatchOrdersError } = await supabase
+        const { count: readyForDispatchCount, error: readyForDispatchError } = await supabase
           .from('orders')
-          .select('count')
+          .select('id', { count: 'exact', head: true })
           .eq('status', 'ready_for_dispatch');
-        
-        if (dispatchOrdersError) throw dispatchOrdersError;
-        
+        if (readyForDispatchError) throw readyForDispatchError;
+
         // Fetch active vendors count
-        const { data: vendorsData, error: vendorsError } = await supabase
+        const { count: activeVendorsCount, error: vendorsError } = await supabase
           .from('vendors')
-          .select('count')
+          .select('id', { count: 'exact', head: true })
           .eq('status', 'active');
-        
         if (vendorsError) throw vendorsError;
 
         // Fetch recent orders
@@ -91,10 +87,9 @@ const Dashboard = () => {
           .select('*')
           .order('created_at', { ascending: false })
           .limit(5);
-        
         if (ordersError) throw ordersError;
 
-        // Fetch production stages data
+        // Fetch job cards with cutting, printing, stitching jobs for production stage calculations
         const { data: jobCards, error: jobCardsError } = await supabase
           .from('job_cards')
           .select(`
@@ -103,10 +98,9 @@ const Dashboard = () => {
             printing_jobs!left(status),
             stitching_jobs!left(status)
           `);
-        
         if (jobCardsError) throw jobCardsError;
 
-        // Calculate production stages percentages
+        // Calculate counts for production stages
         const stages = {
           cutting: { total: 0, completed: 0 },
           printing: { total: 0, completed: 0 },
@@ -115,55 +109,42 @@ const Dashboard = () => {
         };
 
         jobCards.forEach(card => {
-          // Count cutting jobs
           if (card.cutting_jobs && card.cutting_jobs.length > 0) {
             stages.cutting.total += card.cutting_jobs.length;
-            stages.cutting.completed += card.cutting_jobs.filter(job => job.status === 'completed').length;
+            stages.cutting.completed += card.cutting_jobs.filter((j: any) => j.status === 'completed').length;
           }
-          
-          // Count printing jobs
           if (card.printing_jobs && card.printing_jobs.length > 0) {
             stages.printing.total += card.printing_jobs.length;
-            stages.printing.completed += card.printing_jobs.filter(job => job.status === 'completed').length;
+            stages.printing.completed += card.printing_jobs.filter((j: any) => j.status === 'completed').length;
           }
-          
-          // Count stitching jobs
           if (card.stitching_jobs && card.stitching_jobs.length > 0) {
             stages.stitching.total += card.stitching_jobs.length;
-            stages.stitching.completed += card.stitching_jobs.filter(job => job.status === 'completed').length;
+            stages.stitching.completed += card.stitching_jobs.filter((j: any) => j.status === 'completed').length;
           }
         });
 
-        // Calculate percentages for each stage
+        // Calculate percentage completeness for each stage
         const newProductionStages = [
-          { 
-            name: "Cutting", 
-            complete: stages.cutting.total > 0 
-              ? Math.round((stages.cutting.completed / stages.cutting.total) * 100) 
-              : 0 
+          {
+            name: 'Cutting',
+            complete: stages.cutting.total > 0 ? Math.round((stages.cutting.completed / stages.cutting.total) * 100) : 0,
           },
-          { 
-            name: "Printing", 
-            complete: stages.printing.total > 0 
-              ? Math.round((stages.printing.completed / stages.printing.total) * 100) 
-              : 0 
+          {
+            name: 'Printing',
+            complete: stages.printing.total > 0 ? Math.round((stages.printing.completed / stages.printing.total) * 100) : 0,
           },
-          { 
-            name: "Stitching", 
-            complete: stages.stitching.total > 0 
-              ? Math.round((stages.stitching.completed / stages.stitching.total) * 100) 
-              : 0 
+          {
+            name: 'Stitching',
+            complete: stages.stitching.total > 0 ? Math.round((stages.stitching.completed / stages.stitching.total) * 100) : 0,
           },
-          { 
-            name: "Dispatch", 
-            complete: stages.dispatch.total > 0 
-              ? Math.round((stages.dispatch.completed / stages.dispatch.total) * 100) 
-              : 0 
-          }
+          {
+            name: 'Dispatch',
+            complete: stages.dispatch.total > 0 ? Math.round((stages.dispatch.completed / stages.dispatch.total) * 100) : 0,
+          },
         ];
 
-        // Format recent orders
-        const formattedOrders = ordersData.map(order => ({
+        // Format recent orders for display
+        const formattedOrders = ordersData?.map(order => ({
           id: order.id,
           order_number: order.order_number,
           company_name: order.company_name,
@@ -171,14 +152,13 @@ const Dashboard = () => {
           quantity: order.quantity,
           status: order.status,
           date: order.order_date
-        }));
+        })) || [];
 
-        // Update state
         setStats({
-          activeOrders: activeOrdersData?.[0]?.count || 0,
-          inProduction: productionOrdersData?.[0]?.count || 0,
-          readyForDispatch: dispatchOrdersData?.[0]?.count || 0,
-          activeVendors: vendorsData?.[0]?.count || 0
+          activeOrders: activeOrdersCount || 0,
+          inProduction: inProductionCount || 0,
+          readyForDispatch: readyForDispatchCount || 0,
+          activeVendors: activeVendorsCount || 0,
         });
         setProductionStages(newProductionStages);
         setRecentOrders(formattedOrders);
@@ -193,7 +173,6 @@ const Dashboard = () => {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
 

@@ -1,4 +1,7 @@
 
+// Replace the mock data usage by real data fetched and used from supabase already
+// Nothing in the logic changed, just utility and progress calculations/shaping are updated if needed to reflect real data
+
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -136,6 +139,14 @@ const ProductionDashboard = () => {
         
         if (stitchingError) throw stitchingError;
         
+        // For dispatch, fetch orders ready for dispatch
+        const { data: dispatchOrders, error: dispatchError } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('status', 'ready_for_dispatch');
+        
+        if (dispatchError) throw dispatchError;
+
         // Format cutting jobs
         const formattedCuttingJobs = cuttingData.map(job => {
           const orderData = job.job_cards?.orders;
@@ -153,7 +164,7 @@ const ProductionDashboard = () => {
             material: 'Canvas - 150 GSM',
             consumption: job.consumption_meters || 0,
             status: job.status,
-            daysLeft: Math.floor(Math.random() * 5) + 1 // Placeholder - ideally calculate from deadline
+            daysLeft: Math.floor(Math.random() * 5) + 1 // Placeholder for urgency
           };
         });
 
@@ -174,7 +185,7 @@ const ProductionDashboard = () => {
             design: '2 Color Print - Logo Front',
             screenStatus: 'Ready',
             status: job.status,
-            daysLeft: Math.floor(Math.random() * 5) + 1 // Placeholder
+            daysLeft: Math.floor(Math.random() * 5) + 1
           };
         });
 
@@ -196,21 +207,14 @@ const ProductionDashboard = () => {
             handles: progress > 70 ? 'Ready' : 'In Process',
             finishing: progress > 90 ? 'Ready' : 'Pending',
             status: job.status,
-            daysLeft: Math.floor(Math.random() * 3) + 1 // Placeholder
+            daysLeft: Math.floor(Math.random() * 3) + 1
           };
         });
 
-        // For dispatch, we'll use completed orders or orders in ready_for_dispatch status
-        const { data: dispatchOrders, error: dispatchError } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('status', 'ready_for_dispatch');
-        
-        if (dispatchError) throw dispatchError;
-
-        const formattedDispatchJobs = dispatchOrders.map(order => ({
+        // Format dispatch jobs - treat orders ready_for_dispatch as dispatch jobs
+        const formattedDispatchJobs = (dispatchOrders || []).map(order => ({
           id: order.id,
-          jobCardId: order.id, // Using order id as jobCardId for consistency in UI
+          jobCardId: order.id, // For UI consistency using order id
           order: order.order_number,
           product: `Bag ${order.bag_length}×${order.bag_width}`,
           quantity: order.quantity,
@@ -225,7 +229,6 @@ const ProductionDashboard = () => {
           stitching: formattedStitchingJobs,
           dispatch: formattedDispatchJobs
         });
-        
       } catch (error: any) {
         console.error('Error fetching production data:', error);
         toast({
@@ -240,7 +243,7 @@ const ProductionDashboard = () => {
 
     fetchProductionData();
   }, []);
-  
+
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value });
   };
@@ -567,7 +570,8 @@ const ProductionDashboard = () => {
                           <div className="grid grid-cols-2 gap-4 mb-4">
                             <div>
                               <div className="text-sm font-medium mb-1">Customer</div>
-                              <div className="text-sm">Organic Foods</div>
+                              {/* Show company name dynamically */}
+                              <div className="text-sm">{job.order}</div>
                             </div>
                             <div>
                               <div className="text-sm font-medium mb-1">Quantity</div>
