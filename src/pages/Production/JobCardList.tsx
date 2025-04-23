@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { 
@@ -55,6 +54,18 @@ interface JobCard {
     order_number: string;
     company_name: string;
   };
+  cutting_jobs: {
+    id: string;
+    status: string;
+  }[];
+  printing_jobs: {
+    id: string;
+    status: string;
+  }[];
+  stitching_jobs: {
+    id: string;
+    status: string;
+  }[];
 }
 
 const JobCardList = () => {
@@ -67,6 +78,65 @@ const JobCardList = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const navigate = useNavigate();
 
+  const canStartStage = (jobCard: JobCard, stage: string) => {
+    const hasCuttingJobs = jobCard.cutting_jobs && jobCard.cutting_jobs.length > 0;
+    const hasPrintingJobs = jobCard.printing_jobs && jobCard.printing_jobs.length > 0;
+    const hasStitchingJobs = jobCard.stitching_jobs && jobCard.stitching_jobs.length > 0;
+
+    const isCuttingCompleted = hasCuttingJobs && 
+      jobCard.cutting_jobs.every(job => job.status === 'completed');
+    const isPrintingCompleted = hasPrintingJobs && 
+      jobCard.printing_jobs.every(job => job.status === 'completed');
+    const isStitchingCompleted = hasStitchingJobs && 
+      jobCard.stitching_jobs.every(job => job.status === 'completed');
+
+    switch (stage) {
+      case 'cutting':
+        return true; // Cutting can always be started
+      case 'printing':
+        return isCuttingCompleted;
+      case 'stitching':
+        return isCuttingCompleted && isPrintingCompleted;
+      case 'dispatch':
+        return isCuttingCompleted && isPrintingCompleted && isStitchingCompleted;
+      default:
+        return false;
+    }
+  };
+
+  const handleStageClick = (stage: string, jobId: string) => {
+    const jobCard = jobCards.find(card => card.id === jobId);
+    if (!jobCard) return;
+
+    if (!canStartStage(jobCard, stage)) {
+      const requiredStage = stage === 'printing' ? 'cutting' : 
+                          stage === 'stitching' ? 'printing' : 
+                          'stitching';
+      
+      toast({
+        title: "Cannot start " + stage,
+        description: `Please complete the ${requiredStage} stage first.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    switch (stage) {
+      case 'cutting':
+        handleCuttingClick(jobId);
+        break;
+      case 'printing':
+        handlePrintingClick(jobId);
+        break;
+      case 'stitching':
+        handleStitchingClick(jobId);
+        break;
+      default:
+        break;
+    }
+  };
+
+  // Update the fetchJobCards function to include status information
   const fetchJobCards = async () => {
     setLoading(true);
     try {
@@ -82,6 +152,18 @@ const JobCardList = () => {
             id,
             order_number,
             company_name
+          ),
+          cutting_jobs (
+            id,
+            status
+          ),
+          printing_jobs (
+            id,
+            status
+          ),
+          stitching_jobs (
+            id,
+            status
           )
         `)
         .order('created_at', { ascending: false });
@@ -97,7 +179,10 @@ const JobCardList = () => {
           id: item.orders.id,
           order_number: item.orders.order_number,
           company_name: item.orders.company_name
-        }
+        },
+        cutting_jobs: item.cutting_jobs,
+        printing_jobs: item.printing_jobs,
+        stitching_jobs: item.stitching_jobs
       }));
       
       setJobCards(formattedData || []);
@@ -239,6 +324,7 @@ const JobCardList = () => {
     setDeleteDialogOpen(true);
   };
 
+  // Update the DropdownMenu items in the render part
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -356,14 +442,22 @@ const JobCardList = () => {
                                 <DropdownMenuItem onClick={() => handleViewDetails(jobCard.id)}>
                                   View Details
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleCuttingClick(jobCard.id)}>
+                                <DropdownMenuItem 
+                                  onClick={() => handleStageClick('cutting', jobCard.id)}
+                                >
                                   Cutting
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handlePrintingClick(jobCard.id)}>
-                                  Printing
+                                <DropdownMenuItem 
+                                  onClick={() => handleStageClick('printing', jobCard.id)}
+                                  className={!canStartStage(jobCard, 'printing') ? 'text-muted-foreground' : ''}
+                                >
+                                  Printing {!canStartStage(jobCard, 'printing') && '(Complete cutting first)'}
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleStitchingClick(jobCard.id)}>
-                                  Stitching
+                                <DropdownMenuItem 
+                                  onClick={() => handleStageClick('stitching', jobCard.id)}
+                                  className={!canStartStage(jobCard, 'stitching') ? 'text-muted-foreground' : ''}
+                                >
+                                  Stitching {!canStartStage(jobCard, 'stitching') && '(Complete printing first)'}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => confirmDeleteJobCard(jobCard.id)}>
                                   <Trash className="mr-2 h-4 w-4" /> Delete Job Card

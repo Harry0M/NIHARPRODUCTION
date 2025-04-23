@@ -198,6 +198,9 @@ const JobCardDetail = () => {
             stitchingCount={jobCard.stitching_jobs?.length || 0}
             handleCreateProcess={handleCreateProcess}
             navigateDispatch={() => navigate("/dispatch")}
+            cuttingJobs={jobCard.cutting_jobs}
+            printingJobs={jobCard.printing_jobs}
+            stitchingJobs={jobCard.stitching_jobs}
           />
           <ProductionProgressCard
             cuttingJobs={jobCard.cutting_jobs || []}
