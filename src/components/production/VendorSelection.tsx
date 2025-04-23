@@ -33,18 +33,24 @@ export const VendorSelection = ({
 
   useEffect(() => {
     const fetchVendors = async () => {
-      const { data, error } = await supabase
-        .from('vendors')
-        .select('id, name, service_type')
-        .eq('service_type', serviceType)
-        .eq('status', 'active');
+      try {
+        const { data, error } = await supabase
+          .from('vendors')
+          .select('id, name, service_type')
+          .eq('service_type', serviceType)
+          .eq('status', 'active');
 
-      if (error) {
-        console.error('Error fetching vendors:', error);
-        return;
+        if (error) {
+          console.error('Error fetching vendors:', error);
+          setVendors([]);
+          return;
+        }
+
+        setVendors(data || []);
+      } catch (error) {
+        console.error('Exception when fetching vendors:', error);
+        setVendors([]);
       }
-
-      setVendors(data || []);
     };
 
     fetchVendors();
@@ -96,19 +102,6 @@ export const VendorSelection = ({
         <PopoverContent className="w-full min-w-[200px] p-0">
           <Command>
             <CommandInput placeholder={`Search ${serviceType} vendors...`} />
-            <CommandEmpty>
-              No vendor found.
-              <Button
-                variant="ghost"
-                className="mt-2 w-full"
-                onClick={() => {
-                  setIsManualInput(true);
-                  setOpen(false);
-                }}
-              >
-                Enter manually
-              </Button>
-            </CommandEmpty>
             <CommandGroup>
               {vendors.map((vendor) => (
                 <CommandItem
@@ -125,18 +118,33 @@ export const VendorSelection = ({
                   {vendor.name}
                 </CommandItem>
               ))}
-              <CommandItem
-                value="manual-input"
-                onSelect={() => {
+              {vendors.length > 0 && (
+                <CommandItem
+                  value="manual-input"
+                  onSelect={() => {
+                    setIsManualInput(true);
+                    setOpen(false);
+                  }}
+                  className="border-t"
+                >
+                  <Check className="mr-2 h-4 w-4 opacity-0" />
+                  Enter manually
+                </CommandItem>
+              )}
+            </CommandGroup>
+            <CommandEmpty>
+              No vendor found.
+              <Button
+                variant="ghost"
+                className="mt-2 w-full"
+                onClick={() => {
                   setIsManualInput(true);
                   setOpen(false);
                 }}
-                className="border-t"
               >
-                <Check className="mr-2 h-4 w-4 opacity-0" />
                 Enter manually
-              </CommandItem>
-            </CommandGroup>
+              </Button>
+            </CommandEmpty>
           </Command>
         </PopoverContent>
       </Popover>
