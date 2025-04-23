@@ -18,21 +18,30 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 
+// Define nav items with role-based access
 const navItems = [
-  { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-  { name: "Orders", path: "/orders", icon: Package },
-  { name: "Production", path: "/production", icon: Factory },
-  { name: "Job Cards", path: "/production/job-cards", icon: FileText },
-  { name: "Vendors", path: "/vendors", icon: Users },
-  { name: "Suppliers", path: "/suppliers", icon: ShoppingCart },
-  { name: "Dispatch", path: "/dispatch", icon: Truck },
-  { name: "Inventory", path: "/inventory", icon: Database },
-  { name: "Settings", path: "/settings", icon: Settings },
+  { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, roles: ['admin', 'manager', 'production'] },
+  { name: "Orders", path: "/orders", icon: Package, roles: ['admin', 'manager', 'production'] },
+  { name: "Production", path: "/production", icon: Factory, roles: ['admin', 'manager', 'production'] },
+  { name: "Job Cards", path: "/production/job-cards", icon: FileText, roles: ['admin', 'manager', 'production'] },
+  { name: "Vendors", path: "/vendors", icon: Users, roles: ['admin', 'manager'] },
+  { name: "Suppliers", path: "/suppliers", icon: ShoppingCart, roles: ['admin', 'manager'] },
+  { name: "Dispatch", path: "/dispatch", icon: Truck, roles: ['admin', 'manager', 'production'] },
+  { name: "Inventory", path: "/inventory", icon: Database, roles: ['admin'] },
+  { name: "Settings", path: "/settings", icon: Settings, roles: ['admin'] },
 ];
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
+  
+  // Get user's role, default to 'production' if not set
+  const userRole = user?.role || 'production';
+  
+  // Filter nav items based on user role
+  const filteredNavItems = navItems.filter(item => 
+    item.roles.includes(userRole)
+  );
 
   return (
     <div
@@ -54,7 +63,7 @@ const Sidebar = () => {
       </div>
       <nav className="flex-1 py-4 overflow-y-auto">
         <ul className="space-y-1 px-2">
-          {navItems.map((item) => (
+          {filteredNavItems.map((item) => (
             <li key={item.name}>
               <NavLink
                 to={item.path}
@@ -82,7 +91,12 @@ const Sidebar = () => {
             <span className="font-medium text-sm">BM</span>
           </div>
           {!collapsed && (
-            <div className="ml-3">
+            <div className="ml-3 flex flex-col">
+              {user && (
+                <span className="text-xs font-medium text-sidebar-foreground mb-1">
+                  Role: {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
+                </span>
+              )}
               <button 
                 onClick={signOut}
                 className="text-sm text-sidebar-foreground hover:text-primary transition-colors"
