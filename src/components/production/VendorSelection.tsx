@@ -1,12 +1,17 @@
 
 import { useState, useEffect } from 'react';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { PencilIcon } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from "@/hooks/use-toast";
 
 interface Vendor {
   id: string;
@@ -27,14 +32,21 @@ export const VendorSelection = ({
   onChange,
   placeholder = "Select vendor..."
 }: VendorSelectionProps) => {
-  const [open, setOpen] = useState(false);
   const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [isManualInput, setIsManualInput] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isManualMode, setIsManualMode] = useState(false);
+  const [manualInput, setManualInput] = useState("");
+  
+  // Initialize manualInput with value if it's not in vendors
+  useEffect(() => {
+    if (value && !isManualMode && !vendors.some(v => v.name === value)) {
+      setManualInput(value);
+    }
+  }, [value, vendors, isManualMode]);
 
   useEffect(() => {
     const fetchVendors = async () => {
-      setLoading(true);
+      setIsLoading(true);
       try {
         const { data, error } = await supabase
           .from('vendors')
@@ -44,43 +56,67 @@ export const VendorSelection = ({
 
         if (error) {
           console.error('Error fetching vendors:', error);
+          toast({
+            title: "Failed to load vendors",
+            description: error.message,
+            variant: "destructive"
+          });
           setVendors([]);
-          return;
+        } else {
+          setVendors(data || []);
+          
+          // If we have a value but it's not in the vendors list, switch to manual mode
+          if (value && !data?.some(vendor => vendor.name === value)) {
+            setIsManualMode(true);
+            setManualInput(value);
+          }
         }
-
-        setVendors(data || []);
       } catch (error) {
         console.error('Exception when fetching vendors:', error);
         setVendors([]);
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
     fetchVendors();
-  }, [serviceType]);
+  }, [serviceType, value]);
 
-  const handleSelect = (selectedValue: string) => {
-    onChange(selectedValue);
-    setOpen(false);
+  const handleManualInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setManualInput(newValue);
+    onChange(newValue);
   };
 
-  if (isManualInput) {
+  const handleSelectChange = (selectedValue: string) => {
+    onChange(selectedValue);
+  };
+
+  const toggleManualMode = () => {
+    if (!isManualMode) {
+      setManualInput(value);
+    }
+    setIsManualMode(!isManualMode);
+  };
+
+  if (isManualMode) {
     return (
       <div className="flex gap-2">
         <Input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
+          value={manualInput}
+          onChange={handleManualInputChange}
           placeholder={placeholder}
-          className="w-full"
+          disabled={isLoading}
+          className="flex-1"
         />
         <Button 
           variant="outline" 
           size="icon"
-          onClick={() => setIsManualInput(false)}
+          onClick={toggleManualMode}
           type="button"
+          disabled={isLoading}
         >
-          <ChevronsUpDown className="h-4 w-4" />
+          <PencilIcon className="h-4 w-4" />
         </Button>
       </div>
     );
@@ -88,103 +124,43 @@ export const VendorSelection = ({
 
   return (
     <div className="flex gap-2">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="w-full justify-between"
-            type="button"
-            disabled={loading}
-          >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <span className="h-4 w-4 rounded-full border-2 border-primary border-r-transparent animate-spin"></span>
-                Loading...
-              </span>
-            ) : value ? (
-              vendors.find((vendor) => vendor.name === value)?.name || value
-            ) : (
-              placeholder
+      <div className="flex-1">
+        <Select
+          value={vendors.some(v => v.name === value) ? value : ""}
+          onValueChange={handleSelectChange}
+          disabled={isLoading}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder={placeholder} />
+          </SelectTrigger>
+          <SelectContent>
+            {vendors.map((vendor) => (
+              <SelectItem key={vendor.id} value={vendor.name}>
+                {vendor.name}
+              </SelectItem>
+            ))}
+            {vendors.length === 0 && !isLoading && (
+              <div className="p-2 text-center text-sm text-muted-foreground">
+                No vendors found
+              </div>
             )}
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-full min-w-[200px] p-0">
-          {vendors.length > 0 ? (
-            <Command>
-              <CommandInput placeholder={`Search ${serviceType} vendors...`} />
-              <CommandGroup>
-                {vendors.map((vendor) => (
-                  <CommandItem
-                    key={vendor.id}
-                    value={vendor.name}
-                    onSelect={handleSelect}
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        value === vendor.name ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    {vendor.name}
-                  </CommandItem>
-                ))}
-                <CommandItem
-                  value="manual-input"
-                  onSelect={() => {
-                    setIsManualInput(true);
-                    setOpen(false);
-                  }}
-                  className="border-t"
-                >
-                  <Check className="mr-2 h-4 w-4 opacity-0" />
-                  Enter manually
-                </CommandItem>
-              </CommandGroup>
-              <CommandEmpty>
-                <div className="py-3 px-2 text-center text-sm">
-                  No vendor found
-                  <Button
-                    variant="ghost"
-                    className="mt-2 w-full"
-                    onClick={() => {
-                      setIsManualInput(true);
-                      setOpen(false);
-                    }}
-                  >
-                    Enter manually
-                  </Button>
-                </div>
-              </CommandEmpty>
-            </Command>
-          ) : (
-            <div className="p-4 text-sm">
-              {loading ? (
-                <div className="flex justify-center items-center py-2">
-                  <span className="h-4 w-4 mr-2 rounded-full border-2 border-primary border-r-transparent animate-spin"></span>
-                  Loading vendors...
-                </div>
-              ) : (
-                <>
-                  <p className="text-center mb-2">No vendors found</p>
-                  <Button
-                    variant="secondary"
-                    className="w-full"
-                    onClick={() => {
-                      setIsManualInput(true);
-                      setOpen(false);
-                    }}
-                  >
-                    Enter manually
-                  </Button>
-                </>
-              )}
-            </div>
-          )}
-        </PopoverContent>
-      </Popover>
+            {isLoading && (
+              <div className="p-2 text-center text-sm text-muted-foreground">
+                Loading vendors...
+              </div>
+            )}
+          </SelectContent>
+        </Select>
+      </div>
+      <Button 
+        variant="outline" 
+        size="icon"
+        onClick={toggleManualMode}
+        type="button"
+        disabled={isLoading}
+      >
+        <PencilIcon className="h-4 w-4" />
+      </Button>
     </div>
   );
 };
