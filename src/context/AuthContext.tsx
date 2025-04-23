@@ -4,66 +4,28 @@ import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 
-// Extend the User type to include role information
-interface ExtendedUser extends User {
-  role?: 'admin' | 'production' | 'manager' | 'vendor';
-}
-
 interface AuthContextProps {
   session: Session | null;
-  user: ExtendedUser | null;
+  user: User | null;
   signOut: () => Promise<void>;
   loading: boolean;
-  setUser: (user: ExtendedUser | null) => void;
+  setUser: (user: User | null) => void;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<ExtendedUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     // Setup the auth subscription
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
+      (event, currentSession) => {
         setSession(currentSession);
-        
-        // If we have a session, fetch the user's role from the profiles table
-        if (currentSession?.user) {
-          try {
-            const { data: profileData, error } = await supabase
-              .from('profiles')
-              .select('role')
-              .eq('id', currentSession.user.id)
-              .single();
-            
-            if (error) {
-              console.error("Error fetching user role:", error);
-              setUser({
-                ...currentSession.user,
-                role: 'production'
-              });
-            } else {
-              // Set the user with role information
-              setUser({
-                ...currentSession.user,
-                role: profileData?.role || 'production'
-              });
-            }
-          } catch (err) {
-            console.error("Error in auth state change:", err);
-            setUser({
-              ...currentSession.user,
-              role: 'production'
-            });
-          }
-        } else {
-          setUser(null);
-        }
-        
+        setUser(currentSession?.user ?? null);
         setLoading(false);
         
         // Sync auth state with routes
@@ -79,40 +41,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const initializeAuth = async () => {
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       setSession(currentSession);
-      
-      // If we have a session, fetch the user's role
-      if (currentSession?.user) {
-        try {
-          const { data: profileData, error } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', currentSession.user.id)
-            .single();
-          
-          if (error) {
-            console.error("Error fetching user role:", error);
-            setUser({
-              ...currentSession.user,
-              role: 'production'
-            });
-          } else {
-            // Set the user with role information
-            setUser({
-              ...currentSession.user,
-              role: profileData?.role || 'production'
-            });
-          }
-        } catch (err) {
-          console.error("Error initializing auth:", err);
-          setUser({
-            ...currentSession.user,
-            role: 'production'
-          });
-        }
-      } else {
-        setUser(null);
-      }
-      
+      setUser(currentSession?.user ?? null);
       setLoading(false);
     };
     
