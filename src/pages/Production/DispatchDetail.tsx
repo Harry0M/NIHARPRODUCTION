@@ -148,8 +148,8 @@ const DispatchDetail = () => {
         if (insertError) throw insertError;
       }
 
-      // Use 'ready_for_dispatch' as the order status
-      const orderStatus: Database['public']['Enums']['order_status'] = "ready_for_dispatch";
+      // Use 'dispatched' as the order status instead of 'ready_for_dispatch'
+      const orderStatus: Database['public']['Enums']['order_status'] = "dispatched";
       
       // Update order status
       const { error: statusError } = await supabase
@@ -158,7 +158,7 @@ const DispatchDetail = () => {
         .eq("id", orderId);
       if (statusError) throw statusError;
 
-      toast({ title: "Dispatch Complete", description: "Order has been marked as ready for dispatch!" });
+      toast({ title: "Dispatch Complete", description: "Order has been marked as dispatched!" });
       fetchOrderData(orderId); // Refresh data
     } catch (error: any) {
       toast({

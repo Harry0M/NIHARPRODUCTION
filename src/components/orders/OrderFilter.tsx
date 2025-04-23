@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, X } from "lucide-react";
+import { Database } from "@/integrations/supabase/types";
 
 export interface OrderFilters {
   searchTerm: string;
@@ -89,9 +90,14 @@ export const OrderFilter = ({ filters, setFilters }: OrderFilterProps) => {
         <SelectContent>
           <SelectItem value="all">All Statuses</SelectItem>
           <SelectItem value="pending">Pending</SelectItem>
-          <SelectItem value="in_progress">In Progress</SelectItem>
+          <SelectItem value="in_production">In Production</SelectItem>
+          <SelectItem value="cutting">Cutting</SelectItem>
+          <SelectItem value="printing">Printing</SelectItem>
+          <SelectItem value="stitching">Stitching</SelectItem>
+          <SelectItem value="ready_for_dispatch">Ready for Dispatch</SelectItem>
           <SelectItem value="completed">Completed</SelectItem>
           <SelectItem value="cancelled">Cancelled</SelectItem>
+          <SelectItem value="dispatched">Dispatched</SelectItem>
         </SelectContent>
       </Select>
       

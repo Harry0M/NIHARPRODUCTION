@@ -23,6 +23,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { 
   Select, 
@@ -31,7 +41,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { FileText, MoreHorizontal, Plus, Search } from "lucide-react";
+import { FileText, MoreHorizontal, Plus, Search, Trash } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -41,6 +51,7 @@ interface JobCard {
   status: string;
   created_at: string;
   order: {
+    id: string;
     order_number: string;
     company_name: string;
   };
@@ -51,51 +62,57 @@ const JobCardList = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [jobCardToDelete, setJobCardToDelete] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchJobCards = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('job_cards')
-          .select(`
-            id, 
-            job_name, 
-            status, 
-            created_at,
-            orders (
-              order_number,
-              company_name
-            )
-          `)
-          .order('created_at', { ascending: false });
-        
-        if (error) throw error;
-        
-        const formattedData = data?.map(item => ({
-          id: item.id,
-          job_name: item.job_name,
-          status: item.status,
-          created_at: item.created_at,
-          order: {
-            order_number: item.orders.order_number,
-            company_name: item.orders.company_name
-          }
-        }));
-        
-        setJobCards(formattedData || []);
-      } catch (error: any) {
-        toast({
-          title: "Error fetching job cards",
-          description: error.message,
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchJobCards = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('job_cards')
+        .select(`
+          id, 
+          job_name, 
+          status, 
+          created_at,
+          order_id,
+          orders (
+            id,
+            order_number,
+            company_name
+          )
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      const formattedData = data?.map(item => ({
+        id: item.id,
+        job_name: item.job_name,
+        status: item.status,
+        created_at: item.created_at,
+        order: {
+          id: item.orders.id,
+          order_number: item.orders.order_number,
+          company_name: item.orders.company_name
+        }
+      }));
+      
+      setJobCards(formattedData || []);
+    } catch (error: any) {
+      toast({
+        title: "Error fetching job cards",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchJobCards();
   }, []);
 
@@ -145,6 +162,81 @@ const JobCardList = () => {
 
   const handleStitchingClick = (jobId: string) => {
     navigate(`/production/stitching/${jobId}`);
+  };
+
+  const handleDeleteJobCard = async () => {
+    if (!jobCardToDelete) return;
+
+    setDeleteLoading(true);
+    try {
+      console.log("Attempting to delete job card with ID:", jobCardToDelete);
+      
+      // Delete all related cutting components
+      const { data: cuttingJobs } = await supabase
+        .from('cutting_jobs')
+        .select('id')
+        .eq('job_card_id', jobCardToDelete);
+      
+      if (cuttingJobs && cuttingJobs.length > 0) {
+        for (const job of cuttingJobs) {
+          await supabase
+            .from('cutting_components')
+            .delete()
+            .eq('cutting_job_id', job.id);
+        }
+      }
+      
+      // Delete cutting jobs
+      await supabase
+        .from('cutting_jobs')
+        .delete()
+        .eq('job_card_id', jobCardToDelete);
+      
+      // Delete printing jobs
+      await supabase
+        .from('printing_jobs')
+        .delete()
+        .eq('job_card_id', jobCardToDelete);
+        
+      // Delete stitching jobs
+      await supabase
+        .from('stitching_jobs')
+        .delete()
+        .eq('job_card_id', jobCardToDelete);
+      
+      // Delete the job card itself
+      const { error: jobCardDeleteError } = await supabase
+        .from('job_cards')
+        .delete()
+        .eq('id', jobCardToDelete);
+        
+      if (jobCardDeleteError) throw jobCardDeleteError;
+      
+      // Update the job cards list by removing the deleted job card
+      setJobCards(jobCards.filter(jobCard => jobCard.id !== jobCardToDelete));
+      
+      toast({
+        title: "Job card deleted successfully",
+        description: "The job card and all related jobs have been removed.",
+      });
+      console.log("Job card deleted successfully");
+    } catch (error: any) {
+      console.error("Error deleting job card:", error);
+      toast({
+        title: "Error deleting job card",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteDialogOpen(false);
+      setJobCardToDelete(null);
+      setDeleteLoading(false);
+    }
+  };
+
+  const confirmDeleteJobCard = (jobCardId: string) => {
+    setJobCardToDelete(jobCardId);
+    setDeleteDialogOpen(true);
   };
 
   return (
@@ -273,6 +365,9 @@ const JobCardList = () => {
                                 <DropdownMenuItem onClick={() => handleStitchingClick(jobCard.id)}>
                                   Stitching
                                 </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => confirmDeleteJobCard(jobCard.id)}>
+                                  <Trash className="mr-2 h-4 w-4" /> Delete Job Card
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
@@ -286,6 +381,31 @@ const JobCardList = () => {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this job card?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the job card and all associated cutting, printing, and stitching jobs.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteJobCard();
+              }}
+              disabled={deleteLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteLoading ? "Deleting..." : "Delete Job Card"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

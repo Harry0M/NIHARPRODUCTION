@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -5,7 +6,17 @@ import { OrderFilter } from "@/components/orders/OrderFilter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Eye, MoreHorizontal, Package2Icon, Plus } from "lucide-react";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Eye, MoreHorizontal, Package2Icon, Plus, Trash } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -43,6 +54,10 @@ const OrderList = () => {
     status: "all",
     dateRange: { from: "", to: "" }
   });
+  
+  const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   
   const isMobile = useIsMobile();
 
@@ -95,6 +110,7 @@ const OrderList = () => {
       case "completed":
         return "bg-green-100 text-green-800";
       case "ready_for_dispatch":
+      case "dispatched":
         return "bg-blue-100 text-blue-800";
       case "in_production":
       case "cutting":
@@ -110,6 +126,113 @@ const OrderList = () => {
 
   const getStatusDisplay = (status: string) => {
     return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!orderToDelete) return;
+
+    setDeleteLoading(true);
+    try {
+      console.log("Attempting to delete order with ID:", orderToDelete);
+      
+      // First find all job cards associated with this order
+      const { data: jobCards, error: jobCardsError } = await supabase
+        .from('job_cards')
+        .select('id')
+        .eq('order_id', orderToDelete);
+      
+      if (jobCardsError) throw jobCardsError;
+      const jobCardIds = jobCards?.map(jc => jc.id) || [];
+      
+      // Delete in sequence to respect foreign key constraints
+      if (jobCardIds.length > 0) {
+        // Delete all cutting components
+        for (const jobCardId of jobCardIds) {
+          const { data: cuttingJobs } = await supabase
+            .from('cutting_jobs')
+            .select('id')
+            .eq('job_card_id', jobCardId);
+          
+          if (cuttingJobs && cuttingJobs.length > 0) {
+            for (const job of cuttingJobs) {
+              await supabase
+                .from('cutting_components')
+                .delete()
+                .eq('cutting_job_id', job.id);
+            }
+          }
+          
+          // Delete cutting jobs
+          await supabase
+            .from('cutting_jobs')
+            .delete()
+            .eq('job_card_id', jobCardId);
+          
+          // Delete printing jobs
+          await supabase
+            .from('printing_jobs')
+            .delete()
+            .eq('job_card_id', jobCardId);
+            
+          // Delete stitching jobs
+          await supabase
+            .from('stitching_jobs')
+            .delete()
+            .eq('job_card_id', jobCardId);
+        }
+        
+        // Delete job cards
+        await supabase
+          .from('job_cards')
+          .delete()
+          .eq('order_id', orderToDelete);
+      }
+      
+      // Delete order components
+      await supabase
+        .from('order_components')
+        .delete()
+        .eq('order_id', orderToDelete);
+      
+      // Delete order dispatch
+      await supabase
+        .from('order_dispatches')
+        .delete()
+        .eq('order_id', orderToDelete);
+        
+      // Delete the order itself
+      const { error: orderDeleteError } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderToDelete);
+        
+      if (orderDeleteError) throw orderDeleteError;
+      
+      // Update the orders list by removing the deleted order
+      setOrders(orders.filter(order => order.id !== orderToDelete));
+      
+      toast({
+        title: "Order deleted successfully",
+        description: "The order and all related records have been removed.",
+      });
+      console.log("Order deleted successfully");
+    } catch (error: any) {
+      console.error("Error deleting order:", error);
+      toast({
+        title: "Error deleting order",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteDialogOpen(false);
+      setOrderToDelete(null);
+      setDeleteLoading(false);
+    }
+  };
+
+  const confirmDeleteOrder = (orderId: string) => {
+    setOrderToDelete(orderId);
+    setDeleteDialogOpen(true);
   };
 
   const renderMobileOrderCard = (order: Order) => (
@@ -135,6 +258,14 @@ const OrderList = () => {
                 <Link to={`/orders/${order.id}`}>
                   <Eye className="mr-2 h-4 w-4" /> View Details
                 </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to={`/production/job-cards/new?orderId=${order.id}`}>
+                  <Plus className="mr-2 h-4 w-4" /> Create Job Card
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => confirmDeleteOrder(order.id)}>
+                <Trash className="mr-2 h-4 w-4" /> Delete Order
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -270,6 +401,9 @@ const OrderList = () => {
                                     <Plus className="mr-2 h-4 w-4" /> Create Job Card
                                   </Link>
                                 </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => confirmDeleteOrder(order.id)}>
+                                  <Trash className="mr-2 h-4 w-4" /> Delete Order
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
@@ -283,6 +417,31 @@ const OrderList = () => {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the order and all associated job cards, cutting jobs, printing jobs,
+              and stitching jobs. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteOrder();
+              }}
+              disabled={deleteLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteLoading ? "Deleting..." : "Delete Order"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

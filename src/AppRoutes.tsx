@@ -17,9 +17,18 @@ const AppRoutes = () => {
         const { data } = await supabase.auth.getSession();
         console.log("Session check:", data.session ? "Authenticated" : "Not authenticated");
         
-        // Add this for debugging
+        // Add debugging info
         if (data.session) {
           console.log("User ID:", data.session.user.id);
+          
+          // Check for admin status
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', data.session.user.id)
+            .single();
+          
+          console.log("User role:", profileData?.role || "Not set");
         }
       } catch (error) {
         console.error("Error checking session:", error);
