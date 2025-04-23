@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { 
@@ -38,6 +37,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { VendorSelection } from "@/components/production/VendorSelection";
 
 type JobStatus = "pending" | "in_progress" | "completed";
 
@@ -537,7 +537,12 @@ const StitchingJob = () => {
                       <FormItem>
                         <FormLabel>Stitcher Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter stitcher name or company" {...field} />
+                          <VendorSelection
+                            serviceType="stitching"
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                            placeholder="Select stitcher or enter manually"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

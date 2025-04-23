@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { 
@@ -38,6 +37,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { VendorSelection } from "@/components/production/VendorSelection";
 
 type JobStatus = "pending" | "in_progress" | "completed";
 
@@ -480,20 +480,27 @@ const PrintingJob = () => {
                   </div>
                 </div>
 
+                
+<FormField
+  control={form.control}
+  name="worker_name"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel>Printer Name</FormLabel>
+      <FormControl>
+        <VendorSelection
+          serviceType="printing"
+          value={field.value || ""}
+          onChange={field.onChange}
+          placeholder="Select printer or enter manually"
+        />
+      </FormControl>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
+
                 <div className="grid md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="worker_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Printer Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter printer name or company" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                   
                   <FormField
                     control={form.control}

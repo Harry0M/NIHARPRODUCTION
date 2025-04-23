@@ -1,4 +1,3 @@
-
 // This file is responsible for all logic and orchestration of the child components.
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
@@ -17,6 +16,7 @@ import { CuttingJobOrderInfo } from "./CuttingJobOrderInfo";
 import { CuttingJobSelection } from "./CuttingJobSelection";
 import { CuttingJobComponentForm } from "./CuttingJobComponentForm";
 import { Database } from "@/integrations/supabase/types";
+import { VendorSelection } from "@/components/production/VendorSelection";
 
 type JobStatus = Database["public"]["Enums"]["job_status"];
 
@@ -646,12 +646,15 @@ export default function CuttingJobForm() {
                   <Label htmlFor="is_internal">Internal Cutting (In-house)</Label>
                 </div>
 
-                <WorkerSelection
-                  workerType={cuttingData.is_internal ? 'internal' : 'external'}
-                  serviceType="cutting"
-                  onWorkerSelect={handleWorkerSelect}
-                  selectedWorkerId={cuttingData.worker_name}
-                />
+                <div className="space-y-2">
+  <Label>Worker Name</Label>
+  <VendorSelection
+    serviceType="cutting"
+    value={cuttingData.worker_name}
+    onChange={(value) => handleWorkerSelect(value)}
+    placeholder="Select cutter or enter manually"
+  />
+</div>
 
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
