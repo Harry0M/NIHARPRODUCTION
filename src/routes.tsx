@@ -1,7 +1,6 @@
 
 import { lazy } from "react";
 import AppLayout from "@/components/layout/AppLayout";
-import AuthLayout from "@/components/layout/AuthLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import RoleBasedRoute from "@/components/RoleBasedRoute";
 import AdminSignup from "./pages/AdminSignup";
@@ -16,13 +15,7 @@ const Auth = lazy(() => import("@/pages/Auth"));
 const routes = [
   {
     path: "/auth",
-    element: <AuthLayout />,
-    children: [
-      {
-        path: "",
-        element: <Auth />,
-      },
-    ],
+    element: <Auth />,
   },
   {
     path: "/",

@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useContext, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,19 +26,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Setup the auth subscription
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
+    console.log("AuthProvider initializing");
+    
+    // First get the current session
+    const initializeAuth = async () => {
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
         setSession(currentSession);
         
-        // If we have a session, fetch the user's role from the profiles table
+        // If we have a session, fetch the user's role
         if (currentSession?.user) {
+          console.log("Found existing session for user:", currentSession.user.id);
+          
           try {
             const { data: profileData, error } = await supabase
               .from('profiles')
               .select('role')
               .eq('id', currentSession.user.id)
-              .single();
+              .maybeSingle();
             
             if (error) {
               console.error("Error fetching user role:", error);
@@ -51,79 +57,90 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 ...currentSession.user,
                 role: profileData?.role || 'production'
               });
+              console.log("User role set to:", profileData?.role || 'production');
             }
           } catch (err) {
-            console.error("Error in auth state change:", err);
+            console.error("Error initializing auth:", err);
             setUser({
               ...currentSession.user,
               role: 'production'
             });
           }
         } else {
+          console.log("No session found during initialization");
           setUser(null);
         }
         
         setLoading(false);
+      } catch (error) {
+        console.error("Error during auth initialization:", error);
+        setLoading(false);
+      }
+    };
+    
+    initializeAuth();
+    
+    // Then setup the auth subscription
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, currentSession) => {
+        console.log("Auth state change:", event);
+        
+        setSession(currentSession);
+        
+        // If we have a session, fetch the user's role from the profiles table
+        if (currentSession?.user) {
+          // Prevent race conditions by using setTimeout
+          setTimeout(async () => {
+            try {
+              const { data: profileData, error } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', currentSession.user.id)
+                .maybeSingle();
+              
+              if (error) {
+                console.error("Error fetching user role:", error);
+                setUser({
+                  ...currentSession.user,
+                  role: 'production'
+                });
+              } else {
+                // Set the user with role information
+                setUser({
+                  ...currentSession.user,
+                  role: profileData?.role || 'production'
+                });
+              }
+            } catch (err) {
+              console.error("Error in auth state change:", err);
+              setUser({
+                ...currentSession.user,
+                role: 'production'
+              });
+            }
+          }, 0);
+        } else {
+          setUser(null);
+        }
         
         // Sync auth state with routes
         if (event === "SIGNED_OUT") {
-          navigate("/auth");
+          navigate("/auth", { replace: true });
         } else if (event === "SIGNED_IN" && window.location.pathname === "/auth") {
-          navigate("/dashboard");
+          navigate("/dashboard", { replace: true });
         }
       }
     );
 
-    // Get current session
-    const initializeAuth = async () => {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      setSession(currentSession);
-      
-      // If we have a session, fetch the user's role
-      if (currentSession?.user) {
-        try {
-          const { data: profileData, error } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', currentSession.user.id)
-            .single();
-          
-          if (error) {
-            console.error("Error fetching user role:", error);
-            setUser({
-              ...currentSession.user,
-              role: 'production'
-            });
-          } else {
-            // Set the user with role information
-            setUser({
-              ...currentSession.user,
-              role: profileData?.role || 'production'
-            });
-          }
-        } catch (err) {
-          console.error("Error initializing auth:", err);
-          setUser({
-            ...currentSession.user,
-            role: 'production'
-          });
-        }
-      } else {
-        setUser(null);
-      }
-      
-      setLoading(false);
-    };
-    
-    initializeAuth();
-
     return () => {
+      console.log("Cleaning up auth subscription");
       subscription.unsubscribe();
     };
   }, [navigate]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    navigate("/auth", { replace: true });
   };
 
   return (
