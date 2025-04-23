@@ -134,7 +134,7 @@ const JobCardDetail = () => {
   };
 
   const getStatusBadge = (status: string) => (
-    <Badge className={`${getStatusColor(status)}`}>
+    <Badge variant="outline" className={`${getStatusColor(status)}`}>
       {status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
     </Badge>
   );
@@ -358,6 +358,7 @@ const JobCardDetail = () => {
                     </h3>
                     {jobCard.cutting_jobs?.length > 0 && (
                       <Badge 
+                        variant="outline"
                         className={getStatusColor(
                           jobCard.cutting_jobs.every(job => job.status === 'completed') 
                             ? 'completed' 
@@ -405,6 +406,7 @@ const JobCardDetail = () => {
                     </h3>
                     {jobCard.printing_jobs?.length > 0 && (
                       <Badge 
+                        variant="outline"
                         className={getStatusColor(
                           jobCard.printing_jobs.every(job => job.status === 'completed') 
                             ? 'completed' 
@@ -452,6 +454,7 @@ const JobCardDetail = () => {
                     </h3>
                     {jobCard.stitching_jobs?.length > 0 && (
                       <Badge 
+                        variant="outline"
                         className={getStatusColor(
                           jobCard.stitching_jobs.every(job => job.status === 'completed') 
                             ? 'completed' 

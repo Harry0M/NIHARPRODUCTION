@@ -8,13 +8,19 @@ import { useAuth } from "@/context/AuthContext";
 
 const AppRoutes = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const element = useRoutes(routes);
 
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Session check error:", error);
+          throw error;
+        }
+        
         console.log("Session check:", data.session ? "Authenticated" : "Not authenticated");
         
         // Add debugging info
@@ -22,13 +28,25 @@ const AppRoutes = () => {
           console.log("User ID:", data.session.user.id);
           
           // Check for admin status
-          const { data: profileData } = await supabase
+          const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('role')
             .eq('id', data.session.user.id)
-            .single();
+            .maybeSingle();  // Use maybeSingle instead of single
           
-          console.log("User role:", profileData?.role || "Not set");
+          if (profileError) {
+            console.error("Error fetching profile:", profileError);
+          } else {
+            console.log("User role:", profileData?.role || "Not set");
+            
+            // Update user context with role information
+            if (data.session?.user) {
+              setUser({
+                ...data.session.user,
+                role: profileData?.role || 'production'
+              });
+            }
+          }
         }
       } catch (error) {
         console.error("Error checking session:", error);
@@ -37,8 +55,13 @@ const AppRoutes = () => {
       }
     };
     
-    checkSession();
-  }, []);
+    // Add a small delay to ensure Supabase client is fully initialized
+    const timer = setTimeout(() => {
+      checkSession();
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [setUser]);
 
   if (isLoading) {
     return (

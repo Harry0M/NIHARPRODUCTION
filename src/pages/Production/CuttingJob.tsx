@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { 
@@ -98,6 +99,7 @@ const CuttingJob = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
+        // Fetch job card data
         const { data: jobCardData, error: jobCardError } = await supabase
           .from("job_cards")
           .select(`
@@ -125,6 +127,7 @@ const CuttingJob = () => {
         
         setJobCard(formattedJobCard);
         
+        // Fetch components data
         const { data: componentsData, error: componentsError } = await supabase
           .from("components")
           .select("id, type, size, color, gsm")
@@ -146,11 +149,12 @@ const CuttingJob = () => {
         
         setComponentData(initialComponentData);
         
+        // Check for existing cutting job
         const { data: existingJobData, error: existingJobError } = await supabase
           .from("cutting_jobs")
           .select("*")
           .eq("job_card_id", id)
-          .maybeSingle();
+          .maybeSingle();  // Use maybeSingle() instead of single() to fix the error
           
         if (existingJobError) throw existingJobError;
         
@@ -399,7 +403,11 @@ const CuttingJob = () => {
         description: `The cutting job for ${jobCard.job_name} has been ${existingJob ? "updated" : "created"} successfully`
       });
       
-      navigate(`/production/job-cards/${id}`);
+      // Use navigate in a more reliable way with a setTimeout
+      setTimeout(() => {
+        navigate(`/production/job-cards/${id}`);
+      }, 100);
+      
     } catch (error: any) {
       console.error("Form submission error:", error);
       toast({
@@ -410,6 +418,12 @@ const CuttingJob = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Ensure navigation works
+  const handleGoBack = () => {
+    // Use window.location for more reliable navigation when other methods fail
+    window.location.href = `/production/job-cards/${id}`;
   };
 
   if (loading) {
@@ -439,7 +453,7 @@ const CuttingJob = () => {
           variant="ghost" 
           size="sm" 
           className="gap-1"
-          onClick={() => navigate(`/production/job-cards/${id}`)}
+          onClick={handleGoBack}
           type="button"
         >
           <ArrowLeft size={16} />
@@ -659,7 +673,7 @@ const CuttingJob = () => {
             <Button 
               type="button" 
               variant="outline"
-              onClick={() => navigate(`/production/job-cards/${id}`)}
+              onClick={handleGoBack}
             >
               Cancel
             </Button>

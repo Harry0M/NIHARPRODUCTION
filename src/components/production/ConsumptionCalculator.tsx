@@ -40,6 +40,12 @@ export const ConsumptionCalculator = ({
     }
   }, [length, width, quantity, onConsumptionCalculated]);
 
+  const handleRollWidthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setLocalRollWidth(value);
+    // This is just for local calculation here, not connected to the main form
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -61,7 +67,7 @@ export const ConsumptionCalculator = ({
               min="0"
               step="0.01"
               value={localRollWidth}
-              onChange={(e) => setLocalRollWidth(e.target.value)}
+              onChange={handleRollWidthChange}
               placeholder="Enter roll width"
             />
             <p className="text-xs text-muted-foreground">

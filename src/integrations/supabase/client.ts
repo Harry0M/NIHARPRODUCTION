@@ -27,6 +27,19 @@ export const supabase = createClient<Database>(
         'X-Client-Info': 'lovable-app',
       },
     },
+    realtime: {
+      params: {
+        eventsPerSecond: 10,
+      },
+    },
+    // Add better timeout and retry configuration
+    fetch: (url, options) => {
+      return fetch(url, {
+        ...options,
+        // Increase timeout for slow connections
+        signal: AbortSignal.timeout(30000), // 30 seconds
+      });
+    },
   }
 );
 
@@ -38,3 +51,18 @@ supabase.auth.onAuthStateChange((event, session) => {
     console.log('User signed out');
   }
 });
+
+// Helper function to check for connectivity issues
+export const checkSupabaseConnection = async () => {
+  try {
+    const { data, error } = await supabase.from('profiles').select('count', { count: 'exact' }).limit(1);
+    if (error) {
+      console.error('Supabase connection error:', error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('Connectivity error:', err);
+    return false;
+  }
+};
