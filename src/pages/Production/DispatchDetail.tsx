@@ -148,10 +148,13 @@ const DispatchDetail = () => {
         if (insertError) throw insertError;
       }
 
-      // Update order status to 'ready_for_dispatch' instead of 'dispatched'
+      // Use 'ready_for_dispatch' as the order status
+      const orderStatus: Database['public']['Enums']['order_status'] = "ready_for_dispatch";
+      
+      // Update order status
       const { error: statusError } = await supabase
         .from("orders")
-        .update({ status: "ready_for_dispatch" as Database['public']['Enums']['order_status'] })
+        .update({ status: orderStatus })
         .eq("id", orderId);
       if (statusError) throw statusError;
 
