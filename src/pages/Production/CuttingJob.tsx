@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { 
@@ -234,6 +235,7 @@ const CuttingJob = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    console.log(`Updating ${name} with value: ${value}`);
     setCuttingData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -281,7 +283,13 @@ const CuttingJob = () => {
     
     if (!jobCard || !id) return;
     
-    if (!cuttingData.roll_width) {
+    console.log("Form submission data:", cuttingData);
+    console.log("Roll width value:", cuttingData.roll_width);
+    
+    // Convert to ensure we have a string with content
+    const rollWidthValue = String(cuttingData.roll_width).trim();
+    
+    if (!rollWidthValue) {
       toast({
         title: "Validation Error",
         description: "Roll width is required",
@@ -300,7 +308,7 @@ const CuttingJob = () => {
           .from("cutting_jobs")
           .insert({
             job_card_id: id,
-            roll_width: parseFloat(cuttingData.roll_width),
+            roll_width: parseFloat(rollWidthValue),
             consumption_meters: cuttingData.consumption_meters ? parseFloat(cuttingData.consumption_meters) : null,
             worker_name: cuttingData.worker_name || null,
             is_internal: cuttingData.is_internal,
@@ -323,7 +331,7 @@ const CuttingJob = () => {
         const { error } = await supabase
           .from("cutting_jobs")
           .update({
-            roll_width: parseFloat(cuttingData.roll_width),
+            roll_width: parseFloat(rollWidthValue),
             consumption_meters: cuttingData.consumption_meters ? parseFloat(cuttingData.consumption_meters) : null,
             worker_name: cuttingData.worker_name || null,
             is_internal: cuttingData.is_internal,
@@ -422,6 +430,7 @@ const CuttingJob = () => {
           size="sm" 
           className="gap-1"
           onClick={() => navigate(`/production/job-cards/${id}`)}
+          type="button"
         >
           <ArrowLeft size={16} />
           Back
@@ -473,6 +482,21 @@ const CuttingJob = () => {
           <CardContent>
             <form id="cutting-form" onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="roll_width">Roll Width (Required)</Label>
+                  <Input 
+                    id="roll_width" 
+                    name="roll_width"
+                    type="number"
+                    step="0.01"
+                    placeholder="Roll width in inches"
+                    value={cuttingData.roll_width}
+                    onChange={handleInputChange}
+                    required
+                    className="border-primary"
+                  />
+                </div>
+                
                 <ConsumptionCalculator
                   length={jobCard.order.bag_length}
                   width={jobCard.order.bag_width}
