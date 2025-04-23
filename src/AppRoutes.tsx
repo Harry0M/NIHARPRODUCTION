@@ -5,6 +5,8 @@ import { Loader2 } from "lucide-react";
 import routes from "./routes";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "@/hooks/use-toast";
+import { ExtendedUser } from "@/utils/roleAccess";
 
 const AppRoutes = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -36,6 +38,8 @@ const AppRoutes = () => {
           
           if (profileError) {
             console.error("Error fetching profile:", profileError);
+            // Even with an error, continue but log it
+            setIsLoading(false);
           } else {
             console.log("User role:", profileData?.role || "Not set");
             
@@ -44,14 +48,18 @@ const AppRoutes = () => {
               setUser({
                 ...data.session.user,
                 role: profileData?.role || 'production'
-              });
+              } as ExtendedUser);
             }
+            setIsLoading(false);
           }
+        } else {
+          // No session - finish loading
+          setIsLoading(false);
         }
       } catch (error) {
         console.error("Error checking session:", error);
-      } finally {
-        setIsLoading(false);
+        // Even on error, stop showing loading indicator after a delay
+        setTimeout(() => setIsLoading(false), 500);
       }
     };
     

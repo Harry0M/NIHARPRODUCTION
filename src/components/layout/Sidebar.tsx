@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { 
@@ -38,7 +37,9 @@ const getNavItems = (userRole: UserRole) => {
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const { signOut, user } = useAuth();
-  const navItems = getNavItems(user?.role || 'production');
+  // Fix: Ensure a default role and properly cast role to UserRole to prevent type errors
+  const defaultRole: UserRole = 'production';
+  const navItems = getNavItems((user?.role as UserRole) || defaultRole);
 
   return (
     <div

@@ -16,5 +16,7 @@ export const ROLE_PERMISSIONS = {
 
 export const hasPermission = (role: UserRole, feature: string): boolean => {
   if (role === 'admin') return true;
+  // Fix the type issue by safely casting the feature to a compatible type
+  // when checking if it exists in the ROLE_PERMISSIONS array
   return ROLE_PERMISSIONS[role]?.includes(feature as any) ?? false;
 };
