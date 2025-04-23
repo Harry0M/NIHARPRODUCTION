@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { 
@@ -17,22 +16,28 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { hasPermission } from "@/utils/roleAccess";
 
-const navItems = [
-  { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-  { name: "Orders", path: "/orders", icon: Package },
-  { name: "Production", path: "/production", icon: Factory },
-  { name: "Job Cards", path: "/production/job-cards", icon: FileText },
-  { name: "Vendors", path: "/vendors", icon: Users },
-  { name: "Suppliers", path: "/suppliers", icon: ShoppingCart },
-  { name: "Dispatch", path: "/dispatch", icon: Truck },
-  { name: "Inventory", path: "/inventory", icon: Database },
-  { name: "Settings", path: "/settings", icon: Settings },
-];
+const getNavItems = (userRole: string) => {
+  const allNavItems = [
+    { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+    { name: "Orders", path: "/orders", icon: Package, feature: "orders" },
+    { name: "Production", path: "/production", icon: Factory, feature: "production" },
+    { name: "Job Cards", path: "/production/job-cards", icon: FileText, feature: "production" },
+    { name: "Vendors", path: "/vendors", icon: Users, feature: "vendors" },
+    { name: "Suppliers", path: "/suppliers", icon: ShoppingCart, feature: "suppliers" },
+    { name: "Dispatch", path: "/dispatch", icon: Truck, feature: "orders" },
+    { name: "Inventory", path: "/inventory", icon: Database, feature: "inventory" },
+    { name: "Settings", path: "/settings", icon: Settings, feature: "settings" },
+  ];
+
+  return allNavItems.filter(item => !item.feature || hasPermission(userRole, item.feature));
+};
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
+  const navItems = getNavItems(user?.role || 'production');
 
   return (
     <div

@@ -1,34 +1,49 @@
 
 import React, { createContext, useState, useEffect, useContext, ReactNode } from "react";
-import { Session, User } from "@supabase/supabase-js";
+import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { ExtendedUser } from "@/utils/roleAccess";
 
 interface AuthContextProps {
   session: Session | null;
-  user: User | null;
+  user: ExtendedUser | null;
   signOut: () => Promise<void>;
   loading: boolean;
-  setUser: (user: User | null) => void;
+  setUser: (user: ExtendedUser | null) => void;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<ExtendedUser | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Setup the auth subscription
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, currentSession) => {
+      async (event, currentSession) => {
         setSession(currentSession);
-        setUser(currentSession?.user ?? null);
+        
+        if (currentSession?.user) {
+          // Fetch user role from profiles
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', currentSession.user.id)
+            .single();
+          
+          setUser({
+            ...currentSession.user,
+            role: profile?.role || 'production'
+          });
+        } else {
+          setUser(null);
+        }
+        
         setLoading(false);
         
-        // Sync auth state with routes
         if (event === "SIGNED_OUT") {
           navigate("/auth");
         } else if (event === "SIGNED_IN" && window.location.pathname === "/auth") {
@@ -41,7 +56,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const initializeAuth = async () => {
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       setSession(currentSession);
-      setUser(currentSession?.user ?? null);
+      
+      if (currentSession?.user) {
+        // Fetch user role from profiles
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', currentSession.user.id)
+          .single();
+        
+        setUser({
+          ...currentSession.user,
+          role: profile?.role || 'production'
+        });
+      }
+      
       setLoading(false);
     };
     
