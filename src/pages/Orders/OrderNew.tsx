@@ -1,288 +1,301 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { toast } from "@/hooks/use-toast";
+import { ArrowLeft, Plus } from "lucide-react";
+import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+import { OrderDetailsForm } from "@/components/orders/OrderDetailsForm";
+import { ComponentForm } from "@/components/orders/ComponentForm";
+import { CustomComponent, CustomComponentSection } from "@/components/orders/CustomComponentSection";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { ComponentForm, ComponentProps } from "@/components/orders/ComponentForm";
-import { CustomComponentSection, CustomComponent } from "@/components/orders/CustomComponentSection";
-import { orderSchema } from "@/lib/validations/order";
-import { supabase } from "@/integrations/supabase/client";
-import { Plus } from "lucide-react";
-import { OrderDetailsForm } from "@/components/orders/OrderDetailsForm";
-import { z } from "zod";
+
+const componentOptions = {
+  color: ["Red", "Blue", "Green", "Black", "White", "Yellow", "Brown", "Orange", "Purple", "Gray", "Custom"],
+  gsm: ["70", "80", "90", "100", "120", "140", "160", "180", "200", "250", "300", "Custom"]
+};
 
 const OrderNew = () => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
-
-  const [formData, setFormData] = useState({
+  const [submitting, setSubmitting] = useState(false);
+  
+  // Order details state
+  const [orderDetails, setOrderDetails] = useState({
     company_name: "",
     quantity: "",
     bag_length: "",
     bag_width: "",
     rate: "",
     special_instructions: "",
+    order_date: new Date().toISOString().split('T')[0]
   });
-
-  const [part, setPart] = useState<ComponentProps>({
-    type: "part",
-    width: "",
-    length: "",
-    color: "",
-    gsm: "",
-  });
-
-  const [border, setBorder] = useState<ComponentProps>({
-    type: "border",
-    width: "",
-    length: "",
-    color: "",
-    gsm: "",
-  });
-
-  const [handle, setHandle] = useState<ComponentProps>({
-    type: "handle",
-    width: "",
-    length: "",
-    color: "",
-    gsm: "",
-  });
-
-  const [chain, setChain] = useState<ComponentProps>({
-    type: "chain",
-    width: "",
-    length: "",
-    color: "",
-    gsm: "",
-  });
-
-  const [runner, setRunner] = useState<ComponentProps>({
-    type: "runner",
-    width: "",
-    length: "",
-    color: "",
-    gsm: "",
-  });
-
+  
+  // Standard components state
+  const [components, setComponents] = useState<Record<string, any>>({});
+  
+  // Custom added components state
   const [customComponents, setCustomComponents] = useState<CustomComponent[]>([]);
-
-  const componentOptions = {
-    color: ["White", "Black", "Red", "Blue", "Green", "Yellow"],
-    gsm: ["80", "100", "120", "150", "180", "200", "250"]
-  };
-
+  
   const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setOrderDetails(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
-
-  const handlePartChange = (field: string, value: string) => {
-    setPart(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleBorderChange = (field: string, value: string) => {
-    setBorder(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleHandleChange = (field: string, value: string) => {
-    setHandle(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleChainChange = (field: string, value: string) => {
-    setChain(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleRunnerChange = (field: string, value: string) => {
-    setRunner(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleCustomComponentChange = (index: number, field: string, value: string) => {
-    const updatedComponents = [...customComponents];
-    updatedComponents[index] = { ...updatedComponents[index], [field]: value };
-    setCustomComponents(updatedComponents);
-  };
-
-  const removeCustomComponent = (index: number) => {
-    const updatedComponents = [...customComponents];
-    updatedComponents.splice(index, 1);
-    setCustomComponents(updatedComponents);
-  };
-
-  const addCustomComponent = () => {
-    setCustomComponents(prev => [...prev, { id: Date.now().toString(), type: "custom" }]);
-  };
-
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    try {
-      const parsedQuantity = parseInt(formData.quantity);
-      const parsedBagLength = parseFloat(formData.bag_length);
-      const parsedBagWidth = parseFloat(formData.bag_width);
-      const parsedRate = parseFloat(formData.rate);
-
-      if (isNaN(parsedQuantity) || isNaN(parsedBagLength) || isNaN(parsedBagWidth)) {
-        toast({
-          title: "Error",
-          description: "Quantity, Bag Length, and Bag Width must be valid numbers.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const newOrder = {
-        ...formData,
-        quantity: parsedQuantity,
-        bag_length: parsedBagLength,
-        bag_width: parsedBagWidth,
-        rate: parsedRate || null,
-        order_number: `ORD-${Date.now()}`,
-        status: "pending",
+  
+  const handleComponentChange = (type: string, field: string, value: string) => {
+    setComponents(prev => {
+      const component = prev[type] || { 
+        id: uuidv4(),
+        type 
       };
-
-      const { data, error } = await supabase
-        .from('orders')
-        .insert([newOrder])
-        .select()
-
-      if (error) {
-        console.error("Error creating order:", error);
-        toast({
-          title: "Error",
-          description: "Failed to create order. Please try again.",
-          variant: "destructive",
-        });
-      } else {
-        console.log("Order created successfully:", data);
-        toast({
-          title: "Success",
-          description: "Order created successfully!",
-        });
-        navigate('/orders');
+      return {
+        ...prev,
+        [type]: {
+          ...component,
+          [field]: value
+        }
+      };
+    });
+  };
+  
+  const handleCustomComponentChange = (index: number, field: string, value: string) => {
+    setCustomComponents(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+  
+  const addCustomComponent = () => {
+    setCustomComponents([
+      ...customComponents, 
+      { 
+        id: uuidv4(),
+        type: "custom",
+        customName: "" 
       }
-    } catch (error) {
-      console.error("Unexpected error:", error);
+    ]);
+  };
+  
+  const removeCustomComponent = (index: number) => {
+    setCustomComponents(prev => prev.filter((_, i) => i !== index));
+  };
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate required fields
+    const { company_name, quantity, bag_length, bag_width } = orderDetails;
+    if (!company_name || !quantity || !bag_length || !bag_width) {
       toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
+        title: "Missing required fields",
+        description: "Please fill in all required order details",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setSubmitting(true);
+    
+    try {
+      // Insert order into orders table
+      const { data: orderData, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          company_name,
+          quantity: parseInt(quantity),
+          bag_length: parseFloat(bag_length),
+          bag_width: parseFloat(bag_width),
+          rate: orderDetails.rate ? parseFloat(orderDetails.rate) : null,
+          order_date: orderDetails.order_date,
+          special_instructions: orderDetails.special_instructions
+        } as any)
+        .select('id, order_number')
+        .single();
+      
+      if (orderError) throw orderError;
+      
+      // Prepare component data for insertion
+      const allComponents = [
+        ...Object.values(components).filter(Boolean),
+        ...customComponents
+      ].filter(Boolean);
+      
+      if (allComponents.length > 0) {
+        const componentsToInsert = allComponents.map(comp => ({
+          order_id: orderData.id,
+          type: comp.type === 'custom' ? 'custom' : comp.type,
+          size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
+          color: comp.color || null,
+          gsm: comp.gsm || null,
+          details: comp.type === 'custom' ? comp.customName : null
+        }));
+
+        const { error: componentsError } = await supabase
+          .from("components")
+          .insert(componentsToInsert as any);
+        
+        if (componentsError) {
+          console.error("Error saving components:", componentsError);
+          toast({
+            title: "Error saving components",
+            description: componentsError.message,
+            variant: "destructive"
+          });
+        }
+      }
+      
+      toast({
+        title: "Order created successfully",
+        description: `Order number: ${orderData.order_number}`
+      });
+      
+      // Navigate to the order detail page
+      navigate(`/orders/${orderData.id}`);
+      
+    } catch (error: any) {
+      console.error("Error creating order:", error);
+      toast({
+        title: "Error creating order",
+        description: error.message,
+        variant: "destructive"
       });
     } finally {
-      setIsSubmitting(false);
+      setSubmitting(false);
     }
   };
-
+  
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">New Order</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/orders")}
+            className="gap-1"
+          >
+            <ArrowLeft size={16} />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">New Order</h1>
+            <p className="text-muted-foreground">Create a new order for production</p>
+          </div>
+        </div>
       </div>
-
-      <div className="space-y-6">
-        <OrderDetailsForm
-          formData={formData}
+      
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <OrderDetailsForm 
+          formData={orderDetails}
           handleOrderChange={handleOrderChange}
         />
-
+        
         <Card>
           <CardHeader>
-            <CardTitle>Components</CardTitle>
-            <CardDescription>Add the required components for this order</CardDescription>
+            <CardTitle>Bag Components</CardTitle>
+            <CardDescription>Specify the details for each component of the bag</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <ComponentForm
-              component={part}
-              index={0}
-              title="Part"
-              componentOptions={componentOptions}
-              onChange={(field, value) => handlePartChange(field, value)}
-            />
-
-            <Separator />
-
-            <ComponentForm
-              component={border}
-              index={0}
-              title="Border"
-              componentOptions={componentOptions}
-              onChange={(field, value) => handleBorderChange(field, value)}
-            />
-
-            <Separator />
-
-            <ComponentForm
-              component={handle}
-              index={0}
-              title="Handle"
-              componentOptions={componentOptions}
-              onChange={(field, value) => handleHandleChange(field, value)}
-            />
-
-            <Separator />
-
-            <ComponentForm
-              component={chain}
-              index={0}
-              title="Chain"
-              componentOptions={componentOptions}
-              onChange={(field, value) => handleChainChange(field, value)}
-            />
-
-            <Separator />
-
-            <ComponentForm
-              component={runner}
-              index={0}
-              title="Runner"
-              componentOptions={componentOptions}
-              onChange={(field, value) => handleRunnerChange(field, value)}
-            />
-
-            <Separator />
-
-            <div className="space-y-4">
+          <CardContent>
+            <div className="grid grid-cols-1 gap-6">
+              <h2 className="text-lg font-medium">Standard Components</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <ComponentForm
+                  title="Part"
+                  component={components.part || { type: "part", width: "", length: "", color: "", gsm: "" }}
+                  index={0}
+                  componentOptions={componentOptions}
+                  handleChange={() => {}}
+                  onChange={(field, value) => handleComponentChange("part", field, value)}
+                />
+                
+                <ComponentForm
+                  title="Border"
+                  component={components.border || { type: "border", width: "", length: "", color: "", gsm: "" }}
+                  index={1}
+                  componentOptions={componentOptions}
+                  handleChange={() => {}}
+                  onChange={(field, value) => handleComponentChange("border", field, value)}
+                />
+                
+                <ComponentForm
+                  title="Handle"
+                  component={components.handle || { type: "handle", width: "", length: "", color: "", gsm: "" }}
+                  index={2}
+                  componentOptions={componentOptions}
+                  handleChange={() => {}}
+                  onChange={(field, value) => handleComponentChange("handle", field, value)}
+                />
+                
+                <ComponentForm
+                  title="Chain"
+                  component={components.chain || { type: "chain", width: "", length: "", color: "", gsm: "" }}
+                  index={3}
+                  componentOptions={componentOptions}
+                  handleChange={() => {}}
+                  onChange={(field, value) => handleComponentChange("chain", field, value)}
+                />
+                
+                <ComponentForm
+                  title="Runner"
+                  component={components.runner || { type: "runner", width: "", length: "", color: "", gsm: "" }}
+                  index={4}
+                  componentOptions={componentOptions}
+                  handleChange={() => {}}
+                  onChange={(field, value) => handleComponentChange("runner", field, value)}
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-4 mt-6">
               <div className="flex items-center justify-between">
-                <h3 className="font-medium">Custom Components</h3>
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <h2 className="text-lg font-medium">Custom Components</h2>
+                <Button
+                  type="button"
+                  variant="outline"
                   size="sm"
+                  className="flex items-center gap-1"
                   onClick={addCustomComponent}
                 >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Component
+                  <Plus size={16} />
+                  Add Custom Component
                 </Button>
               </div>
+            
               <CustomComponentSection
                 components={customComponents}
-                componentOptions={componentOptions}
                 onChange={handleCustomComponentChange}
                 onRemove={removeCustomComponent}
+                componentOptions={componentOptions}
               />
             </div>
           </CardContent>
+          <CardFooter>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate("/orders")}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? "Creating..." : "Create Order"}
+              </Button>
+            </div>
+          </CardFooter>
         </Card>
-
-        <div className="flex justify-end gap-4">
-          <Button variant="outline" onClick={() => navigate('/orders')}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? "Creating..." : "Create Order"}
-          </Button>
-        </div>
-      </div>
+      </form>
     </div>
   );
 };
