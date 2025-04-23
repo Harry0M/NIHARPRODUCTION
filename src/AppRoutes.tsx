@@ -8,7 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 
 const AppRoutes = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const { user, updateUser } = useAuth();
+  const { user, setUser } = useAuth();
   const element = useRoutes(routes);
 
   useEffect(() => {
@@ -40,8 +40,8 @@ const AppRoutes = () => {
             console.log("User role:", profileData?.role || "Not set");
             
             // Update user context with role information
-            if (data.session?.user && updateUser) {
-              updateUser({
+            if (data.session?.user && setUser) {
+              setUser({
                 ...data.session.user,
                 role: profileData?.role || 'production'
               });
@@ -61,7 +61,7 @@ const AppRoutes = () => {
     }, 100);
     
     return () => clearTimeout(timer);
-  }, [updateUser]);
+  }, [setUser]);
 
   if (isLoading) {
     return (

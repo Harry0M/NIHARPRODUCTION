@@ -2,10 +2,6 @@
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
-  Card,
-  CardContent
-} from "@/components/ui/card";
 
 interface ConsumptionCalculatorProps {
   length: number;
@@ -25,10 +21,17 @@ export const ConsumptionCalculator = ({
   // Calculate consumption in meters based on formula: [(length*width)/(6339.39)]*quantity
   useEffect(() => {
     if (length && width && quantity) {
-      const calculatedConsumption = ((length * width) / 6339.39) * quantity;
-      const roundedConsumption = Math.round(calculatedConsumption * 100) / 100;
-      setConsumption(roundedConsumption);
-      onConsumptionCalculated(roundedConsumption);
+      try {
+        const calculatedConsumption = ((length * width) / 6339.39) * quantity;
+        const roundedConsumption = Math.round(calculatedConsumption * 100) / 100;
+        console.log("Calculated consumption:", roundedConsumption);
+        setConsumption(roundedConsumption);
+        onConsumptionCalculated(roundedConsumption);
+      } catch (error) {
+        console.error("Error calculating consumption:", error);
+        setConsumption(0);
+        onConsumptionCalculated(0);
+      }
     } else {
       setConsumption(0);
       onConsumptionCalculated(0);
@@ -41,7 +44,7 @@ export const ConsumptionCalculator = ({
       <Input 
         id="consumption" 
         type="text"
-        value={consumption || ''}
+        value={consumption ? consumption.toString() : ''}
         readOnly
         className="bg-gray-50"
       />
