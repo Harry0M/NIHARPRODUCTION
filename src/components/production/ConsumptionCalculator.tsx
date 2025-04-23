@@ -4,12 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { 
   Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
+  CardContent
 } from "@/components/ui/card";
-import { Calculator } from "lucide-react";
 
 interface ConsumptionCalculatorProps {
   length: number;
@@ -25,7 +21,6 @@ export const ConsumptionCalculator = ({
   onConsumptionCalculated
 }: ConsumptionCalculatorProps) => {
   const [consumption, setConsumption] = useState<number>(0);
-  const [localRollWidth, setLocalRollWidth] = useState<string>('');
 
   // Calculate consumption in meters based on formula: [(length*width)/(6339.39)]*quantity
   useEffect(() => {
@@ -40,55 +35,19 @@ export const ConsumptionCalculator = ({
     }
   }, [length, width, quantity, onConsumptionCalculated]);
 
-  const handleRollWidthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setLocalRollWidth(value);
-    // This is just for local calculation here, not connected to the main form
-  };
-
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2">
-          <Calculator className="h-5 w-5" />
-          Material Consumption
-        </CardTitle>
-        <CardDescription>
-          Calculate material consumption based on bag dimensions and quantity
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="local_roll_width">Roll Width (inches)</Label>
-            <Input 
-              id="local_roll_width" 
-              type="number"
-              min="0"
-              step="0.01"
-              value={localRollWidth}
-              onChange={handleRollWidthChange}
-              placeholder="Enter roll width"
-            />
-            <p className="text-xs text-muted-foreground">
-              This is for calculation purposes only. Enter the required Roll Width in the main form.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="consumption">Consumption (meters)</Label>
-            <Input 
-              id="consumption" 
-              type="number"
-              value={consumption || ''}
-              readOnly
-              className="bg-gray-50"
-            />
-            <p className="text-xs text-muted-foreground">
-              Calculated using formula: [(length×width)÷6339.39]×quantity
-            </p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="space-y-2">
+      <Label htmlFor="consumption">Consumption (meters)</Label>
+      <Input 
+        id="consumption" 
+        type="text"
+        value={consumption || ''}
+        readOnly
+        className="bg-gray-50"
+      />
+      <p className="text-xs text-muted-foreground">
+        Calculated using formula: [(length×width)÷6339.39]×quantity
+      </p>
+    </div>
   );
 };

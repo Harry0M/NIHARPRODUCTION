@@ -8,7 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 
 const AppRoutes = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const { user, setUser } = useAuth();
+  const { user, updateUser } = useAuth();
   const element = useRoutes(routes);
 
   useEffect(() => {
@@ -27,12 +27,12 @@ const AppRoutes = () => {
         if (data.session) {
           console.log("User ID:", data.session.user.id);
           
-          // Check for admin status
+          // Check for admin status using maybeSingle to handle empty results safely
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('role')
             .eq('id', data.session.user.id)
-            .maybeSingle();  // Use maybeSingle instead of single
+            .maybeSingle();
           
           if (profileError) {
             console.error("Error fetching profile:", profileError);
@@ -40,8 +40,8 @@ const AppRoutes = () => {
             console.log("User role:", profileData?.role || "Not set");
             
             // Update user context with role information
-            if (data.session?.user) {
-              setUser({
+            if (data.session?.user && updateUser) {
+              updateUser({
                 ...data.session.user,
                 role: profileData?.role || 'production'
               });
@@ -61,7 +61,7 @@ const AppRoutes = () => {
     }, 100);
     
     return () => clearTimeout(timer);
-  }, [setUser]);
+  }, [updateUser]);
 
   if (isLoading) {
     return (

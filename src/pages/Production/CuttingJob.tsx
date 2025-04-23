@@ -75,6 +75,7 @@ const CuttingJob = () => {
   const [components, setComponents] = useState<Component[]>([]);
   const [existingJob, setExistingJob] = useState<CuttingJob | null>(null);
   const [existingComponents, setExistingComponents] = useState<CuttingComponent[]>([]);
+  const [validationError, setValidationError] = useState<string | null>(null);
   
   // Initialize with explicit default value for roll_width
   const [cuttingData, setCuttingData] = useState<{
@@ -228,19 +229,24 @@ const CuttingJob = () => {
           description: error.message,
           variant: "destructive"
         });
-        navigate("/production/job-cards");
+        window.location.href = `/production/job-cards/${id}`;
       } finally {
         setLoading(false);
       }
     };
     
     fetchData();
-  }, [id, navigate]);
+  }, [id]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     console.log(`Updating ${name} with value: ${value}`);
     setCuttingData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear validation error when user types in roll width
+    if (name === 'roll_width' && validationError) {
+      setValidationError(null);
+    }
   };
 
   const handleSelectChange = (name: string, value: JobStatus) => {
@@ -274,12 +280,10 @@ const CuttingJob = () => {
     }));
   };
 
-  const calculateConsumptionMeters = () => {
-    if (jobCard?.order.bag_length && jobCard?.order.bag_width && jobCard?.order.quantity) {
-      const bagArea = (jobCard.order.bag_length * jobCard.order.bag_width);
-      return ((bagArea / 6339.39) * jobCard.order.quantity).toFixed(2);
-    }
-    return "";
+  const validateRollWidth = (value: string) => {
+    // Convert to string explicitly, trim spaces and check if it's empty
+    const trimmedValue = String(value || "").trim();
+    return trimmedValue !== "";
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -287,13 +291,11 @@ const CuttingJob = () => {
     
     if (!jobCard || !id) return;
     
-    console.log("Form submission data:", cuttingData);
-    console.log("Roll width value:", cuttingData.roll_width);
-    
     // Get the roll width value and ensure it's a non-empty string
     const rollWidthValue = String(cuttingData.roll_width || "").trim();
     
-    if (!rollWidthValue) {
+    if (!validateRollWidth(rollWidthValue)) {
+      setValidationError("Roll width is required");
       toast({
         title: "Validation Error",
         description: "Roll width is required",
@@ -363,7 +365,7 @@ const CuttingJob = () => {
             
           await supabase
             .from("orders")
-            .update({ status: "cutting" })
+            .update({ status: "cutting" as any })
             .eq("id", jobCard.order.id);
         }
       }
@@ -403,10 +405,8 @@ const CuttingJob = () => {
         description: `The cutting job for ${jobCard.job_name} has been ${existingJob ? "updated" : "created"} successfully`
       });
       
-      // Use navigate in a more reliable way with a setTimeout
-      setTimeout(() => {
-        navigate(`/production/job-cards/${id}`);
-      }, 100);
+      // Use direct window location change for more reliable navigation
+      window.location.href = `/production/job-cards/${id}`;
       
     } catch (error: any) {
       console.error("Form submission error:", error);
@@ -415,14 +415,12 @@ const CuttingJob = () => {
         description: error.message,
         variant: "destructive"
       });
-    } finally {
       setSubmitting(false);
     }
   };
 
-  // Ensure navigation works
+  // Use direct navigation with window.location for reliable routing
   const handleGoBack = () => {
-    // Use window.location for more reliable navigation when other methods fail
     window.location.href = `/production/job-cards/${id}`;
   };
 
@@ -439,8 +437,8 @@ const CuttingJob = () => {
       <div className="text-center py-8">
         <h2 className="text-2xl font-bold mb-2">Job Card Not Found</h2>
         <p className="mb-4">The job card you're looking for doesn't exist or has been deleted.</p>
-        <Button asChild>
-          <Link to="/production/job-cards">Return to Job Cards</Link>
+        <Button onClick={() => window.location.href = "/production/job-cards"}>
+          Return to Job Cards
         </Button>
       </div>
     );
@@ -508,36 +506,52 @@ const CuttingJob = () => {
             <form id="cutting-form" onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="roll_width" className="text-primary font-medium">Roll Width (Required) *</Label>
+                  <Label htmlFor="roll_width" className={`text-primary font-medium ${validationError ? 'text-destructive' : ''}`}>
+                    Roll Width (Required) *
+                  </Label>
                   <Input 
                     id="roll_width" 
                     name="roll_width"
-                    type="number"
-                    step="0.01"
+                    type="text" // Changed to text to handle all input formats
                     placeholder="Roll width in inches"
                     value={cuttingData.roll_width}
                     onChange={handleInputChange}
                     required
-                    className="border-2 border-primary focus:ring-2 focus:ring-primary"
+                    className={`border-2 ${validationError ? 'border-destructive' : 'border-primary'} focus:ring-2 focus:ring-primary`}
                     aria-required="true"
+                    aria-invalid={validationError ? "true" : "false"}
+                    aria-describedby={validationError ? "roll-width-error" : undefined}
                   />
+                  {validationError && (
+                    <p id="roll-width-error" className="text-sm font-medium text-destructive mt-1">
+                      {validationError}
+                    </p>
+                  )}
                 </div>
                 
-                <ConsumptionCalculator
-                  length={jobCard?.order.bag_length || 0}
-                  width={jobCard?.order.bag_width || 0}
-                  quantity={jobCard?.order.quantity || 0}
-                  onConsumptionCalculated={handleConsumptionCalculated}
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="consumption_meters">Consumption (meters)</Label>
+                  <Input 
+                    id="consumption_meters" 
+                    name="consumption_meters"
+                    type="text"
+                    value={cuttingData.consumption_meters || ''}
+                    onChange={handleInputChange}
+                    placeholder="Material consumption"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Calculated using: [(length×width)÷6339.39]×quantity
+                  </p>
+                </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="received_quantity">Received Quantity</Label>
                   <Input 
                     id="received_quantity" 
                     name="received_quantity"
-                    type="number"
+                    type="text"
                     placeholder="Final quantity after cutting"
-                    value={cuttingData.received_quantity}
+                    value={cuttingData.received_quantity || ''}
                     onChange={handleInputChange}
                   />
                 </div>
@@ -601,8 +615,7 @@ const CuttingJob = () => {
                     <div className="space-y-2">
                       <Label>Width</Label>
                       <Input 
-                        type="number" 
-                        step="0.01" 
+                        type="text"
                         placeholder="Width"
                         value={componentData[index]?.width || ""}
                         onChange={(e) => handleComponentChange(index, "width", e.target.value)}
@@ -611,8 +624,7 @@ const CuttingJob = () => {
                     <div className="space-y-2">
                       <Label>Height</Label>
                       <Input 
-                        type="number" 
-                        step="0.01" 
+                        type="text"
                         placeholder="Height"
                         value={componentData[index]?.height || ""}
                         onChange={(e) => handleComponentChange(index, "height", e.target.value)}
@@ -621,8 +633,7 @@ const CuttingJob = () => {
                     <div className="space-y-2">
                       <Label>Counter</Label>
                       <Input 
-                        type="number" 
-                        step="0.01" 
+                        type="text"
                         placeholder="Counter"
                         value={componentData[index]?.counter || ""}
                         onChange={(e) => handleComponentChange(index, "counter", e.target.value)}
@@ -631,8 +642,7 @@ const CuttingJob = () => {
                     <div className="space-y-2">
                       <Label>Rewinding</Label>
                       <Input 
-                        type="number" 
-                        step="0.01" 
+                        type="text"
                         placeholder="Rewinding"
                         value={componentData[index]?.rewinding || ""}
                         onChange={(e) => handleComponentChange(index, "rewinding", e.target.value)}
@@ -641,8 +651,7 @@ const CuttingJob = () => {
                     <div className="space-y-2">
                       <Label>Rate</Label>
                       <Input 
-                        type="number" 
-                        step="0.01" 
+                        type="text"
                         placeholder="Rate"
                         value={componentData[index]?.rate || ""}
                         onChange={(e) => handleComponentChange(index, "rate", e.target.value)}

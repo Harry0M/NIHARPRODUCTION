@@ -32,14 +32,6 @@ export const supabase = createClient<Database>(
         eventsPerSecond: 10,
       },
     },
-    // Add better timeout and retry configuration
-    fetch: (url, options) => {
-      return fetch(url, {
-        ...options,
-        // Increase timeout for slow connections
-        signal: AbortSignal.timeout(30000), // 30 seconds
-      });
-    },
   }
 );
 
