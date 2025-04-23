@@ -19,10 +19,18 @@ const Header = () => {
   
   // Check if user has permissions to create resources
   const canCreateResources = ['admin', 'manager'].includes(userRole);
+  
+  // Check if user has specialized role for specific production stages
+  const isCuttingSpecialist = userRole === 'cutting';
+  const isPrintingSpecialist = userRole === 'printing';
+  const isStitchingSpecialist = userRole === 'stitching';
 
   const getActionButton = () => {
     // Only show action buttons if user has appropriate permissions
-    if (!canCreateResources) return null;
+    if (!canCreateResources && 
+        !(location.pathname === '/production' && (isCuttingSpecialist || isPrintingSpecialist || isStitchingSpecialist))) {
+      return null;
+    }
     
     if (location.pathname === '/orders') {
       return (
@@ -44,6 +52,42 @@ const Header = () => {
           </Button>
         </Link>
       );
+    }
+    
+    // Production specialists can quickly create jobs in their specialty
+    if (location.pathname === '/production') {
+      if (isCuttingSpecialist) {
+        return (
+          <Link to="/production/cutting/new">
+            <Button size="sm" className="gap-1">
+              <Plus size={16} />
+              New Cutting Job
+            </Button>
+          </Link>
+        );
+      }
+      
+      if (isPrintingSpecialist) {
+        return (
+          <Link to="/production/printing/new">
+            <Button size="sm" className="gap-1">
+              <Plus size={16} />
+              New Printing Job
+            </Button>
+          </Link>
+        );
+      }
+      
+      if (isStitchingSpecialist) {
+        return (
+          <Link to="/production/stitching/new">
+            <Button size="sm" className="gap-1">
+              <Plus size={16} />
+              New Stitching Job
+            </Button>
+          </Link>
+        );
+      }
     }
     
     if (location.pathname === '/vendors') {

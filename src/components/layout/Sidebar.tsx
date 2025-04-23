@@ -13,17 +13,28 @@ import {
   ChevronRight,
   Factory,
   FileText,
-  ShoppingCart
+  ShoppingCart,
+  Scissors,
+  Printer,
+  Needle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 
 // Define nav items with role-based access
 const navItems = [
-  { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, roles: ['admin', 'manager', 'production', 'vendor'] },
-  { name: "Orders", path: "/orders", icon: Package, roles: ['admin', 'manager', 'production', 'vendor'] },
-  { name: "Production", path: "/production", icon: Factory, roles: ['admin', 'manager', 'production'] },
-  { name: "Job Cards", path: "/production/job-cards", icon: FileText, roles: ['admin', 'manager', 'production'] },
+  { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, roles: ['admin', 'manager', 'production', 'vendor', 'cutting', 'printing', 'stitching'] },
+  { name: "Orders", path: "/orders", icon: Package, roles: ['admin', 'manager', 'production', 'vendor', 'cutting', 'printing', 'stitching'] },
+  
+  // Production section
+  { name: "Production", path: "/production", icon: Factory, roles: ['admin', 'manager', 'production', 'cutting', 'printing', 'stitching'] },
+  { name: "Job Cards", path: "/production/job-cards", icon: FileText, roles: ['admin', 'manager', 'production', 'cutting', 'printing', 'stitching'] },
+  
+  // Stage-specific shortcuts for specialized roles
+  { name: "Cutting Jobs", path: "/production?tab=cutting", icon: Scissors, roles: ['admin', 'manager', 'production', 'cutting'] },
+  { name: "Printing Jobs", path: "/production?tab=printing", icon: Printer, roles: ['admin', 'manager', 'production', 'printing'] },
+  { name: "Stitching Jobs", path: "/production?tab=stitching", icon: Needle, roles: ['admin', 'manager', 'production', 'stitching'] },
+  
   { name: "Vendors", path: "/vendors", icon: Users, roles: ['admin', 'manager'] },
   { name: "Suppliers", path: "/suppliers", icon: ShoppingCart, roles: ['admin', 'manager'] },
   { name: "Dispatch", path: "/dispatch", icon: Truck, roles: ['admin', 'manager', 'production'] },

@@ -70,18 +70,38 @@ const routes: RouteObject[] = [
             path: "production/job-cards/:id",
             element: <JobCardDetail />
           },
+          
+          // Routes for production roles including specialized roles
           {
-            path: "production/cutting/:id",
-            element: <CuttingJob />
+            element: <RoleBasedRoute allowedRoles={['admin', 'manager', 'production', 'cutting']} />,
+            children: [
+              {
+                path: "production/cutting/:id",
+                element: <CuttingJob />
+              }
+            ]
           },
+          
           {
-            path: "production/printing/:id",
-            element: <PrintingJob />
+            element: <RoleBasedRoute allowedRoles={['admin', 'manager', 'production', 'printing']} />,
+            children: [
+              {
+                path: "production/printing/:id",
+                element: <PrintingJob />
+              }
+            ]
           },
+          
           {
-            path: "production/stitching/:id",
-            element: <StitchingJob />
+            element: <RoleBasedRoute allowedRoles={['admin', 'manager', 'production', 'stitching']} />,
+            children: [
+              {
+                path: "production/stitching/:id",
+                element: <StitchingJob />
+              }
+            ]
           },
+          
           {
             path: "dispatch",
             element: <Dispatch />

@@ -25,8 +25,18 @@ const RoleBasedRoute = ({
     );
   }
 
-  // Check if user has the required role
-  const hasRequiredRole = user && allowedRoles.includes(user.role || 'production');
+  // Get user role, default to 'production' if not set
+  const userRole = user?.role || 'production';
+
+  // Define production sub-roles that should have equivalent permissions to 'production' role
+  const productionEquivalentRoles = ['cutting', 'printing', 'stitching'];
+
+  // Check if user has the required role directly or through equivalent roles
+  const hasRequiredRole = user && (
+    allowedRoles.includes(userRole) || 
+    // If 'production' is allowed and user has a production sub-role, grant access
+    (allowedRoles.includes('production') && productionEquivalentRoles.includes(userRole))
+  );
 
   // Redirect if user doesn't have the required role
   if (!hasRequiredRole) {
