@@ -1,5 +1,4 @@
 
-// Imports
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +8,7 @@ import { StageStatus } from "@/components/production/StageStatus";
 import { DispatchForm } from "@/components/production/DispatchForm";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, ClipboardList, Truck } from "lucide-react";
+import type { Database } from "@/integrations/supabase/types";
 
 export interface StageSummary {
   name: string;
@@ -148,14 +148,14 @@ const DispatchDetail = () => {
         if (insertError) throw insertError;
       }
 
-      // Update order status to 'dispatched'
+      // Update order status to 'ready_for_dispatch' instead of 'dispatched'
       const { error: statusError } = await supabase
         .from("orders")
-        .update({ status: "dispatched" })
+        .update({ status: "ready_for_dispatch" as Database['public']['Enums']['order_status'] })
         .eq("id", orderId);
       if (statusError) throw statusError;
 
-      toast({ title: "Dispatch Complete", description: "Order has been marked as dispatched!" });
+      toast({ title: "Dispatch Complete", description: "Order has been marked as ready for dispatch!" });
       fetchOrderData(orderId); // Refresh data
     } catch (error: any) {
       toast({

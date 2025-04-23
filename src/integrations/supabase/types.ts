@@ -741,6 +741,7 @@ export type Database = {
         | "ready_for_dispatch"
         | "completed"
         | "cancelled"
+        | "dispatched"
       user_role: "admin" | "manager" | "production" | "vendor"
     }
     CompositeTypes: {
@@ -868,6 +869,7 @@ export const Constants = {
         "ready_for_dispatch",
         "completed",
         "cancelled",
+        "dispatched",
       ],
       user_role: ["admin", "manager", "production", "vendor"],
     },
