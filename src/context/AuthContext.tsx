@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useEffect, useContext, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 
 // Extend the User type to include role information
 interface ExtendedUser extends User {
-  role?: 'admin' | 'production' | 'manager' | 'vendor';
+  role?: 'admin' | 'production' | 'manager' | 'vendor' | 'cutting' | 'printing' | 'stitching';
 }
 
 interface AuthContextProps {

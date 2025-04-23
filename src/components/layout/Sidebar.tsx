@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { 
@@ -15,8 +14,7 @@ import {
   FileText,
   ShoppingCart,
   Scissors,
-  Printer,
-  Needle
+  Printer
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -33,7 +31,7 @@ const navItems = [
   // Stage-specific shortcuts for specialized roles
   { name: "Cutting Jobs", path: "/production?tab=cutting", icon: Scissors, roles: ['admin', 'manager', 'production', 'cutting'] },
   { name: "Printing Jobs", path: "/production?tab=printing", icon: Printer, roles: ['admin', 'manager', 'production', 'printing'] },
-  { name: "Stitching Jobs", path: "/production?tab=stitching", icon: Needle, roles: ['admin', 'manager', 'production', 'stitching'] },
+  { name: "Stitching Jobs", path: "/production?tab=stitching", icon: Scissors, roles: ['admin', 'manager', 'production', 'stitching'] },
   
   { name: "Vendors", path: "/vendors", icon: Users, roles: ['admin', 'manager'] },
   { name: "Suppliers", path: "/suppliers", icon: ShoppingCart, roles: ['admin', 'manager'] },
