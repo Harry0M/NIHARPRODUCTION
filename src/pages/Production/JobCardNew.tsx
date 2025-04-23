@@ -1,28 +1,14 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
-import { ArrowLeft, ClipboardList } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface Order {
   id: string;
@@ -31,49 +17,29 @@ interface Order {
   quantity: number;
   bag_length: number;
   bag_width: number;
-}
-
-interface Component {
-  id: string;
-  type: string;
-  size: string | null;
-  color: string | null;
-  gsm: string | null;
+  status: string;
 }
 
 const JobCardNew = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const orderId = searchParams.get('orderId');
-  
   const [orders, setOrders] = useState<Order[]>([]);
+  const [selectedOrderId, setSelectedOrderId] = useState<string>("");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [components, setComponents] = useState<Component[]>([]);
-  const [jobName, setJobName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [fetching, setFetching] = useState(false);
+  const [jobName, setJobName] = useState<string>("");
+  const [notes, setNotes] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchOrders = async () => {
-      setFetching(true);
       try {
         const { data, error } = await supabase
-          .from('orders')
-          .select('id, order_number, company_name, quantity, bag_length, bag_width')
-          .order('created_at', { ascending: false });
-        
+          .from("orders")
+          .select("id, order_number, company_name, quantity, bag_length, bag_width, status")
+          .order("created_at", { ascending: false });
+
         if (error) throw error;
-        
         setOrders(data || []);
-        
-        if (orderId) {
-          const selectedOrder = data?.find(order => order.id === orderId);
-          if (selectedOrder) {
-            setSelectedOrder(selectedOrder);
-            setJobName(`Job for ${selectedOrder.company_name} - Order ${selectedOrder.order_number}`);
-            fetchOrderComponents(orderId);
-          }
-        }
       } catch (error: any) {
         toast({
           title: "Error fetching orders",
@@ -81,87 +47,59 @@ const JobCardNew = () => {
           variant: "destructive",
         });
       } finally {
-        setFetching(false);
+        setLoading(false);
       }
     };
 
     fetchOrders();
-  }, [orderId]);
+  }, []);
 
-  const fetchOrderComponents = async (orderId: string) => {
-    setFetching(true);
-    try {
-      const { data, error } = await supabase
-        .from('components')
-        .select('id, type, size, color, gsm')
-        .eq('order_id', orderId);
+  useEffect(() => {
+    if (selectedOrderId) {
+      const order = orders.find((o) => o.id === selectedOrderId);
+      setSelectedOrder(order || null);
       
-      if (error) throw error;
-      
-      setComponents(data || []);
-    } catch (error: any) {
-      toast({
-        title: "Error fetching components",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setFetching(false);
-    }
-  };
-
-  const handleOrderSelect = (orderId: string) => {
-    const order = orders.find(o => o.id === orderId);
-    setSelectedOrder(order || null);
-    
-    if (order) {
-      setJobName(`Job for ${order.company_name} - Order ${order.order_number}`);
-      fetchOrderComponents(orderId);
+      if (order) {
+        setJobName(`${order.company_name} - ${order.order_number}`);
+      } else {
+        setJobName("");
+      }
     } else {
-      setComponents([]);
+      setSelectedOrder(null);
       setJobName("");
     }
-  };
+  }, [selectedOrderId, orders]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleCreateJobCard = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedOrder) {
+    if (!selectedOrderId || !jobName) {
       toast({
-        title: "Missing Information",
-        description: "Please select an order",
-        variant: "destructive"
+        title: "Missing required fields",
+        description: "Please select an order and enter a job name",
+        variant: "destructive",
       });
       return;
     }
     
-    if (!jobName) {
-      toast({
-        title: "Missing Information",
-        description: "Please provide a job name",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setLoading(true);
+    setSubmitting(true);
     
     try {
       const { data, error } = await supabase
-        .from('job_cards')
+        .from("job_cards")
         .insert({
-          order_id: selectedOrder.id,
-          job_name: jobName
-          // Note: job_number will be automatically generated by database trigger
+          order_id: selectedOrderId,
+          job_name: jobName,
+          status: "pending",
         })
         .select()
         .single();
-      
+
       if (error) throw error;
       
       toast({
-        title: "Job Card Created",
-        description: "The job card has been created successfully",
+        title: "Job Card created",
+        description: `Job ${data.job_number || 'card'} created successfully`,
       });
       
       navigate(`/production/job-cards/${data.id}`);
@@ -169,123 +107,165 @@ const JobCardNew = () => {
       toast({
         title: "Error creating job card",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
       });
-    } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="gap-1"
-          onClick={() => navigate("/production/job-cards")}
-        >
-          <ArrowLeft size={16} />
-          Back
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">New Job Card</h1>
-          <p className="text-muted-foreground">Create a new job card for production</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/production/job-cards")}
+            className="gap-1"
+          >
+            <ArrowLeft size={16} />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">New Job Card</h1>
+            <p className="text-muted-foreground">Create a new production job card</p>
+          </div>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ClipboardList size={18} />
-              Job Card Information
-            </CardTitle>
-            <CardDescription>Select an order and provide job details</CardDescription>
+            <CardTitle>Select Order</CardTitle>
+            <CardDescription>
+              Choose an order to create a job card for
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="order">Order</Label>
-              <Select
-                value={selectedOrder?.id || ""}
-                onValueChange={handleOrderSelect}
-                disabled={fetching || Boolean(orderId)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select an order" />
-                </SelectTrigger>
-                <SelectContent>
-                  {orders.map(order => (
-                    <SelectItem key={order.id} value={order.id}>
-                      {order.order_number} - {order.company_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {selectedOrder && (
-              <div className="p-4 border rounded-md space-y-4">
-                <h3 className="font-medium">Order Details</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Company:</span>
-                    <p>{selectedOrder.company_name}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Quantity:</span>
-                    <p>{selectedOrder.quantity.toLocaleString()} bags</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Size:</span>
-                    <p>{selectedOrder.bag_length} × {selectedOrder.bag_width} inches</p>
-                  </div>
-                </div>
+          <CardContent>
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="job_name">Job Name</Label>
-              <Input 
-                id="job_name" 
-                name="job_name"
-                value={jobName}
-                onChange={(e) => setJobName(e.target.value)}
-                placeholder="Enter job card name"
-                required
-              />
-            </div>
-
-            {components.length > 0 && (
-              <div className="p-4 border rounded-md space-y-4">
-                <h3 className="font-medium">Components</h3>
-                <div className="grid gap-4">
-                  {components.map((component) => (
-                    <div key={component.id} className="text-sm">
-                      <span className="font-medium capitalize">{component.type}:</span>{" "}
-                      {component.size && <span>Size: {component.size}, </span>}
-                      {component.color && <span>Color: {component.color}, </span>}
-                      {component.gsm && <span>GSM: {component.gsm}</span>}
-                    </div>
-                  ))}
+            ) : orders.length === 0 ? (
+              <div className="text-center py-8">
+                <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+                <h3 className="mt-2 text-sm font-medium">No orders found</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Create an order first to generate a job card
+                </p>
+                <Button 
+                  className="mt-4" 
+                  onClick={() => navigate("/orders/new")}
+                >
+                  Create Order
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="order">Order</Label>
+                  <Select
+                    value={selectedOrderId}
+                    onValueChange={setSelectedOrderId}
+                  >
+                    <SelectTrigger id="order">
+                      <SelectValue placeholder="Select an order" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {orders.map((order) => (
+                        <SelectItem key={order.id} value={order.id}>
+                          {order.order_number} - {order.company_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+
+                {selectedOrder && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground">
+                        Company
+                      </h3>
+                      <p className="text-lg">{selectedOrder.company_name}</p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground">
+                        Quantity
+                      </h3>
+                      <p className="text-lg">
+                        {selectedOrder.quantity.toLocaleString()} bags
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground">
+                        Bag Size
+                      </h3>
+                      <p className="text-lg">
+                        {selectedOrder.bag_length} × {selectedOrder.bag_width} inches
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
-          <CardFooter className="flex justify-end gap-3 pt-6">
-            <Button 
-              type="button" 
-              variant="outline"
-              onClick={() => navigate("/production/job-cards")}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Creating..." : "Create Job Card"}
-            </Button>
-          </CardFooter>
         </Card>
-      </form>
+
+        {selectedOrder && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Job Card Details</CardTitle>
+              <CardDescription>Enter information for this job card</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form id="job-card-form" onSubmit={handleCreateJobCard}>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="job_name">Job Name</Label>
+                    <input
+                      id="job_name"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      value={jobName}
+                      onChange={(e) => setJobName(e.target.value)}
+                      placeholder="Enter job name"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="notes">Notes (Optional)</Label>
+                    <Textarea
+                      id="notes"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="Any additional notes for this job"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate("/production/job-cards")}
+          >
+            Cancel
+          </Button>
+          <Button
+            form="job-card-form"
+            type="submit"
+            disabled={!selectedOrderId || !jobName || submitting}
+          >
+            {submitting ? "Creating..." : "Create Job Card"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };

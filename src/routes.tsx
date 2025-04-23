@@ -15,14 +15,15 @@ import JobCardNew from "./pages/Production/JobCardNew";
 import JobCardDetail from "./pages/Production/JobCardDetail";
 import Dispatch from "./pages/Production/Dispatch";
 import DispatchDetail from "./pages/Production/DispatchDetail";
+import VendorList from "./pages/VendorList";
+import VendorNew from "./pages/VendorNew";
+import SupplierList from "./pages/SupplierList";
+import SupplierNew from "./pages/SupplierNew";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-const VendorList = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Vendor List</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
-const VendorNew = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">New Vendor</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
-const SupplierList = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Supplier List</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
-const SupplierNew = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">New Supplier</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
+// Placeholder for future development
 const InventoryList = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Inventory List</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 const InventoryNew = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">New Inventory</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 const Settings = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Settings</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
