@@ -16,5 +16,5 @@ export const ROLE_PERMISSIONS = {
 
 export const hasPermission = (role: UserRole, feature: string): boolean => {
   if (role === 'admin') return true;
-  return ROLE_PERMISSIONS[role]?.includes(feature) ?? false;
+  return ROLE_PERMISSIONS[role]?.includes(feature as any) ?? false;
 };
