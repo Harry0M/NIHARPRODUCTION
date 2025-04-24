@@ -2,7 +2,7 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 interface AuthContextProps {
   session: Session | null;
@@ -23,8 +23,10 @@ export const AuthProvider = ({ children, initialUser }: AuthProviderProps) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(initialUser);
   const [loading, setLoading] = useState(!initialUser);
-  // Now useNavigate will work as the component is rendered within BrowserRouter
+  
+  // Get location and navigate without immediate execution
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     // Setup the auth subscription
@@ -34,12 +36,14 @@ export const AuthProvider = ({ children, initialUser }: AuthProviderProps) => {
         setUser(currentSession?.user ?? null);
         setLoading(false);
         
-        // Sync auth state with routes
-        if (event === "SIGNED_OUT") {
-          navigate("/auth");
-        } else if (event === "SIGNED_IN" && window.location.pathname === "/auth") {
-          navigate("/dashboard");
-        }
+        // Sync auth state with routes - Using setTimeout to avoid React state update issues
+        setTimeout(() => {
+          if (event === "SIGNED_OUT") {
+            navigate("/auth");
+          } else if (event === "SIGNED_IN" && location.pathname === "/auth") {
+            navigate("/dashboard");
+          }
+        }, 0);
       }
     );
 
@@ -56,7 +60,7 @@ export const AuthProvider = ({ children, initialUser }: AuthProviderProps) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, location.pathname]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
