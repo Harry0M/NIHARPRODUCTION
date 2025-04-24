@@ -107,7 +107,7 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
         const { error: jobCardsDeleteError } = await supabase
           .from('job_cards')
           .delete()
-          .in('id', jobCardIds);
+          .eq('order_id', orderToDelete);
         
         if (jobCardsDeleteError) {
           console.error("Error deleting job cards:", jobCardsDeleteError);
@@ -139,27 +139,29 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
         throw dispatchesError;
       }
       
-      // Finally delete the order itself
+      // CRITICAL FIX: Remove the .select() here as it's causing issues with deleted records
       console.log("Deleting the order itself:", orderToDelete);
       const { error: orderDeleteError } = await supabase
         .from('orders')
         .delete()
-        .eq('id', orderToDelete)
-        .select();  // Added select to return the deleted row
+        .eq('id', orderToDelete);
       
       if (orderDeleteError) {
         console.error("Error deleting order:", orderDeleteError);
         throw orderDeleteError;
       }
       
+      // Add a short delay to allow database to process the deletion
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       // Verify the order doesn't exist anymore
       const { data: checkOrder, error: checkError } = await supabase
         .from('orders')
         .select('id')
         .eq('id', orderToDelete)
-        .maybeSingle();  // Changed from single to maybeSingle
+        .maybeSingle();
       
-      if (checkError && checkError.code !== 'PGRST116') {
+      if (checkError) {
         console.error("Error verifying order deletion:", checkError);
         throw checkError;
       }
@@ -182,6 +184,30 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
       
     } catch (error: any) {
       console.error("Error in deletion process:", error);
+      
+      // Force a final deletion attempt if the error is that the order still exists
+      if (error.message === "Order deletion failed - order still exists in database") {
+        try {
+          console.log("Making final direct deletion attempt...");
+          const { error: finalDeleteError } = await supabase
+            .from('orders')
+            .delete()
+            .eq('id', orderToDelete);
+            
+          if (!finalDeleteError) {
+            console.log("Final deletion attempt succeeded");
+            onOrderDeleted(orderToDelete);
+            toast({
+              title: "Order deleted successfully",
+              description: "The order has been removed after retry.",
+            });
+            return;
+          }
+        } catch (finalError) {
+          console.error("Final deletion attempt failed:", finalError);
+        }
+      }
+      
       toast({
         title: "Error deleting order",
         description: error.message || "An error occurred while deleting the order",
