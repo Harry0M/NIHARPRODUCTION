@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate(); // Keep this inside the component body
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Setup the auth subscription
