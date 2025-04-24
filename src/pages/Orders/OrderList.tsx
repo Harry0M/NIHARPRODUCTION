@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -5,7 +6,7 @@ import { OrderFilter } from "@/components/orders/OrderFilter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { 
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -143,74 +144,152 @@ const OrderList = () => {
         .eq('order_id', orderToDelete);
       
       if (jobCardsError) throw jobCardsError;
+      console.log("Found job cards:", jobCards);
+      
       const jobCardIds = jobCards?.map(jc => jc.id) || [];
       
-      // Delete in sequence to respect foreign key constraints
+      // Start deletion process with error handling for each step
       if (jobCardIds.length > 0) {
-        // Delete all cutting components
+        console.log("Processing job cards for deletion:", jobCardIds);
+        
+        // Process each job card one by one to prevent timeout
         for (const jobCardId of jobCardIds) {
-          const { data: cuttingJobs } = await supabase
-            .from('cutting_jobs')
-            .select('id')
-            .eq('job_card_id', jobCardId);
+          console.log("Processing job card:", jobCardId);
           
-          if (cuttingJobs && cuttingJobs.length > 0) {
-            for (const job of cuttingJobs) {
-              await supabase
-                .from('cutting_components')
-                .delete()
-                .eq('cutting_job_id', job.id);
+          // Delete cutting components
+          try {
+            const { data: cuttingJobs } = await supabase
+              .from('cutting_jobs')
+              .select('id')
+              .eq('job_card_id', jobCardId);
+            
+            if (cuttingJobs && cuttingJobs.length > 0) {
+              console.log(`Found ${cuttingJobs.length} cutting jobs to delete components from`);
+              for (const job of cuttingJobs) {
+                const { error } = await supabase
+                  .from('cutting_components')
+                  .delete()
+                  .eq('cutting_job_id', job.id);
+                
+                if (error) {
+                  console.error(`Error deleting cutting components for job ${job.id}:`, error);
+                }
+              }
             }
+          } catch (error) {
+            console.error("Error processing cutting components:", error);
           }
           
           // Delete cutting jobs
-          await supabase
-            .from('cutting_jobs')
-            .delete()
-            .eq('job_card_id', jobCardId);
+          try {
+            const { error } = await supabase
+              .from('cutting_jobs')
+              .delete()
+              .eq('job_card_id', jobCardId);
+            
+            if (error) {
+              console.error(`Error deleting cutting jobs for card ${jobCardId}:`, error);
+            }
+          } catch (error) {
+            console.error("Error deleting cutting jobs:", error);
+          }
           
           // Delete printing jobs
-          await supabase
-            .from('printing_jobs')
-            .delete()
-            .eq('job_card_id', jobCardId);
+          try {
+            const { error } = await supabase
+              .from('printing_jobs')
+              .delete()
+              .eq('job_card_id', jobCardId);
             
+            if (error) {
+              console.error(`Error deleting printing jobs for card ${jobCardId}:`, error);
+            }
+          } catch (error) {
+            console.error("Error deleting printing jobs:", error);
+          }
+          
           // Delete stitching jobs
-          await supabase
-            .from('stitching_jobs')
-            .delete()
-            .eq('job_card_id', jobCardId);
+          try {
+            const { error } = await supabase
+              .from('stitching_jobs')
+              .delete()
+              .eq('job_card_id', jobCardId);
+            
+            if (error) {
+              console.error(`Error deleting stitching jobs for card ${jobCardId}:`, error);
+            }
+          } catch (error) {
+            console.error("Error deleting stitching jobs:", error);
+          }
         }
         
-        // Delete job cards
-        await supabase
-          .from('job_cards')
-          .delete()
-          .eq('order_id', orderToDelete);
+        // Delete job cards after processing all their children
+        try {
+          console.log("Deleting job cards:", jobCardIds);
+          const { error } = await supabase
+            .from('job_cards')
+            .delete()
+            .eq('order_id', orderToDelete);
+          
+          if (error) {
+            console.error("Error deleting job cards:", error);
+            throw error;
+          }
+        } catch (error) {
+          console.error("Error in job card deletion:", error);
+        }
       }
       
       // Delete order components
-      await supabase
-        .from('order_components')
-        .delete()
-        .eq('order_id', orderToDelete);
+      try {
+        console.log("Deleting order components");
+        const { error } = await supabase
+          .from('order_components')
+          .delete()
+          .eq('order_id', orderToDelete);
+        
+        if (error) {
+          console.error("Error deleting order components:", error);
+        }
+      } catch (error) {
+        console.error("Error in order component deletion:", error);
+      }
       
       // Delete order dispatch
-      await supabase
-        .from('order_dispatches')
-        .delete()
-        .eq('order_id', orderToDelete);
+      try {
+        console.log("Deleting order dispatches");
+        const { error } = await supabase
+          .from('order_dispatches')
+          .delete()
+          .eq('order_id', orderToDelete);
         
+        if (error) {
+          console.error("Error deleting order dispatches:", error);
+        }
+      } catch (error) {
+        console.error("Error in order dispatch deletion:", error);
+      }
+      
       // Delete the order itself
-      const { error: orderDeleteError } = await supabase
-        .from('orders')
-        .delete()
-        .eq('id', orderToDelete);
+      try {
+        console.log("Deleting the order itself");
+        const { error: orderDeleteError } = await supabase
+          .from('orders')
+          .delete()
+          .eq('id', orderToDelete);
         
-      if (orderDeleteError) throw orderDeleteError;
+        if (orderDeleteError) {
+          console.error("Error deleting order:", orderDeleteError);
+          throw orderDeleteError;
+        }
+      } catch (error) {
+        console.error("Error in final order deletion:", error);
+        throw error;
+      }
       
       // Update the orders list by removing the deleted order
-      setOrders(orders.filter(order => order.id !== orderToDelete));
+      console.log("Updating local state");
+      setOrders(prevOrders => prevOrders.filter(order => order.id !== orderToDelete));
       
       toast({
         title: "Order deleted successfully",
@@ -218,14 +297,11 @@ const OrderList = () => {
       });
       console.log("Order deleted successfully");
       
-      // Force refresh data from the server to ensure our state is in sync
-      fetchOrders();
-      
     } catch (error: any) {
       console.error("Error deleting order:", error);
       toast({
         title: "Error deleting order",
-        description: error.message,
+        description: error.message || "An error occurred while deleting the order",
         variant: "destructive",
       });
     } finally {
