@@ -21,7 +21,7 @@ import { toast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Database } from "@/integrations/supabase/types";
 import { DownloadButton } from "@/components/DownloadButton";
-import { downloadAsCSV, formatDataForCSV } from "@/utils/downloadUtils";
+import { downloadAsCSV, downloadAsPDF, formatOrdersForDownload } from "@/utils/downloadUtils";
 
 type OrderStatus = Database["public"]["Enums"]["order_status"];
 
@@ -63,44 +63,44 @@ const OrderList = () => {
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      setLoading(true);
-      try {
-        let query = supabase.from('orders').select('*');
-
-        if (filters.status !== 'all') {
-          query = query.eq('status', filters.status as OrderStatus);
-        }
-
-        if (filters.dateRange.from) {
-          query = query.gte('order_date', filters.dateRange.from);
-        }
-
-        if (filters.dateRange.to) {
-          query = query.lte('order_date', filters.dateRange.to);
-        }
-
-        if (filters.searchTerm) {
-          query = query.or(`order_number.ilike.%${filters.searchTerm}%,company_name.ilike.%${filters.searchTerm}%`);
-        }
-
-        const { data, error } = await query.order('created_at', { ascending: false });
-        
-        if (error) throw error;
-        setOrders(data || []);
-      } catch (error: any) {
-        toast({
-          title: "Error fetching orders",
-          description: error.message,
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchOrders();
   }, [filters]);
+
+  const fetchOrders = async () => {
+    setLoading(true);
+    try {
+      let query = supabase.from('orders').select('*');
+
+      if (filters.status !== 'all') {
+        query = query.eq('status', filters.status as OrderStatus);
+      }
+
+      if (filters.dateRange.from) {
+        query = query.gte('order_date', filters.dateRange.from);
+      }
+
+      if (filters.dateRange.to) {
+        query = query.lte('order_date', filters.dateRange.to);
+      }
+
+      if (filters.searchTerm) {
+        query = query.or(`order_number.ilike.%${filters.searchTerm}%,company_name.ilike.%${filters.searchTerm}%`);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Error fetching orders",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
@@ -217,6 +217,10 @@ const OrderList = () => {
         description: "The order and all related records have been removed.",
       });
       console.log("Order deleted successfully");
+      
+      // Force refresh data from the server to ensure our state is in sync
+      fetchOrders();
+      
     } catch (error: any) {
       console.error("Error deleting order:", error);
       toast({
@@ -297,9 +301,32 @@ const OrderList = () => {
     </Card>
   );
 
-  const handleDownloadOrders = () => {
-    const formattedOrders = orders.map(order => formatDataForCSV(order));
+  const handleDownloadCSV = () => {
+    if (orders.length === 0) {
+      toast({
+        title: "No orders to download",
+        description: "There are no orders matching your current filters.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const formattedOrders = formatOrdersForDownload(orders);
     downloadAsCSV(formattedOrders, 'orders-list');
+  };
+  
+  const handleDownloadPDF = () => {
+    if (orders.length === 0) {
+      toast({
+        title: "No orders to download",
+        description: "There are no orders matching your current filters.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const formattedOrders = formatOrdersForDownload(orders);
+    downloadAsPDF(formattedOrders, 'orders-list', 'Orders List');
   };
 
   return (
@@ -311,8 +338,10 @@ const OrderList = () => {
         </div>
         <div className="flex items-center gap-2">
           <DownloadButton 
-            onClick={handleDownloadOrders} 
             label="Download Orders"
+            onCsvClick={handleDownloadCSV}
+            onPdfClick={handleDownloadPDF}
+            disabled={loading || orders.length === 0}
           />
           <Link to="/orders/new">
             <Button className="w-full md:w-auto">

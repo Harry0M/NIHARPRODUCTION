@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +8,8 @@ import { DispatchForm } from "@/components/production/DispatchForm";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, ClipboardList, Truck } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+import { DownloadButton } from "@/components/DownloadButton";
+import { downloadAsCSV, downloadAsPDF } from "@/utils/downloadUtils";
 
 export interface StageSummary {
   name: string;
@@ -175,17 +176,69 @@ const DispatchDetail = () => {
   const formatDate = (date: string | undefined) =>
     date ? new Date(date).toLocaleDateString() : "";
 
+  const handleDownloadCSV = () => {
+    if (!dispatchData) return;
+    
+    const downloadData = [{
+      order_number: order?.order_number || 'N/A',
+      company_name: order?.company_name || 'N/A',
+      delivery_date: formatDate(dispatchData.delivery_date),
+      recipient_name: dispatchData.recipient_name,
+      delivery_address: dispatchData.delivery_address,
+      tracking_number: dispatchData.tracking_number || 'N/A',
+      quality_checked: dispatchData.quality_checked ? 'Yes' : 'No',
+      quantity_checked: dispatchData.quantity_checked ? 'Yes' : 'No',
+      notes: dispatchData.notes || 'N/A',
+      dispatched_on: formatDate(dispatchData.created_at)
+    }];
+    
+    downloadAsCSV(downloadData, `dispatch-${order?.order_number}`);
+  };
+  
+  const handleDownloadPDF = () => {
+    if (!dispatchData) return;
+    
+    const downloadData = [{
+      order_number: order?.order_number || 'N/A',
+      company_name: order?.company_name || 'N/A',
+      delivery_date: formatDate(dispatchData.delivery_date),
+      recipient_name: dispatchData.recipient_name,
+      delivery_address: dispatchData.delivery_address,
+      tracking_number: dispatchData.tracking_number || 'N/A',
+      quality_checked: dispatchData.quality_checked ? 'Yes' : 'No',
+      quantity_checked: dispatchData.quantity_checked ? 'Yes' : 'No',
+      notes: dispatchData.notes || 'N/A',
+      dispatched_on: formatDate(dispatchData.created_at)
+    }];
+    
+    downloadAsPDF(
+      downloadData, 
+      `dispatch-${order?.order_number}`,
+      `Dispatch Details: ${order?.order_number}`
+    );
+  };
+
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <ClipboardList className="h-6 w-6" />
-          Dispatch Order
-        </h1>
-        <p className="text-muted-foreground mb-5">
-          Complete and track the dispatch for this order.
-        </p>
-        <Button onClick={() => navigate("/dispatch")} variant="outline" size="sm">Back to Dispatch List</Button>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <ClipboardList className="h-6 w-6" />
+            Dispatch Order
+          </h1>
+          <p className="text-muted-foreground mb-5">
+            Complete and track the dispatch for this order.
+          </p>
+          <Button onClick={() => navigate("/dispatch")} variant="outline" size="sm">Back to Dispatch List</Button>
+        </div>
+        
+        {dispatchData && (
+          <DownloadButton 
+            label="Download Details"
+            onCsvClick={handleDownloadCSV}
+            onPdfClick={handleDownloadPDF}
+          />
+        )}
       </div>
 
       {loading ? (

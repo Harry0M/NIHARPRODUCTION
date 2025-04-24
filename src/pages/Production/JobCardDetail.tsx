@@ -10,7 +10,7 @@ import { OrderInfoCard } from "./JobCardDetail/OrderInfoCard";
 import { ProductionTimelineCard } from "./JobCardDetail/ProductionTimelineCard";
 import { ProductionProgressCard } from "./JobCardDetail/ProductionProgressCard";
 import { DownloadButton } from "@/components/DownloadButton";
-import { downloadAsCSV, formatDataForCSV } from "@/utils/downloadUtils";
+import { downloadAsCSV, downloadAsPDF, formatJobCardForDownload } from "@/utils/downloadUtils";
 
 type JobStatus = Database['public']['Enums']['job_status'];
 type OrderStatus = Database['public']['Enums']['order_status'];
@@ -26,6 +26,7 @@ interface Component {
 interface JobCardDetails {
   id: string;
   job_name: string;
+  job_number: string | null;
   status: JobStatus;
   created_at: string;
   order: {
@@ -89,7 +90,7 @@ const JobCardDetail = () => {
       const { data, error } = await supabase
         .from('job_cards')
         .select(`
-          id, job_name, status, created_at,
+          id, job_name, job_number, status, created_at,
           order:order_id (
             id, order_number, company_name, quantity, 
             bag_length, bag_width, order_date, status,
@@ -160,23 +161,20 @@ const JobCardDetail = () => {
     }
   };
 
-  const handleDownloadJobDetails = () => {
+  const handleDownloadCSV = () => {
     if (!jobCard) return;
-    
-    const jobDetails = {
-      job_name: jobCard.job_name,
-      order_number: jobCard.order.order_number,
-      company_name: jobCard.order.company_name,
-      status: jobCard.status,
-      order_quantity: jobCard.order.quantity,
-      bag_size: `${jobCard.order.bag_length}x${jobCard.order.bag_width}`,
-      cutting_status: jobCard.cutting_jobs?.[0]?.status || 'Not started',
-      printing_status: jobCard.printing_jobs?.[0]?.status || 'Not started',
-      stitching_status: jobCard.stitching_jobs?.[0]?.status || 'Not started',
-      created_date: new Date(jobCard.created_at).toLocaleDateString()
-    };
+    const formattedData = formatJobCardForDownload(jobCard);
+    downloadAsCSV(formattedData, `job-card-${jobCard.job_number || jobCard.job_name}`);
+  };
 
-    downloadAsCSV([jobDetails], `job-card-${jobCard.job_name}`);
+  const handleDownloadPDF = () => {
+    if (!jobCard) return;
+    const formattedData = formatJobCardForDownload(jobCard);
+    downloadAsPDF(
+      formattedData, 
+      `job-card-${jobCard.job_number || jobCard.job_name}`,
+      `Job Card: ${jobCard.job_name}`
+    );
   };
 
   return (
@@ -195,15 +193,20 @@ const JobCardDetail = () => {
           <h1 className="text-3xl font-bold tracking-tight">Job Card Details</h1>
           {!loading && jobCard && (
             <div className="flex items-center gap-2">
-              <p className="text-muted-foreground">Job Name: {jobCard.job_name}</p>
+              <p className="text-muted-foreground">
+                Job Name: {jobCard.job_name}
+                {jobCard.job_number && ` (${jobCard.job_number})`}
+              </p>
               {getStatusBadge(jobCard.status)}
             </div>
           )}
         </div>
         <div className="ml-auto">
           <DownloadButton 
-            onClick={handleDownloadJobDetails}
             label="Download Details" 
+            onCsvClick={handleDownloadCSV}
+            onPdfClick={handleDownloadPDF}
+            disabled={loading || !jobCard}
           />
         </div>
       </div>
