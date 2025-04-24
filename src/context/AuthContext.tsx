@@ -19,6 +19,7 @@ interface AuthProviderProps {
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
+// Create a version of AuthProvider that doesn't need router context
 export const AuthProvider = ({ children, initialUser }: AuthProviderProps) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(initialUser);
