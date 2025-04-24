@@ -2,7 +2,7 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 interface AuthContextProps {
   session: Session | null;
@@ -24,7 +24,7 @@ export const AuthProvider = ({ children, initialUser }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(initialUser);
   const [loading, setLoading] = useState(!initialUser);
   
-  // Get location and navigate without immediate execution
+  // Get location and navigate within router context
   const navigate = useNavigate();
   const location = useLocation();
 

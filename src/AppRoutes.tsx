@@ -1,5 +1,5 @@
 
-import { useRoutes } from "react-router-dom";
+import { useRoutes, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import routes from "./routes";
@@ -8,9 +8,6 @@ import { AuthProvider } from "@/context/AuthContext";
 
 const AppRoutes = () => {
   const [isLoading, setIsLoading] = useState(true);
-  
-  // We'll move the session check to a higher level 
-  // to avoid dependency on context that's not yet created
   const [initialUser, setInitialUser] = useState(null);
 
   useEffect(() => {
@@ -72,10 +69,11 @@ const AppRoutes = () => {
     );
   }
 
-  // Once we're done loading, render the routes with the AuthProvider
+  // Since we're now within BrowserRouter context from App.tsx,
+  // we can safely use AuthProvider here
   return (
     <AuthProvider initialUser={initialUser}>
-      {useRoutes(routes)}
+      {useRoutes(routes) || <Navigate to="/auth" replace />}
     </AuthProvider>
   );
 };
