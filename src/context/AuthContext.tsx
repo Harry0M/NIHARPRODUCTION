@@ -12,12 +12,18 @@ interface AuthContextProps {
   setUser: (user: User | null) => void;
 }
 
+interface AuthProviderProps {
+  children: ReactNode;
+  initialUser: any | null;
+}
+
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+export const AuthProvider = ({ children, initialUser }: AuthProviderProps) => {
   const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(initialUser);
+  const [loading, setLoading] = useState(!initialUser);
+  // Now useNavigate will work as the component is rendered within BrowserRouter
   const navigate = useNavigate();
 
   useEffect(() => {

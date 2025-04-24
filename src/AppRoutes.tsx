@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import routes from "./routes";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/context/AuthContext";
+import { AuthProvider } from "@/context/AuthContext";
 
 const AppRoutes = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const { user, setUser } = useAuth();
-  const element = useRoutes(routes);
+  
+  // We'll move the session check to a higher level 
+  // to avoid dependency on context that's not yet created
+  const [initialUser, setInitialUser] = useState(null);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -38,14 +40,10 @@ const AppRoutes = () => {
             console.error("Error fetching profile:", profileError);
           } else {
             console.log("User role:", profileData?.role || "Not set");
-            
-            // Update user context with role information
-            if (data.session?.user) {
-              setUser({
-                ...data.session.user,
-                role: profileData?.role || 'production'
-              });
-            }
+            setInitialUser({
+              ...data.session.user,
+              role: profileData?.role || 'production'
+            });
           }
         }
       } catch (error) {
@@ -61,7 +59,7 @@ const AppRoutes = () => {
     }, 100);
     
     return () => clearTimeout(timer);
-  }, [setUser]);
+  }, []);
 
   if (isLoading) {
     return (
@@ -74,7 +72,12 @@ const AppRoutes = () => {
     );
   }
 
-  return element;
+  // Once we're done loading, render the routes with the AuthProvider
+  return (
+    <AuthProvider initialUser={initialUser}>
+      {useRoutes(routes)}
+    </AuthProvider>
+  );
 };
 
 export default AppRoutes;
