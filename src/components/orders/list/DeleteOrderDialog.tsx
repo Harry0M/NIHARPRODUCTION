@@ -9,6 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Loader2 } from "lucide-react";
 
 interface DeleteOrderDialogProps {
   open: boolean;
@@ -24,7 +25,7 @@ export const DeleteOrderDialog = ({
   isLoading
 }: DeleteOrderDialogProps) => {
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={isLoading ? undefined : onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure you want to delete this order?</AlertDialogTitle>
@@ -43,7 +44,14 @@ export const DeleteOrderDialog = ({
             disabled={isLoading}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isLoading ? "Deleting..." : "Delete Order"}
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              "Delete Order"
+            )}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

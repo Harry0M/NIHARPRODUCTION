@@ -32,7 +32,7 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
         throw jobCardsError;
       }
       
-      console.log(`Found ${jobCards?.length || 0} job cards for order`);
+      console.log("Found job cards:", jobCards);
       
       // Process job cards if they exist
       if (jobCards && jobCards.length > 0) {
@@ -41,14 +41,21 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
         
         // Delete cutting components first (children of cutting jobs)
         for (const jobCardId of jobCardIds) {
-          const { data: cuttingJobs } = await supabase
+          // Get all cutting jobs for this job card
+          const { data: cuttingJobs, error: cuttingJobsError } = await supabase
             .from('cutting_jobs')
             .select('id')
             .eq('job_card_id', jobCardId);
           
+          if (cuttingJobsError) {
+            console.error("Error fetching cutting jobs:", cuttingJobsError);
+            throw cuttingJobsError;
+          }
+          
           if (cuttingJobs && cuttingJobs.length > 0) {
-            console.log(`Deleting cutting components for ${cuttingJobs.length} cutting jobs`);
+            console.log(`Found ${cuttingJobs.length} cutting jobs to delete`);
             for (const job of cuttingJobs) {
+              // Delete cutting components for this cutting job
               const { error: componentsDeleteError } = await supabase
                 .from('cutting_components')
                 .delete()
@@ -59,17 +66,17 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
                 throw componentsDeleteError;
               }
             }
-          }
-          
-          // Delete cutting jobs
-          const { error: cuttingDeleteError } = await supabase
-            .from('cutting_jobs')
-            .delete()
-            .eq('job_card_id', jobCardId);
-          
-          if (cuttingDeleteError) {
-            console.error("Error deleting cutting jobs:", cuttingDeleteError);
-            throw cuttingDeleteError;
+            
+            // Then delete the cutting jobs
+            const { error: cuttingDeleteError } = await supabase
+              .from('cutting_jobs')
+              .delete()
+              .eq('job_card_id', jobCardId);
+            
+            if (cuttingDeleteError) {
+              console.error("Error deleting cutting jobs:", cuttingDeleteError);
+              throw cuttingDeleteError;
+            }
           }
           
           // Delete printing jobs
@@ -132,37 +139,38 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
         throw dispatchesError;
       }
       
-      // Finally delete the order itself - with verification
+      // Finally delete the order itself
       console.log("Deleting the order itself:", orderToDelete);
       const { error: orderDeleteError } = await supabase
         .from('orders')
         .delete()
-        .eq('id', orderToDelete);
+        .eq('id', orderToDelete)
+        .select();  // Added select to return the deleted row
       
       if (orderDeleteError) {
         console.error("Error deleting order:", orderDeleteError);
         throw orderDeleteError;
       }
       
-      // Verify order was actually deleted
+      // Verify the order doesn't exist anymore
       const { data: checkOrder, error: checkError } = await supabase
         .from('orders')
         .select('id')
         .eq('id', orderToDelete)
-        .single();
+        .maybeSingle();  // Changed from single to maybeSingle
       
       if (checkError && checkError.code !== 'PGRST116') {
-        // PGRST116 means "no rows returned" which is what we want
         console.error("Error verifying order deletion:", checkError);
-        throw new Error("Failed to verify order deletion");
+        throw checkError;
       }
       
+      // If after deletion the record still exists, it's a problem
       if (checkOrder) {
         console.error("Order still exists after deletion attempt");
         throw new Error("Order deletion failed - order still exists in database");
       }
       
-      console.log("Order verified as deleted successfully");
+      console.log("Order and related records deleted successfully");
       
       // Update UI state
       onOrderDeleted(orderToDelete);
@@ -180,6 +188,7 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
         variant: "destructive",
       });
     } finally {
+      // Ensure UI returns to normal state even if there's an error
       setDeleteDialogOpen(false);
       setOrderToDelete(null);
       setDeleteLoading(false);
