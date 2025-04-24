@@ -80,7 +80,7 @@ const Header = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search orders, jobs..."
+            placeholder="Search Nihar orders, jobs..."
             className="h-9 w-full rounded-md border border-input px-9 py-2 text-sm bg-background"
           />
         </div>

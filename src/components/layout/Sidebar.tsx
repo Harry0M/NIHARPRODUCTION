@@ -43,7 +43,7 @@ const Sidebar = () => {
     >
       <div className="flex items-center justify-between h-16 px-4 border-b border-border">
         <h1 className={cn("font-bold text-lg transition-opacity", collapsed ? "opacity-0 w-0" : "opacity-100")}>
-          BagMaster Pro
+          Nihar
         </h1>
         <button
           onClick={() => setCollapsed(!collapsed)}
