@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import { OrderTable } from "@/components/orders/list/OrderTable";
 import { OrderCard } from "@/components/orders/list/OrderCard";
 import { DeleteOrderDialog } from "@/components/orders/list/DeleteOrderDialog";
 import { EmptyOrdersState } from "@/components/orders/list/EmptyOrdersState";
-import type { Order } from "@/types/order";
+import type { Order, OrderStatus } from "@/types/order";
 
 interface OrderFilters {
   searchTerm: string;
@@ -49,7 +50,8 @@ const OrderList = () => {
       let query = supabase.from('orders').select('*');
 
       if (filters.status !== 'all') {
-        query = query.eq('status', filters.status);
+        // Make sure to cast the status to OrderStatus type when it's not 'all'
+        query = query.eq('status', filters.status as OrderStatus);
       }
 
       if (filters.dateRange.from) {

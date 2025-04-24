@@ -10,11 +10,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, X } from "lucide-react";
-import { Database } from "@/integrations/supabase/types";
+import { type OrderStatus } from "@/types/order";
 
 export interface OrderFilters {
   searchTerm: string;
-  status: string;
+  status: string; // Can be 'all' or one of OrderStatus values
   dateRange: {
     from: string;
     to: string;
