@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { JobSelection } from "@/components/production/stitching/JobSelection";
 import { JobCardInfo } from "@/components/production/stitching/JobCardInfo";
 import { StitchingForm } from "@/components/production/stitching/StitchingForm";
+import { format } from "date-fns";
 
 interface JobCard {
   id: string;
@@ -20,7 +21,7 @@ interface JobCard {
 }
 
 interface StitchingJobData {
-  id?: string;
+  id: string;
   job_card_id: string;
   total_quantity: number | null;
   part_quantity: number | null;
@@ -62,7 +63,7 @@ const StitchingJob = () => {
         .select(`
           id, 
           job_name,
-          orders (
+          order:orders (
             order_number,
             company_name,
             quantity
@@ -74,7 +75,7 @@ const StitchingJob = () => {
       if (jobCardError) throw jobCardError;
       if (!jobCardData) throw new Error("Job card not found");
       
-      setJobCard(jobCardData as JobCard);
+      setJobCard(jobCardData as unknown as JobCard);
       
       // Fetch existing stitching jobs
       const { data: stitchingJobs, error: stitchingJobsError } = await supabase
