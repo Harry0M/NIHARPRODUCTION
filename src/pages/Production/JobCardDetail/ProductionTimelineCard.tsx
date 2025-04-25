@@ -4,6 +4,7 @@ import { Scissors, Printer, PackageCheck, Truck, Clock, AlertTriangle } from "lu
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
+import { StageStatus } from "@/components/production/StageStatus";
 
 interface TimelineJob {
   id: string;
@@ -42,6 +43,24 @@ export const ProductionTimelineCard = ({
   const isStitchingCompleted = stitchingJobs.length > 0 && 
     stitchingJobs.every(job => job.status === 'completed');
 
+  const renderJobsList = (jobs: TimelineJob[], type: string) => {
+    if (jobs.length === 0) return null;
+
+    return (
+      <div className="mt-2 space-y-1">
+        {jobs.map((job, index) => (
+          <div key={job.id} className="text-xs text-muted-foreground flex items-center gap-2">
+            <StageStatus 
+              status={job.status as any} 
+              date={job.created_at}
+              tooltip={`${type} job ${index + 1}${job.worker_name ? ` - ${job.worker_name}` : ''}`}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const handleProcessClick = (process: string) => {
     switch (process) {
       case 'cutting':
@@ -51,7 +70,7 @@ export const ProductionTimelineCard = ({
         if (!isCuttingCompleted) {
           toast({
             title: "Cannot start printing",
-            description: "Please complete the cutting stage first.",
+            description: "Please complete at least one cutting job first.",
             variant: "destructive"
           });
           return;
@@ -62,7 +81,7 @@ export const ProductionTimelineCard = ({
         if (!isPrintingCompleted) {
           toast({
             title: "Cannot start stitching",
-            description: "Please complete the printing stage first.",
+            description: "Please complete at least one printing job first.",
             variant: "destructive"
           });
           return;
@@ -93,77 +112,86 @@ export const ProductionTimelineCard = ({
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Scissors className={`h-5 w-5 ${isCuttingCompleted ? 'text-green-500' : 'text-muted-foreground'}`} />
-              <div>
-                <p className="text-sm font-medium">Cutting</p>
-                <p className="text-xs text-muted-foreground">
-                  {cuttingCount ? `${cuttingCount} job(s)` : "No jobs yet"}
-                </p>
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Scissors className={`h-5 w-5 ${isCuttingCompleted ? 'text-green-500' : 'text-muted-foreground'}`} />
+                <div>
+                  <p className="text-sm font-medium">Cutting</p>
+                  <p className="text-xs text-muted-foreground">
+                    {cuttingCount ? `${cuttingCount} job(s)` : "No jobs yet"}
+                  </p>
+                </div>
               </div>
+              <Button 
+                size="sm"
+                variant="outline"
+                onClick={() => handleProcessClick('cutting')}
+              >
+                Add Job
+              </Button>
             </div>
-            <Button 
-              size="sm"
-              variant={isCuttingCompleted ? "outline" : "default"}
-              onClick={() => handleProcessClick('cutting')}
-            >
-              {cuttingCount ? "View/Add" : "Create"}
-            </Button>
+            {renderJobsList(cuttingJobs, 'Cutting')}
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Printer className={`h-5 w-5 ${!isCuttingCompleted ? 'text-muted-foreground' : isPrintingCompleted ? 'text-green-500' : 'text-amber-500'}`} />
-              <div>
-                <p className="text-sm font-medium">Printing</p>
-                <p className="text-xs text-muted-foreground">
-                  {!isCuttingCompleted ? (
-                    <span className="flex items-center gap-1 text-amber-500">
-                      <AlertTriangle size={12} />
-                      Complete cutting first
-                    </span>
-                  ) : (
-                    printingCount ? `${printingCount} job(s)` : "No jobs yet"
-                  )}
-                </p>
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Printer className={`h-5 w-5 ${!isCuttingCompleted ? 'text-muted-foreground' : isPrintingCompleted ? 'text-green-500' : 'text-amber-500'}`} />
+                <div>
+                  <p className="text-sm font-medium">Printing</p>
+                  <p className="text-xs text-muted-foreground">
+                    {!isCuttingCompleted ? (
+                      <span className="flex items-center gap-1 text-amber-500">
+                        <AlertTriangle size={12} />
+                        Complete cutting first
+                      </span>
+                    ) : (
+                      printingCount ? `${printingCount} job(s)` : "No jobs yet"
+                    )}
+                  </p>
+                </div>
               </div>
+              <Button 
+                size="sm"
+                variant="outline"
+                onClick={() => handleProcessClick('printing')}
+                disabled={!isCuttingCompleted}
+              >
+                Add Job
+              </Button>
             </div>
-            <Button 
-              size="sm"
-              variant={isPrintingCompleted ? "outline" : "default"}
-              onClick={() => handleProcessClick('printing')}
-              disabled={!isCuttingCompleted}
-            >
-              {printingCount ? "View/Add" : "Create"}
-            </Button>
+            {renderJobsList(printingJobs, 'Printing')}
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <PackageCheck className={`h-5 w-5 ${!isPrintingCompleted ? 'text-muted-foreground' : isStitchingCompleted ? 'text-green-500' : 'text-amber-500'}`} />
-              <div>
-                <p className="text-sm font-medium">Stitching</p>
-                <p className="text-xs text-muted-foreground">
-                  {!isPrintingCompleted ? (
-                    <span className="flex items-center gap-1 text-amber-500">
-                      <AlertTriangle size={12} />
-                      Complete printing first
-                    </span>
-                  ) : (
-                    stitchingCount ? `${stitchingCount} job(s)` : "No jobs yet"
-                  )}
-                </p>
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <PackageCheck className={`h-5 w-5 ${!isPrintingCompleted ? 'text-muted-foreground' : isStitchingCompleted ? 'text-green-500' : 'text-amber-500'}`} />
+                <div>
+                  <p className="text-sm font-medium">Stitching</p>
+                  <p className="text-xs text-muted-foreground">
+                    {!isPrintingCompleted ? (
+                      <span className="flex items-center gap-1 text-amber-500">
+                        <AlertTriangle size={12} />
+                        Complete printing first
+                      </span>
+                    ) : (
+                      stitchingCount ? `${stitchingCount} job(s)` : "No jobs yet"
+                    )}
+                  </p>
+                </div>
               </div>
+              <Button 
+                size="sm"
+                variant="outline"
+                onClick={() => handleProcessClick('stitching')}
+                disabled={!isPrintingCompleted}
+              >
+                Add Job
+              </Button>
             </div>
-            <Button 
-              size="sm"
-              variant={isStitchingCompleted ? "outline" : "default"}
-              onClick={() => handleProcessClick('stitching')}
-              disabled={!isPrintingCompleted}
-            >
-              {stitchingCount ? "View/Add" : "Create"}
-            </Button>
+            {renderJobsList(stitchingJobs, 'Stitching')}
           </div>
 
           <Separator />
