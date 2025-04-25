@@ -24,12 +24,19 @@ const CompanyNew = () => {
 
   const onSubmit = async (data: CompanyFormData) => {
     try {
+      // First, get the current user
+      const { data: authData, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        throw userError;
+      }
+
       // Include created_by field to track which user created the company
       const { error } = await supabase
         .from('companies')
         .insert({
           ...data,
-          created_by: supabase.auth.getUser().data.user?.id // Add the current user's ID
+          created_by: authData.user?.id // Add the current user's ID
         });
 
       if (error) {
