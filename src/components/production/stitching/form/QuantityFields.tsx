@@ -1,0 +1,48 @@
+
+import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { UseFormReturn } from "react-hook-form";
+import { StitchingFormValues } from "./types";
+
+interface QuantityFieldsProps {
+  form: UseFormReturn<StitchingFormValues>;
+}
+
+export const QuantityFields = ({ form }: QuantityFieldsProps) => {
+  const quantityFields = [
+    { name: "total_quantity" as const, label: "Total Quantity" },
+    { name: "part_quantity" as const, label: "Part Quantity" },
+    { name: "border_quantity" as const, label: "Border Quantity" },
+    { name: "handle_quantity" as const, label: "Handle Quantity" },
+    { name: "chain_quantity" as const, label: "Chain Quantity" },
+    { name: "runner_quantity" as const, label: "Runner Quantity" },
+    { name: "piping_quantity" as const, label: "Piping Quantity" },
+  ];
+
+  return (
+    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {quantityFields.map((field) => (
+        <FormField
+          key={field.name}
+          control={form.control}
+          name={field.name}
+          render={({ field: formField }) => (
+            <FormItem>
+              <FormLabel>{field.label}</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  placeholder={`${field.label}`}
+                  {...formField}
+                  value={formField.value === null ? '' : formField.value}
+                  onChange={e => formField.onChange(e.target.value === '' ? null : Number(e.target.value))}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      ))}
+    </div>
+  );
+};
