@@ -133,9 +133,8 @@ export const ComponentForm = ({
               <Select 
                 value={component.gsm || undefined} 
                 onValueChange={(value) => onFieldChange('gsm', value)}
-                className="flex-1"
               >
-                <SelectTrigger>
+                <SelectTrigger className="flex-1">
                   <SelectValue placeholder="Select GSM" />
                 </SelectTrigger>
                 <SelectContent>
