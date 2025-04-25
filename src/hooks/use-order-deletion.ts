@@ -20,34 +20,73 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
     
     try {
       console.log("Starting deletion process for order ID:", orderToDelete);
+
+      // Try to delete order dispatches first, which was causing constraint violations
+      const { error: dispatchError } = await supabase
+        .from('order_dispatches')
+        .delete()
+        .eq('order_id', orderToDelete);
       
-      // First attempt: use stored function to delete order and related records
+      if (dispatchError) {
+        console.error("Failed to delete order dispatches:", dispatchError);
+      }
+      
+      // Now try the primary deletion method
       const { data: rpcResult, error: rpcError } = await supabase.rpc(
-        'delete_order_completely', 
+        'delete_order_completely',
         { order_id: orderToDelete }
       );
 
       if (rpcError) {
         console.error("Primary deletion method failed:", rpcError);
         
-        // Second attempt: use force delete function
-        const { data: forceResult, error: forceError } = await supabase.rpc(
-          'force_delete_order',
-          { target_id: orderToDelete }
-        );
+        // Get all related job card IDs
+        const { data: jobCards } = await supabase
+          .from('job_cards')
+          .select('id')
+          .eq('order_id', orderToDelete);
         
-        if (forceError) {
-          console.error("Force deletion method failed:", forceError);
+        if (jobCards && jobCards.length > 0) {
+          const jobCardIds = jobCards.map(jc => jc.id);
           
-          // Final attempt: emergency delete
-          const { data: emergencyResult, error: emergencyError } = await supabase.rpc(
-            'emergency_delete_order',
-            { target_id: orderToDelete }
-          );
+          // Delete cutting components first
+          const { data: cuttingJobs } = await supabase
+            .from('cutting_jobs')
+            .select('id')
+            .in('job_card_id', jobCardIds);
           
-          if (emergencyError) {
-            throw new Error("All deletion methods failed");
+          if (cuttingJobs && cuttingJobs.length > 0) {
+            const cuttingJobIds = cuttingJobs.map(cj => cj.id);
+            
+            await supabase
+              .from('cutting_components')
+              .delete()
+              .in('cutting_job_id', cuttingJobIds);
           }
+          
+          // Delete production jobs
+          await Promise.all([
+            supabase.from('cutting_jobs').delete().in('job_card_id', jobCardIds),
+            supabase.from('printing_jobs').delete().in('job_card_id', jobCardIds),
+            supabase.from('stitching_jobs').delete().in('job_card_id', jobCardIds)
+          ]);
+          
+          // Delete job cards
+          await supabase.from('job_cards').delete().eq('order_id', orderToDelete);
+        }
+        
+        // Delete order components
+        await supabase.from('order_components').delete().eq('order_id', orderToDelete);
+        
+        // Finally try to delete the order itself
+        const { error: deleteError } = await supabase
+          .from('orders')
+          .delete()
+          .eq('id', orderToDelete);
+        
+        if (deleteError) {
+          console.error("Manual deletion failed:", deleteError);
+          throw new Error(deleteError.message);
         }
       }
       
