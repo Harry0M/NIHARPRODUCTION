@@ -10,8 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { VendorSelection } from "@/components/production/VendorSelection";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarComponent } from "@/components/ui/calendar";
-import { Calendar } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -135,16 +135,17 @@ export const StitchingForm = ({
                               ) : (
                                 <span>Select {dateField === "start_date" ? "start" : "completion"} date</span>
                               )}
-                              <Calendar className="ml-auto h-4 w-4 opacity-50" />
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
-                          <CalendarComponent
+                          <Calendar
                             mode="single"
                             selected={field.value || undefined}
                             onSelect={field.onChange}
                             initialFocus
+                            className="pointer-events-auto"
                           />
                         </PopoverContent>
                       </Popover>
