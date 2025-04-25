@@ -1,56 +1,27 @@
-
-// Replace the mock data usage by real data fetched and used from supabase already
-// Nothing in the logic changed, just utility and progress calculations/shaping are updated if needed to reflect real data
-
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, Layers } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-
-type JobData = {
-  id: string;
-  jobCardId: string;
-  order: string;
-  product: string;
-  quantity: number;
-  progress: number;
-  worker: string;
-  daysLeft?: number;
-  status?: string;
-  material?: string;
-  consumption?: number;
-  design?: string;
-  screenStatus?: string;
-  parts?: string;
-  handles?: string;
-  finishing?: string;
-};
-
-type JobsData = {
-  cutting: JobData[];
-  printing: JobData[];
-  stitching: JobData[];
-  dispatch: JobData[];
-};
+import { LoadingSpinner } from "@/components/production/LoadingSpinner";
+import { StageCard } from "@/components/production/StageCard";
+import { CuttingStageList } from "@/components/production/stages/CuttingStageList";
+import { PrintingStageList } from "@/components/production/stages/PrintingStageList";
+import { StitchingStageList } from "@/components/production/stages/StitchingStageList";
+import { DispatchStageList } from "@/components/production/stages/DispatchStageList";
+import { JobsData } from "@/types/production";
 
 const ProductionDashboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") || "cutting";
-  
   const [jobs, setJobs] = useState<JobsData>({
     cutting: [],
     printing: [],
     stitching: [],
     dispatch: []
   });
-  
   const [loading, setLoading] = useState(true);
-  
+
   useEffect(() => {
     const fetchProductionData = async () => {
       try {
@@ -248,6 +219,10 @@ const ProductionDashboard = () => {
     setSearchParams({ tab: value });
   };
 
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -255,360 +230,61 @@ const ProductionDashboard = () => {
         <p className="text-muted-foreground">Monitor and manage production stages</p>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center items-center h-[50vh]">
-          <div className="flex flex-col items-center gap-2">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            <p className="text-muted-foreground">Loading production data...</p>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <Link to="/production?tab=cutting">
-              <Card className={`hover:border-primary hover:shadow-md transition-all duration-200 ${initialTab === 'cutting' ? 'border-primary' : ''}`}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Cutting</CardTitle>
-                  <div className="h-4 w-4 text-muted-foreground">
-                    <Layers className="h-4 w-4" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{jobs.cutting.length}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Active jobs in cutting stage
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-            
-            <Link to="/production?tab=printing">
-              <Card className={`hover:border-primary hover:shadow-md transition-all duration-200 ${initialTab === 'printing' ? 'border-primary' : ''}`}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Printing</CardTitle>
-                  <div className="h-4 w-4 text-muted-foreground">
-                    <Layers className="h-4 w-4" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{jobs.printing.length}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Active jobs in printing stage
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-            
-            <Link to="/production?tab=stitching">
-              <Card className={`hover:border-primary hover:shadow-md transition-all duration-200 ${initialTab === 'stitching' ? 'border-primary' : ''}`}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Stitching</CardTitle>
-                  <div className="h-4 w-4 text-muted-foreground">
-                    <Layers className="h-4 w-4" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{jobs.stitching.length}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Active jobs in stitching stage
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-            
-            <Link to="/production?tab=dispatch">
-              <Card className={`hover:border-primary hover:shadow-md transition-all duration-200 ${initialTab === 'dispatch' ? 'border-primary' : ''}`}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Dispatch</CardTitle>
-                  <div className="h-4 w-4 text-muted-foreground">
-                    <Layers className="h-4 w-4" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{jobs.dispatch.length}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Orders ready for dispatch
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-          </div>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <StageCard
+          title="Cutting"
+          count={jobs.cutting.length}
+          path="/production?tab=cutting"
+          isActive={initialTab === 'cutting'}
+          description="Active jobs in cutting stage"
+        />
+        <StageCard
+          title="Printing"
+          count={jobs.printing.length}
+          path="/production?tab=printing"
+          isActive={initialTab === 'printing'}
+          description="Active jobs in printing stage"
+        />
+        <StageCard
+          title="Stitching"
+          count={jobs.stitching.length}
+          path="/production?tab=stitching"
+          isActive={initialTab === 'stitching'}
+          description="Active jobs in stitching stage"
+        />
+        <StageCard
+          title="Dispatch"
+          count={jobs.dispatch.length}
+          path="/production?tab=dispatch"
+          isActive={initialTab === 'dispatch'}
+          description="Orders ready for dispatch"
+        />
+      </div>
 
-          <Tabs defaultValue={initialTab} className="space-y-4" onValueChange={handleTabChange}>
-            <TabsList>
-              <TabsTrigger value="cutting">Cutting</TabsTrigger>
-              <TabsTrigger value="printing">Printing</TabsTrigger>
-              <TabsTrigger value="stitching">Stitching</TabsTrigger>
-              <TabsTrigger value="dispatch">Dispatch</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="cutting" className="space-y-4">
-              <div className="grid gap-4">
-                {jobs.cutting.length > 0 ? (
-                  jobs.cutting.map(job => (
-                    <Link to={`/production/cutting/${job.jobCardId}`} key={job.id} className="block">
-                      <Card className="overflow-hidden hover:border-primary hover:shadow-md transition-all duration-200">
-                        <CardHeader className="bg-muted/50 py-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-medium text-sm">{job.product}</p>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span>Order: {job.order}</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={job.worker.includes("Internal") ? "default" : "secondary"}>
-                                {job.worker}
-                              </Badge>
-                              <Badge variant="outline" className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" /> {job.daysLeft} days left
-                              </Badge>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="py-4">
-                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                            <div>
-                              <div className="text-sm font-medium mb-1">Progress</div>
-                              <div className="flex items-center gap-2">
-                                <Progress value={job.progress} className="h-2 w-40" />
-                                <span className="text-sm">{job.progress}%</span>
-                              </div>
-                            </div>
-                            <div>
-                              <div className="text-sm font-medium mb-1">Quantity</div>
-                              <div className="text-sm">{job.quantity.toLocaleString()} units</div>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            <div className="bg-background rounded p-2 border">
-                              <div className="font-medium mb-1">Material</div>
-                              <div className="text-muted-foreground">{job.material || 'Not specified'}</div>
-                            </div>
-                            <div className="bg-background rounded p-2 border">
-                              <div className="font-medium mb-1">Consumption</div>
-                              <div className="text-muted-foreground">{job.consumption || '-'} meters</div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ))
-                ) : (
-                  <Card>
-                    <CardContent className="flex flex-col items-center justify-center py-12">
-                      <p className="text-muted-foreground mb-4">No active cutting jobs found</p>
-                      <Link to="/production/job-cards/new">
-                        <Badge variant="outline" className="hover:bg-accent cursor-pointer">
-                          Create a new job card to start production
-                        </Badge>
-                      </Link>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="printing" className="space-y-4">
-              <div className="grid gap-4">
-                {jobs.printing.length > 0 ? (
-                  jobs.printing.map(job => (
-                    <Link to={`/production/printing/${job.jobCardId}`} key={job.id} className="block">
-                      <Card key={job.id} className="overflow-hidden hover:border-primary hover:shadow-md transition-all duration-200">
-                        <CardHeader className="bg-muted/50 py-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-medium text-sm">{job.product}</p>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span>Order: {job.order}</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={job.worker.includes("Internal") ? "default" : "secondary"}>
-                                {job.worker}
-                              </Badge>
-                              <Badge variant="outline" className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" /> {job.daysLeft} days left
-                              </Badge>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="py-4">
-                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                            <div>
-                              <div className="text-sm font-medium mb-1">Progress</div>
-                              <div className="flex items-center gap-2">
-                                <Progress value={job.progress} className="h-2 w-40" />
-                                <span className="text-sm">{job.progress}%</span>
-                              </div>
-                            </div>
-                            <div>
-                              <div className="text-sm font-medium mb-1">Quantity</div>
-                              <div className="text-sm">{job.quantity.toLocaleString()} units</div>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            <div className="bg-background rounded p-2 border">
-                              <div className="font-medium mb-1">Design</div>
-                              <div className="text-muted-foreground">{job.design || 'Not specified'}</div>
-                            </div>
-                            <div className="bg-background rounded p-2 border">
-                              <div className="font-medium mb-1">Screen Status</div>
-                              <div className="text-muted-foreground">{job.screenStatus || 'Not specified'}</div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ))
-                ) : (
-                  <Card>
-                    <CardContent className="flex flex-col items-center justify-center py-12">
-                      <p className="text-muted-foreground mb-4">No active printing jobs found</p>
-                      <Link to="/production/job-cards/new">
-                        <Badge variant="outline" className="hover:bg-accent cursor-pointer">
-                          Create a new job card to start production
-                        </Badge>
-                      </Link>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="stitching" className="space-y-4">
-              <div className="grid gap-4">
-                {jobs.stitching.length > 0 ? (
-                  jobs.stitching.map(job => (
-                    <Link to={`/production/stitching/${job.jobCardId}`} key={job.id} className="block">
-                      <Card className="overflow-hidden hover:border-primary hover:shadow-md transition-all duration-200">
-                        <CardHeader className="bg-muted/50 py-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-medium text-sm">{job.product}</p>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span>Order: {job.order}</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={job.worker.includes("Internal") ? "default" : "secondary"}>
-                                {job.worker}
-                              </Badge>
-                              <Badge variant="outline" className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" /> {job.daysLeft} days left
-                              </Badge>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="py-4">
-                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                            <div>
-                              <div className="text-sm font-medium mb-1">Progress</div>
-                              <div className="flex items-center gap-2">
-                                <Progress value={job.progress} className="h-2 w-40" />
-                                <span className="text-sm">{job.progress}%</span>
-                              </div>
-                            </div>
-                            <div>
-                              <div className="text-sm font-medium mb-1">Quantity</div>
-                              <div className="text-sm">{job.quantity.toLocaleString()} units</div>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2 text-xs">
-                            <div className="bg-background rounded p-2 border">
-                              <div className="font-medium mb-1">Parts</div>
-                              <div className="text-muted-foreground">{job.parts || 'Not started'}</div>
-                            </div>
-                            <div className="bg-background rounded p-2 border">
-                              <div className="font-medium mb-1">Handles</div>
-                              <div className="text-muted-foreground">{job.handles || 'Not started'}</div>
-                            </div>
-                            <div className="bg-background rounded p-2 border">
-                              <div className="font-medium mb-1">Finishing</div>
-                              <div className="text-muted-foreground">{job.finishing || 'Not started'}</div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ))
-                ) : (
-                  <Card>
-                    <CardContent className="flex flex-col items-center justify-center py-12">
-                      <p className="text-muted-foreground mb-4">No active stitching jobs found</p>
-                      <Link to="/production/job-cards/new">
-                        <Badge variant="outline" className="hover:bg-accent cursor-pointer">
-                          Create a new job card to start production
-                        </Badge>
-                      </Link>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="dispatch" className="space-y-4">
-              <div className="grid gap-4">
-                {jobs.dispatch.length > 0 ? (
-                  jobs.dispatch.map(job => (
-                    <Link to={`/dispatch/${job.jobCardId}`} key={job.id} className="block">
-                      <Card className="overflow-hidden hover:border-primary hover:shadow-md transition-all duration-200">
-                        <CardHeader className="bg-muted/50 py-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-medium text-sm">{job.product}</p>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span>Order: {job.order}</span>
-                              </div>
-                            </div>
-                            <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-200">
-                              Ready for Dispatch
-                            </Badge>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="py-4">
-                          <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                              <div className="text-sm font-medium mb-1">Customer</div>
-                              {/* Show company name dynamically */}
-                              <div className="text-sm">{job.order}</div>
-                            </div>
-                            <div>
-                              <div className="text-sm font-medium mb-1">Quantity</div>
-                              <div className="text-sm">{job.quantity.toLocaleString()} units</div>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            <div className="bg-background rounded p-2 border">
-                              <div className="font-medium mb-1">Quality Check</div>
-                              <div className="text-green-600">Pending</div>
-                            </div>
-                            <div className="bg-background rounded p-2 border">
-                              <div className="font-medium mb-1">Packaging</div>
-                              <div className="text-green-600">Ready</div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ))
-                ) : (
-                  <Card>
-                    <CardContent className="flex flex-col items-center justify-center py-12">
-                      <p className="text-muted-foreground mb-4">No orders ready for dispatch</p>
-                      <Link to="/orders">
-                        <Badge variant="outline" className="hover:bg-accent cursor-pointer">
-                          View all orders
-                        </Badge>
-                      </Link>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </TabsContent>
-          </Tabs>
-        </>
-      )}
+      <Tabs defaultValue={initialTab} className="space-y-4" onValueChange={handleTabChange}>
+        <TabsList>
+          <TabsTrigger value="cutting">Cutting</TabsTrigger>
+          <TabsTrigger value="printing">Printing</TabsTrigger>
+          <TabsTrigger value="stitching">Stitching</TabsTrigger>
+          <TabsTrigger value="dispatch">Dispatch</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="cutting">
+          <CuttingStageList jobs={jobs.cutting} />
+        </TabsContent>
+        
+        <TabsContent value="printing">
+          <PrintingStageList jobs={jobs.printing} />
+        </TabsContent>
+        
+        <TabsContent value="stitching">
+          <StitchingStageList jobs={jobs.stitching} />
+        </TabsContent>
+        
+        <TabsContent value="dispatch">
+          <DispatchStageList jobs={jobs.dispatch} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
