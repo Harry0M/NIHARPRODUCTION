@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { 
@@ -11,7 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { 
   Select,
   SelectContent,
@@ -27,7 +27,7 @@ import {
   FormLabel,
   FormMessage
 } from "@/components/ui/form";
-import { ArrowLeft, Calendar, Printer, Upload } from "lucide-react";
+import { ArrowLeft, Calendar, Printer, Upload, Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -38,6 +38,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { VendorSelection } from "@/components/production/VendorSelection";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type JobStatus = "pending" | "in_progress" | "completed";
 
@@ -66,6 +67,7 @@ interface PrintingJobData {
   status: JobStatus;
   rate: number | null;
   expected_completion_date: string | null;
+  created_at?: string;
 }
 
 const formSchema = z.object({
@@ -86,7 +88,8 @@ const PrintingJob = () => {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [jobCard, setJobCard] = useState<JobCard | null>(null);
-  const [existingJob, setExistingJob] = useState<PrintingJobData | null>(null);
+  const [existingJobs, setExistingJobs] = useState<PrintingJobData[]>([]);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [printImage, setPrintImage] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -145,31 +148,37 @@ const PrintingJob = () => {
         
         setJobCard(transformedJobCard);
         
-        // Then check if there's an existing printing job for this job card
-        const { data: printingJob, error: printingJobError } = await supabase
+        // Then fetch all existing printing jobs for this job card
+        const { data: printingJobs, error: printingJobsError } = await supabase
           .from('printing_jobs')
           .select('*')
           .eq('job_card_id', id)
-          .maybeSingle();
+          .order('created_at', { ascending: false });
         
-        if (printingJobError) throw printingJobError;
+        if (printingJobsError) throw printingJobsError;
         
-        if (printingJob) {
-          setExistingJob(printingJob);
+        if (printingJobs && printingJobs.length > 0) {
+          setExistingJobs(printingJobs);
+          
+          // Select the most recent job by default
+          setSelectedJobId(printingJobs[0].id);
+          
+          // Populate the form with the selected job's data
+          const selectedJob = printingJobs[0];
           form.reset({
-            pulling: printingJob.pulling || "",
-            gsm: printingJob.gsm || "",
-            sheet_length: printingJob.sheet_length || transformedJobCard.order.bag_length,
-            sheet_width: printingJob.sheet_width || transformedJobCard.order.bag_width,
-            worker_name: printingJob.worker_name || "",
-            is_internal: printingJob.is_internal !== false, // default to true if null
-            status: printingJob.status as JobStatus || "pending",
-            rate: printingJob.rate || null,
-            expected_completion_date: printingJob.expected_completion_date ? new Date(printingJob.expected_completion_date) : null
+            pulling: selectedJob.pulling || "",
+            gsm: selectedJob.gsm || "",
+            sheet_length: selectedJob.sheet_length || transformedJobCard.order.bag_length,
+            sheet_width: selectedJob.sheet_width || transformedJobCard.order.bag_width,
+            worker_name: selectedJob.worker_name || "",
+            is_internal: selectedJob.is_internal !== false, // default to true if null
+            status: selectedJob.status as JobStatus || "pending",
+            rate: selectedJob.rate || null,
+            expected_completion_date: selectedJob.expected_completion_date ? new Date(selectedJob.expected_completion_date) : null
           });
-          setPrintImage(printingJob.print_image);
+          setPrintImage(selectedJob.print_image);
         } else {
-          // Set defaults from job card
+          // Set defaults from job card for a new job
           form.reset({
             pulling: "",
             gsm: "",
@@ -195,6 +204,46 @@ const PrintingJob = () => {
 
     fetchJobCard();
   }, [id, form]);
+
+  const selectJob = (jobId: string) => {
+    setSelectedJobId(jobId);
+    const selectedJob = existingJobs.find(job => job.id === jobId);
+    
+    if (selectedJob) {
+      // Reset form with the selected job's data
+      form.reset({
+        pulling: selectedJob.pulling || "",
+        gsm: selectedJob.gsm || "",
+        sheet_length: selectedJob.sheet_length || (jobCard?.order.bag_length || 0),
+        sheet_width: selectedJob.sheet_width || (jobCard?.order.bag_width || 0),
+        worker_name: selectedJob.worker_name || "",
+        is_internal: selectedJob.is_internal !== false, // default to true if null
+        status: selectedJob.status as JobStatus || "pending",
+        rate: selectedJob.rate || null,
+        expected_completion_date: selectedJob.expected_completion_date ? new Date(selectedJob.expected_completion_date) : null
+      });
+      setPrintImage(selectedJob.print_image);
+    }
+  };
+
+  const createNewJob = () => {
+    // Reset the form with default values
+    if (jobCard) {
+      form.reset({
+        pulling: "",
+        gsm: "",
+        sheet_length: jobCard.order.bag_length,
+        sheet_width: jobCard.order.bag_width,
+        worker_name: "",
+        is_internal: true,
+        status: "pending",
+        rate: null,
+        expected_completion_date: null
+      });
+    }
+    setSelectedJobId(null);
+    setPrintImage(null);
+  };
 
   const handlePrintImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -264,12 +313,12 @@ const PrintingJob = () => {
 
       let result;
       
-      if (existingJob) {
+      if (selectedJobId) {
         // Update existing job
         const { data, error } = await supabase
           .from('printing_jobs')
           .update(printingJobData)
-          .eq('id', existingJob.id)
+          .eq('id', selectedJobId)
           .select()
           .single();
           
@@ -298,13 +347,15 @@ const PrintingJob = () => {
       }
       
       // Update job card status if needed
-      await supabase
-        .from('job_cards')
-        .update({ status: values.status })
-        .eq('id', id);
+      if (values.status === "completed") {
+        await supabase
+          .from('job_cards')
+          .update({ status: "in_progress" })
+          .eq('id', id);
+      }
         
       // Redirect to the job cards list
-      navigate('/production/job-cards');
+      navigate(`/production/job-cards/${id}`);
       
     } catch (error: any) {
       toast({
@@ -324,7 +375,7 @@ const PrintingJob = () => {
           variant="ghost" 
           size="sm" 
           className="gap-1"
-          onClick={() => navigate("/production/job-cards")}
+          onClick={() => navigate(`/production/job-cards/${id}`)}
         >
           <ArrowLeft size={16} />
           Back
@@ -340,296 +391,333 @@ const PrintingJob = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
       ) : (
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-            {jobCard && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Printer size={18} />
-                    Job Card Information
-                  </CardTitle>
-                  <CardDescription>Details from the original job card and order</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Job Name</Label>
-                      <div className="font-medium mt-1">{jobCard.job_name}</div>
-                    </div>
-                    <div>
-                      <Label>Order Number</Label>
-                      <div className="font-medium mt-1">{jobCard.order.order_number}</div>
-                    </div>
-                    <div>
-                      <Label>Company</Label>
-                      <div className="font-medium mt-1">{jobCard.order.company_name}</div>
-                    </div>
-                    <div>
-                      <Label>Quantity</Label>
-                      <div className="font-medium mt-1">{jobCard.order.quantity.toLocaleString()} bags</div>
-                    </div>
-                    <div>
-                      <Label>Bag Size</Label>
-                      <div className="font-medium mt-1">{jobCard.order.bag_length} × {jobCard.order.bag_width} inches</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
+        <>
+          {existingJobs.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Printing Details</CardTitle>
-                <CardDescription>Enter the printing job specifications</CardDescription>
+                <CardTitle className="text-lg">Job Selection</CardTitle>
+                <CardDescription>Select an existing job or create a new one</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="pulling"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Pulling</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter pulling details" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="gsm"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>GSM</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter GSM" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {existingJobs.map((job) => (
+                    <Button
+                      key={job.id}
+                      variant={selectedJobId === job.id ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => selectJob(job.id!)}
+                      className="flex items-center gap-1"
+                    >
+                      Job {job.created_at ? new Date(job.created_at).toLocaleDateString() : 'N/A'}
+                      <span className={`ml-1 w-2 h-2 rounded-full ${
+                        job.status === 'completed' ? 'bg-green-500' :
+                        job.status === 'in_progress' ? 'bg-amber-500' : 'bg-gray-500'
+                      }`}></span>
+                    </Button>
+                  ))}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={createNewJob}
+                    className="flex items-center gap-1"
+                  >
+                    <Plus size={14} /> New Job
+                  </Button>
                 </div>
+              </CardContent>
+            </Card>
+          )}
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="sheet_length"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Sheet Length (inches)</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.01" placeholder="Enter sheet length" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="sheet_width"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Sheet Width (inches)</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.01" placeholder="Enter sheet width" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div>
-                  <Label>Print Image</Label>
-                  <div className="mt-2">
-                    <div className="flex items-center gap-4">
-                      <Button 
-                        type="button" 
-                        variant="outline"
-                        onClick={() => document.getElementById('print-image-upload')?.click()}
-                        disabled={loading}
-                        className="flex gap-2 items-center"
-                      >
-                        <Upload size={16} />
-                        {printImage ? "Change Image" : "Upload Image"}
-                      </Button>
-                      <input 
-                        type="file"
-                        id="print-image-upload"
-                        onChange={handlePrintImageUpload}
-                        accept="image/*"
-                        className="hidden"
-                      />
-                      {printImage && <span className="text-green-600 text-sm">Image selected</span>}
-                    </div>
-                    
-                    {printImage && (
-                      <div className="mt-4 border rounded p-2 max-w-md">
-                        <img 
-                          src={printImage} 
-                          alt="Print design" 
-                          className="max-h-40 object-contain"
-                        />
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+              {jobCard && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Printer size={18} />
+                      Job Card Information
+                    </CardTitle>
+                    <CardDescription>Details from the original job card and order</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Job Name</Label>
+                        <div className="font-medium mt-1">{jobCard.job_name}</div>
                       </div>
-                    )}
+                      <div>
+                        <Label>Order Number</Label>
+                        <div className="font-medium mt-1">{jobCard.order.order_number}</div>
+                      </div>
+                      <div>
+                        <Label>Company</Label>
+                        <div className="font-medium mt-1">{jobCard.order.company_name}</div>
+                      </div>
+                      <div>
+                        <Label>Quantity</Label>
+                        <div className="font-medium mt-1">{jobCard.order.quantity.toLocaleString()} bags</div>
+                      </div>
+                      <div>
+                        <Label>Bag Size</Label>
+                        <div className="font-medium mt-1">{jobCard.order.bag_length} × {jobCard.order.bag_width} inches</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Printing Details</CardTitle>
+                  <CardDescription>Enter the printing job specifications</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="pulling"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Pulling</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter pulling details" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="gsm"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>GSM</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter GSM" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                </div>
 
-                
-<FormField
-  control={form.control}
-  name="worker_name"
-  render={({ field }) => (
-    <FormItem>
-      <FormLabel>Printer Name</FormLabel>
-      <FormControl>
-        <VendorSelection
-          serviceType="printing"
-          value={field.value || ""}
-          onChange={field.onChange}
-          placeholder="Select printer or enter manually"
-        />
-      </FormControl>
-      <FormMessage />
-    </FormItem>
-  )}
-/>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="sheet_length"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Sheet Length (inches)</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" placeholder="Enter sheet length" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="sheet_width"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Sheet Width (inches)</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" placeholder="Enter sheet width" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  
+                  <div>
+                    <Label>Print Image</Label>
+                    <div className="mt-2">
+                      <div className="flex items-center gap-4">
+                        <Button 
+                          type="button" 
+                          variant="outline"
+                          onClick={() => document.getElementById('print-image-upload')?.click()}
+                          disabled={loading}
+                          className="flex gap-2 items-center"
+                        >
+                          <Upload size={16} />
+                          {printImage ? "Change Image" : "Upload Image"}
+                        </Button>
+                        <input 
+                          type="file"
+                          id="print-image-upload"
+                          onChange={handlePrintImageUpload}
+                          accept="image/*"
+                          className="hidden"
+                        />
+                        {printImage && <span className="text-green-600 text-sm">Image selected</span>}
+                      </div>
+                      
+                      {printImage && (
+                        <div className="mt-4 border rounded p-2 max-w-md">
+                          <img 
+                            src={printImage} 
+                            alt="Print design" 
+                            className="max-h-40 object-contain"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <FormField
                     control={form.control}
-                    name="is_internal"
-                    render={({ field }) => (
-                      <FormItem className="space-y-3">
-                        <FormLabel>Printing Type</FormLabel>
-                        <FormControl>
-                          <Select
-                            onValueChange={(value) => field.onChange(value === "true")}
-                            defaultValue={field.value ? "true" : "false"}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select printing type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="true">Internal</SelectItem>
-                              <SelectItem value="false">External</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="rate"
+                    name="worker_name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Rate</FormLabel>
+                        <FormLabel>Printer Name</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            step="0.01" 
-                            placeholder="Enter rate" 
-                            {...field}
-                            value={field.value === null ? '' : field.value}
-                            onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
+                          <VendorSelection
+                            serviceType="printing"
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                            placeholder="Select printer or enter manually"
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="is_internal"
+                      render={({ field }) => (
+                        <FormItem className="space-y-3">
+                          <FormLabel>Printing Type</FormLabel>
+                          <FormControl>
+                            <Select
+                              onValueChange={(value) => field.onChange(value === "true")}
+                              defaultValue={field.value ? "true" : "false"}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select printing type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="true">Internal</SelectItem>
+                                <SelectItem value="false">External</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="rate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Rate</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              step="0.01" 
+                              placeholder="Enter rate" 
+                              {...field}
+                              value={field.value === null ? '' : field.value}
+                              onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="expected_completion_date"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Expected Completion Date</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value ? (
+                                    format(field.value, "PPP")
+                                  ) : (
+                                    <span>Pick a date</span>
+                                  )}
+                                  <Calendar className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <CalendarComponent
+                                mode="single"
+                                selected={field.value || undefined}
+                                onSelect={field.onChange}
+                                initialFocus
+                                className="p-3 pointer-events-auto"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                   <FormField
                     control={form.control}
-                    name="expected_completion_date"
+                    name="status"
                     render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Expected Completion Date</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={"outline"}
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span>Pick a date</span>
-                                )}
-                                <Calendar className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <CalendarComponent
-                              mode="single"
-                              selected={field.value || undefined}
-                              onSelect={field.onChange}
-                              initialFocus
-                              className="p-3 pointer-events-auto"
-                            />
-                          </PopoverContent>
-                        </Popover>
+                      <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          value={field.value}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Status</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="in_progress">In Progress</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-              <CardFooter className="flex justify-end gap-3 pt-6">
-                <Button 
-                  type="button" 
-                  variant="outline"
-                  onClick={() => navigate("/production/job-cards")}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={loading}>
-                  {loading ? "Saving..." : existingJob ? "Update Job" : "Create Job"}
-                </Button>
-              </CardFooter>
-            </Card>
-          </form>
-        </Form>
+                </CardContent>
+                <CardFooter className="flex justify-end gap-3 pt-6">
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={() => navigate(`/production/job-cards/${id}`)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={loading}>
+                    {loading ? "Saving..." : selectedJobId ? "Update Job" : "Create Job"}
+                  </Button>
+                </CardFooter>
+              </Card>
+            </form>
+          </Form>
+        </>
       )}
     </div>
   );

@@ -24,3 +24,10 @@ export interface JobsData {
   stitching: JobData[];
   dispatch: JobData[];
 }
+
+export interface TimelineJob {
+  id: string;
+  status: string;
+  worker_name: string | null;
+  created_at: string;
+}

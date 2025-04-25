@@ -1,10 +1,11 @@
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Scissors, Printer, PackageCheck, Truck, Clock, AlertTriangle } from "lucide-react";
+import { Scissors, Printer, PackageCheck, Truck, Clock, AlertTriangle, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
 import { StageStatus } from "@/components/production/StageStatus";
+import { useState } from "react";
 
 interface TimelineJob {
   id: string;
@@ -34,6 +35,11 @@ export const ProductionTimelineCard = ({
   printingJobs = [],
   stitchingJobs = [],
 }: ProductionTimelineCardProps) => {
+  const [selectedJob, setSelectedJob] = useState<{ type: string, id: string | null }>({
+    type: "",
+    id: null
+  });
+  
   const isCuttingCompleted = cuttingJobs.length > 0 && 
     cuttingJobs.every(job => job.status === 'completed');
   
@@ -49,7 +55,11 @@ export const ProductionTimelineCard = ({
     return (
       <div className="mt-2 space-y-1">
         {jobs.map((job, index) => (
-          <div key={job.id} className="text-xs text-muted-foreground flex items-center gap-2">
+          <div 
+            key={job.id} 
+            className={`text-xs flex items-center gap-2 p-1 rounded-sm cursor-pointer ${selectedJob.type === type && selectedJob.id === job.id ? 'bg-muted' : ''}`}
+            onClick={() => setSelectedJob({ type, id: job.id })}
+          >
             <StageStatus 
               status={job.status as any} 
               date={job.created_at}
@@ -62,12 +72,16 @@ export const ProductionTimelineCard = ({
   };
 
   const handleProcessClick = (process: string) => {
+    // For edit mode, pass the selected job ID if it matches the process type
+    const jobId = selectedJob.type === process ? selectedJob.id : null;
+    
     switch (process) {
       case 'cutting':
+        // Always allow creating new cutting jobs
         handleCreateProcess(process);
         break;
       case 'printing':
-        if (!isCuttingCompleted) {
+        if (!isCuttingCompleted && !printingJobs.length) {
           toast({
             title: "Cannot start printing",
             description: "Please complete at least one cutting job first.",
@@ -78,7 +92,7 @@ export const ProductionTimelineCard = ({
         handleCreateProcess(process);
         break;
       case 'stitching':
-        if (!isPrintingCompleted) {
+        if (!isPrintingCompleted && !stitchingJobs.length) {
           toast({
             title: "Cannot start stitching",
             description: "Please complete at least one printing job first.",
@@ -126,12 +140,16 @@ export const ProductionTimelineCard = ({
               <Button 
                 size="sm"
                 variant="outline"
-                onClick={() => handleProcessClick('cutting')}
+                className="flex items-center gap-1"
+                onClick={() => {
+                  setSelectedJob({ type: "", id: null });  // Clear selection for new job
+                  handleProcessClick('cutting');
+                }}
               >
-                Add Job
+                <Plus className="h-3 w-3" /> New Job
               </Button>
             </div>
-            {renderJobsList(cuttingJobs, 'Cutting')}
+            {renderJobsList(cuttingJobs, 'cutting')}
           </div>
 
           <div>
@@ -141,7 +159,7 @@ export const ProductionTimelineCard = ({
                 <div>
                   <p className="text-sm font-medium">Printing</p>
                   <p className="text-xs text-muted-foreground">
-                    {!isCuttingCompleted ? (
+                    {!isCuttingCompleted && !printingJobs.length ? (
                       <span className="flex items-center gap-1 text-amber-500">
                         <AlertTriangle size={12} />
                         Complete cutting first
@@ -155,23 +173,27 @@ export const ProductionTimelineCard = ({
               <Button 
                 size="sm"
                 variant="outline"
-                onClick={() => handleProcessClick('printing')}
-                disabled={!isCuttingCompleted}
+                className="flex items-center gap-1"
+                onClick={() => {
+                  setSelectedJob({ type: "", id: null });  // Clear selection for new job
+                  handleProcessClick('printing');
+                }}
+                disabled={!isCuttingCompleted && !printingJobs.length}
               >
-                Add Job
+                <Plus className="h-3 w-3" /> New Job
               </Button>
             </div>
-            {renderJobsList(printingJobs, 'Printing')}
+            {renderJobsList(printingJobs, 'printing')}
           </div>
 
           <div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <PackageCheck className={`h-5 w-5 ${!isPrintingCompleted ? 'text-muted-foreground' : isStitchingCompleted ? 'text-green-500' : 'text-amber-500'}`} />
+                <PackageCheck className={`h-5 w-5 ${!isPrintingCompleted && !stitchingJobs.length ? 'text-muted-foreground' : isStitchingCompleted ? 'text-green-500' : 'text-amber-500'}`} />
                 <div>
                   <p className="text-sm font-medium">Stitching</p>
                   <p className="text-xs text-muted-foreground">
-                    {!isPrintingCompleted ? (
+                    {!isPrintingCompleted && !stitchingJobs.length ? (
                       <span className="flex items-center gap-1 text-amber-500">
                         <AlertTriangle size={12} />
                         Complete printing first
@@ -185,13 +207,17 @@ export const ProductionTimelineCard = ({
               <Button 
                 size="sm"
                 variant="outline"
-                onClick={() => handleProcessClick('stitching')}
-                disabled={!isPrintingCompleted}
+                className="flex items-center gap-1"
+                onClick={() => {
+                  setSelectedJob({ type: "", id: null });  // Clear selection for new job
+                  handleProcessClick('stitching');
+                }}
+                disabled={!isPrintingCompleted && !stitchingJobs.length}
               >
-                Add Job
+                <Plus className="h-3 w-3" /> New Job
               </Button>
             </div>
-            {renderJobsList(stitchingJobs, 'Stitching')}
+            {renderJobsList(stitchingJobs, 'stitching')}
           </div>
 
           <Separator />
