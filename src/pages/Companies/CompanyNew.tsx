@@ -9,6 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
+// Update the interface to match the companies table schema
 interface CompanyFormData {
   name: string;
   contact_person?: string;
@@ -22,22 +23,31 @@ const CompanyNew = () => {
   const navigate = useNavigate();
 
   const onSubmit = async (data: CompanyFormData) => {
-    const { error } = await supabase
-      .from('companies')
-      .insert(data);
+    try {
+      // Include created_by field to track which user created the company
+      const { error } = await supabase
+        .from('companies')
+        .insert({
+          ...data,
+          created_by: supabase.auth.getUser().data.user?.id // Add the current user's ID
+        });
 
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create company",
-        variant: "destructive"
-      });
-    } else {
+      if (error) {
+        throw error;
+      }
+
       toast({
         title: "Success",
         description: "Company created successfully",
       });
       navigate('/companies');
+    } catch (error) {
+      console.error('Error creating company:', error);
+      toast({
+        title: "Error",
+        description: `Failed to create company: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive"
+      });
     }
   };
 
