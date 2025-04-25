@@ -6,6 +6,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Calendar, Check, Clock } from "lucide-react";
+import * as React from "react"; // Add explicit React import
 
 // Define valid status types from the database
 type Status = "pending" | "in_progress" | "completed" | "cancelled";
