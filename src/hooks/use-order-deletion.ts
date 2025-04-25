@@ -23,7 +23,7 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
       
       // First attempt: use stored function to delete order and related records
       const { data: rpcResult, error: rpcError } = await supabase.rpc(
-        'delete_order_completely' as any, 
+        'delete_order_completely', 
         { order_id: orderToDelete }
       );
 
@@ -32,7 +32,7 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
         
         // Second attempt: use force delete function
         const { data: forceResult, error: forceError } = await supabase.rpc(
-          'force_delete_order' as any,
+          'force_delete_order',
           { target_id: orderToDelete }
         );
         
@@ -41,7 +41,7 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
           
           // Final attempt: emergency delete
           const { data: emergencyResult, error: emergencyError } = await supabase.rpc(
-            'emergency_delete_order' as any,
+            'emergency_delete_order',
             { target_id: orderToDelete }
           );
           
@@ -52,11 +52,15 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
       }
       
       // Final verification
-      const { data: checkOrder } = await supabase
+      const { data: checkOrder, error: checkError } = await supabase
         .from('orders')
         .select('id')
         .eq('id', orderToDelete)
         .maybeSingle();
+      
+      if (checkError) {
+        console.error("Error verifying order deletion:", checkError);
+      }
       
       if (checkOrder) {
         throw new Error("Order deletion failed after multiple methods");
