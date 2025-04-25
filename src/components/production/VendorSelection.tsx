@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Combobox } from '@/components/ui/combobox';
 import { Button } from '@/components/ui/button';
 
 interface VendorSelectionProps {
@@ -43,10 +42,11 @@ export const VendorSelection = ({
         if (vendorsError) throw vendorsError;
         
         // Also fetch workers (profiles) with the given role
+        // Fix: Cast serviceType to any to avoid TypeScript error with enum types
         const { data: workersData, error: workersError } = await supabase
           .from('profiles')
           .select('id, first_name, last_name')
-          .eq('role', serviceType);
+          .eq('role', serviceType as any);
         
         if (workersError) throw workersError;
 
