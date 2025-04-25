@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { WorkerSelection } from "@/components/production/WorkerSelection";
+import { VendorSelection } from "@/components/production/VendorSelection";
 import { useCuttingJob } from "../contexts/CuttingJobContext";
 
 export function CuttingDetailsForm() {
@@ -79,12 +79,12 @@ export function CuttingDetailsForm() {
       </div>
 
       <div className="space-y-2">
-        <WorkerSelection
-          workerType={cuttingData.is_internal ? 'internal' : 'external'}
+        <Label>Worker Name</Label>
+        <VendorSelection
           serviceType="cutting"
-          onWorkerSelect={handleWorkerSelect}
-          selectedWorkerId={cuttingData.worker_name}
-          label="Cutter Name"
+          value={cuttingData.worker_name}
+          onChange={handleWorkerSelect}
+          placeholder="Select cutter or enter manually"
         />
       </div>
 

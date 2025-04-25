@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { WorkerSelection } from "@/components/production/WorkerSelection";
+import { VendorSelection } from "@/components/production/VendorSelection";
 import { cn } from "@/lib/utils";
 import { usePrintingJob } from "../contexts/PrintingJobContext";
 import { Upload } from "lucide-react";
@@ -28,21 +28,12 @@ const formSchema = z.object({
   expected_completion_date: z.date().optional().nullable()
 });
 
-interface Component {
-  id: string;
-  type: string;
-  size: string | null;
-  color: string | null;
-  gsm: string | null;
-}
-
 interface PrintingDetailsFormProps {
   onSubmit: (values: z.infer<typeof formSchema>) => void;
   defaultValues?: z.infer<typeof formSchema>;
-  components?: Component[];
 }
 
-export function PrintingDetailsForm({ onSubmit, defaultValues, components = [] }: PrintingDetailsFormProps) {
+export function PrintingDetailsForm({ onSubmit, defaultValues }: PrintingDetailsFormProps) {
   const { printImage, setPrintImage, loading } = usePrintingJob();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -179,12 +170,11 @@ export function PrintingDetailsForm({ onSubmit, defaultValues, components = [] }
             <FormItem>
               <FormLabel>Printer Name</FormLabel>
               <FormControl>
-                <WorkerSelection
+                <VendorSelection
                   serviceType="printing"
-                  workerType={form.watch('is_internal') ? 'internal' : 'external'}
-                  onWorkerSelect={field.onChange}
-                  selectedWorkerId={field.value}
-                  label="Printer Name"
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  placeholder="Select printer or enter manually"
                 />
               </FormControl>
               <FormMessage />
@@ -305,36 +295,6 @@ export function PrintingDetailsForm({ onSubmit, defaultValues, components = [] }
             </FormItem>
           )}
         />
-
-        {components.length > 0 && (
-          <div className="space-y-4">
-            <h3 className="font-medium">Component Details</h3>
-            <div className="grid gap-4">
-              {components.map((component) => (
-                <div key={component.id} className="p-4 border rounded-md">
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="text-sm font-medium">Type</label>
-                      <p className="mt-1">{component.type}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Size</label>
-                      <p className="mt-1">{component.size || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Color</label>
-                      <p className="mt-1">{component.color || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">GSM</label>
-                      <p className="mt-1">{component.gsm || 'N/A'}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         <div className="flex justify-end gap-3 pt-6">
           <Button type="submit" disabled={loading}>
