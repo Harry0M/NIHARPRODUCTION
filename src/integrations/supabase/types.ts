@@ -721,6 +721,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_order_completely: {
+        Args: { order_id: string }
+        Returns: boolean
+      }
+      emergency_delete_order: {
+        Args: { target_id: string }
+        Returns: boolean
+      }
+      force_delete_order: {
+        Args: { target_id: string }
+        Returns: boolean
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean

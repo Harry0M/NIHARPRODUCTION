@@ -21,157 +21,35 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
     try {
       console.log("Starting deletion process for order ID:", orderToDelete);
       
-      // First attempt: use a direct RPC call to delete order and its related records
-      // This bypasses potential RLS issues and ensures proper cascade handling
+      // First attempt: use stored function to delete order and related records
       const { data: rpcResult, error: rpcError } = await supabase.rpc(
-        'delete_order_completely',
+        'delete_order_completely' as any, 
         { order_id: orderToDelete }
       );
 
       if (rpcError) {
-        console.log("RPC deletion method failed, falling back to manual deletion:", rpcError);
+        console.error("Primary deletion method failed:", rpcError);
         
-        // Find all job cards associated with this order
-        const { data: jobCards, error: jobCardsError } = await supabase
-          .from('job_cards')
-          .select('id')
-          .eq('order_id', orderToDelete);
+        // Second attempt: use force delete function
+        const { data: forceResult, error: forceError } = await supabase.rpc(
+          'force_delete_order' as any,
+          { target_id: orderToDelete }
+        );
         
-        if (jobCardsError) {
-          console.error("Error fetching job cards:", jobCardsError);
-          throw jobCardsError;
-        }
-        
-        console.log("Found job cards:", jobCards);
-        
-        // Process job cards if they exist
-        if (jobCards && jobCards.length > 0) {
-          const jobCardIds = jobCards.map(jc => jc.id);
-          console.log("Job card IDs to process:", jobCardIds);
+        if (forceError) {
+          console.error("Force deletion method failed:", forceError);
           
-          // Delete cutting components first (children of cutting jobs)
-          for (const jobCardId of jobCardIds) {
-            // Get all cutting jobs for this job card
-            const { data: cuttingJobs, error: cuttingJobsError } = await supabase
-              .from('cutting_jobs')
-              .select('id')
-              .eq('job_card_id', jobCardId);
-            
-            if (cuttingJobsError) {
-              console.error("Error fetching cutting jobs:", cuttingJobsError);
-              throw cuttingJobsError;
-            }
-            
-            if (cuttingJobs && cuttingJobs.length > 0) {
-              console.log(`Found ${cuttingJobs.length} cutting jobs to delete`);
-              for (const job of cuttingJobs) {
-                // Delete cutting components for this cutting job
-                const { error: componentsDeleteError } = await supabase
-                  .from('cutting_components')
-                  .delete()
-                  .eq('cutting_job_id', job.id);
-                  
-                if (componentsDeleteError) {
-                  console.error("Error deleting cutting components:", componentsDeleteError);
-                  throw componentsDeleteError;
-                }
-              }
-              
-              // Then delete the cutting jobs
-              const { error: cuttingDeleteError } = await supabase
-                .from('cutting_jobs')
-                .delete()
-                .eq('job_card_id', jobCardId);
-              
-              if (cuttingDeleteError) {
-                console.error("Error deleting cutting jobs:", cuttingDeleteError);
-                throw cuttingDeleteError;
-              }
-            }
-            
-            // Delete printing jobs
-            const { error: printingDeleteError } = await supabase
-              .from('printing_jobs')
-              .delete()
-              .eq('job_card_id', jobCardId);
-            
-            if (printingDeleteError) {
-              console.error("Error deleting printing jobs:", printingDeleteError);
-              throw printingDeleteError;
-            }
-            
-            // Delete stitching jobs
-            const { error: stitchingDeleteError } = await supabase
-              .from('stitching_jobs')
-              .delete()
-              .eq('job_card_id', jobCardId);
-            
-            if (stitchingDeleteError) {
-              console.error("Error deleting stitching jobs:", stitchingDeleteError);
-              throw stitchingDeleteError;
-            }
-          }
+          // Final attempt: emergency delete
+          const { data: emergencyResult, error: emergencyError } = await supabase.rpc(
+            'emergency_delete_order' as any,
+            { target_id: orderToDelete }
+          );
           
-          // Delete job cards after processing their children
-          console.log("Deleting job cards:", jobCardIds);
-          const { error: jobCardsDeleteError } = await supabase
-            .from('job_cards')
-            .delete()
-            .eq('order_id', orderToDelete);
-          
-          if (jobCardsDeleteError) {
-            console.error("Error deleting job cards:", jobCardsDeleteError);
-            throw jobCardsDeleteError;
+          if (emergencyError) {
+            throw new Error("All deletion methods failed");
           }
         }
-        
-        // Delete order components
-        console.log("Deleting order components for order:", orderToDelete);
-        const { error: componentsError } = await supabase
-          .from('order_components')
-          .delete()
-          .eq('order_id', orderToDelete);
-        
-        if (componentsError) {
-          console.error("Error deleting order components:", componentsError);
-          throw componentsError;
-        }
-        
-        // Delete order dispatches
-        console.log("Deleting order dispatches for order:", orderToDelete);
-        const { error: dispatchesError } = await supabase
-          .from('order_dispatches')
-          .delete()
-          .eq('order_id', orderToDelete);
-        
-        if (dispatchesError) {
-          console.error("Error deleting order dispatches:", dispatchesError);
-          throw dispatchesError;
-        }
       }
-      
-      // As a last step (whether RPC worked or not), directly delete the order itself
-      console.log("Executing final direct order deletion");
-      
-      // Use raw SQL for the deletion through RPC (if available)
-      const { error: finalDeleteError } = await supabase.rpc(
-        'force_delete_order', 
-        { target_id: orderToDelete }
-      ).catchError(() => {
-        // Fallback if the RPC doesn't exist
-        return supabase
-          .from('orders')
-          .delete()
-          .eq('id', orderToDelete);
-      });
-      
-      if (finalDeleteError) {
-        console.error("Error in final deletion:", finalDeleteError);
-        throw finalDeleteError;
-      }
-      
-      // Add a delay to allow the database to process
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Final verification
       const { data: checkOrder } = await supabase
@@ -181,19 +59,7 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
         .maybeSingle();
       
       if (checkOrder) {
-        // One last attempt with raw SQL via a function call
-        await supabase.rpc('emergency_delete_order', { target_id: orderToDelete });
-        
-        // Final check
-        const { data: finalCheck } = await supabase
-          .from('orders')
-          .select('id')
-          .eq('id', orderToDelete)
-          .maybeSingle();
-          
-        if (finalCheck) {
-          throw new Error("Order deletion failed after multiple methods");
-        }
+        throw new Error("Order deletion failed after multiple methods");
       }
       
       console.log("Order and related records deleted successfully");
@@ -215,7 +81,6 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
         variant: "destructive",
       });
     } finally {
-      // Ensure UI returns to normal state even if there's an error
       setDeleteDialogOpen(false);
       setOrderToDelete(null);
       setDeleteLoading(false);
