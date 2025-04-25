@@ -10,13 +10,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { WorkerSelection } from "@/components/production/WorkerSelection";
 import { ConsumptionCalculator } from "@/components/production/ConsumptionCalculator";
 import { CuttingJobOrderInfo } from "./CuttingJobOrderInfo";
 import { CuttingJobSelection } from "./CuttingJobSelection";
 import { CuttingJobComponentForm } from "./CuttingJobComponentForm";
 import { Database } from "@/integrations/supabase/types";
 import { VendorSelection } from "@/components/production/VendorSelection";
+
+// ... keep existing code (type definitions and interfaces)
 
 type JobStatus = Database["public"]["Enums"]["job_status"];
 
@@ -65,6 +66,7 @@ interface CuttingJob {
 }
 
 export default function CuttingJobForm() {
+  // ... keep existing code (useState, useEffect, and other hooks)
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -235,6 +237,7 @@ export default function CuttingJobForm() {
     fetchData();
   }, [id]);
 
+  // ... keep existing code (handleInputChange, handleSelectChange, etc.)
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     console.log(`Updating ${name} with value: ${value}`);
@@ -254,6 +257,7 @@ export default function CuttingJobForm() {
     setCuttingData(prev => ({ ...prev, is_internal: checked }));
   };
 
+  // ... keep existing code (handleComponentChange, handleConsumptionCalculated, etc.)
   const handleComponentChange = (index: number, field: string, value: string | JobStatus) => {
     setComponentData(prev => {
       const updated = [...prev];
@@ -269,14 +273,15 @@ export default function CuttingJobForm() {
     }));
   };
 
-  const handleWorkerSelect = (workerId: string) => {
-    const selectedWorker = workerId ? workerId : "";
+  // Update the handleWorkerSelect function to accept string directly
+  const handleWorkerSelect = (workerName: string) => {
     setCuttingData(prev => ({
       ...prev,
-      worker_name: selectedWorker
+      worker_name: workerName
     }));
   };
 
+  // ... keep existing code (validateRollWidth, handleSelectJob, etc.)
   const validateRollWidth = (value: string) => {
     // Convert to string explicitly, trim spaces and check if it's empty
     const trimmedValue = String(value || "").trim();
@@ -346,6 +351,7 @@ export default function CuttingJobForm() {
     }
   };
 
+  // ... keep existing code (handleNewJob, handleSubmit, handleGoBack, etc.)
   // Handle creating a new job entry
   const handleNewJob = () => {
     setSelectedJobId(null);
@@ -520,6 +526,7 @@ export default function CuttingJobForm() {
     }
   };
 
+  // ... keep existing code (handleGoBack, loading state, jobCard not found state)
   // Use direct navigation with window.location for reliable routing
   const handleGoBack = () => {
     window.location.href = `/production/job-cards/${id}`;
@@ -547,6 +554,7 @@ export default function CuttingJobForm() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
+        {/* ... keep existing code (header) */}
         <Button
           variant="ghost"
           size="sm"
@@ -647,20 +655,20 @@ export default function CuttingJobForm() {
                 </div>
 
                 <div className="space-y-2">
-  <Label>Worker Name</Label>
-  <VendorSelection
-    serviceType="cutting"
-    value={cuttingData.worker_name}
-    onChange={(value) => handleWorkerSelect(value)}
-    placeholder="Select cutter or enter manually"
-  />
-</div>
+                  <Label>Worker Name</Label>
+                  <VendorSelection
+                    serviceType="cutting"
+                    value={cuttingData.worker_name}
+                    onChange={(value) => handleWorkerSelect(value)}
+                    placeholder="Select cutter or enter manually"
+                  />
+                </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
                   <Select
                     value={cuttingData.status}
-                    onValueChange={(value: JobStatus) => handleSelectChange("status", value)}
+                    onValueChange={(value: Database["public"]["Enums"]["job_status"]) => handleSelectChange("status", value)}
                   >
                     <SelectTrigger id="status">
                       <SelectValue placeholder="Select status" />
@@ -680,7 +688,7 @@ export default function CuttingJobForm() {
         <CuttingJobComponentForm
           components={components}
           componentData={componentData}
-          handleComponentChange={handleComponentChange} // passed handler from parent
+          handleComponentChange={handleComponentChange}
           handleGoBack={handleGoBack}
           submitting={submitting}
           selectedJobId={selectedJobId}
