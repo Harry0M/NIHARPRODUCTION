@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -181,8 +182,7 @@ export function PrintingDetailsForm({ onSubmit, defaultValues, components = [] }
                 <WorkerSelection
                   serviceType="printing"
                   workerType={form.watch('is_internal') ? 'internal' : 'external'}
-                  value={field.value || ""}
-                  onChange={field.onChange}
+                  onWorkerSelect={field.onChange}
                   selectedWorkerId={field.value}
                   label="Printer Name"
                 />

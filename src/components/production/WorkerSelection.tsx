@@ -4,7 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 
 export interface Worker {
   id: string;
@@ -110,7 +109,7 @@ export const WorkerSelection = ({
   const handleWorkerSelect = (workerId: string) => {
     const selectedWorker = workers.find(w => w.id === workerId);
     if (selectedWorker) {
-      onWorkerSelect(selectedWorker.name);
+      onWorkerSelect(selectedWorker.id);
     }
   };
 
