@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Select, 
   SelectContent, 
@@ -36,6 +36,7 @@ export const VendorSelection = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isManualMode, setIsManualMode] = useState(false);
   const [manualInput, setManualInput] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
   
   // Initialize manualInput with value if it's not in vendors
   useEffect(() => {
@@ -82,6 +83,16 @@ export const VendorSelection = ({
     fetchVendors();
   }, [serviceType, value]);
 
+  // Focus input when switching to manual mode
+  useEffect(() => {
+    if (isManualMode && inputRef.current) {
+      // Small delay to ensure the DOM is updated
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 50);
+    }
+  }, [isManualMode]);
+
   const handleManualInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setManualInput(newValue);
@@ -108,6 +119,8 @@ export const VendorSelection = ({
           placeholder={placeholder}
           disabled={isLoading}
           className="flex-1"
+          ref={inputRef}
+          autoFocus
         />
         <Button 
           variant="outline" 
