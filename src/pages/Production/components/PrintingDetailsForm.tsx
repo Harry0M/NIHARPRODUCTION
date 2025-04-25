@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { VendorSelection } from "@/components/production/VendorSelection";
+import { WorkerSelection } from "@/components/production/WorkerSelection";
 import { cn } from "@/lib/utils";
 import { usePrintingJob } from "../contexts/PrintingJobContext";
 import { Upload } from "lucide-react";
@@ -178,11 +178,13 @@ export function PrintingDetailsForm({ onSubmit, defaultValues, components = [] }
             <FormItem>
               <FormLabel>Printer Name</FormLabel>
               <FormControl>
-                <VendorSelection
+                <WorkerSelection
                   serviceType="printing"
+                  workerType={form.watch('is_internal') ? 'internal' : 'external'}
                   value={field.value || ""}
                   onChange={field.onChange}
-                  placeholder="Select printer or enter manually"
+                  selectedWorkerId={field.value}
+                  label="Printer Name"
                 />
               </FormControl>
               <FormMessage />
