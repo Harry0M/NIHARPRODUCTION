@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { VendorSelection } from "@/components/production/VendorSelection";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { CalendarComponent } from "@/components/ui/calendar";
 import { Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
