@@ -1,23 +1,17 @@
-// This file is responsible for all logic and orchestration of the child components.
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { ArrowLeft, Scissors } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ConsumptionCalculator } from "@/components/production/ConsumptionCalculator";
 import { CuttingJobOrderInfo } from "./CuttingJobOrderInfo";
 import { CuttingJobSelection } from "./CuttingJobSelection";
 import { CuttingJobComponentForm } from "./CuttingJobComponentForm";
+import { CuttingDetailsForm } from "./components/CuttingDetailsForm";
+import { CuttingJobProvider } from "./providers/CuttingJobProvider";
 import { Database } from "@/integrations/supabase/types";
-import { VendorSelection } from "@/components/production/VendorSelection";
-
-// ... keep existing code (type definitions and interfaces)
 
 type JobStatus = Database["public"]["Enums"]["job_status"];
 
@@ -66,7 +60,6 @@ interface CuttingJob {
 }
 
 export default function CuttingJobForm() {
-  // ... keep existing code (useState, useEffect, and other hooks)
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -74,7 +67,7 @@ export default function CuttingJobForm() {
   const [components, setComponents] = useState<Component[]>([]);
   const [existingJobs, setExistingJobs] = useState<CuttingJob[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  const [existingComponents, setExistingComponents] = useState<CuttingComponent[]>([]);
+  const [componentData, setComponentData] = useState<CuttingComponent[]>([]);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const [cuttingData, setCuttingData] = useState<{
@@ -237,7 +230,6 @@ export default function CuttingJobForm() {
     fetchData();
   }, [id]);
 
-  // ... keep existing code (handleInputChange, handleSelectChange, etc.)
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     console.log(`Updating ${name} with value: ${value}`);
@@ -257,7 +249,6 @@ export default function CuttingJobForm() {
     setCuttingData(prev => ({ ...prev, is_internal: checked }));
   };
 
-  // ... keep existing code (handleComponentChange, handleConsumptionCalculated, etc.)
   const handleComponentChange = (index: number, field: string, value: string | JobStatus) => {
     setComponentData(prev => {
       const updated = [...prev];
@@ -281,7 +272,6 @@ export default function CuttingJobForm() {
     }));
   };
 
-  // ... keep existing code (validateRollWidth, handleSelectJob, etc.)
   const validateRollWidth = (value: string) => {
     // Convert to string explicitly, trim spaces and check if it's empty
     const trimmedValue = String(value || "").trim();
@@ -351,7 +341,6 @@ export default function CuttingJobForm() {
     }
   };
 
-  // ... keep existing code (handleNewJob, handleSubmit, handleGoBack, etc.)
   // Handle creating a new job entry
   const handleNewJob = () => {
     setSelectedJobId(null);
@@ -526,7 +515,6 @@ export default function CuttingJobForm() {
     }
   };
 
-  // ... keep existing code (handleGoBack, loading state, jobCard not found state)
   // Use direct navigation with window.location for reliable routing
   const handleGoBack = () => {
     window.location.href = `/production/job-cards/${id}`;
@@ -539,6 +527,7 @@ export default function CuttingJobForm() {
       </div>
     );
   }
+
   if (!jobCard) {
     return (
       <div className="text-center py-8">
@@ -554,7 +543,6 @@ export default function CuttingJobForm() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
-        {/* ... keep existing code (header) */}
         <Button
           variant="ghost"
           size="sm"
@@ -575,6 +563,7 @@ export default function CuttingJobForm() {
           </p>
         </div>
       </div>
+
       {existingJobs.length > 0 && (
         <CuttingJobSelection
           existingJobs={existingJobs.map(({ id, status }) => ({ id, status }))}
@@ -583,108 +572,24 @@ export default function CuttingJobForm() {
           handleNewJob={handleNewJob}
         />
       )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <CuttingJobOrderInfo order={jobCard.order} />
-        {/* Cutting details form */}
+        
         <Card className="md:col-span-3">
           <CardHeader>
             <CardTitle>Cutting Details</CardTitle>
             <CardDescription>Enter details for the cutting process</CardDescription>
           </CardHeader>
           <CardContent>
-            <form id="cutting-form" onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="roll_width" className={`text-primary font-medium ${validationError ? 'text-destructive' : ''}`}>
-                    Roll Width (Required) *
-                  </Label>
-                  <Input 
-                    id="roll_width" 
-                    name="roll_width"
-                    type="text" // Changed to text to handle all input formats
-                    placeholder="Roll width in inches"
-                    value={cuttingData.roll_width}
-                    onChange={handleInputChange}
-                    required
-                    className={`border-2 ${validationError ? 'border-destructive' : 'border-primary'} focus:ring-2 focus:ring-primary`}
-                    aria-required="true"
-                    aria-invalid={validationError ? "true" : "false"}
-                    aria-describedby={validationError ? "roll-width-error" : undefined}
-                  />
-                  {validationError && (
-                    <p id="roll-width-error" className="text-sm font-medium text-destructive mt-1">
-                      {validationError}
-                    </p>
-                  )}
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="consumption_meters">Consumption (meters)</Label>
-                  <Input 
-                    id="consumption_meters" 
-                    name="consumption_meters"
-                    type="text"
-                    value={cuttingData.consumption_meters || ''}
-                    onChange={handleInputChange}
-                    placeholder="Material consumption"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Calculated using: [(length×width)÷6339.39]×quantity
-                  </p>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="received_quantity">Received Quantity</Label>
-                  <Input 
-                    id="received_quantity" 
-                    name="received_quantity"
-                    type="text"
-                    placeholder="Final quantity after cutting"
-                    value={cuttingData.received_quantity || ''}
-                    onChange={handleInputChange}
-                  />
-                </div>
-
-                <div className="flex items-center space-x-2 pt-8">
-                  <Checkbox 
-                    id="is_internal" 
-                    checked={cuttingData.is_internal}
-                    onCheckedChange={handleCheckboxChange}
-                  />
-                  <Label htmlFor="is_internal">Internal Cutting (In-house)</Label>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Worker Name</Label>
-                  <VendorSelection
-                    serviceType="cutting"
-                    value={cuttingData.worker_name}
-                    onChange={(value) => handleWorkerSelect(value)}
-                    placeholder="Select cutter or enter manually"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={cuttingData.status}
-                    onValueChange={(value: Database["public"]["Enums"]["job_status"]) => handleSelectChange("status", value)}
-                  >
-                    <SelectTrigger id="status">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+            <form id="cutting-form" onSubmit={handleSubmit}>
+              <CuttingJobProvider>
+                <CuttingDetailsForm />
+              </CuttingJobProvider>
             </form>
           </CardContent>
         </Card>
-        {/* Component cutting form */}
+
         <CuttingJobComponentForm
           components={components}
           componentData={componentData}
