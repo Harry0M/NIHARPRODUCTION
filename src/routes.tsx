@@ -1,3 +1,4 @@
+
 import { RouteObject, Navigate, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
@@ -25,15 +26,15 @@ import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
 import CompanyList from "@/pages/Companies/CompanyList";
 import CompanyNew from "@/pages/Companies/CompanyNew";
-
-// Placeholder for future development
-const InventoryList = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Inventory List</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
-const InventoryNew = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">New Inventory</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
-const Settings = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Settings</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
-
 import CompanyOrders from "./pages/Companies/CompanyOrders";
 import InventoryLayout from "./pages/Inventory/InventoryLayout";
+import StockList from "./pages/Inventory/StockList";
 import CatalogList from "./pages/Inventory/CatalogList";
+import CatalogNew from "./pages/Inventory/CatalogNew";
+
+// Placeholder for future development
+const InventoryNew = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">New Inventory</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
+const Settings = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Settings</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 
 const routes: RouteObject[] = [
   {
@@ -124,18 +125,6 @@ const routes: RouteObject[] = [
             element: <SupplierNew />
           },
           {
-            path: "inventory",
-            element: <InventoryList />
-          },
-          {
-            path: "inventory/new",
-            element: <InventoryNew />
-          },
-          {
-            path: "settings",
-            element: <Settings />
-          },
-          {
             path: "/companies",
             element: <CompanyList />
           },
@@ -157,13 +146,25 @@ const routes: RouteObject[] = [
               },
               {
                 path: "stock",
-                element: <InventoryList />
+                element: <StockList />
+              },
+              {
+                path: "stock/new",
+                element: <InventoryNew />
               },
               {
                 path: "catalog",
                 element: <CatalogList />
+              },
+              {
+                path: "catalog/new",
+                element: <CatalogNew />
               }
             ]
+          },
+          {
+            path: "settings",
+            element: <Settings />
           },
         ]
       }
