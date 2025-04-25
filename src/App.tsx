@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
 import AppRoutes from "./AppRoutes";
-import * as React from "react";
+import React from "react";
 
 // Create a new QueryClient instance
 const queryClient = new QueryClient({
@@ -17,17 +17,15 @@ const queryClient = new QueryClient({
 });
 
 const App = () => (
-  <React.StrictMode>
+  <BrowserRouter>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <TooltipProvider>
-          <AppRoutes />
-          <Toaster />
-          <Sonner />
-        </TooltipProvider>
-      </BrowserRouter>
+      <TooltipProvider>
+        <AppRoutes />
+        <Toaster />
+        <Sonner />
+      </TooltipProvider>
     </QueryClientProvider>
-  </React.StrictMode>
+  </BrowserRouter>
 );
 
 export default App;
