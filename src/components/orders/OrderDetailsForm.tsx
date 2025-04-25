@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useCatalogProducts } from "@/hooks/use-catalog-products";
 
 interface Company {
   id: string;
@@ -38,10 +39,12 @@ interface OrderDetailsFormProps {
   handleOrderChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 
     target: { name: string; value: string } 
   }) => void;
+  onProductSelect?: (components: any[]) => void;
 }
 
-export const OrderDetailsForm = ({ formData, handleOrderChange }: OrderDetailsFormProps) => {
+export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect }: OrderDetailsFormProps) => {
   const [companies, setCompanies] = useState<Company[]>([]);
+  const { data: catalogProducts, isLoading } = useCatalogProducts();
 
   // Fetch companies on component mount
   useEffect(() => {
@@ -58,6 +61,26 @@ export const OrderDetailsForm = ({ formData, handleOrderChange }: OrderDetailsFo
     fetchCompanies();
   }, []);
 
+  const handleProductSelect = (productId: string) => {
+    const selectedProduct = catalogProducts?.find(p => p.id === productId);
+    if (selectedProduct) {
+      // Update form fields
+      handleOrderChange({ target: { name: 'bag_length', value: selectedProduct.bag_length.toString() } });
+      handleOrderChange({ target: { name: 'bag_width', value: selectedProduct.bag_width.toString() } });
+      if (selectedProduct.default_quantity) {
+        handleOrderChange({ target: { name: 'quantity', value: selectedProduct.default_quantity.toString() } });
+      }
+      if (selectedProduct.default_rate) {
+        handleOrderChange({ target: { name: 'rate', value: selectedProduct.default_rate.toString() } });
+      }
+      
+      // Pass components to parent component
+      if (onProductSelect && selectedProduct.catalog_components) {
+        onProductSelect(selectedProduct.catalog_components);
+      }
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -65,7 +88,24 @@ export const OrderDetailsForm = ({ formData, handleOrderChange }: OrderDetailsFo
         <CardDescription>Enter the basic information for this order</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Add company selection dropdown */}
+        {/* Add product selection dropdown */}
+        <div className="space-y-2">
+          <Label>Select Product (Optional)</Label>
+          <Select onValueChange={handleProductSelect}>
+            <SelectTrigger>
+              <SelectValue placeholder="Choose a product template" />
+            </SelectTrigger>
+            <SelectContent>
+              {catalogProducts?.map((product) => (
+                <SelectItem key={product.id} value={product.id}>
+                  {product.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Keep existing company selection dropdown */}
         <div className="space-y-2">
           <Label>Select Company</Label>
           <Select 
@@ -90,6 +130,7 @@ export const OrderDetailsForm = ({ formData, handleOrderChange }: OrderDetailsFo
           </Select>
         </div>
 
+        {/* Keep existing form fields */}
         <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="company_name">Company Name</Label>

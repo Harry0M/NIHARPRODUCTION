@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus } from "lucide-react";
@@ -44,7 +43,9 @@ const OrderNew = () => {
   // Custom added components state
   const [customComponents, setCustomComponents] = useState<CustomComponent[]>([]);
   
-  const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 
+    target: { name: string; value: string } 
+  }) => {
     const { name, value } = e.target;
     setOrderDetails(prev => ({
       ...prev,
@@ -89,6 +90,35 @@ const OrderNew = () => {
   
   const removeCustomComponent = (index: number) => {
     setCustomComponents(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleProductSelect = (components: any[]) => {
+    // Convert catalog components to order components format
+    const orderComponents = components.reduce((acc, component) => {
+      if (component.component_type === 'custom') {
+        setCustomComponents(prev => [...prev, {
+          id: uuidv4(),
+          type: 'custom',
+          customName: component.custom_name,
+          color: component.color,
+          gsm: component.gsm,
+          length: component.size?.split('x')[0] || '',
+          width: component.size?.split('x')[1] || ''
+        }]);
+      } else {
+        acc[component.component_type] = {
+          id: uuidv4(),
+          type: component.component_type,
+          color: component.color,
+          gsm: component.gsm,
+          length: component.size?.split('x')[0] || '',
+          width: component.size?.split('x')[1] || ''
+        };
+      }
+      return acc;
+    }, {});
+
+    setComponents(orderComponents);
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -199,6 +229,7 @@ const OrderNew = () => {
         <OrderDetailsForm 
           formData={orderDetails}
           handleOrderChange={handleOrderChange}
+          onProductSelect={handleProductSelect}
         />
         
         <Card>
