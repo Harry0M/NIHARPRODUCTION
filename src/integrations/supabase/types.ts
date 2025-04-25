@@ -9,45 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      companies: {
-        Row: {
-          address: string | null
-          contact_person: string | null
-          created_at: string
-          created_by: string | null
-          email: string | null
-          id: string
-          name: string
-          phone: string | null
-          status: string | null
-          updated_at: string
-        }
-        Insert: {
-          address?: string | null
-          contact_person?: string | null
-          created_at?: string
-          created_by?: string | null
-          email?: string | null
-          id?: string
-          name: string
-          phone?: string | null
-          status?: string | null
-          updated_at?: string
-        }
-        Update: {
-          address?: string | null
-          contact_person?: string | null
-          created_at?: string
-          created_by?: string | null
-          email?: string | null
-          id?: string
-          name?: string
-          phone?: string | null
-          status?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       components: {
         Row: {
           color: string | null
@@ -388,7 +349,6 @@ export type Database = {
         Row: {
           bag_length: number
           bag_width: number
-          company_id: string | null
           company_name: string
           created_at: string
           created_by: string | null
@@ -404,7 +364,6 @@ export type Database = {
         Insert: {
           bag_length: number
           bag_width: number
-          company_id?: string | null
           company_name: string
           created_at?: string
           created_by?: string | null
@@ -420,7 +379,6 @@ export type Database = {
         Update: {
           bag_length?: number
           bag_width?: number
-          company_id?: string | null
           company_name?: string
           created_at?: string
           created_by?: string | null
@@ -433,15 +391,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["order_status"] | null
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "orders_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       printing_jobs: {
         Row: {
