@@ -203,7 +203,7 @@ export const StitchingForm = ({
                     <FormControl>
                       <Select
                         onValueChange={(value) => field.onChange(value === "true")}
-                        defaultValue={field.value ? "true" : "false"}
+                        value={field.value ? "true" : "false"}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select stitching type" />
@@ -250,7 +250,7 @@ export const StitchingForm = ({
                   <FormControl>
                     <Select
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      value={field.value}
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select status" />
