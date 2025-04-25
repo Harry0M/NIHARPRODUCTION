@@ -1,147 +1,166 @@
 
 import { useState, useEffect } from 'react';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { PencilIcon } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
+import { toast } from "@/hooks/use-toast";
+
+interface Vendor {
+  id: string;
+  name: string;
+  service_type: string | null;
+}
 
 interface VendorSelectionProps {
   serviceType: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  label?: string;
-}
-
-interface Vendor {
-  id: string;
-  name: string;
 }
 
 export const VendorSelection = ({
   serviceType,
   value,
   onChange,
-  placeholder = "Select vendor...",
-  label
+  placeholder = "Select vendor..."
 }: VendorSelectionProps) => {
-  const [options, setOptions] = useState<{ label: string; value: string }[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isManualEntry, setIsManualEntry] = useState(false);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isManualMode, setIsManualMode] = useState(false);
+  const [manualInput, setManualInput] = useState("");
+  
+  // Initialize manualInput with value if it's not in vendors
+  useEffect(() => {
+    if (value && !isManualMode && !vendors.some(v => v.name === value)) {
+      setManualInput(value);
+    }
+  }, [value, vendors, isManualMode]);
 
   useEffect(() => {
     const fetchVendors = async () => {
-      setLoading(true);
+      setIsLoading(true);
       try {
-        // Fetch vendors with the given service type
-        const { data: vendorsData, error: vendorsError } = await supabase
+        const { data, error } = await supabase
           .from('vendors')
-          .select('id, name')
-          .eq('service_type', serviceType);
-        
-        if (vendorsError) throw vendorsError;
-        
-        // Also fetch workers (profiles) with the given role
-        // Fix: Cast serviceType to any to avoid TypeScript error with enum types
-        const { data: workersData, error: workersError } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name')
-          .eq('role', serviceType as any);
-        
-        if (workersError) throw workersError;
+          .select('id, name, service_type')
+          .eq('service_type', serviceType)
+          .eq('status', 'active');
 
-        // Transform vendors data
-        const vendorOptions = vendorsData?.map(vendor => ({
-          label: vendor.name,
-          value: vendor.name, // Use name directly instead of ID for simplicity
-          type: 'vendor'
-        })) || [];
-
-        // Transform workers data
-        const workerOptions = workersData?.map(worker => ({
-          label: `${worker.first_name || ''} ${worker.last_name || ''}`.trim() || 'Unknown Worker',
-          value: `${worker.first_name || ''} ${worker.last_name || ''}`.trim() || 'Unknown Worker',
-          type: 'worker'
-        })) || [];
-
-        // Combine both lists
-        setOptions([...vendorOptions, ...workerOptions]);
+        if (error) {
+          console.error('Error fetching vendors:', error);
+          toast({
+            title: "Failed to load vendors",
+            description: error.message,
+            variant: "destructive"
+          });
+          setVendors([]);
+        } else {
+          setVendors(data || []);
+          
+          // If we have a value but it's not in the vendors list, switch to manual mode
+          if (value && !data?.some(vendor => vendor.name === value)) {
+            setIsManualMode(true);
+            setManualInput(value);
+          }
+        }
       } catch (error) {
-        console.error('Error fetching vendors/workers:', error);
-        setOptions([]);
+        console.error('Exception when fetching vendors:', error);
+        setVendors([]);
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
     fetchVendors();
-  }, [serviceType]);
+  }, [serviceType, value]);
 
-  // Check if current value matches any option to determine if it's manual entry
-  useEffect(() => {
-    // If there's a value and it's not in the options, it's likely manual entry
-    if (value && options.length > 0 && !options.some(option => option.value === value)) {
-      setIsManualEntry(true);
-    }
-  }, [value, options]);
-
-  const toggleManualEntry = () => {
-    setIsManualEntry(!isManualEntry);
-    if (!isManualEntry) {
-      // Clear the value when switching to manual entry
-      onChange('');
-    }
+  const handleManualInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setManualInput(newValue);
+    onChange(newValue);
   };
 
-  return (
-    <div className="space-y-2">
-      {label && <Label>{label}</Label>}
-      <div className="space-y-2">
-        {isManualEntry ? (
-          <div className="space-y-2">
-            <Input
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              placeholder={placeholder}
-              className="w-full"
-            />
-            <Button
-              type="button"
-              variant="link"
-              className="text-xs p-0 h-auto"
-              onClick={toggleManualEntry}
-            >
-              Select from list
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <Input
-              type="text"
-              list="vendor-options"
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              placeholder={placeholder}
-              className="w-full"
-            />
-            <datalist id="vendor-options">
-              {options.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </datalist>
-            <Button
-              type="button"
-              variant="link"
-              className="text-xs p-0 h-auto"
-              onClick={toggleManualEntry}
-            >
-              Enter manually
-            </Button>
-          </div>
-        )}
+  const handleSelectChange = (selectedValue: string) => {
+    onChange(selectedValue);
+  };
+
+  const toggleManualMode = () => {
+    if (!isManualMode) {
+      setManualInput(value);
+    }
+    setIsManualMode(!isManualMode);
+  };
+
+  if (isManualMode) {
+    return (
+      <div className="flex gap-2">
+        <Input
+          value={manualInput}
+          onChange={handleManualInputChange}
+          placeholder={placeholder}
+          disabled={isLoading}
+          className="flex-1"
+        />
+        <Button 
+          variant="outline" 
+          size="icon"
+          onClick={toggleManualMode}
+          type="button"
+          disabled={isLoading}
+        >
+          <PencilIcon className="h-4 w-4" />
+        </Button>
       </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-2">
+      <div className="flex-1">
+        <Select
+          value={vendors.some(v => v.name === value) ? value : ""}
+          onValueChange={handleSelectChange}
+          disabled={isLoading}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder={placeholder} />
+          </SelectTrigger>
+          <SelectContent>
+            {vendors.map((vendor) => (
+              <SelectItem key={vendor.id} value={vendor.name}>
+                {vendor.name}
+              </SelectItem>
+            ))}
+            {vendors.length === 0 && !isLoading && (
+              <div className="p-2 text-center text-sm text-muted-foreground">
+                No vendors found
+              </div>
+            )}
+            {isLoading && (
+              <div className="p-2 text-center text-sm text-muted-foreground">
+                Loading vendors...
+              </div>
+            )}
+          </SelectContent>
+        </Select>
+      </div>
+      <Button 
+        variant="outline" 
+        size="icon"
+        onClick={toggleManualMode}
+        type="button"
+        disabled={isLoading}
+      >
+        <PencilIcon className="h-4 w-4" />
+      </Button>
     </div>
   );
-}
+};
