@@ -23,6 +23,7 @@ interface JobCard {
   id: string;
   job_name: string;
   order: {
+    id: string; // Added id field to fix the error
     order_number: string;
     company_name: string;
     bag_length: number;
@@ -53,6 +54,7 @@ const PrintingJob = () => {
             id, 
             job_name,
             orders (
+              id, // Added id field to the query
               order_number,
               company_name,
               bag_length,
