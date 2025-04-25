@@ -1,4 +1,6 @@
-import { RouteObject } from "react-router-dom";
+import { RouteObject, Navigate, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
 import AppLayout from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import OrderList from "./pages/Orders/OrderList";
@@ -28,6 +30,10 @@ import CompanyNew from "@/pages/Companies/CompanyNew";
 const InventoryList = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Inventory List</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 const InventoryNew = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">New Inventory</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 const Settings = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Settings</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
+
+import CompanyOrders from "./pages/Companies/CompanyOrders";
+import InventoryLayout from "./pages/Inventory/InventoryLayout";
+import CatalogList from "./pages/Inventory/CatalogList";
 
 const routes: RouteObject[] = [
   {
@@ -136,7 +142,29 @@ const routes: RouteObject[] = [
           {
             path: "/companies/new",
             element: <CompanyNew />
-          }
+          },
+          {
+            path: "/companies/:id/orders",
+            element: <CompanyOrders />
+          },
+          {
+            path: "/inventory",
+            element: <InventoryLayout />,
+            children: [
+              {
+                path: "",
+                element: <Navigate to="/inventory/stock" replace />
+              },
+              {
+                path: "stock",
+                element: <InventoryList />
+              },
+              {
+                path: "catalog",
+                element: <CatalogList />
+              }
+            ]
+          },
         ]
       }
     ]

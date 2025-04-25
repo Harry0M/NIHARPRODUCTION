@@ -9,6 +9,89 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      catalog: {
+        Row: {
+          bag_length: number
+          bag_width: number
+          created_at: string
+          created_by: string | null
+          default_quantity: number | null
+          default_rate: number | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          bag_length: number
+          bag_width: number
+          created_at?: string
+          created_by?: string | null
+          default_quantity?: number | null
+          default_rate?: number | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          bag_length?: number
+          bag_width?: number
+          created_at?: string
+          created_by?: string | null
+          default_quantity?: number | null
+          default_rate?: number | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      catalog_components: {
+        Row: {
+          catalog_id: string
+          color: string | null
+          component_type: string
+          created_at: string
+          custom_name: string | null
+          gsm: number | null
+          id: string
+          size: string | null
+          updated_at: string
+        }
+        Insert: {
+          catalog_id: string
+          color?: string | null
+          component_type: string
+          created_at?: string
+          custom_name?: string | null
+          gsm?: number | null
+          id?: string
+          size?: string | null
+          updated_at?: string
+        }
+        Update: {
+          catalog_id?: string
+          color?: string | null
+          component_type?: string
+          created_at?: string
+          custom_name?: string | null
+          gsm?: number | null
+          id?: string
+          size?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_components_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           address: string | null

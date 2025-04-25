@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -12,7 +11,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Package } from "lucide-react";
 
 interface Company {
   id: string;
@@ -98,7 +97,16 @@ const CompanyList = () => {
               <TableCell>{company.contact_person || 'N/A'}</TableCell>
               <TableCell>{company.email || 'N/A'}</TableCell>
               <TableCell>{company.phone || 'N/A'}</TableCell>
-              <TableCell>
+              <TableCell className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => navigate(`/companies/${company.id}/orders`)}
+                  className="flex items-center gap-1"
+                >
+                  <Package size={16} />
+                  Orders
+                </Button>
                 <Button 
                   variant="destructive" 
                   size="sm"
