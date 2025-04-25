@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { 
@@ -137,7 +136,29 @@ const JobCardList = () => {
     }
   };
 
-  // Update the fetchJobCards function to include status information
+  const getJobCardStatus = (jobCard: JobCard) => {
+    // Check if there are any stitching jobs
+    const hasStitchingJobs = jobCard.stitching_jobs && jobCard.stitching_jobs.length > 0;
+    const hasPrintingJobs = jobCard.printing_jobs && jobCard.printing_jobs.length > 0;
+    
+    // Check if all stitching jobs are completed
+    const isStitchingCompleted = hasStitchingJobs && 
+      jobCard.stitching_jobs.every(job => job.status === 'completed');
+    
+    // Check if all printing jobs are completed
+    const isPrintingCompleted = hasPrintingJobs && 
+      jobCard.printing_jobs.every(job => job.status === 'completed');
+
+    if (isStitchingCompleted) {
+      return 'completed';
+    } else if (isPrintingCompleted) {
+      return 'in_progress';
+    } else {
+      return 'pending';
+    }
+  };
+
+  // Update the fetchJobCards function to use the new status
   const fetchJobCards = async () => {
     setLoading(true);
     try {
@@ -172,21 +193,11 @@ const JobCardList = () => {
       if (error) throw error;
       
       const formattedData = data?.map(item => ({
-        id: item.id,
-        job_name: item.job_name,
-        status: item.status,
-        created_at: item.created_at,
-        order: {
-          id: item.orders.id,
-          order_number: item.orders.order_number,
-          company_name: item.orders.company_name
-        },
-        cutting_jobs: item.cutting_jobs,
-        printing_jobs: item.printing_jobs,
-        stitching_jobs: item.stitching_jobs
-      }));
+        ...item,
+        status: getJobCardStatus(item) // Override the status with our new logic
+      })) || [];
       
-      setJobCards(formattedData || []);
+      setJobCards(formattedData);
     } catch (error: any) {
       toast({
         title: "Error fetching job cards",
