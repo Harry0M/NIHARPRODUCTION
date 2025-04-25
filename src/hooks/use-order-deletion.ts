@@ -45,12 +45,23 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
       
       console.log("Order deleted successfully");
       
-      onOrderDeleted(orderToDelete);
+      // First close the dialog and clean up state
+      setDeleteDialogOpen(false);
+      const deletedOrderId = orderToDelete;
+      setOrderToDelete(null);
+      setDeleteLoading(false);
       
+      // Send a success notification
       toast({
         title: "Order deleted successfully",
         description: "The order and all related records have been removed.",
       });
+      
+      // Allow state updates to complete before triggering any navigation
+      setTimeout(() => {
+        // Only notify parent component about the deletion after everything else is done
+        onOrderDeleted(deletedOrderId);
+      }, 0);
       
     } catch (error: any) {
       console.error("Error in deletion process:", error);
@@ -60,7 +71,7 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
         description: error.message || "An error occurred while deleting the order",
         variant: "destructive",
       });
-    } finally {
+      
       setDeleteDialogOpen(false);
       setOrderToDelete(null);
       setDeleteLoading(false);

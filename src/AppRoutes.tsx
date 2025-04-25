@@ -1,15 +1,15 @@
 
-import { useRoutes, Navigate } from "react-router-dom";
+import { useRoutes, Navigate, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import routes from "./routes";
 import { supabase } from "@/integrations/supabase/client";
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 
 const AppRoutes = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [initialUser, setInitialUser] = useState(null);
-
+  
   useEffect(() => {
     const checkSession = async () => {
       try {

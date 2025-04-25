@@ -28,6 +28,7 @@ const OrderList = () => {
   });
   
   const handleOrderDeleted = (deletedOrderId: string) => {
+    // Update orders state without causing a full re-fetch
     setOrders(prevOrders => prevOrders.filter(order => order.id !== deletedOrderId));
   };
 
