@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,10 +9,25 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Company {
+  id: string;
+  name: string;
+}
 
 interface OrderDetailsFormProps {
   formData: {
     company_name: string;
+    company_id?: string;
     quantity: string;
     bag_length: string;
     bag_width: string;
@@ -21,10 +35,29 @@ interface OrderDetailsFormProps {
     special_instructions: string;
     order_date?: string;
   };
-  handleOrderChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  handleOrderChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 
+    target: { name: string; value: string } 
+  }) => void;
 }
 
 export const OrderDetailsForm = ({ formData, handleOrderChange }: OrderDetailsFormProps) => {
+  const [companies, setCompanies] = useState<Company[]>([]);
+
+  // Fetch companies on component mount
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id, name');
+
+      if (!error && data) {
+        setCompanies(data);
+      }
+    };
+
+    fetchCompanies();
+  }, []);
+
   return (
     <Card>
       <CardHeader>
@@ -32,6 +65,31 @@ export const OrderDetailsForm = ({ formData, handleOrderChange }: OrderDetailsFo
         <CardDescription>Enter the basic information for this order</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Add company selection dropdown */}
+        <div className="space-y-2">
+          <Label>Select Company</Label>
+          <Select 
+            value={formData.company_id} 
+            onValueChange={(value) => handleOrderChange({ 
+              target: { 
+                name: 'company_id', 
+                value 
+              } 
+            })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select a company" />
+            </SelectTrigger>
+            <SelectContent>
+              {companies.map((company) => (
+                <SelectItem key={company.id} value={company.id}>
+                  {company.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="company_name">Company Name</Label>

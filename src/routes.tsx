@@ -1,4 +1,3 @@
-
 import { RouteObject } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
@@ -22,6 +21,8 @@ import SupplierNew from "./pages/SupplierNew";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
+import CompanyList from "@/pages/Companies/CompanyList";
+import CompanyNew from "@/pages/Companies/CompanyNew";
 
 // Placeholder for future development
 const InventoryList = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Inventory List</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
@@ -127,6 +128,14 @@ const routes: RouteObject[] = [
           {
             path: "settings",
             element: <Settings />
+          },
+          {
+            path: "/companies",
+            element: <CompanyList />
+          },
+          {
+            path: "/companies/new",
+            element: <CompanyNew />
           }
         ]
       }

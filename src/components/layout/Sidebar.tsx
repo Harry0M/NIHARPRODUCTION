@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { 
@@ -13,7 +12,8 @@ import {
   ChevronRight,
   Factory,
   FileText,
-  ShoppingCart
+  ShoppingCart,
+  Building
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -28,6 +28,7 @@ const navItems = [
   { name: "Dispatch", path: "/dispatch", icon: Truck },
   { name: "Inventory", path: "/inventory", icon: Database },
   { name: "Settings", path: "/settings", icon: Settings },
+  { name: "Companies", path: "/companies", icon: Building },
 ];
 
 const Sidebar = () => {
