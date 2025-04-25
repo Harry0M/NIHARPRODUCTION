@@ -9,7 +9,6 @@ import { toast } from "@/hooks/use-toast";
 import { PrintingJobProvider } from "./providers/PrintingJobProvider";
 import { PrintingJobInfo } from "./components/PrintingJobInfo";
 import { PrintingDetailsForm } from "./components/PrintingDetailsForm";
-import { format } from "date-fns";
 
 interface JobCard {
   id: string;
@@ -56,14 +55,7 @@ const PrintingJob = () => {
         if (jobCardError) throw jobCardError;
         if (!jobCardData) throw new Error("Job card not found");
         
-        // Transform the data to match our JobCard interface
-        const transformedJobCard: JobCard = {
-          id: jobCardData.id,
-          job_name: jobCardData.job_name,
-          order: jobCardData.orders // Map 'orders' to 'order'
-        };
-        
-        setJobCard(transformedJobCard);
+        setJobCard(jobCardData);
         
         const { data: printingJob, error: printingJobError } = await supabase
           .from('printing_jobs')
