@@ -6,7 +6,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Calendar, Check, Clock } from "lucide-react";
-import * as React from "react"; // Add explicit React import
+import * as React from "react";
 
 // Define valid status types from the database
 type Status = "pending" | "in_progress" | "completed" | "cancelled";
@@ -17,7 +17,7 @@ interface StageStatusProps {
   tooltip?: string;
 }
 
-export const StageStatus = ({ status, date, tooltip }: StageStatusProps) => {
+export const StageStatus: React.FC<StageStatusProps> = ({ status, date, tooltip }) => {
   const getStatusColor = () => {
     switch (status) {
       case "completed":
