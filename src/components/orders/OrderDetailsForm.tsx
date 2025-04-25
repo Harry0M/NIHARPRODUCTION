@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,10 +9,20 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface OrderDetailsFormProps {
   formData: {
     company_name: string;
+    company_id?: string;
     quantity: string;
     bag_length: string;
     bag_width: string;
@@ -22,9 +31,23 @@ interface OrderDetailsFormProps {
     order_date?: string;
   };
   handleOrderChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onCompanySelect?: (companyId: string | null) => void;
 }
 
-export const OrderDetailsForm = ({ formData, handleOrderChange }: OrderDetailsFormProps) => {
+export const OrderDetailsForm = ({ formData, handleOrderChange, onCompanySelect }: OrderDetailsFormProps) => {
+  const { data: companies } = useQuery({
+    queryKey: ['companies'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
   return (
     <Card>
       <CardHeader>
@@ -34,16 +57,39 @@ export const OrderDetailsForm = ({ formData, handleOrderChange }: OrderDetailsFo
       <CardContent className="space-y-4">
         <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="company_name">Company Name</Label>
-            <Input 
-              id="company_name" 
-              name="company_name"
-              value={formData.company_name}
-              onChange={handleOrderChange}
-              placeholder="Client company name"
-              required
-            />
+            <Label htmlFor="company">Company</Label>
+            <Select
+              value={formData.company_id || ""}
+              onValueChange={(value) => {
+                if (onCompanySelect) {
+                  onCompanySelect(value || null);
+                }
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a company" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Enter manually</SelectItem>
+                {companies?.map((company) => (
+                  <SelectItem key={company.id} value={company.id}>
+                    {company.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!formData.company_id && (
+              <Input
+                id="company_name"
+                name="company_name"
+                value={formData.company_name}
+                onChange={handleOrderChange}
+                placeholder="Enter company name"
+                className="mt-2"
+              />
+            )}
           </div>
+          
           <div className="space-y-2">
             <Label htmlFor="quantity">Order Quantity</Label>
             <Input 
