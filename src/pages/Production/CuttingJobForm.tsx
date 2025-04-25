@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { ArrowLeft, Scissors } from "lucide-react";
@@ -68,6 +69,7 @@ export default function CuttingJobForm() {
   const [existingJobs, setExistingJobs] = useState<CuttingJob[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [componentData, setComponentData] = useState<CuttingComponent[]>([]);
+  const [existingComponents, setExistingComponents] = useState<CuttingComponent[]>([]);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const [cuttingData, setCuttingData] = useState<{
@@ -85,7 +87,6 @@ export default function CuttingJobForm() {
     status: "pending",
     received_quantity: ""
   });
-  const [componentData, setComponentData] = useState<CuttingComponent[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -321,6 +322,7 @@ export default function CuttingJobForm() {
           }));
           
           setComponentData(formattedComponents);
+          setExistingComponents(formattedComponents);
         } else {
           // Reset to initial component data if no components found
           const initialComponentData = components.map(comp => ({
@@ -568,7 +570,7 @@ export default function CuttingJobForm() {
         <CuttingJobSelection
           existingJobs={existingJobs.map(({ id, status }) => ({ id, status }))}
           selectedJobId={selectedJobId}
-          handleSelectJob={setSelectedJobId}
+          handleSelectJob={handleSelectJob}
           handleNewJob={handleNewJob}
         />
       )}
@@ -583,7 +585,16 @@ export default function CuttingJobForm() {
           </CardHeader>
           <CardContent>
             <form id="cutting-form" onSubmit={handleSubmit}>
-              <CuttingJobProvider>
+              <CuttingJobProvider 
+                initialData={{
+                  roll_width: cuttingData.roll_width,
+                  consumption_meters: cuttingData.consumption_meters,
+                  worker_name: cuttingData.worker_name,
+                  is_internal: cuttingData.is_internal,
+                  status: cuttingData.status,
+                  received_quantity: cuttingData.received_quantity
+                }}
+              >
                 <CuttingDetailsForm />
               </CuttingJobProvider>
             </form>
@@ -602,3 +613,4 @@ export default function CuttingJobForm() {
     </div>
   );
 }
+
