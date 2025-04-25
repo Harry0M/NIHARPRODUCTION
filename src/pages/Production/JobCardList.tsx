@@ -192,9 +192,35 @@ const JobCardList = () => {
       
       if (error) throw error;
       
+      // Properly map the response to match our JobCard interface
       const formattedData = data?.map(item => ({
-        ...item,
-        status: getJobCardStatus(item) // Override the status with our new logic
+        id: item.id,
+        job_name: item.job_name,
+        created_at: item.created_at,
+        // Transform the orders property to order
+        order: {
+          id: item.orders?.id,
+          order_number: item.orders?.order_number,
+          company_name: item.orders?.company_name
+        },
+        cutting_jobs: item.cutting_jobs || [],
+        printing_jobs: item.printing_jobs || [],
+        stitching_jobs: item.stitching_jobs || [],
+        // Add our custom status logic
+        status: getJobCardStatus({
+          id: item.id,
+          job_name: item.job_name,
+          created_at: item.created_at,
+          order: {
+            id: item.orders?.id,
+            order_number: item.orders?.order_number,
+            company_name: item.orders?.company_name
+          },
+          cutting_jobs: item.cutting_jobs || [],
+          printing_jobs: item.printing_jobs || [],
+          stitching_jobs: item.stitching_jobs || [],
+          status: item.status
+        })
       })) || [];
       
       setJobCards(formattedData);
