@@ -1,3 +1,4 @@
+
 import { 
   Select,
   SelectContent,
@@ -7,6 +8,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useState } from "react";
 
 export interface ComponentProps {
   id?: string;
@@ -30,7 +32,7 @@ interface ComponentFormProps {
   };
   title?: string;
   handleChange: (index: number, field: string, value: string) => void;
-  onChange?: (field: string, value: string) => void; // For direct onChange callbacks
+  onChange?: (field: string, value: string) => void;
 }
 
 export const ComponentForm = ({ 
@@ -42,6 +44,9 @@ export const ComponentForm = ({
   handleChange,
   onChange
 }: ComponentFormProps) => {
+  // State to track if user wants to enter custom GSM
+  const [isCustomGsm, setIsCustomGsm] = useState(false);
+
   const onFieldChange = (field: string, value: string) => {
     if (onChange) {
       onChange(field, value);
@@ -106,20 +111,49 @@ export const ComponentForm = ({
         </div>
         <div className="space-y-2">
           <Label>GSM</Label>
-          <Select 
-            value={component.gsm || undefined} 
-            onValueChange={(value) => onFieldChange('gsm', value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select GSM" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="not_applicable">Not Applicable</SelectItem>
-              {componentOptions.gsm.map(option => (
-                <SelectItem key={option} value={option}>{option}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {isCustomGsm ? (
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                placeholder="Enter GSM value"
+                value={component.gsm || ''}
+                onChange={(e) => onFieldChange('gsm', e.target.value)}
+                className="flex-1"
+              />
+              <button
+                type="button"
+                onClick={() => setIsCustomGsm(false)}
+                className="px-3 py-2 text-xs border rounded hover:bg-secondary"
+              >
+                Use List
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Select 
+                value={component.gsm || undefined} 
+                onValueChange={(value) => onFieldChange('gsm', value)}
+                className="flex-1"
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select GSM" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="not_applicable">Not Applicable</SelectItem>
+                  {componentOptions.gsm.map(option => (
+                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <button
+                type="button"
+                onClick={() => setIsCustomGsm(true)}
+                className="px-3 py-2 text-xs border rounded hover:bg-secondary"
+              >
+                Custom
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
