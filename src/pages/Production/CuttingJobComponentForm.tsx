@@ -136,16 +136,6 @@ export function CuttingJobComponentForm({
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div className="space-y-2">
-                  <Label>Waste Quantity</Label>
-                  <Input
-                    type="number"
-                    placeholder="Waste quantity"
-                    value={componentData[index]?.waste_quantity || ""}
-                    onChange={(e) => handleComponentChange(index, "waste_quantity", e.target.value)}
-                  />
-                </div>
               </div>
 
               <div className="space-y-2">
