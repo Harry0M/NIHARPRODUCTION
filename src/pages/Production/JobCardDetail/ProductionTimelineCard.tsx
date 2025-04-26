@@ -35,12 +35,13 @@ export const ProductionTimelineCard = ({
     id: null
   });
   
-  const isCuttingCompleted = cuttingJobs.length > 0 && 
-    cuttingJobs.every(job => job.status === 'completed');
+  const isCuttingStarted = cuttingJobs.length > 0;
+  const isPrintingStarted = printingJobs.length > 0;
+  const isStitchingStarted = stitchingJobs.length > 0;
   
-  const isPrintingCompleted = printingJobs.length > 0 && 
-    printingJobs.every(job => job.status === 'completed');
-  
+  // Check if at least one cutting job is completed instead of requiring all to be completed
+  const isCuttingCompleted = cuttingJobs.some(job => job.status === 'completed');
+  const isPrintingCompleted = printingJobs.some(job => job.status === 'completed');
   const isStitchingCompleted = stitchingJobs.length > 0 && 
     stitchingJobs.every(job => job.status === 'completed');
 
@@ -52,10 +53,10 @@ export const ProductionTimelineCard = ({
         handleCreateProcess(process);
         break;
       case 'printing':
-        if (!isCuttingCompleted && !printingJobs.length) {
+        if (!isCuttingStarted && !isPrintingStarted) {
           toast({
             title: "Cannot start printing",
-            description: "Please complete at least one cutting job first.",
+            description: "Please create at least one cutting job first.",
             variant: "destructive"
           });
           return;
@@ -63,10 +64,10 @@ export const ProductionTimelineCard = ({
         handleCreateProcess(process);
         break;
       case 'stitching':
-        if (!isPrintingCompleted && !stitchingJobs.length) {
+        if (!isPrintingStarted && !isStitchingStarted) {
           toast({
             title: "Cannot start stitching",
-            description: "Please complete at least one printing job first.",
+            description: "Please create at least one printing job first.",
             variant: "destructive"
           });
           return;
@@ -77,7 +78,7 @@ export const ProductionTimelineCard = ({
         if (!isStitchingCompleted) {
           toast({
             title: "Cannot start dispatch",
-            description: "Please complete all production stages first.",
+            description: "Please complete all stitching jobs first.",
             variant: "destructive"
           });
           return;
@@ -124,7 +125,7 @@ export const ProductionTimelineCard = ({
                 setSelectedJob({ type: "", id: null });
                 handleProcessClick('printing');
               }}
-              disabled={!isCuttingCompleted && !printingJobs.length}
+              disabled={!isCuttingStarted && !isPrintingStarted}
             />
             <JobList
               jobs={printingJobs}
@@ -143,7 +144,7 @@ export const ProductionTimelineCard = ({
                 setSelectedJob({ type: "", id: null });
                 handleProcessClick('stitching');
               }}
-              disabled={!isPrintingCompleted && !stitchingJobs.length}
+              disabled={!isPrintingStarted && !isStitchingStarted}
             />
             <JobList
               jobs={stitchingJobs}

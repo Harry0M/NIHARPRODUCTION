@@ -83,10 +83,16 @@ const JobCardList = () => {
     const hasPrintingJobs = jobCard.printing_jobs && jobCard.printing_jobs.length > 0;
     const hasStitchingJobs = jobCard.stitching_jobs && jobCard.stitching_jobs.length > 0;
 
+    // Check if at least one cutting job is completed instead of requiring all to be completed
+    const isCuttingStarted = hasCuttingJobs;
+    const isPrintingStarted = hasPrintingJobs;
+    const isStitchingStarted = hasStitchingJobs;
+    
+    // Check if at least one job is completed for each stage
     const isCuttingCompleted = hasCuttingJobs && 
-      jobCard.cutting_jobs.every(job => job.status === 'completed');
+      jobCard.cutting_jobs.some(job => job.status === 'completed');
     const isPrintingCompleted = hasPrintingJobs && 
-      jobCard.printing_jobs.every(job => job.status === 'completed');
+      jobCard.printing_jobs.some(job => job.status === 'completed');
     const isStitchingCompleted = hasStitchingJobs && 
       jobCard.stitching_jobs.every(job => job.status === 'completed');
 
@@ -94,11 +100,11 @@ const JobCardList = () => {
       case 'cutting':
         return true; // Cutting can always be started
       case 'printing':
-        return isCuttingCompleted;
+        return isCuttingStarted || isPrintingStarted; // Either cutting is started or printing already exists
       case 'stitching':
-        return isCuttingCompleted && isPrintingCompleted;
+        return isPrintingStarted || isStitchingStarted; // Either printing is started or stitching already exists
       case 'dispatch':
-        return isCuttingCompleted && isPrintingCompleted && isStitchingCompleted;
+        return isStitchingCompleted; // All stitching jobs must be complete
       default:
         return false;
     }
