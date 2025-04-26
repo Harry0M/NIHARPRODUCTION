@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from "@/integrations/supabase/client";
@@ -12,52 +13,48 @@ export interface CuttingJob {
   worker_name: string;
   status: JobStatus;
   is_internal: boolean;
-  job_number: string | null;
+  job_number?: string | null;
+  roll_width?: number | null;
+  consumption_meters?: number | null;
 }
 
 export interface CuttingComponent {
   component_id: string;
   type: string;
-  width: string;
-  height: string;
-  counter: string;
-  rewinding: string;
-  rate: string;
+  width: number | string;
+  height: number | string;
+  counter: number | string;
+  rewinding: number | string;
+  rate: number | string;
   status: "pending" | "in_progress" | "completed";
 }
 
-export const useCuttingJob = (jobCardId: string | undefined, existingJobId?: string) => {
+export interface Order {
+  order_number: string;
+  company_name: string;
+  quantity: number;
+  bag_length: number;
+  bag_width: number;
+}
+
+export const useCuttingJob = () => {
   const [job, setJob] = useState<CuttingJob>({
-    job_card_id: jobCardId || "",
+    job_card_id: "",
     worker_name: "",
     status: "pending",
     is_internal: false,
-    job_number: null,
   });
   const [components, setComponents] = useState<CuttingComponent[]>([]);
+  const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (jobCardId) {
-      setJob(prev => ({ ...prev, job_card_id: jobCardId }));
-    }
-  }, [jobCardId]);
-
-  useEffect(() => {
-    if (existingJobId) {
-      fetchCuttingJob(existingJobId);
-    } else if (jobCardId) {
-      fetchInitialComponents(jobCardId);
-    }
-  }, [existingJobId, jobCardId]);
-
-  const fetchCuttingJob = async (cuttingJobId: string) => {
+  const fetchCuttingJobDetails = useCallback(async (jobId: string) => {
     setLoading(true);
     try {
       const { data: cuttingJob, error } = await supabase
         .from('cutting_jobs')
         .select('*')
-        .eq('id', cuttingJobId)
+        .eq('id', jobId)
         .single();
 
       if (error) {
@@ -68,25 +65,56 @@ export const useCuttingJob = (jobCardId: string | undefined, existingJobId?: str
         setJob({
           id: cuttingJob.id,
           job_card_id: cuttingJob.job_card_id,
-          worker_name: cuttingJob.worker_name,
-          status: cuttingJob.status,
-          is_internal: cuttingJob.is_internal,
-          job_number: cuttingJob.job_number,
+          worker_name: cuttingJob.worker_name || "",
+          status: cuttingJob.status || "pending",
+          is_internal: cuttingJob.is_internal !== undefined ? cuttingJob.is_internal : false,
+          job_number: cuttingJob.job_number, // Now properly typed in the interface
+          roll_width: cuttingJob.roll_width,
+          consumption_meters: cuttingJob.consumption_meters,
         });
+
+        // Fetch job card and order details
+        const { data: jobCard, error: jobCardError } = await supabase
+          .from('job_cards')
+          .select(`
+            id,
+            order:order_id (
+              id,
+              company_name,
+              order_number,
+              quantity,
+              bag_length,
+              bag_width
+            )
+          `)
+          .eq('id', cuttingJob.job_card_id)
+          .single();
+          
+        if (jobCardError) {
+          console.error("Error fetching job card:", jobCardError);
+        } else if (jobCard?.order) {
+          setOrder({
+            order_number: jobCard.order.order_number,
+            company_name: jobCard.order.company_name,
+            quantity: jobCard.order.quantity,
+            bag_length: jobCard.order.bag_length,
+            bag_width: jobCard.order.bag_width,
+          });
+        }
 
         // Fetch components associated with this cutting job
         const { data: componentsData, error: componentsError } = await supabase
           .from('cutting_components')
           .select('*')
-          .eq('cutting_job_id', cuttingJobId);
+          .eq('cutting_job_id', jobId);
 
         if (componentsError) {
           console.error("Error fetching components:", componentsError);
-        } else {
+        } else if (componentsData) {
           // Map the fetched components to the CuttingComponent interface
           const componentsList: CuttingComponent[] = componentsData.map((comp: any) => ({
-            component_id: comp.component_id,
-            type: comp.component_type,
+            component_id: comp.component_id || "",
+            type: comp.component_type || "",
             width: comp.width || "",
             height: comp.height || "",
             counter: comp.counter || "",
@@ -106,8 +134,8 @@ export const useCuttingJob = (jobCardId: string | undefined, existingJobId?: str
     } finally {
       setLoading(false);
     }
-  };
-
+  }, []);
+  
   const fetchInitialComponents = async (jobCardId: string) => {
     setLoading(true);
     try {
@@ -117,9 +145,17 @@ export const useCuttingJob = (jobCardId: string | undefined, existingJobId?: str
           id, 
           order:order_id (
             id,
-            components (
+            company_name,
+            order_number,
+            quantity,
+            bag_length,
+            bag_width,
+            components:order_components (
               id,
-              type
+              component_type,
+              size,
+              color,
+              gsm
             )
           )
         `)
@@ -128,31 +164,49 @@ export const useCuttingJob = (jobCardId: string | undefined, existingJobId?: str
 
       if (error) throw error;
 
-      if (jobCard?.order?.components) {
-        setInitialComponents(jobCard.order.components, jobCardId);
+      if (jobCard?.order) {
+        setOrder({
+          order_number: jobCard.order.order_number,
+          company_name: jobCard.order.company_name,
+          quantity: jobCard.order.quantity,
+          bag_length: jobCard.order.bag_length,
+          bag_width: jobCard.order.bag_width,
+        });
+
+        if (jobCard.order.components) {
+          const initialComponentsList = setInitialComponents(jobCard.order.components);
+          return initialComponentsList;
+        }
       }
+      return [];
     } catch (error: any) {
       toast({
         title: "Error fetching initial components",
         description: error.message,
         variant: "destructive",
       });
+      return [];
     } finally {
       setLoading(false);
     }
   };
 
-  const setInitialComponents = (components: any[], currentJobId: string) => {
+  const setInitialComponents = (components: any[]) => {
     try {
+      if (!Array.isArray(components)) {
+        console.error("Components is not an array:", components);
+        return [];
+      }
+      
       const componentsList: CuttingComponent[] = components.map((comp: any) => ({
-        component_id: comp.id,
-        type: comp.type,
+        component_id: comp.id || uuidv4(),
+        type: comp.component_type || "",
         width: "",
         height: "",
         counter: "",
         rewinding: "",
         rate: "",
-        status: "pending" as const // Explicitly type this as a literal
+        status: "pending" as const
       }));
       
       setComponents(componentsList);
@@ -203,6 +257,8 @@ export const useCuttingJob = (jobCardId: string | undefined, existingJobId?: str
         status: job.status,
         is_internal: job.is_internal,
         job_number: job.job_number,
+        roll_width: job.roll_width,
+        consumption_meters: job.consumption_meters
       };
 
       let cuttingJobId: string;
@@ -238,11 +294,11 @@ export const useCuttingJob = (jobCardId: string | undefined, existingJobId?: str
         cutting_job_id: cuttingJobId,
         component_id: component.component_id,
         component_type: component.type,
-        width: component.width,
-        height: component.height,
-        counter: component.counter,
-        rewinding: component.rewinding,
-        rate: component.rate,
+        width: typeof component.width === 'string' ? parseFloat(component.width) || null : component.width,
+        height: typeof component.height === 'string' ? parseFloat(component.height) || null : component.height,
+        counter: typeof component.counter === 'string' ? parseFloat(component.counter) || null : component.counter,
+        rewinding: typeof component.rewinding === 'string' ? parseFloat(component.rewinding) || null : component.rewinding,
+        rate: typeof component.rate === 'string' ? parseFloat(component.rate) || null : component.rate,
         status: component.status,
       }));
 
@@ -258,12 +314,14 @@ export const useCuttingJob = (jobCardId: string | undefined, existingJobId?: str
       }
 
       // Then, insert the updated components
-      const { error: insertComponentsError } = await supabase
-        .from('cutting_components')
-        .insert(componentsToSave);
+      if (componentsToSave.length > 0) {
+        const { error: insertComponentsError } = await supabase
+          .from('cutting_components')
+          .insert(componentsToSave);
 
-      if (insertComponentsError) {
-        throw insertComponentsError;
+        if (insertComponentsError) {
+          throw insertComponentsError;
+        }
       }
 
       toast({
@@ -284,6 +342,8 @@ export const useCuttingJob = (jobCardId: string | undefined, existingJobId?: str
 
   return {
     job,
+    setJob,
+    order,
     components,
     loading,
     updateJobField,
@@ -291,5 +351,7 @@ export const useCuttingJob = (jobCardId: string | undefined, existingJobId?: str
     updateComponentField,
     removeComponent,
     saveCuttingJob,
+    fetchCuttingJobDetails,
+    fetchInitialComponents
   };
 };

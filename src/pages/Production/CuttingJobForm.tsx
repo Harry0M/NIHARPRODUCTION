@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,6 @@ import { CuttingJobComponentForm } from "./CuttingJobComponentForm";
 import { CuttingJobSelection } from "./CuttingJobSelection";
 import { useCuttingJob } from "@/hooks/use-cutting-job";
 import { CuttingJobHeader } from "@/components/production/cutting/CuttingJobHeader";
-import { ArrowLeft } from "lucide-react";
 
 interface CuttingJobFormProps {
   orderId?: string;
@@ -17,11 +17,12 @@ const CuttingJobForm: React.FC<CuttingJobFormProps> = () => {
   const { id: jobId } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const {
+    job,
+    setJob,
     order,
     components,
-    job,
     loading,
-    setJob,
+    updateJobField,
     addComponent,
     removeComponent,
     updateComponentField,
@@ -52,14 +53,23 @@ const CuttingJobForm: React.FC<CuttingJobFormProps> = () => {
           {order && <CuttingJobOrderInfo order={order} />}
           <div>
             <CuttingJobSelection
-              job={job}
-              setJob={setJob}
+              existingJobs={[]}  
+              selectedJobId={job.id || null}
+              handleSelectJob={() => {}}
+              handleNewJob={() => {}}
             />
             <CuttingJobComponentForm
-              components={components}
-              addComponent={addComponent}
-              removeComponent={removeComponent}
-              updateComponentField={updateComponentField}
+              components={[]}
+              componentData={components}
+              handleComponentChange={(index, field, value) => {
+                const componentId = components[index]?.component_id;
+                if (componentId) {
+                  updateComponentField(componentId, field, value);
+                }
+              }}
+              handleGoBack={handleGoBack}
+              submitting={loading}
+              selectedJobId={job.id || null}
             />
             <Button onClick={saveCuttingJob} className="w-full mt-4">
               Save Cutting Job
