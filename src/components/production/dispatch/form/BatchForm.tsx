@@ -10,7 +10,7 @@ import type { BatchData } from "./types";
 interface BatchFormProps {
   batch: BatchData;
   index: number;
-  maxQuantity: number;
+  remainingQuantity: number;
   canDelete: boolean;
   onBatchChange: (index: number, field: keyof BatchData, value: string | number) => void;
   onBatchDelete: (index: number) => void;
@@ -19,7 +19,7 @@ interface BatchFormProps {
 export const BatchForm = ({
   batch,
   index,
-  maxQuantity,
+  remainingQuantity,
   canDelete,
   onBatchChange,
   onBatchDelete,
@@ -50,9 +50,12 @@ export const BatchForm = ({
               value={batch.quantity}
               onChange={(e) => onBatchChange(index, 'quantity', Number(e.target.value))}
               min="1"
-              max={maxQuantity}
+              max={remainingQuantity}
               required
             />
+            <p className="text-xs text-muted-foreground">
+              Maximum available: {remainingQuantity}
+            </p>
           </div>
           <div className="space-y-2">
             <Label>Delivery Date</Label>
