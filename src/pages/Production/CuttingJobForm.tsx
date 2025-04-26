@@ -1,5 +1,3 @@
-
-// This file is responsible for all logic and orchestration of the child components.
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { ArrowLeft, Scissors } from "lucide-react";
@@ -474,7 +472,10 @@ export default function CuttingJobForm() {
             .from("cutting_components")
             .insert(componentsToInsert);
             
-          if (error) throw error;
+          if (error) {
+            console.error("Error inserting components:", error);
+            throw error;
+          }
         }
       }
       
