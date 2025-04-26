@@ -62,16 +62,20 @@ const CompanyList = () => {
 
   const fetchCompanies = async () => {
     try {
+      console.log("Fetching companies...");
       const { data, error } = await supabase
         .from('companies')
         .select('*');
 
       if (error) {
+        console.error("Error fetching companies:", error);
         throw error;
       } else {
+        console.log("Companies fetched:", data?.length || 0);
         setCompanies(data || []);
       }
     } catch (error: any) {
+      console.error("Exception in fetchCompanies:", error);
       toast({
         title: "Error",
         description: `Failed to fetch companies: ${error.message}`,
@@ -82,6 +86,7 @@ const CompanyList = () => {
 
   // Show delete options dialog
   const showDeleteOptions = (companyId: string, companyName: string) => {
+    console.log("Opening delete options for:", companyId, companyName);
     setDeleteOptionsDialog({
       isOpen: true,
       companyId,
@@ -93,7 +98,7 @@ const CompanyList = () => {
   const handleDeleteCompanyOnly = async (companyId: string) => {
     setIsDeleting(true);
     try {
-      console.log("Deleting company with ID:", companyId);
+      console.log("Starting company-only deletion for ID:", companyId);
       
       // First check if the company has any orders
       const { data: orders, error: ordersError } = await supabase
@@ -101,13 +106,17 @@ const CompanyList = () => {
         .select('id')
         .or(`company_id.eq.${companyId},sales_account_id.eq.${companyId}`);
       
-      if (ordersError) throw ordersError;
+      if (ordersError) {
+        console.error("Error checking for orders:", ordersError);
+        throw ordersError;
+      }
       
-      console.log("Found orders:", orders?.length || 0);
+      console.log("Found related orders:", orders?.length || 0);
       
       if (orders && orders.length > 0) {
-        console.log("Updating orders to remove company reference");
-        // Update orders to remove this company reference
+        console.log("Updating orders to remove company references");
+        
+        // Update orders to remove company_id reference
         const { error: updateError } = await supabase
           .from('orders')
           .update({ company_id: null })
@@ -118,6 +127,7 @@ const CompanyList = () => {
           throw updateError;
         }
         
+        // Update orders to remove sales_account_id reference
         const { error: updateSalesError } = await supabase
           .from('orders')
           .update({ sales_account_id: null })
@@ -130,25 +140,32 @@ const CompanyList = () => {
       }
       
       // Now delete the company
-      console.log("Proceeding with company deletion");
-      const { error } = await supabase
+      console.log("Executing company deletion for ID:", companyId);
+      const { error: deleteError } = await supabase
         .from('companies')
         .delete()
         .eq('id', companyId);
 
-      if (error) {
-        console.error("Error during company deletion:", error);
-        throw error;
+      if (deleteError) {
+        console.error("Error during company deletion:", deleteError);
+        throw deleteError;
       }
       
-      console.log("Company deleted successfully");
+      console.log("Company deletion successful");
+      
+      // Update local state to remove the company immediately
+      setCompanies(prevCompanies => prevCompanies.filter(company => company.id !== companyId));
+      
       toast({
         title: "Success",
         description: "Company deleted successfully. Orders were preserved.",
       });
-      fetchCompanies(); // Refresh the list
+      
+      console.log("Refreshing companies list");
+      fetchCompanies(); // Refresh the list as a backup
+      
     } catch (error: any) {
-      console.error("Exception caught during deletion:", error);
+      console.error("Exception in handleDeleteCompanyOnly:", error);
       toast({
         title: "Error",
         description: `Failed to delete company: ${error.message}`,
@@ -162,7 +179,6 @@ const CompanyList = () => {
 
   // Delete a company and all its orders
   const handleDeleteCompanyWithOrders = async (companyId: string) => {
-    setIsDeleting(true);
     try {
       // Show the confirmation dialog
       setDeleteOptionsDialog({ isOpen: false, companyId: null, companyName: null });
@@ -172,12 +188,12 @@ const CompanyList = () => {
         companyName: deleteOptionsDialog.companyName
       });
     } catch (error: any) {
+      console.error("Error preparing deletion dialog:", error);
       toast({
         title: "Error",
         description: `Failed to prepare deletion: ${error.message}`,
         variant: "destructive"
       });
-      setIsDeleting(false);
     }
   };
 
@@ -204,39 +220,46 @@ const CompanyList = () => {
         // Delete each order with the complete deletion function
         for (const order of orders) {
           console.log("Deleting order:", order.id);
-          const { error } = await supabase.rpc(
+          const { error: deleteOrderError } = await supabase.rpc(
             'delete_order_completely', 
             { order_id: order.id }
           );
           
-          if (error) {
-            console.error("Error deleting order:", error);
-            throw error;
+          if (deleteOrderError) {
+            console.error("Error deleting order:", deleteOrderError);
+            throw deleteOrderError;
           }
         }
-        console.log("All orders deleted");
+        console.log("All related orders deleted successfully");
       }
       
       // Now delete the company
-      console.log("Proceeding with company deletion");
-      const { error } = await supabase
+      console.log("Executing company deletion for ID:", companyId);
+      const { error: deleteCompanyError } = await supabase
         .from('companies')
         .delete()
         .eq('id', companyId);
 
-      if (error) {
-        console.error("Error during company deletion:", error);
-        throw error;
+      if (deleteCompanyError) {
+        console.error("Error during company deletion:", deleteCompanyError);
+        throw deleteCompanyError;
       }
       
-      console.log("Company deleted successfully");
+      console.log("Company deletion successful");
+      
+      // Update local state to remove the company immediately
+      setCompanies(prevCompanies => prevCompanies.filter(company => company.id !== companyId));
+      
       toast({
         title: "Success",
         description: "Company and all related orders deleted successfully.",
       });
-      fetchCompanies(); // Refresh the list
+      
+      console.log("Refreshing companies list");
+      fetchCompanies(); // Refresh the list as a backup
+      
     } catch (error: any) {
-      console.error("Exception caught during full deletion:", error);
+      console.error("Exception in executeFullDeletion:", error);
       toast({
         title: "Error",
         description: `Failed to delete company and orders: ${error.message}`,
