@@ -62,10 +62,19 @@ export function useOrderForm(): UseOrderFormReturn {
     target: { name: string; value: string | null } 
   }) => {
     const { name, value } = e.target;
-    setOrderDetails(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    // Handle special case for sales_account_id
+    if (name === 'sales_account_id') {
+      setOrderDetails(prev => ({
+        ...prev,
+        [name]: value === 'none' ? null : value
+      }));
+    } else {
+      setOrderDetails(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
     
     // Clear validation error when field is changed
     if (formErrors[name as keyof FormErrors]) {

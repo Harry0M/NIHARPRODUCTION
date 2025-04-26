@@ -168,7 +168,7 @@ export const OrderDetailsForm = ({
                 <SelectValue placeholder="Select sales account" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 {companies.map((company) => (
                   <SelectItem key={company.id} value={company.id}>
                     {company.name}
