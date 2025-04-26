@@ -197,11 +197,15 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
 
         if (data && data.length > 0) {
           // Map database records to our component interface
+          // Get component types separately to avoid TypeScript errors
           const formattedComponents = data.map(comp => {
+            // First, find the matching component to get its type
+            const originalComponent = components.find(c => c.id === comp.component_id);
+            const componentType = originalComponent ? originalComponent.component_type : "";
+            
             return {
               component_id: comp.component_id || "",
-              // The component_type field must be retrieved directly from the database record
-              component_type: comp.component_type || "", 
+              component_type: componentType, // Use the type from original component
               width: comp.width?.toString() || "",
               height: comp.height?.toString() || "",
               counter: comp.counter?.toString() || "",
