@@ -390,6 +390,17 @@ const JobCardList = () => {
         description: "The job card and all related jobs have been removed.",
       });
       console.log("Job card deleted successfully");
+      
+      // Close dialog and clean up state
+      setDeleteDialogOpen(false);
+      setJobCardToDelete(null);
+      setDeleteLoading(false);
+      
+      // Refresh the page
+      setTimeout(() => {
+        navigate(0);
+      }, 0);
+      
     } catch (error: any) {
       console.error("Error deleting job card:", error);
       toast({
@@ -397,7 +408,7 @@ const JobCardList = () => {
         description: error.message || "An error occurred while deleting the job card",
         variant: "destructive",
       });
-    } finally {
+      
       setDeleteDialogOpen(false);
       setJobCardToDelete(null);
       setDeleteLoading(false);
