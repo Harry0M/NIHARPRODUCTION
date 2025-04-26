@@ -10,7 +10,7 @@ import type { BatchData } from "./types";
 interface BatchFormProps {
   batch: BatchData;
   index: number;
-  maxQuantity: number;
+  remainingQuantity: number;
   canDelete: boolean;
   onBatchChange: (index: number, field: keyof BatchData, value: string | number) => void;
   onBatchDelete: (index: number) => void;
@@ -19,11 +19,14 @@ interface BatchFormProps {
 export const BatchForm = ({
   batch,
   index,
-  maxQuantity,
+  remainingQuantity,
   canDelete,
   onBatchChange,
   onBatchDelete,
 }: BatchFormProps) => {
+  // Calculate the maximum allowed quantity for this batch
+  const maxQuantity = batch.quantity + remainingQuantity;
+
   return (
     <Card>
       <CardHeader className="py-4">
@@ -53,6 +56,9 @@ export const BatchForm = ({
               max={maxQuantity}
               required
             />
+            <p className="text-xs text-muted-foreground">
+              Available: {remainingQuantity} (Max: {maxQuantity})
+            </p>
           </div>
           <div className="space-y-2">
             <Label>Delivery Date</Label>

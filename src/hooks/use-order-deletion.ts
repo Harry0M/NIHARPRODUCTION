@@ -21,7 +21,7 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
     try {
       console.log("Starting deletion process for order ID:", orderToDelete);
       
-      // Use the updated delete_order_completely function
+      // Now we can directly use delete_order_completely since cascade is handled by the database
       const { error: deleteError } = await supabase.rpc(
         'delete_order_completely',
         { order_id: orderToDelete }
@@ -59,7 +59,6 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
       
       // Allow state updates to complete before triggering any navigation
       setTimeout(() => {
-        // Only notify parent component about the deletion after everything else is done
         onOrderDeleted(deletedOrderId);
       }, 0);
       
