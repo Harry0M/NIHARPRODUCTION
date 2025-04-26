@@ -38,6 +38,7 @@ const OrderEdit = () => {
   
   const [formData, setFormData] = useState({
     company_name: "",
+    company_id: null as string | null,  // Add the missing company_id property
     quantity: "",
     bag_length: "",
     bag_width: "",
@@ -72,6 +73,7 @@ const OrderEdit = () => {
         // Format order data for the form
         setFormData({
           company_name: orderData.company_name,
+          company_id: orderData.company_id,  // Include company_id in the form data
           quantity: orderData.quantity.toString(),
           bag_length: orderData.bag_length.toString(),
           bag_width: orderData.bag_width.toString(),
@@ -212,6 +214,7 @@ const OrderEdit = () => {
         .from("orders")
         .update({
           company_name: formData.company_name,
+          company_id: formData.company_id,  // Include company_id in the update
           quantity: parseInt(formData.quantity),
           bag_length: parseFloat(formData.bag_length),
           bag_width: parseFloat(formData.bag_width),
