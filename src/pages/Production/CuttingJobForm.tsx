@@ -1,38 +1,496 @@
-
+// This file is responsible for all logic and orchestration of the child components.
+import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { CuttingJobHeader } from "@/components/production/cutting/CuttingJobHeader";
+import { ArrowLeft, Scissors } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { WorkerSelection } from "@/components/production/WorkerSelection";
+import { ConsumptionCalculator } from "@/components/production/ConsumptionCalculator";
 import { CuttingJobOrderInfo } from "./CuttingJobOrderInfo";
 import { CuttingJobSelection } from "./CuttingJobSelection";
 import { CuttingJobComponentForm } from "./CuttingJobComponentForm";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Database } from "@/integrations/supabase/types";
 import { VendorSelection } from "@/components/production/VendorSelection";
-import { useCuttingJob } from "@/hooks/use-cutting-job";
+
+type JobStatus = Database["public"]["Enums"]["job_status"];
+
+interface JobCard {
+  id: string;
+  job_name: string;
+  order: {
+    id: string;
+    company_name: string;
+    order_number: string;
+    quantity: number;
+    bag_length: number;
+    bag_width: number;
+  };
+}
+interface Component {
+  id: string;
+  type: string;
+  size: string | null;
+  color: string | null;
+  gsm: string | null;
+}
+interface CuttingComponent {
+  component_id: string;
+  type: string;
+  width: string;
+  height: string;
+  counter: string;
+  rewinding: string;
+  rate: string;
+  status: JobStatus;
+}
+interface CuttingJobSlim {
+  id: string;
+  status: JobStatus;
+}
+interface CuttingJob {
+  id: string;
+  job_card_id: string;
+  roll_width: string;
+  consumption_meters: string;
+  worker_name: string;
+  is_internal: boolean;
+  status: JobStatus;
+  received_quantity: string;
+}
 
 export default function CuttingJobForm() {
   const { id } = useParams();
-  const {
-    loading,
-    submitting,
-    jobCard,
-    components,
-    existingJobs,
-    selectedJobId,
-    cuttingData,
-    componentData,
-    validationError,
-    handleInputChange,
-    handleSelectChange,
-    handleCheckboxChange,
-    handleComponentChange,
-    handleSelectJob,
-    handleNewJob,
-    handleSubmit
-  } = useCuttingJob(id);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [jobCard, setJobCard] = useState<JobCard | null>(null);
+  const [components, setComponents] = useState<Component[]>([]);
+  const [existingJobs, setExistingJobs] = useState<CuttingJob[]>([]);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [existingComponents, setExistingComponents] = useState<CuttingComponent[]>([]);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
+  const [cuttingData, setCuttingData] = useState<{
+    roll_width: string;
+    consumption_meters: string;
+    worker_name: string;
+    is_internal: boolean;
+    status: JobStatus;
+    received_quantity: string;
+  }>({
+    roll_width: "",
+    consumption_meters: "",
+    worker_name: "",
+    is_internal: true,
+    status: "pending",
+    received_quantity: ""
+  });
+  const [componentData, setComponentData] = useState<CuttingComponent[]>([]);
+
+  // Fetch job card and job data
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch job card data
+        const { data: jobCardData, error: jobCardError } = await supabase
+          .from("job_cards")
+          .select(`
+            id, 
+            job_name,
+            orders (
+              id,
+              company_name,
+              order_number,
+              quantity,
+              bag_length,
+              bag_width
+            )
+          `)
+          .eq("id", id)
+          .single();
+          
+        if (jobCardError) throw jobCardError;
+        
+        const formattedJobCard: JobCard = {
+          id: jobCardData.id,
+          job_name: jobCardData.job_name,
+          order: jobCardData.orders
+        };
+        
+        setJobCard(formattedJobCard);
+        
+        // Fetch components data
+        const { data: componentsData, error: componentsError } = await supabase
+          .from("components")
+          .select("id, type, size, color, gsm")
+          .eq("order_id", jobCardData.orders.id);
+          
+        if (componentsError) throw componentsError;
+        setComponents(componentsData || []);
+        
+        const initialComponentData: CuttingComponent[] = componentsData.map(comp => ({
+          component_id: comp.id,
+          type: comp.type,
+          width: "",
+          height: "",
+          counter: "",
+          rewinding: "",
+          rate: "",
+          status: "pending"
+        }));
+        
+        setComponentData(initialComponentData);
+        
+        // Check for existing cutting jobs
+        const { data: existingJobsData, error: existingJobsError } = await supabase
+          .from("cutting_jobs")
+          .select("*")
+          .eq("job_card_id", id)
+          .order('created_at', { ascending: false });
+          
+        if (existingJobsError) throw existingJobsError;
+        
+        if (existingJobsData && existingJobsData.length > 0) {
+          const formattedJobs = existingJobsData.map(job => ({
+            id: job.id,
+            job_card_id: job.job_card_id,
+            roll_width: job.roll_width?.toString() || "",
+            consumption_meters: job.consumption_meters?.toString() || "",
+            worker_name: job.worker_name || "",
+            is_internal: job.is_internal ?? true,
+            status: job.status || "pending",
+            received_quantity: job.received_quantity?.toString() || ""
+          }));
+          
+          setExistingJobs(formattedJobs);
+          
+          // Don't automatically select a job anymore - this is important!
+          // Let user explicitly choose which job to view/edit
+        } else {
+          // If no existing job, initialize with calculated consumption
+          if (jobCardData.orders.bag_length && jobCardData.orders.bag_width && jobCardData.orders.quantity) {
+            const bagArea = (jobCardData.orders.bag_length * jobCardData.orders.bag_width);
+            const consumption = ((bagArea / 6339.39) * jobCardData.orders.quantity).toFixed(2);
+            
+            setCuttingData(prev => ({
+              ...prev,
+              consumption_meters: consumption
+            }));
+          }
+        }
+        
+      } catch (error: any) {
+        toast({
+          title: "Error fetching data",
+          description: error.message,
+          variant: "destructive"
+        });
+        window.location.href = `/production/job-cards/${id}`;
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [id]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    console.log(`Updating ${name} with value: ${value}`);
+    setCuttingData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear validation error when user types in roll width
+    if (name === 'roll_width' && validationError) {
+      setValidationError(null);
+    }
+  };
+
+  const handleSelectChange = (name: string, value: JobStatus) => {
+    setCuttingData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleCheckboxChange = (checked: boolean) => {
+    setCuttingData(prev => ({ ...prev, is_internal: checked }));
+  };
+
+  const handleComponentChange = (index: number, field: string, value: string | JobStatus) => {
+    setComponentData(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const handleConsumptionCalculated = (meters: number) => {
+    setCuttingData(prev => ({
+      ...prev,
+      consumption_meters: meters.toString()
+    }));
+  };
+
+  const handleWorkerSelect = (workerId: string) => {
+    const selectedWorker = workerId ? workerId : "";
+    setCuttingData(prev => ({
+      ...prev,
+      worker_name: selectedWorker
+    }));
+  };
+
+  const validateRollWidth = (value: string) => {
+    // Convert to string explicitly, trim spaces and check if it's empty
+    const trimmedValue = String(value || "").trim();
+    return trimmedValue !== "";
+  };
+
+  // Handle selection of existing job for editing
+  const handleSelectJob = async (jobId: string) => {
+    const selectedJob = existingJobs.find(job => job.id === jobId);
+    if (selectedJob) {
+      setSelectedJobId(jobId);
+      
+      // Set cutting data from the selected job
+      setCuttingData({
+        roll_width: selectedJob.roll_width,
+        consumption_meters: selectedJob.consumption_meters,
+        worker_name: selectedJob.worker_name,
+        is_internal: selectedJob.is_internal,
+        status: selectedJob.status,
+        received_quantity: selectedJob.received_quantity
+      });
+      
+      // Fetch components for the selected job
+      try {
+        const { data, error } = await supabase
+          .from("cutting_components")
+          .select("*")
+          .eq("cutting_job_id", jobId);
+          
+        if (error) {
+          toast({
+            title: "Error fetching components",
+            description: error.message,
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        if (data && data.length > 0) {
+          // Map component data to match our interface
+          const formattedComponents = data.map(comp => ({
+            component_id: comp.component_id || "",
+            type: components.find(c => c.id === comp.component_id)?.type || "",
+            width: comp.width?.toString() || "",
+            height: comp.height?.toString() || "",
+            counter: comp.counter?.toString() || "",
+            rewinding: comp.rewinding?.toString() || "",
+            rate: comp.rate?.toString() || "",
+            status: comp.status || "pending"
+          }));
+          
+          setComponentData(formattedComponents);
+        } else {
+          // If no components found, reset to initial state based on order components
+          const initialComponentData = components.map(comp => ({
+            component_id: comp.id,
+            type: comp.type,
+            width: "",
+            height: "",
+            counter: "",
+            rewinding: "",
+            rate: "",
+            status: "pending" as JobStatus
+          }));
+          setComponentData(initialComponentData);
+        }
+      } catch (error) {
+        console.error("Error fetching cutting components:", error);
+      }
+    }
+  };
+
+  // Handle creating a new job entry
+  const handleNewJob = () => {
+    setSelectedJobId(null);
+    
+    // Reset form data for new job
+    setCuttingData({
+      roll_width: "",
+      consumption_meters: "",
+      worker_name: "",
+      is_internal: true,
+      status: "pending",
+      received_quantity: ""
+    });
+    
+    // Reset component data for new job
+    const initialComponentData = components.map(comp => ({
+      component_id: comp.id,
+      type: comp.type,
+      width: "",
+      height: "",
+      counter: "",
+      rewinding: "",
+      rate: "",
+      status: "pending" as JobStatus
+    }));
+    setComponentData(initialComponentData);
+
+    // Calculate consumption based on order details
+    if (jobCard?.order) {
+      const { bag_length, bag_width, quantity } = jobCard.order;
+      if (bag_length && bag_width && quantity) {
+        const bagArea = (bag_length * bag_width);
+        const consumption = ((bagArea / 6339.39) * quantity).toFixed(2);
+        
+        setCuttingData(prev => ({
+          ...prev,
+          consumption_meters: consumption
+        }));
+      }
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!jobCard || !id) return;
+    
+    // Get the roll width value and ensure it's a non-empty string
+    const rollWidthValue = String(cuttingData.roll_width || "").trim();
+    
+    if (!validateRollWidth(rollWidthValue)) {
+      setValidationError("Roll width is required");
+      toast({
+        title: "Validation Error",
+        description: "Roll width is required",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setSubmitting(true);
+    
+    try {
+      let cuttingJobId = selectedJobId;
+      
+      if (!selectedJobId) {
+        // For new job creation
+        const { data, error } = await supabase
+          .from("cutting_jobs")
+          .insert({
+            job_card_id: id,
+            roll_width: parseFloat(rollWidthValue),
+            consumption_meters: cuttingData.consumption_meters ? parseFloat(cuttingData.consumption_meters) : null,
+            worker_name: cuttingData.worker_name || null,
+            is_internal: cuttingData.is_internal,
+            status: cuttingData.status,
+            received_quantity: cuttingData.received_quantity ? parseInt(cuttingData.received_quantity) : null
+          })
+          .select()
+          .single();
+          
+        if (error) {
+          console.error("Insert error:", error);
+          throw error;
+        }
+        
+        cuttingJobId = data.id;
+        
+        if (cuttingData.status !== "pending") {
+          await supabase
+            .from("job_cards")
+            .update({ status: "in_progress" })
+            .eq("id", id);
+        }
+      } else {
+        // For updating existing job
+        const { error } = await supabase
+          .from("cutting_jobs")
+          .update({
+            roll_width: parseFloat(rollWidthValue),
+            consumption_meters: cuttingData.consumption_meters ? parseFloat(cuttingData.consumption_meters) : null,
+            worker_name: cuttingData.worker_name || null,
+            is_internal: cuttingData.is_internal,
+            status: cuttingData.status,
+            received_quantity: cuttingData.received_quantity ? parseInt(cuttingData.received_quantity) : null
+          })
+          .eq("id", selectedJobId);
+          
+        if (error) {
+          console.error("Update error:", error);
+          throw error;
+        }
+        
+        if (cuttingData.status === "completed") {
+          await supabase
+            .from("job_cards")
+            .update({ status: "in_progress" })
+            .eq("id", id);
+            
+          await supabase
+            .from("orders")
+            .update({ status: "cutting" as any })
+            .eq("id", jobCard.order.id);
+        }
+      }
+      
+      if (cuttingJobId) {
+        // Delete existing components for this cutting job if updating
+        if (selectedJobId) {
+          await supabase
+            .from("cutting_components")
+            .delete()
+            .eq("cutting_job_id", selectedJobId);
+        }
+        
+        const componentsToInsert = componentData
+          .filter(comp => comp.width || comp.height || comp.counter || comp.rewinding)
+          .map(comp => ({
+            cutting_job_id: cuttingJobId,
+            component_id: comp.component_id,
+            width: comp.width ? parseFloat(comp.width) : null,
+            height: comp.height ? parseFloat(comp.height) : null,
+            counter: comp.counter ? parseFloat(comp.counter) : null,
+            rewinding: comp.rewinding ? parseFloat(comp.rewinding) : null,
+            rate: comp.rate ? parseFloat(comp.rate) : null,
+            status: comp.status
+          }));
+        
+        if (componentsToInsert.length > 0) {
+          const { error } = await supabase
+            .from("cutting_components")
+            .insert(componentsToInsert);
+            
+          if (error) throw error;
+        }
+      }
+      
+      toast({
+        title: selectedJobId ? "Cutting Job Updated" : "Cutting Job Created",
+        description: `The cutting job for ${jobCard.job_name} has been ${selectedJobId ? "updated" : "created"} successfully`
+      });
+      
+      // Use direct window location change for more reliable navigation
+      window.location.href = `/production/job-cards/${id}`;
+      
+    } catch (error: any) {
+      console.error("Form submission error:", error);
+      toast({
+        title: "Error saving cutting job",
+        description: error.message,
+        variant: "destructive"
+      });
+      setSubmitting(false);
+    }
+  };
+
+  // Use direct navigation with window.location for reliable routing
   const handleGoBack = () => {
     window.location.href = `/production/job-cards/${id}`;
   };
@@ -44,7 +502,6 @@ export default function CuttingJobForm() {
       </div>
     );
   }
-
   if (!jobCard) {
     return (
       <div className="text-center py-8">
@@ -59,12 +516,27 @@ export default function CuttingJobForm() {
 
   return (
     <div className="space-y-6">
-      <CuttingJobHeader
-        jobName={jobCard?.job_name}
-        selectedJobId={selectedJobId}
-        onBack={handleGoBack}
-      />
-
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1"
+          onClick={handleGoBack}
+          type="button"
+        >
+          <ArrowLeft size={16} />
+          Back
+        </Button>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <Scissors className="h-6 w-6" />
+            Cutting Job
+          </h1>
+          <p className="text-muted-foreground">
+            {selectedJobId ? "Update" : "Create"} cutting job for {jobCard?.job_name}
+          </p>
+        </div>
+      </div>
       {existingJobs.length > 0 && (
         <CuttingJobSelection
           existingJobs={existingJobs.map(({ id, status }) => ({ id, status }))}
@@ -73,10 +545,8 @@ export default function CuttingJobForm() {
           handleNewJob={handleNewJob}
         />
       )}
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <CuttingJobOrderInfo order={jobCard.order} />
-        
         {/* Cutting details form */}
         <Card className="md:col-span-3">
           <CardHeader>
@@ -93,7 +563,7 @@ export default function CuttingJobForm() {
                   <Input 
                     id="roll_width" 
                     name="roll_width"
-                    type="text"
+                    type="text" // Changed to text to handle all input formats
                     placeholder="Roll width in inches"
                     value={cuttingData.roll_width}
                     onChange={handleInputChange}
@@ -116,7 +586,7 @@ export default function CuttingJobForm() {
                     id="consumption_meters" 
                     name="consumption_meters"
                     type="text"
-                    value={cuttingData.consumption_meters}
+                    value={cuttingData.consumption_meters || ''}
                     onChange={handleInputChange}
                     placeholder="Material consumption"
                   />
@@ -132,7 +602,7 @@ export default function CuttingJobForm() {
                     name="received_quantity"
                     type="text"
                     placeholder="Final quantity after cutting"
-                    value={cuttingData.received_quantity}
+                    value={cuttingData.received_quantity || ''}
                     onChange={handleInputChange}
                   />
                 </div>
@@ -147,22 +617,20 @@ export default function CuttingJobForm() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Worker Name</Label>
-                  <VendorSelection
-                    serviceType="cutting"
-                    value={cuttingData.worker_name}
-                    onChange={(value) => handleInputChange({
-                      target: { name: 'worker_name', value }
-                    } as any)}
-                    placeholder="Select cutter or enter manually"
-                  />
-                </div>
+  <Label>Worker Name</Label>
+  <VendorSelection
+    serviceType="cutting"
+    value={cuttingData.worker_name}
+    onChange={(value) => handleWorkerSelect(value)}
+    placeholder="Select cutter or enter manually"
+  />
+</div>
 
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
                   <Select
                     value={cuttingData.status}
-                    onValueChange={(value) => handleSelectChange("status", value as any)}
+                    onValueChange={(value: JobStatus) => handleSelectChange("status", value)}
                   >
                     <SelectTrigger id="status">
                       <SelectValue placeholder="Select status" />
@@ -178,11 +646,11 @@ export default function CuttingJobForm() {
             </form>
           </CardContent>
         </Card>
-
+        {/* Component cutting form */}
         <CuttingJobComponentForm
           components={components}
           componentData={componentData}
-          handleComponentChange={handleComponentChange}
+          handleComponentChange={handleComponentChange} // passed handler from parent
           handleGoBack={handleGoBack}
           submitting={submitting}
           selectedJobId={selectedJobId}
