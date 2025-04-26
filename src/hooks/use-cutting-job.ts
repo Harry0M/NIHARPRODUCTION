@@ -62,15 +62,16 @@ export const useCuttingJob = () => {
       }
 
       if (cuttingJob) {
+        // Make sure the interface and actual object properties match
         setJob({
           id: cuttingJob.id,
           job_card_id: cuttingJob.job_card_id,
           worker_name: cuttingJob.worker_name || "",
           status: cuttingJob.status || "pending",
           is_internal: cuttingJob.is_internal !== undefined ? cuttingJob.is_internal : false,
-          job_number: cuttingJob.job_number, // Now properly typed in the interface
-          roll_width: cuttingJob.roll_width,
-          consumption_meters: cuttingJob.consumption_meters,
+          job_number: cuttingJob.job_number || null,
+          roll_width: cuttingJob.roll_width || null,
+          consumption_meters: cuttingJob.consumption_meters || null,
         });
 
         // Fetch job card and order details
@@ -173,9 +174,13 @@ export const useCuttingJob = () => {
           bag_width: jobCard.order.bag_width,
         });
 
-        if (jobCard.order.components) {
+        // Fix for the type error - proper check before treating as array
+        if (jobCard.order.components && Array.isArray(jobCard.order.components)) {
           const initialComponentsList = setInitialComponents(jobCard.order.components);
           return initialComponentsList;
+        } else {
+          console.error("Components is not available or not an array:", jobCard.order.components);
+          return [];
         }
       }
       return [];
