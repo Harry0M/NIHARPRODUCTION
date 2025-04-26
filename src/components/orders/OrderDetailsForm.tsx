@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,7 +57,8 @@ export const OrderDetailsForm = ({
     const fetchCompanies = async () => {
       const { data, error } = await supabase
         .from('companies')
-        .select('id, name');
+        .select('id, name')
+        .eq('status', 'active');
 
       if (!error && data) {
         setCompanies(data);
@@ -139,6 +141,7 @@ export const OrderDetailsForm = ({
               onChange={(e) => handleOrderChange(e)}
               placeholder="Enter company name"
               required
+              autoComplete="off"
               className={formErrors.company ? "border-destructive" : ""}
             />
             {formErrors.company && (
@@ -146,6 +149,33 @@ export const OrderDetailsForm = ({
                 <AlertCircle className="h-3 w-3" /> {formErrors.company}
               </p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="sales_account">Sales Account (Optional)</Label>
+            <Select 
+              onValueChange={(value) => 
+                handleOrderChange({ 
+                  target: { 
+                    name: 'sales_account_id', 
+                    value 
+                  } 
+                })
+              }
+              value={formData.sales_account_id || ""}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select sales account" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">None</SelectItem>
+                {companies.map((company) => (
+                  <SelectItem key={company.id} value={company.id}>
+                    {company.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

@@ -16,6 +16,7 @@ export interface Order {
   rate: number | null;
   created_at: string;
   special_instructions?: string | null;
+  sales_account_id?: string | null;
 }
 
 export interface OrderFormData {
@@ -27,4 +28,5 @@ export interface OrderFormData {
   rate: string;
   special_instructions: string;
   order_date: string;
+  sales_account_id?: string | null;
 }

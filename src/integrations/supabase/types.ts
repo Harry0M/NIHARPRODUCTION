@@ -524,6 +524,7 @@ export type Database = {
           order_number: string
           quantity: number
           rate: number | null
+          sales_account_id: string | null
           special_instructions: string | null
           status: Database["public"]["Enums"]["order_status"] | null
           updated_at: string
@@ -540,6 +541,7 @@ export type Database = {
           order_number: string
           quantity: number
           rate?: number | null
+          sales_account_id?: string | null
           special_instructions?: string | null
           status?: Database["public"]["Enums"]["order_status"] | null
           updated_at?: string
@@ -556,6 +558,7 @@ export type Database = {
           order_number?: string
           quantity?: number
           rate?: number | null
+          sales_account_id?: string | null
           special_instructions?: string | null
           status?: Database["public"]["Enums"]["order_status"] | null
           updated_at?: string
@@ -564,6 +567,13 @@ export type Database = {
           {
             foreignKeyName: "orders_company_id_fkey"
             columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_sales_account_id_fkey"
+            columns: ["sales_account_id"]
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]

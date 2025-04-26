@@ -50,6 +50,7 @@ export function useOrderForm(): UseOrderFormReturn {
     bag_width: "",
     rate: "",
     special_instructions: "",
+    sales_account_id: null,
     order_date: new Date().toISOString().split('T')[0]
   });
   
@@ -206,6 +207,7 @@ export function useOrderForm(): UseOrderFormReturn {
         bag_width: parseFloat(orderDetails.bag_width),
         rate: orderDetails.rate ? parseFloat(orderDetails.rate) : null,
         order_date: orderDetails.order_date,
+        sales_account_id: orderDetails.sales_account_id || null,
         special_instructions: orderDetails.special_instructions || null
       };
 
