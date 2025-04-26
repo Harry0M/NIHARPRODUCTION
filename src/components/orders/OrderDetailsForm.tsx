@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,12 +43,12 @@ interface OrderDetailsFormProps {
   };
 }
 
-export const OrderDetailsForm = ({ 
+export default function OrderDetailsForm({ 
   formData, 
   handleOrderChange, 
   onProductSelect,
   formErrors 
-}: OrderDetailsFormProps) => {
+}: OrderDetailsFormProps) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const { data: catalogProducts, isLoading } = useCatalogProducts();
 
@@ -56,7 +57,8 @@ export const OrderDetailsForm = ({
     const fetchCompanies = async () => {
       const { data, error } = await supabase
         .from('companies')
-        .select('id, name');
+        .select('id, name')
+        .eq('status', 'active');
 
       if (!error && data) {
         setCompanies(data);
@@ -69,7 +71,6 @@ export const OrderDetailsForm = ({
   const handleProductSelect = (productId: string) => {
     const selectedProduct = catalogProducts?.find(p => p.id === productId);
     if (selectedProduct) {
-      // Only update bag dimensions, quantity and rate, not the company info
       handleOrderChange({ target: { name: 'bag_length', value: selectedProduct.bag_length.toString() } });
       handleOrderChange({ target: { name: 'bag_width', value: selectedProduct.bag_width.toString() } });
       if (selectedProduct.default_quantity) {
@@ -79,7 +80,6 @@ export const OrderDetailsForm = ({
         handleOrderChange({ target: { name: 'rate', value: selectedProduct.default_rate.toString() } });
       }
       
-      // Pass components to parent component if they exist
       if (onProductSelect && selectedProduct.catalog_components) {
         onProductSelect(selectedProduct.catalog_components);
       }
@@ -88,15 +88,12 @@ export const OrderDetailsForm = ({
 
   const handleCompanySelect = (companyId: string | null) => {
     if (companyId && companyId !== "no_selection") {
-      // Only set company_id, don't set company_name
-      handleOrderChange({
-        target: {
-          name: 'company_id',
-          value: companyId
-        }
-      });
+      const selectedCompany = companies.find(c => c.id === companyId);
+      if (selectedCompany) {
+        handleOrderChange({ target: { name: 'company_id', value: companyId } });
+        handleOrderChange({ target: { name: 'company_name', value: selectedCompany.name } });
+      }
     } else {
-      // Clear company_id when no company is selected
       handleOrderChange({ target: { name: 'company_id', value: null } });
     }
   };
@@ -128,6 +125,22 @@ export const OrderDetailsForm = ({
         {/* Company section */}
         <div className="space-y-4 border-b pb-4">
           <div className="space-y-2">
+            <Label>Select Company (Optional)</Label>
+            <Select onValueChange={handleCompanySelect}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose a company" />
+              </SelectTrigger>
+              <SelectContent>
+                {companies.map((company) => (
+                  <SelectItem key={company.id} value={company.id}>
+                    {company.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="company_name" className="flex items-center gap-1">
               Company Name
               <span className="text-destructive">*</span>
@@ -137,9 +150,10 @@ export const OrderDetailsForm = ({
               name="company_name"
               value={formData.company_name}
               onChange={(e) => handleOrderChange(e)}
-              placeholder="Enter company name"
+              placeholder="Enter company name manually or select from above"
               required
               className={formErrors.company ? "border-destructive" : ""}
+              autoComplete="off"
             />
             {formErrors.company && (
               <p className="text-xs text-destructive flex items-center gap-1">
@@ -271,4 +285,4 @@ export const OrderDetailsForm = ({
       </CardContent>
     </Card>
   );
-};
+}
