@@ -196,9 +196,10 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
         if (error) throw error;
 
         if (data && data.length > 0) {
+          // Map database records to our component interface, explicitly getting component_type
           const formattedComponents = data.map(comp => ({
             component_id: comp.component_id || "",
-            component_type: comp.component_type,
+            component_type: comp.component_type || "", // Access component_type directly from the record
             width: comp.width?.toString() || "",
             height: comp.height?.toString() || "",
             counter: comp.counter?.toString() || "",
