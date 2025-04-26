@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -70,7 +69,7 @@ export const OrderDetailsForm = ({
   const handleProductSelect = (productId: string) => {
     const selectedProduct = catalogProducts?.find(p => p.id === productId);
     if (selectedProduct) {
-      // Update form fields
+      // Only update bag dimensions, quantity and rate, not the company info
       handleOrderChange({ target: { name: 'bag_length', value: selectedProduct.bag_length.toString() } });
       handleOrderChange({ target: { name: 'bag_width', value: selectedProduct.bag_width.toString() } });
       if (selectedProduct.default_quantity) {
@@ -80,7 +79,7 @@ export const OrderDetailsForm = ({
         handleOrderChange({ target: { name: 'rate', value: selectedProduct.default_rate.toString() } });
       }
       
-      // Pass components to parent component
+      // Pass components to parent component if they exist
       if (onProductSelect && selectedProduct.catalog_components) {
         onProductSelect(selectedProduct.catalog_components);
       }
@@ -88,45 +87,17 @@ export const OrderDetailsForm = ({
   };
 
   const handleCompanySelect = (companyId: string | null) => {
-    if (companyId) {
-      const selectedCompany = companies.find(c => c.id === companyId);
-      
-      if (selectedCompany) {
-        // Set company_id and name, but mark name as from database
-        handleOrderChange({
-          target: {
-            name: 'company_id',
-            value: selectedCompany.id
-          }
-        });
-        
-        handleOrderChange({
-          target: {
-            name: 'company_name',
-            value: selectedCompany.name
-          }
-        });
-      }
-    } else {
-      // Clear both fields when no company is selected
-      handleOrderChange({ target: { name: 'company_id', value: null } });
-      handleOrderChange({ target: { name: 'company_name', value: '' } });
-    }
-  };
-
-  // Handle manual company name input
-  const handleCompanyNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // When manually entering a company name
-    handleOrderChange(e);
-    
-    // Clear company_id when manually entering a name
-    if (e.target.value) {
+    if (companyId && companyId !== "no_selection") {
+      // Only set company_id, don't set company_name
       handleOrderChange({
         target: {
           name: 'company_id',
-          value: null
+          value: companyId
         }
       });
+    } else {
+      // Clear company_id when no company is selected
+      handleOrderChange({ target: { name: 'company_id', value: null } });
     }
   };
 
@@ -154,30 +125,8 @@ export const OrderDetailsForm = ({
           </Select>
         </div>
 
-        {/* Company selection section */}
+        {/* Company section */}
         <div className="space-y-4 border-b pb-4">
-          <div className="space-y-2">
-            <Label htmlFor="company_select">
-              Select Existing Company
-            </Label>
-            <Select 
-              value={formData.company_id || "no_selection"} 
-              onValueChange={(value) => handleCompanySelect(value === "no_selection" ? null : value)}
-            >
-              <SelectTrigger id="company_select">
-                <SelectValue placeholder="Select a company" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="no_selection">-- Select a company --</SelectItem>
-                {companies.map((company) => (
-                  <SelectItem key={company.id} value={company.id}>
-                    {company.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           <div className="space-y-2">
             <Label htmlFor="company_name" className="flex items-center gap-1">
               Company Name
@@ -187,7 +136,7 @@ export const OrderDetailsForm = ({
               id="company_name" 
               name="company_name"
               value={formData.company_name}
-              onChange={handleCompanyNameChange}
+              onChange={(e) => handleOrderChange(e)}
               placeholder="Enter company name"
               required
               className={formErrors.company ? "border-destructive" : ""}

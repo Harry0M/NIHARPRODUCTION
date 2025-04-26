@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -116,7 +115,7 @@ export function useOrderForm(): UseOrderFormReturn {
   };
 
   const handleProductSelect = (components: any[]) => {
-    // Convert catalog components to order components format
+    // Convert catalog components to order components format without affecting company info
     const orderComponents = components.reduce((acc, component) => {
       if (component.component_type === 'custom') {
         setCustomComponents(prev => [...prev, {
