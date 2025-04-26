@@ -133,34 +133,51 @@ const DispatchDetail = () => {
 
     try {
       // Insert dispatch data if not already exists
-      if (!dispatchData) {
-        const { error: insertError } = await supabase.from("order_dispatches").insert([
-          {
-            order_id: orderId,
-            delivery_date: formData.delivery_date,
-            tracking_number: formData.tracking_number || null,
-            recipient_name: formData.recipient_name,
-            delivery_address: formData.delivery_address,
-            notes: formData.notes || null,
-            quality_checked: formData.confirm_quality_check,
-            quantity_checked: formData.confirm_quantity_check,
-          }
-        ]);
-        if (insertError) throw insertError;
-      }
+      const { data: dispatchData, error: dispatchError } = await supabase
+        .from("order_dispatches")
+        .insert([{
+          order_id: orderId,
+          recipient_name: formData.recipient_name,
+          delivery_address: formData.delivery_address,
+          tracking_number: formData.tracking_number || null,
+          notes: formData.notes || null,
+          quality_checked: formData.confirm_quality_check,
+          quantity_checked: formData.confirm_quantity_check,
+        }])
+        .select()
+        .single();
 
-      // Use 'dispatched' as the order status instead of 'ready_for_dispatch'
-      const orderStatus: Database['public']['Enums']['order_status'] = "dispatched";
-      
+      if (dispatchError) throw dispatchError;
+
+      // Insert batch data
+      const batchInserts = formData.batches.map((batch: any, index: number) => ({
+        order_dispatch_id: dispatchData.id,
+        batch_number: index + 1,
+        quantity: batch.quantity,
+        delivery_date: batch.delivery_date,
+        notes: batch.notes || null,
+      }));
+
+      const { error: batchError } = await supabase
+        .from("dispatch_batches")
+        .insert(batchInserts);
+
+      if (batchError) throw batchError;
+
       // Update order status
       const { error: statusError } = await supabase
         .from("orders")
-        .update({ status: orderStatus })
+        .update({ status: "dispatched" as const })
         .eq("id", orderId);
+
       if (statusError) throw statusError;
 
-      toast({ title: "Dispatch Complete", description: "Order has been marked as dispatched!" });
-      fetchOrderData(orderId); // Refresh data
+      toast({ 
+        title: "Dispatch Complete", 
+        description: "Order has been marked as dispatched!" 
+      });
+      
+      fetchOrderData(orderId);
     } catch (error: any) {
       toast({
         title: "Error dispatching order",
@@ -218,6 +235,50 @@ const DispatchDetail = () => {
     );
   };
 
+  const renderDispatchDetails = (dispatch: any) => {
+    return (
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Truck className="h-5 w-5" /> Dispatch Details
+          </CardTitle>
+          <CardDescription>
+            This order was dispatched on {formatDate(dispatch.created_at)} to {dispatch.recipient_name}.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-4">
+            <div><strong>Recipient Name:</strong> {dispatch.recipient_name}</div>
+            <div><strong>Delivery Address:</strong> {dispatch.delivery_address}</div>
+            <div><strong>Tracking Number:</strong> {dispatch.tracking_number || "—"}</div>
+            <div><strong>Notes:</strong> {dispatch.notes || "—"}</div>
+            <div><strong>Quality Check:</strong> {dispatch.quality_checked ? "Yes" : "No"}</div>
+            <div><strong>Quantity Check:</strong> {dispatch.quantity_checked ? "Yes" : "No"}</div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="font-medium">Dispatch Batches</h3>
+            <div className="grid gap-4">
+              {batches?.map((batch: any) => (
+                <Card key={batch.id}>
+                  <CardHeader className="py-4">
+                    <CardTitle className="text-base">Batch {batch.batch_number}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div><strong>Quantity:</strong> {batch.quantity}</div>
+                    <div><strong>Delivery Date:</strong> {formatDate(batch.delivery_date)}</div>
+                    <div><strong>Status:</strong> {batch.status}</div>
+                    {batch.notes && <div><strong>Notes:</strong> {batch.notes}</div>}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
       <div className="flex justify-between items-start">
@@ -268,26 +329,7 @@ const DispatchDetail = () => {
 
           {/* Show existing dispatch if available, else show dispatch form */}
           {dispatchData ? (
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Truck className="h-5 w-5" /> Dispatch Details
-                </CardTitle>
-                <CardDescription>
-                  This order was dispatched on {formatDate(dispatchData.delivery_date)} to {dispatchData.recipient_name}.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div><strong>Delivery Date:</strong> {formatDate(dispatchData.delivery_date)}</div>
-                <div><strong>Tracking Number:</strong> {dispatchData.tracking_number || "—"}</div>
-                <div><strong>Recipient Name:</strong> {dispatchData.recipient_name}</div>
-                <div><strong>Delivery Address:</strong> {dispatchData.delivery_address}</div>
-                <div><strong>Notes:</strong> {dispatchData.notes || "—"}</div>
-                <div><strong>Quality Check:</strong> {dispatchData.quality_checked ? "Yes" : "No"}</div>
-                <div><strong>Quantity Check:</strong> {dispatchData.quantity_checked ? "Yes" : "No"}</div>
-                <div><strong>Dispatched At:</strong> {formatDate(dispatchData.created_at)}</div>
-              </CardContent>
-            </Card>
+            renderDispatchDetails(dispatchData)
           ) : (
             <DispatchForm
               jobCardId={order.job_cards?.[0]?.id || ""}

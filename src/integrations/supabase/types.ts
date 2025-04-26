@@ -282,6 +282,50 @@ export type Database = {
           },
         ]
       }
+      dispatch_batches: {
+        Row: {
+          batch_number: number
+          created_at: string | null
+          delivery_date: string
+          id: string
+          notes: string | null
+          order_dispatch_id: string
+          quantity: number
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          batch_number: number
+          created_at?: string | null
+          delivery_date: string
+          id?: string
+          notes?: string | null
+          order_dispatch_id: string
+          quantity: number
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          batch_number?: number
+          created_at?: string | null
+          delivery_date?: string
+          id?: string
+          notes?: string | null
+          order_dispatch_id?: string
+          quantity?: number
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_batches_order_dispatch_id_fkey"
+            columns: ["order_dispatch_id"]
+            isOneToOne: false
+            referencedRelation: "order_dispatches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory: {
         Row: {
           color: string | null
