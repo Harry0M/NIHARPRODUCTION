@@ -1,45 +1,16 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { StageStatus } from "@/components/production/StageStatus";
 import { DispatchForm } from "@/components/production/DispatchForm";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ClipboardList, Truck } from "lucide-react";
-import type { Database } from "@/integrations/supabase/types";
+import { Loader2, ClipboardList } from "lucide-react";
 import { DownloadButton } from "@/components/DownloadButton";
 import { downloadAsCSV, downloadAsPDF } from "@/utils/downloadUtils";
-
-export interface StageSummary {
-  name: string;
-  status: "pending" | "in_progress" | "completed" | "cancelled";
-  completedDate?: string;
-}
-
-interface DispatchData {
-  id: string;
-  order_id: string;
-  delivery_date: string;
-  tracking_number?: string | null;
-  recipient_name: string;
-  delivery_address: string;
-  notes?: string | null;
-  quality_checked: boolean;
-  quantity_checked: boolean;
-  created_at?: string;
-  updated_at?: string;
-}
-
-interface DispatchBatch {
-  id?: string;
-  batch_number: number;
-  quantity: number;
-  delivery_date: string;
-  notes?: string;
-  status?: string;
-}
+import { OrderInfoCard } from "@/components/production/dispatch/OrderInfoCard";
+import { DispatchDetails } from "@/components/production/dispatch/DispatchDetails";
+import type { DispatchData, DispatchBatch, StageSummary } from "@/types/dispatch";
 
 const DispatchDetail = () => {
   const { id: orderId } = useParams();
@@ -129,7 +100,6 @@ const DispatchDetail = () => {
       if (dispatch) {
         setDispatchData(dispatch);
         
-        // Fetch batches for this dispatch
         const { data: batches, error: batchesError } = await supabase
           .from("dispatch_batches")
           .select("*")
@@ -153,20 +123,18 @@ const DispatchDetail = () => {
     }
   };
 
-  // Handler for submitting the dispatch information
   const handleDispatch = async (formData: any) => {
     if (!orderId) return;
     setLoading(true);
 
     try {
-      // Insert dispatch data if not already exists
       const { data: dispatchData, error: dispatchError } = await supabase
         .from("order_dispatches")
         .insert([{
           order_id: orderId,
           recipient_name: formData.recipient_name,
           delivery_address: formData.delivery_address,
-          delivery_date: formData.batches[0].delivery_date, // Using the first batch's delivery date as main date
+          delivery_date: formData.batches[0].delivery_date,
           tracking_number: formData.tracking_number || null,
           notes: formData.notes || null,
           quality_checked: formData.confirm_quality_check,
@@ -177,7 +145,6 @@ const DispatchDetail = () => {
 
       if (dispatchError) throw dispatchError;
 
-      // Insert batch data
       const batchInserts = formData.batches.map((batch: any, index: number) => ({
         order_dispatch_id: dispatchData.id,
         batch_number: index + 1,
@@ -192,7 +159,6 @@ const DispatchDetail = () => {
 
       if (batchError) throw batchError;
 
-      // Update order status
       const { error: statusError } = await supabase
         .from("orders")
         .update({ status: "dispatched" as const })
@@ -217,24 +183,20 @@ const DispatchDetail = () => {
     }
   };
 
-  // Formatting helper
-  const formatDate = (date: string | undefined) =>
-    date ? new Date(date).toLocaleDateString() : "";
-
   const handleDownloadCSV = () => {
     if (!dispatchData) return;
     
     const downloadData = [{
       order_number: order?.order_number || 'N/A',
       company_name: order?.company_name || 'N/A',
-      delivery_date: formatDate(dispatchData.delivery_date),
+      delivery_date: new Date(dispatchData.delivery_date).toLocaleDateString(),
       recipient_name: dispatchData.recipient_name,
       delivery_address: dispatchData.delivery_address,
       tracking_number: dispatchData.tracking_number || 'N/A',
       quality_checked: dispatchData.quality_checked ? 'Yes' : 'No',
       quantity_checked: dispatchData.quantity_checked ? 'Yes' : 'No',
       notes: dispatchData.notes || 'N/A',
-      dispatched_on: formatDate(dispatchData.created_at)
+      dispatched_on: new Date(dispatchData.created_at || '').toLocaleDateString()
     }];
     
     downloadAsCSV(downloadData, `dispatch-${order?.order_number}`);
@@ -246,64 +208,20 @@ const DispatchDetail = () => {
     const downloadData = [{
       order_number: order?.order_number || 'N/A',
       company_name: order?.company_name || 'N/A',
-      delivery_date: formatDate(dispatchData.delivery_date),
+      delivery_date: new Date(dispatchData.delivery_date).toLocaleDateString(),
       recipient_name: dispatchData.recipient_name,
       delivery_address: dispatchData.delivery_address,
       tracking_number: dispatchData.tracking_number || 'N/A',
       quality_checked: dispatchData.quality_checked ? 'Yes' : 'No',
       quantity_checked: dispatchData.quantity_checked ? 'Yes' : 'No',
       notes: dispatchData.notes || 'N/A',
-      dispatched_on: formatDate(dispatchData.created_at)
+      dispatched_on: new Date(dispatchData.created_at || '').toLocaleDateString()
     }];
     
     downloadAsPDF(
       downloadData, 
       `dispatch-${order?.order_number}`,
       `Dispatch Details: ${order?.order_number}`
-    );
-  };
-
-  const renderDispatchDetails = (dispatch: any) => {
-    return (
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Truck className="h-5 w-5" /> Dispatch Details
-          </CardTitle>
-          <CardDescription>
-            This order was dispatched on {formatDate(dispatch.created_at)} to {dispatch.recipient_name}.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-4">
-            <div><strong>Recipient Name:</strong> {dispatch.recipient_name}</div>
-            <div><strong>Delivery Address:</strong> {dispatch.delivery_address}</div>
-            <div><strong>Tracking Number:</strong> {dispatch.tracking_number || "—"}</div>
-            <div><strong>Notes:</strong> {dispatch.notes || "—"}</div>
-            <div><strong>Quality Check:</strong> {dispatch.quality_checked ? "Yes" : "No"}</div>
-            <div><strong>Quantity Check:</strong> {dispatch.quantity_checked ? "Yes" : "No"}</div>
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="font-medium">Dispatch Batches</h3>
-            <div className="grid gap-4">
-              {dispatchBatches.map((batch: any) => (
-                <Card key={batch.id}>
-                  <CardHeader className="py-4">
-                    <CardTitle className="text-base">Batch {batch.batch_number}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div><strong>Quantity:</strong> {batch.quantity}</div>
-                    <div><strong>Delivery Date:</strong> {formatDate(batch.delivery_date)}</div>
-                    <div><strong>Status:</strong> {batch.status}</div>
-                    {batch.notes && <div><strong>Notes:</strong> {batch.notes}</div>}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     );
   };
 
@@ -336,28 +254,21 @@ const DispatchDetail = () => {
         </div>
       ) : !order ? null : (
         <>
-          {/* Order details card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Order Information</CardTitle>
-              <CardDescription>
-                <span>Order #{order.order_number}&nbsp;•&nbsp;</span>
-                <span>{order.company_name}&nbsp;•&nbsp;</span>
-                <span>Quantity:&nbsp;{order.quantity}&nbsp;bags</span>
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col md:flex-row gap-4">
-                <div><strong>Bag Size:</strong> {order.bag_length} x {order.bag_width} in</div>
-                <div><strong>Status:</strong> {order.status?.replace(/_/g, " ")}</div>
-                <div><strong>Created:</strong> {formatDate(order.created_at)}</div>
-              </div>
-            </CardContent>
-          </Card>
+          <OrderInfoCard
+            orderNumber={order.order_number}
+            companyName={order.company_name}
+            quantity={order.quantity}
+            bagLength={order.bag_length}
+            bagWidth={order.bag_width}
+            status={order.status}
+            createdAt={order.created_at}
+          />
 
-          {/* Show existing dispatch if available, else show dispatch form */}
           {dispatchData ? (
-            renderDispatchDetails(dispatchData)
+            <DispatchDetails 
+              dispatch={dispatchData}
+              batches={dispatchBatches}
+            />
           ) : (
             <DispatchForm
               jobCardId={order.job_cards?.[0]?.id || ""}
