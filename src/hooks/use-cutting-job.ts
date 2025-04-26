@@ -37,6 +37,9 @@ interface CuttingJob {
   is_internal: boolean;
   status: JobStatus;
   received_quantity: string;
+  created_at?: string;
+  updated_at?: string;
+  created_by?: string;
 }
 
 interface UseCuttingJobReturn {
@@ -108,7 +111,19 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
 
       if (jobCardError) throw jobCardError;
 
-      setJobCard(jobCardData);
+      // Transform to match our interface
+      setJobCard({
+        id: jobCardData.id,
+        job_name: jobCardData.job_name,
+        order: {
+          id: jobCardData.orders.id,
+          company_name: jobCardData.orders.company_name,
+          order_number: jobCardData.orders.order_number,
+          quantity: jobCardData.orders.quantity,
+          bag_length: jobCardData.orders.bag_length,
+          bag_width: jobCardData.orders.bag_width
+        }
+      });
 
       // Fetch components
       const { data: componentsData, error: componentsError } = await supabase
@@ -141,7 +156,16 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
         .order('created_at', { ascending: false });
 
       if (existingJobsError) throw existingJobsError;
-      setExistingJobs(existingJobsData || []);
+      
+      // Convert the numeric fields to strings to match our interface
+      const formattedJobs = (existingJobsData || []).map(job => ({
+        ...job,
+        roll_width: job.roll_width?.toString() || "",
+        consumption_meters: job.consumption_meters?.toString() || "",
+        received_quantity: job.received_quantity?.toString() || ""
+      }));
+      
+      setExistingJobs(formattedJobs);
 
     } catch (error: any) {
       toast({

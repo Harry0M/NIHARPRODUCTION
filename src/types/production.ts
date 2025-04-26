@@ -1,4 +1,3 @@
-
 export interface JobData {
   id: string;
   jobCardId: string;
@@ -42,3 +41,5 @@ export interface JobSelectionOption {
   status: string;
   created_at: string;
 }
+
+export type JobStatus = "pending" | "in_progress" | "completed";

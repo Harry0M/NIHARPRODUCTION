@@ -5,8 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Component } from "@/types/order";
-
-type JobStatus = "pending" | "in_progress" | "completed";
+import { JobStatus } from "@/types/production";
 
 interface CuttingComponent {
   component_id: string;
