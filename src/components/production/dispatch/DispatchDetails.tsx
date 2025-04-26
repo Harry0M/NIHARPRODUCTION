@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, Truck } from "lucide-react";
@@ -16,7 +15,6 @@ interface DispatchDetailsProps {
 }
 
 export const DispatchDetails = ({ dispatch, batches, orderNumber, companyName }: DispatchDetailsProps) => {
-  // Handler for CSV download
   const handleDownloadCSV = () => {
     const downloadData = [{
       order_number: orderNumber || 'N/A',
@@ -36,7 +34,6 @@ export const DispatchDetails = ({ dispatch, batches, orderNumber, companyName }:
     downloadAsCSV(downloadData, `dispatch-${orderNumber}`);
   };
 
-  // Handler for PDF download
   const handleDownloadPDF = () => {
     const downloadData = [{
       order_number: orderNumber || 'N/A',
