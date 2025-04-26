@@ -43,7 +43,7 @@ interface UseOrderFormReturn {
 
 // Define the database schema type to match what Supabase expects
 interface OrderDatabaseSchema {
-  company_name: string;
+  company_name: string | null;
   company_id: string | null;
   quantity: number;
   bag_length: number;
@@ -152,10 +152,21 @@ export function useOrderForm(): UseOrderFormReturn {
     
     const { company_name, company_id, quantity, bag_length, bag_width } = orderDetails;
     
-    if ((!company_name && !company_id) || !quantity || !bag_length || !bag_width) {
+    // Validate the required fields
+    if (!quantity || !bag_length || !bag_width) {
       toast({
         title: "Missing required fields",
-        description: "Please fill in all required order details including company information",
+        description: "Please fill in all required order details including quantity and dimensions",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Validate that either company_name or company_id is provided
+    if (!company_name && !company_id) {
+      toast({
+        title: "Company information required",
+        description: "Please select an existing company or enter a new company name",
         variant: "destructive"
       });
       return;
@@ -164,30 +175,11 @@ export function useOrderForm(): UseOrderFormReturn {
     setSubmitting(true);
     
     try {
-      // Fix: When company_id is provided, we need to get the company_name from the selected company
-      // instead of setting it to null
-      let orderCompanyName = company_name;
-      
-      // If we have a company_id but no company_name, fetch the company name
-      if (company_id && !company_name) {
-        const { data: companyData, error: companyError } = await supabase
-          .from("companies")
-          .select("name")
-          .eq("id", company_id)
-          .single();
-          
-        if (companyError) {
-          throw new Error("Could not fetch company information");
-        }
-        
-        if (companyData) {
-          orderCompanyName = companyData.name;
-        }
-      }
-
       // Create an object that matches our database schema expectations
+      // Important: For the constraint, we should only provide one of company_name or company_id, not both
       const orderData: OrderDatabaseSchema = {
-        company_name: orderCompanyName, // Use the fetched company name or provided name
+        // If we have a company_id, set company_name to null
+        company_name: company_id ? null : company_name,
         company_id: company_id || null,
         quantity: parseInt(quantity),
         bag_length: parseFloat(bag_length),

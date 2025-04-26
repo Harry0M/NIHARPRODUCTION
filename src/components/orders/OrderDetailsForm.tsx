@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -81,12 +82,12 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
     }
   };
 
-  // Handle company selection - update both company_id and company_name
+  // Handle company selection - update company_id and clear company_name
   const handleCompanySelect = (companyId: string) => {
     const selectedCompany = companies.find(c => c.id === companyId);
     
     if (selectedCompany) {
-      // Update company_id
+      // Only set the company_id, clear company_name (to satisfy the constraint)
       handleOrderChange({
         target: {
           name: 'company_id',
@@ -94,23 +95,23 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
         }
       });
       
-      // Also update company_name
+      // Set company_name to empty since we'll use company_id
       handleOrderChange({
         target: {
           name: 'company_name',
-          value: selectedCompany.name
+          value: ''
         }
       });
     }
   };
 
-  // Clear company_id when manually entering a company name
+  // When entering a manual company name, clear the company_id
   const handleCompanyNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Update company_name with the input value
     handleOrderChange(e);
     
-    // Clear company_id only if we're entering a new name
-    if (e.target.value && e.target.value !== formData.company_name) {
+    // Clear company_id when manually entering a name
+    if (e.target.value) {
       handleOrderChange({
         target: {
           name: 'company_id',
@@ -144,7 +145,7 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
           </Select>
         </div>
 
-        {/* Company selection dropdown - this is now mandatory */}
+        {/* Company selection dropdown */}
         <div className="space-y-2">
           <Label htmlFor="company_select">Select Company</Label>
           <Select 
@@ -168,15 +169,16 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
         {/* Company name field - only needed if not selecting from dropdown */}
         <div className="space-y-2">
           <Label htmlFor="company_name">
-            Company Name {!formData.company_id && <span className="text-destructive">*</span>}
+            New Company Name {!formData.company_id && <span className="text-destructive">*</span>}
           </Label>
           <Input 
             id="company_name" 
             name="company_name"
             value={formData.company_name}
             onChange={handleCompanyNameChange}
-            placeholder="Client company name"
+            placeholder="Enter new company name"
             required={!formData.company_id}
+            disabled={!!formData.company_id}
           />
           <p className="text-xs text-muted-foreground">
             {formData.company_id 
