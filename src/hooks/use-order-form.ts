@@ -127,42 +127,55 @@ export function useOrderForm(): UseOrderFormReturn {
 
   const handleProductSelect = (components: any[]) => {
     console.log("Selected product components:", components);
-    // Convert catalog components to order components format
+    
+    if (!components || components.length === 0) {
+      console.log("No components to process");
+      return;
+    }
+    
+    // Clear existing components first
     const standardTypes = ['part', 'border', 'handle', 'chain', 'runner'];
-    const orderComponents: Record<string, any> = {};
+    const newOrderComponents: Record<string, any> = {};
     const newCustomComponents: Component[] = [];
 
     components.forEach(component => {
+      if (!component) return;
+      
       // Extract length and width from size format "length x width"
-      const sizeValues = component.size?.split('x').map((s: string) => s.trim()) || ['', ''];
+      let length = '', width = '';
+      if (component.size) {
+        const sizeValues = component.size.split('x').map((s: string) => s.trim());
+        length = sizeValues[0] || '';
+        width = sizeValues[1] || '';
+      }
       
       if (component.component_type === 'custom') {
         newCustomComponents.push({
           id: uuidv4(),
           type: 'custom',
-          customName: component.custom_name,
-          color: component.color,
-          gsm: component.gsm?.toString(),
-          length: sizeValues[0],
-          width: sizeValues[1]
+          customName: component.custom_name || '',
+          color: component.color || '',
+          gsm: component.gsm?.toString() || '',
+          length,
+          width
         });
       } else if (standardTypes.includes(component.component_type)) {
-        orderComponents[component.component_type] = {
+        newOrderComponents[component.component_type] = {
           id: uuidv4(),
           type: component.component_type,
-          color: component.color,
-          gsm: component.gsm?.toString(),
-          length: sizeValues[0],
-          width: sizeValues[1]
+          color: component.color || '',
+          gsm: component.gsm?.toString() || '',
+          length,
+          width
         };
       }
     });
 
-    console.log("Processed standard components:", orderComponents);
-    console.log("Processed custom components:", newCustomComponents);
+    console.log("Setting standard components:", newOrderComponents);
+    console.log("Setting custom components:", newCustomComponents);
 
-    // Update state with the processed components
-    setComponents(orderComponents);
+    // Replace all components with the new ones
+    setComponents(newOrderComponents);
     setCustomComponents(newCustomComponents);
   };
 

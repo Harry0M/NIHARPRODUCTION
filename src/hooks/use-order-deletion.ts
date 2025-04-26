@@ -59,11 +59,8 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
         description: "The order and all related records have been removed.",
       });
       
-      // Call the callback to update local state first
-      onOrderDeleted(deletedOrderId);
-      
-      // Then force a full page reload to ensure everything is refreshed
-      window.location.href = '/orders';
+      // Force a full page reload
+      window.location.reload();
       
     } catch (error: any) {
       console.error("Error in deletion process:", error);

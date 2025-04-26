@@ -5,7 +5,7 @@ import Header from "./Header";
 
 const AppLayout = () => {
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex h-screen bg-gray-100">
       <Sidebar />
       <div className="flex flex-col flex-1">
         <Header />
