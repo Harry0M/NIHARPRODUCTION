@@ -6,10 +6,11 @@ import { Badge } from "@/components/ui/badge";
 
 interface Component {
   id: string;
-  type: string;
+  component_type: string;
   size: string | null;
   color: string | null;
   gsm: string | null;
+  custom_name: string | null;
 }
 
 interface Order {
@@ -80,7 +81,11 @@ export const OrderInfoCard = ({
           {order.components?.length > 0 ? (
             order.components.map((component) => (
               <div key={component.id} className="border rounded-md p-3">
-                <p className="text-sm font-medium capitalize">{component.type}</p>
+                <p className="text-sm font-medium capitalize">
+                  {component.component_type === 'custom' && component.custom_name 
+                    ? component.custom_name 
+                    : component.component_type}
+                </p>
                 <div className="text-xs text-muted-foreground space-y-1 mt-1">
                   {component.size && <p>Size: {component.size}</p>}
                   {component.color && <p>Color: {component.color}</p>}
@@ -96,4 +101,3 @@ export const OrderInfoCard = ({
     </CardContent>
   </Card>
 );
-

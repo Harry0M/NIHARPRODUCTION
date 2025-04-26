@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -283,6 +282,7 @@ export function useOrderForm(): UseOrderFormReturn {
 
         console.log("Inserting components:", componentsToInsert);
 
+        // Fixed: Using the correct table name "order_components" instead of "components"
         const { error: componentsError } = await supabase
           .from("order_components")
           .insert(componentsToInsert);

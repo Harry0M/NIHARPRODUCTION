@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { 
@@ -68,11 +69,11 @@ interface Order {
 interface Component {
   id: string;
   order_id: string;
-  type: string;
+  component_type: string;
   size: string | null;
   color: string | null;
   gsm: string | null;
-  details: string | null;
+  custom_name: string | null;
 }
 
 interface JobCard {
@@ -112,9 +113,9 @@ const OrderDetail = () => {
         if (orderError) throw orderError;
         setOrder(orderData);
         
-        // Fetch order components
+        // Fixed: Fetch order components from the correct table "order_components"
         const { data: componentsData, error: componentsError } = await supabase
-          .from("components")
+          .from("order_components")
           .select("*")
           .eq("order_id", id);
           
@@ -478,12 +479,14 @@ const OrderDetail = () => {
                       {components.map((component) => (
                         <TableRow key={component.id}>
                           <TableCell className="font-medium">
-                            {getComponentTypeDisplay(component.type)}
+                            {component.component_type === 'custom' && component.custom_name 
+                              ? component.custom_name 
+                              : getComponentTypeDisplay(component.component_type)}
                           </TableCell>
                           <TableCell>{component.size || "-"}</TableCell>
                           <TableCell>{component.color || "-"}</TableCell>
                           <TableCell>{component.gsm || "-"}</TableCell>
-                          <TableCell>{component.details || "-"}</TableCell>
+                          <TableCell>{component.custom_name || "-"}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
