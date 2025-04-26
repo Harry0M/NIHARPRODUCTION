@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,12 +42,12 @@ interface OrderDetailsFormProps {
   };
 }
 
-export default function OrderDetailsForm({ 
+export const OrderDetailsForm = ({ 
   formData, 
   handleOrderChange, 
   onProductSelect,
   formErrors 
-}: OrderDetailsFormProps) {
+}: OrderDetailsFormProps) => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const { data: catalogProducts, isLoading } = useCatalogProducts();
 
@@ -57,8 +56,7 @@ export default function OrderDetailsForm({
     const fetchCompanies = async () => {
       const { data, error } = await supabase
         .from('companies')
-        .select('id, name')
-        .eq('status', 'active');
+        .select('id, name');
 
       if (!error && data) {
         setCompanies(data);
@@ -71,6 +69,7 @@ export default function OrderDetailsForm({
   const handleProductSelect = (productId: string) => {
     const selectedProduct = catalogProducts?.find(p => p.id === productId);
     if (selectedProduct) {
+      // Only update bag dimensions, quantity and rate, not the company info
       handleOrderChange({ target: { name: 'bag_length', value: selectedProduct.bag_length.toString() } });
       handleOrderChange({ target: { name: 'bag_width', value: selectedProduct.bag_width.toString() } });
       if (selectedProduct.default_quantity) {
@@ -80,6 +79,7 @@ export default function OrderDetailsForm({
         handleOrderChange({ target: { name: 'rate', value: selectedProduct.default_rate.toString() } });
       }
       
+      // Pass components to parent component if they exist
       if (onProductSelect && selectedProduct.catalog_components) {
         onProductSelect(selectedProduct.catalog_components);
       }
@@ -88,9 +88,15 @@ export default function OrderDetailsForm({
 
   const handleCompanySelect = (companyId: string | null) => {
     if (companyId && companyId !== "no_selection") {
-      // Only set the company_id, do not auto-fill the company name
-      handleOrderChange({ target: { name: 'company_id', value: companyId } });
+      // Only set company_id, don't set company_name
+      handleOrderChange({
+        target: {
+          name: 'company_id',
+          value: companyId
+        }
+      });
     } else {
+      // Clear company_id when no company is selected
       handleOrderChange({ target: { name: 'company_id', value: null } });
     }
   };
@@ -122,25 +128,6 @@ export default function OrderDetailsForm({
         {/* Company section */}
         <div className="space-y-4 border-b pb-4">
           <div className="space-y-2">
-            <Label>Select Company (Optional)</Label>
-            <Select 
-              value={formData.company_id || undefined} 
-              onValueChange={handleCompanySelect}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a company" />
-              </SelectTrigger>
-              <SelectContent>
-                {companies.map((company) => (
-                  <SelectItem key={company.id} value={company.id}>
-                    {company.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="company_name" className="flex items-center gap-1">
               Company Name
               <span className="text-destructive">*</span>
@@ -150,9 +137,8 @@ export default function OrderDetailsForm({
               name="company_name"
               value={formData.company_name}
               onChange={(e) => handleOrderChange(e)}
-              placeholder="Enter company name manually"
+              placeholder="Enter company name"
               required
-              autoComplete="off"
               className={formErrors.company ? "border-destructive" : ""}
             />
             {formErrors.company && (
@@ -285,5 +271,4 @@ export default function OrderDetailsForm({
       </CardContent>
     </Card>
   );
-}
-
+};
