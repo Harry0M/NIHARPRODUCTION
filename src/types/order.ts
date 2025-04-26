@@ -30,3 +30,15 @@ export interface OrderFormData {
   order_date: string;
   sales_account_id?: string | null;
 }
+
+export interface Component {
+  id: string;
+  component_type: string;
+  size: string | null;
+  color: string | null;
+  gsm: string | null;
+  custom_name: string | null;
+  order_id?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}

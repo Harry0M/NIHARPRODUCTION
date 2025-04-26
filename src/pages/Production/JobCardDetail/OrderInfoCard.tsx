@@ -3,15 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { File } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-
-interface Component {
-  id: string;
-  component_type: string;
-  size: string | null;
-  color: string | null;
-  gsm: string | null;
-  custom_name: string | null;
-}
+import { Component } from "@/types/order";
 
 interface Order {
   order_number: string;

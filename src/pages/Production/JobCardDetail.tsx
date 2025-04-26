@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
+import { Component } from "@/types/order";
 import { OrderInfoCard } from "./JobCardDetail/OrderInfoCard";
 import { ProductionTimelineCard } from "./JobCardDetail/ProductionTimelineCard";
 import { ProductionProgressCard } from "./JobCardDetail/ProductionProgressCard";
@@ -14,14 +15,6 @@ import { downloadAsCSV, downloadAsPDF, formatJobCardForDownload } from "@/utils/
 
 type JobStatus = Database['public']['Enums']['job_status'];
 type OrderStatus = Database['public']['Enums']['order_status'];
-
-interface Component {
-  id: string;
-  type: string;
-  size: string | null;
-  color: string | null;
-  gsm: string | null;
-}
 
 interface JobCardDetails {
   id: string;
@@ -94,7 +87,7 @@ const JobCardDetail = () => {
           order:order_id (
             id, order_number, company_name, quantity, 
             bag_length, bag_width, order_date, status,
-            components (id, type, size, color, gsm)
+            components:order_components (id, component_type, size, color, gsm, custom_name)
           ),
           cutting_jobs (id, status, worker_name, created_at),
           printing_jobs (id, status, worker_name, created_at),
@@ -110,8 +103,13 @@ const JobCardDetail = () => {
         ...data,
         order: {
           ...data.order,
-          // Ensure components is always an array
-          components: Array.isArray(data.order.components) ? data.order.components : []
+          // Ensure components is always an array and convert gsm to string
+          components: Array.isArray(data.order.components) 
+            ? data.order.components.map((comp: any) => ({
+                ...comp,
+                gsm: comp.gsm !== null ? String(comp.gsm) : null
+              }))
+            : []
         }
       };
       

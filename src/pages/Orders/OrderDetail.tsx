@@ -49,6 +49,7 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Component } from "@/types/order";
 
 interface Order {
   id: string;
@@ -63,16 +64,6 @@ interface Order {
   special_instructions: string | null;
   created_at: string;
   sales_account_id?: string | null;
-}
-
-interface Component {
-  id: string;
-  order_id: string;
-  component_type: string;
-  size: string | null;
-  color: string | null;
-  gsm: string | null;
-  custom_name: string | null;
 }
 
 interface JobCard {
@@ -119,7 +110,14 @@ const OrderDetail = () => {
           .eq("order_id", id);
           
         if (componentsError) throw componentsError;
-        setComponents(componentsData || []);
+        
+        // Convert gsm from number to string if needed
+        const typeSafeComponents: Component[] = componentsData?.map(comp => ({
+          ...comp,
+          gsm: comp.gsm !== null ? String(comp.gsm) : null
+        })) || [];
+        
+        setComponents(typeSafeComponents);
         
         // Fetch job cards
         const { data: jobCardsData, error: jobCardsError } = await supabase
