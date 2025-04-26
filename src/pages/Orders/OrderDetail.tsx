@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { 
@@ -159,122 +158,8 @@ const OrderDetail = () => {
     fetchCompanies();
   }, [id, navigate]);
 
-  const handleDeleteOrder = async () => {
-    setDeleteLoading(true);
-    try {
-      console.log("Attempting to delete order with ID:", id);
-      
-      // First delete related records in a specific sequence
-      
-      // 1. Delete all cutting components related to this order's job cards
-      // First get all job cards for this order
-      const { data: jobCardsData, error: jobCardsError } = await supabase
-        .from("job_cards")
-        .select("id")
-        .eq("order_id", id);
-      
-      if (jobCardsError) throw jobCardsError;
-      
-      // For each job card, delete cutting components and related jobs
-      if (jobCardsData && jobCardsData.length > 0) {
-        for (const jobCard of jobCardsData) {
-          // Get cutting jobs for this job card
-          const { data: cuttingJobs, error: cuttingJobsError } = await supabase
-            .from("cutting_jobs")
-            .select("id")
-            .eq("job_card_id", jobCard.id);
-            
-          if (cuttingJobsError) throw cuttingJobsError;
-          
-          // Delete cutting components for each cutting job
-          if (cuttingJobs && cuttingJobs.length > 0) {
-            for (const cuttingJob of cuttingJobs) {
-              const { error: delCuttingComponentsError } = await supabase
-                .from("cutting_components")
-                .delete()
-                .eq("cutting_job_id", cuttingJob.id);
-                
-              if (delCuttingComponentsError) throw delCuttingComponentsError;
-            }
-            
-            // Delete cutting jobs
-            const { error: delCuttingJobsError } = await supabase
-              .from("cutting_jobs")
-              .delete()
-              .eq("job_card_id", jobCard.id);
-              
-            if (delCuttingJobsError) throw delCuttingJobsError;
-          }
-          
-          // Delete printing jobs
-          const { error: delPrintingJobsError } = await supabase
-            .from("printing_jobs")
-            .delete()
-            .eq("job_card_id", jobCard.id);
-            
-          if (delPrintingJobsError) throw delPrintingJobsError;
-          
-          // Delete stitching jobs
-          const { error: delStitchingJobsError } = await supabase
-            .from("stitching_jobs")
-            .delete()
-            .eq("job_card_id", jobCard.id);
-            
-          if (delStitchingJobsError) throw delStitchingJobsError;
-        }
-        
-        // Delete job cards
-        const { error: delJobCardsError } = await supabase
-          .from("job_cards")
-          .delete()
-          .eq("order_id", id);
-          
-        if (delJobCardsError) throw delJobCardsError;
-      }
-      
-      // 2. Delete order components
-      const { error: componentsError } = await supabase
-        .from("components")
-        .delete()
-        .eq("order_id", id);
-      
-      if (componentsError) throw componentsError;
-      
-      // 3. Delete dispatches
-      const { error: dispatchesError } = await supabase
-        .from("order_dispatches")
-        .delete()
-        .eq("order_id", id);
-        
-      if (dispatchesError) throw dispatchesError;
-      
-      // 4. Finally delete the order itself
-      const { error } = await supabase
-        .from("orders")
-        .delete()
-        .eq("id", id);
-        
-      if (error) throw error;
-      
-      console.log("Order deleted successfully");
-      toast({
-        title: "Order Deleted",
-        description: "The order has been successfully deleted"
-      });
-      
-      navigate("/orders");
-    } catch (error: any) {
-      console.error("Error deleting order:", error);
-      toast({
-        title: "Error deleting order",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
   
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
@@ -355,35 +240,11 @@ const OrderDetail = () => {
               Edit
             </Link>
           </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive">
-                <Trash className="mr-2 h-4 w-4" />
-                Delete
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Order</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete this order? This action cannot be undone.
-                  All associated job cards and production data will be deleted as well.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction 
-                  onClick={handleDeleteOrder}
-                  disabled={deleteLoading}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  {deleteLoading ? "Deleting..." : "Delete Order"}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          
         </div>
       </div>
+      
+      
       
       <div className="flex items-center gap-4">
         <Badge className={`${getStatusColor(order.status)} px-3 py-1 text-xs`}>
