@@ -87,7 +87,7 @@ export const OrderDetailsForm = ({
     }
   };
 
-  const handleCompanySelect = (companyId: string) => {
+  const handleCompanySelect = (companyId: string | null) => {
     if (companyId) {
       const selectedCompany = companies.find(c => c.id === companyId);
       
@@ -161,14 +161,14 @@ export const OrderDetailsForm = ({
               Select Existing Company
             </Label>
             <Select 
-              value={formData.company_id || ""} 
-              onValueChange={handleCompanySelect}
+              value={formData.company_id || "no_selection"} 
+              onValueChange={(value) => handleCompanySelect(value === "no_selection" ? null : value)}
             >
               <SelectTrigger id="company_select">
                 <SelectValue placeholder="Select a company" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">-- Select a company --</SelectItem>
+                <SelectItem value="no_selection">-- Select a company --</SelectItem>
                 {companies.map((company) => (
                   <SelectItem key={company.id} value={company.id}>
                     {company.name}
