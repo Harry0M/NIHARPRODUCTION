@@ -19,6 +19,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -34,10 +42,17 @@ interface Company {
 
 const CompanyList = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; companyId: string | null }>({
+  const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; companyId: string | null; companyName: string | null }>({
     isOpen: false,
-    companyId: null
+    companyId: null,
+    companyName: null
   });
+  const [deleteOptionsDialog, setDeleteOptionsDialog] = useState<{ isOpen: boolean; companyId: string | null; companyName: string | null }>({
+    isOpen: false,
+    companyId: null,
+    companyName: null
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
   const navigate = useNavigate();
 
   // Fetch companies on component mount
@@ -46,41 +61,156 @@ const CompanyList = () => {
   }, []);
 
   const fetchCompanies = async () => {
-    const { data, error } = await supabase
-      .from('companies')
-      .select('*');
+    try {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('*');
 
-    if (error) {
+      if (error) {
+        throw error;
+      } else {
+        setCompanies(data || []);
+      }
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to fetch companies",
+        description: `Failed to fetch companies: ${error.message}`,
         variant: "destructive"
       });
-    } else {
-      setCompanies(data);
     }
   };
 
-  // Delete a company
-  const handleDeleteCompany = async (companyId: string) => {
-    const { error } = await supabase
-      .from('companies')
-      .delete()
-      .eq('id', companyId);
+  // Show delete options dialog
+  const showDeleteOptions = (companyId: string, companyName: string) => {
+    setDeleteOptionsDialog({
+      isOpen: true,
+      companyId,
+      companyName
+    });
+  };
 
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete company",
-        variant: "destructive"
-      });
-    } else {
+  // Delete a company only
+  const handleDeleteCompanyOnly = async (companyId: string) => {
+    setIsDeleting(true);
+    try {
+      // First check if the company has any orders
+      const { data: orders, error: ordersError } = await supabase
+        .from('orders')
+        .select('id')
+        .or(`company_id.eq.${companyId},sales_account_id.eq.${companyId}`);
+      
+      if (ordersError) throw ordersError;
+      
+      if (orders && orders.length > 0) {
+        // Update orders to remove this company reference
+        const { error: updateError } = await supabase
+          .from('orders')
+          .update({ company_id: null })
+          .eq('company_id', companyId);
+          
+        if (updateError) throw updateError;
+        
+        const { error: updateSalesError } = await supabase
+          .from('orders')
+          .update({ sales_account_id: null })
+          .eq('sales_account_id', companyId);
+          
+        if (updateSalesError) throw updateSalesError;
+      }
+      
+      // Now delete the company
+      const { error } = await supabase
+        .from('companies')
+        .delete()
+        .eq('id', companyId);
+
+      if (error) throw error;
+      
       toast({
         title: "Success",
-        description: "Company deleted successfully",
+        description: "Company deleted successfully. Orders were preserved.",
       });
-      setDeleteDialog({ isOpen: false, companyId: null });
       fetchCompanies(); // Refresh the list
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to delete company: ${error.message}`,
+        variant: "destructive"
+      });
+    } finally {
+      setDeleteOptionsDialog({ isOpen: false, companyId: null, companyName: null });
+      setIsDeleting(false);
+    }
+  };
+
+  // Delete a company and all its orders
+  const handleDeleteCompanyWithOrders = async (companyId: string) => {
+    setIsDeleting(true);
+    try {
+      // Show the confirmation dialog
+      setDeleteOptionsDialog({ isOpen: false, companyId: null, companyName: null });
+      setDeleteDialog({
+        isOpen: true,
+        companyId,
+        companyName: deleteOptionsDialog.companyName
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to prepare deletion: ${error.message}`,
+        variant: "destructive"
+      });
+      setIsDeleting(false);
+    }
+  };
+
+  // Execute full deletion with confirmation
+  const executeFullDeletion = async (companyId: string) => {
+    try {
+      setIsDeleting(true);
+      
+      // Get all orders for this company
+      const { data: orders, error: ordersError } = await supabase
+        .from('orders')
+        .select('id')
+        .or(`company_id.eq.${companyId},sales_account_id.eq.${companyId}`);
+      
+      if (ordersError) throw ordersError;
+      
+      if (orders && orders.length > 0) {
+        // Delete each order with the complete deletion function
+        for (const order of orders) {
+          const { error } = await supabase.rpc(
+            'delete_order_completely', 
+            { order_id: order.id }
+          );
+          
+          if (error) throw error;
+        }
+      }
+      
+      // Delete the company
+      const { error } = await supabase
+        .from('companies')
+        .delete()
+        .eq('id', companyId);
+
+      if (error) throw error;
+      
+      toast({
+        title: "Success",
+        description: "Company and all related orders deleted successfully.",
+      });
+      fetchCompanies(); // Refresh the list
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to delete company and orders: ${error.message}`,
+        variant: "destructive"
+      });
+    } finally {
+      setDeleteDialog({ isOpen: false, companyId: null, companyName: null });
+      setIsDeleting(false);
     }
   };
 
@@ -126,7 +256,8 @@ const CompanyList = () => {
                 <Button 
                   variant="destructive" 
                   size="sm"
-                  onClick={() => setDeleteDialog({ isOpen: true, companyId: company.id })}
+                  onClick={() => showDeleteOptions(company.id, company.name)}
+                  disabled={isDeleting}
                 >
                   <Trash2 size={16} />
                 </Button>
@@ -136,25 +267,67 @@ const CompanyList = () => {
         </TableBody>
       </Table>
 
+      {/* Dialog for delete options */}
+      <Dialog 
+        open={deleteOptionsDialog.isOpen} 
+        onOpenChange={(isOpen) => !isDeleting && setDeleteOptionsDialog(prev => ({ ...prev, isOpen }))}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Company</DialogTitle>
+            <DialogDescription>
+              Choose how you want to delete {deleteOptionsDialog.companyName}:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 py-4">
+            <Button 
+              variant="outline" 
+              onClick={() => handleDeleteCompanyOnly(deleteOptionsDialog.companyId!)}
+              disabled={isDeleting}
+            >
+              Delete company only (preserve orders)
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => handleDeleteCompanyWithOrders(deleteOptionsDialog.companyId!)}
+              disabled={isDeleting}
+            >
+              Delete company and all related orders
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="secondary" 
+              onClick={() => setDeleteOptionsDialog({ isOpen: false, companyId: null, companyName: null })}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation dialog for complete deletion */}
       <AlertDialog 
         open={deleteDialog.isOpen} 
-        onOpenChange={(isOpen) => setDeleteDialog({ isOpen, companyId: null })}
+        onOpenChange={(isOpen) => !isDeleting && setDeleteDialog(prev => ({ ...prev, isOpen }))}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Warning: Permanent Deletion</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the company
-              and all associated data.
+              This action cannot be undone. This will permanently delete the company "{deleteDialog.companyName}" 
+              and ALL related orders, job cards, production records, and dispatch information.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => deleteDialog.companyId && handleDeleteCompany(deleteDialog.companyId)}
+              onClick={() => deleteDialog.companyId && executeFullDeletion(deleteDialog.companyId)}
+              disabled={isDeleting}
             >
-              Delete
+              {isDeleting ? 'Deleting...' : 'Yes, Delete Everything'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
