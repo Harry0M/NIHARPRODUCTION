@@ -84,24 +84,29 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
 
   // Handle company selection - update company_id and clear company_name
   const handleCompanySelect = (companyId: string) => {
-    const selectedCompany = companies.find(c => c.id === companyId);
-    
-    if (selectedCompany) {
-      // Only set the company_id, clear company_name (to satisfy the constraint)
-      handleOrderChange({
-        target: {
-          name: 'company_id',
-          value: selectedCompany.id
-        }
-      });
+    if (companyId) {
+      const selectedCompany = companies.find(c => c.id === companyId);
       
-      // Set company_name to empty since we'll use company_id
-      handleOrderChange({
-        target: {
-          name: 'company_name',
-          value: ''
-        }
-      });
+      if (selectedCompany) {
+        // Set company_id
+        handleOrderChange({
+          target: {
+            name: 'company_id',
+            value: selectedCompany.id
+          }
+        });
+        
+        // Important: When selecting an existing company, we need to clear the company_name
+        handleOrderChange({
+          target: {
+            name: 'company_name',
+            value: ''
+          }
+        });
+      }
+    } else {
+      // If no company is selected, clear both fields
+      handleOrderChange({ target: { name: 'company_id', value: '' } });
     }
   };
 
@@ -120,6 +125,10 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
       });
     }
   };
+
+  // Compute if the form is in a valid state for company selection
+  const isUsingExistingCompany = !!formData.company_id;
+  const isUsingNewCompany = !!formData.company_name && !formData.company_id;
 
   return (
     <Card>
@@ -147,7 +156,7 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
 
         {/* Company selection dropdown */}
         <div className="space-y-2">
-          <Label htmlFor="company_select">Select Company</Label>
+          <Label htmlFor="company_select">Select Existing Company</Label>
           <Select 
             value={formData.company_id || ""} 
             onValueChange={handleCompanySelect}
@@ -169,7 +178,7 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
         {/* Company name field - only needed if not selecting from dropdown */}
         <div className="space-y-2">
           <Label htmlFor="company_name">
-            New Company Name {!formData.company_id && <span className="text-destructive">*</span>}
+            New Company Name {!isUsingExistingCompany && <span className="text-destructive">*</span>}
           </Label>
           <Input 
             id="company_name" 
@@ -177,11 +186,11 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
             value={formData.company_name}
             onChange={handleCompanyNameChange}
             placeholder="Enter new company name"
-            required={!formData.company_id}
-            disabled={!!formData.company_id}
+            required={!isUsingExistingCompany}
+            disabled={isUsingExistingCompany}
           />
           <p className="text-xs text-muted-foreground">
-            {formData.company_id 
+            {isUsingExistingCompany 
               ? "Using selected company from dropdown" 
               : "Enter new company name when not selecting from dropdown"}
           </p>
