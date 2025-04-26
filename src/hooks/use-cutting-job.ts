@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { JobStatus } from "@/types/production";
+import { JobStatus, CuttingComponent } from "@/types/production";
 
 interface JobCard {
   id: string;
@@ -14,22 +15,6 @@ interface JobCard {
     bag_length: number;
     bag_width: number;
   };
-}
-
-interface CuttingComponent {
-  component_id: string;
-  type: string;
-  width: string;
-  height: string;
-  counter: string;
-  rewinding: string;
-  rate: string;
-  status: JobStatus;
-  material_type?: string;
-  material_color?: string;
-  material_gsm?: string;
-  waste_quantity?: string;
-  notes?: string;
 }
 
 interface CuttingJob {
@@ -143,13 +128,18 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
       // Initialize component data
       const initialComponentData = componentsData?.map(comp => ({
         component_id: comp.id,
-        type: comp.component_type,
+        component_type: comp.component_type,
         width: "",
         height: "",
         counter: "",
         rewinding: "",
         rate: "",
-        status: "pending" as JobStatus
+        status: "pending" as JobStatus,
+        material_type: "",
+        material_color: "",
+        material_gsm: "",
+        waste_quantity: "",
+        notes: ""
       })) || [];
 
       setComponentData(initialComponentData);
@@ -208,13 +198,18 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
         if (data && data.length > 0) {
           const formattedComponents = data.map(comp => ({
             component_id: comp.component_id || "",
-            type: components.find(c => c.id === comp.component_id)?.component_type || "",
+            component_type: comp.component_type,
             width: comp.width?.toString() || "",
             height: comp.height?.toString() || "",
             counter: comp.counter?.toString() || "",
             rewinding: comp.rewinding?.toString() || "",
             rate: comp.rate?.toString() || "",
-            status: comp.status || "pending"
+            status: comp.status || "pending",
+            material_type: comp.material_type || "",
+            material_color: comp.material_color || "",
+            material_gsm: comp.material_gsm?.toString() || "",
+            waste_quantity: comp.waste_quantity?.toString() || "",
+            notes: comp.notes || ""
           }));
           setComponentData(formattedComponents);
         }
@@ -237,13 +232,18 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
 
     const initialComponentData = components.map(comp => ({
       component_id: comp.id,
-      type: comp.component_type,
+      component_type: comp.component_type,
       width: "",
       height: "",
       counter: "",
       rewinding: "",
       rate: "",
-      status: "pending" as JobStatus
+      status: "pending" as JobStatus,
+      material_type: "",
+      material_color: "",
+      material_gsm: "",
+      waste_quantity: "",
+      notes: ""
     }));
     setComponentData(initialComponentData);
 
@@ -326,6 +326,7 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
           .map(comp => ({
             cutting_job_id: cuttingJobId,
             component_id: comp.component_id,
+            component_type: comp.component_type,
             width: comp.width ? parseFloat(comp.width) : null,
             height: comp.height ? parseFloat(comp.height) : null,
             counter: comp.counter ? parseFloat(comp.counter) : null,

@@ -1,3 +1,4 @@
+
 export interface JobData {
   id: string;
   jobCardId: string;
@@ -46,7 +47,7 @@ export type JobStatus = "pending" | "in_progress" | "completed";
 
 export interface CuttingComponent {
   component_id: string;
-  type: string;
+  component_type: string;
   width: string;
   height: string;
   counter: string;

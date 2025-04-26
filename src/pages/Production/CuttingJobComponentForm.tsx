@@ -1,3 +1,4 @@
+
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -5,23 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Component } from "@/types/order";
-import { JobStatus } from "@/types/production";
-
-interface CuttingComponent {
-  component_id: string;
-  type: string;
-  width: string;
-  height: string;
-  counter: string;
-  rewinding: string;
-  rate: string;
-  status: JobStatus;
-  material_type?: string;
-  material_color?: string;
-  material_gsm?: string;
-  waste_quantity?: string;
-  notes?: string;
-}
+import { CuttingComponent, JobStatus } from "@/types/production";
 
 interface CuttingJobComponentFormProps {
   components: Component[];
