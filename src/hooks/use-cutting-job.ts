@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -26,6 +25,11 @@ interface CuttingComponent {
   rewinding: string;
   rate: string;
   status: JobStatus;
+  material_type?: string;
+  material_color?: string;
+  material_gsm?: string;
+  waste_quantity?: string;
+  notes?: string;
 }
 
 interface CuttingJob {
@@ -317,38 +321,25 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
             .eq("cutting_job_id", selectedJobId);
         }
 
-        // Verify each component_id exists in order_components before inserting
-        const componentsToInsert = [];
-        
-        for (const comp of componentData) {
-          if (comp.width || comp.height || comp.counter || comp.rewinding) {
-            // Check if component_id exists in order_components
-            const { data, error } = await supabase
-              .from("order_components")
-              .select("id")
-              .eq("id", comp.component_id)
-              .single();
-              
-            if (error) {
-              console.error(`Component ID ${comp.component_id} not found in order_components:`, error);
-              continue; // Skip this component
-            }
-            
-            componentsToInsert.push({
-              cutting_job_id: cuttingJobId,
-              component_id: comp.component_id,
-              width: comp.width ? parseFloat(comp.width) : null,
-              height: comp.height ? parseFloat(comp.height) : null,
-              counter: comp.counter ? parseFloat(comp.counter) : null,
-              rewinding: comp.rewinding ? parseFloat(comp.rewinding) : null,
-              rate: comp.rate ? parseFloat(comp.rate) : null,
-              status: comp.status
-            });
-          }
-        }
+        const componentsToInsert = componentData
+          .filter(comp => comp.width || comp.height || comp.counter || comp.rewinding)
+          .map(comp => ({
+            cutting_job_id: cuttingJobId,
+            component_id: comp.component_id,
+            width: comp.width ? parseFloat(comp.width) : null,
+            height: comp.height ? parseFloat(comp.height) : null,
+            counter: comp.counter ? parseFloat(comp.counter) : null,
+            rewinding: comp.rewinding ? parseFloat(comp.rewinding) : null,
+            rate: comp.rate ? parseFloat(comp.rate) : null,
+            status: comp.status,
+            material_type: comp.material_type || null,
+            material_color: comp.material_color || null,
+            material_gsm: comp.material_gsm ? parseFloat(comp.material_gsm) : null,
+            waste_quantity: comp.waste_quantity ? parseFloat(comp.waste_quantity) : null,
+            notes: comp.notes || null
+          }));
 
         if (componentsToInsert.length > 0) {
-          console.log("Inserting components:", componentsToInsert);
           const { error } = await supabase
             .from("cutting_components")
             .insert(componentsToInsert);

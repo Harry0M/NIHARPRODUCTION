@@ -43,3 +43,19 @@ export interface JobSelectionOption {
 }
 
 export type JobStatus = "pending" | "in_progress" | "completed";
+
+export interface CuttingComponent {
+  component_id: string;
+  type: string;
+  width: string;
+  height: string;
+  counter: string;
+  rewinding: string;
+  rate: string;
+  status: JobStatus;
+  material_type?: string;
+  material_color?: string;
+  material_gsm?: string;
+  waste_quantity?: string;
+  notes?: string;
+}

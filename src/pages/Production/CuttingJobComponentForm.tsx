@@ -1,9 +1,9 @@
-
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Component } from "@/types/order";
 import { JobStatus } from "@/types/production";
 
@@ -16,6 +16,11 @@ interface CuttingComponent {
   rewinding: string;
   rate: string;
   status: JobStatus;
+  material_type?: string;
+  material_color?: string;
+  material_gsm?: string;
+  waste_quantity?: string;
+  notes?: string;
 }
 
 interface CuttingJobComponentFormProps {
@@ -53,6 +58,37 @@ export function CuttingJobComponentForm({
                   {component.gsm && <span className="bg-slate-100 px-2 py-1 rounded">GSM: {component.gsm}</span>}
                 </div>
               </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Material Type</Label>
+                  <Input
+                    type="text"
+                    placeholder="Material type"
+                    value={componentData[index]?.material_type || ""}
+                    onChange={(e) => handleComponentChange(index, "material_type", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Material Color</Label>
+                  <Input
+                    type="text"
+                    placeholder="Material color"
+                    value={componentData[index]?.material_color || ""}
+                    onChange={(e) => handleComponentChange(index, "material_color", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Material GSM</Label>
+                  <Input
+                    type="number"
+                    placeholder="Material GSM"
+                    value={componentData[index]?.material_gsm || ""}
+                    onChange={(e) => handleComponentChange(index, "material_gsm", e.target.value)}
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                 <div className="space-y-2">
                   <Label>Width</Label>
@@ -115,6 +151,26 @@ export function CuttingJobComponentForm({
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div className="space-y-2">
+                  <Label>Waste Quantity</Label>
+                  <Input
+                    type="number"
+                    placeholder="Waste quantity"
+                    value={componentData[index]?.waste_quantity || ""}
+                    onChange={(e) => handleComponentChange(index, "waste_quantity", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Notes</Label>
+                <Textarea
+                  placeholder="Add any notes about the cutting process"
+                  value={componentData[index]?.notes || ""}
+                  onChange={(e) => handleComponentChange(index, "notes", e.target.value)}
+                  className="min-h-[100px]"
+                />
               </div>
             </div>
           ))}

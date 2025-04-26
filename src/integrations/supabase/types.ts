@@ -177,42 +177,60 @@ export type Database = {
       }
       cutting_components: {
         Row: {
+          completed_at: string | null
           component_id: string | null
           counter: number | null
           created_at: string
           cutting_job_id: string
           height: number | null
           id: string
+          material_color: string | null
+          material_gsm: number | null
+          material_type: string | null
+          notes: string | null
           rate: number | null
           rewinding: number | null
           status: Database["public"]["Enums"]["job_status"] | null
           updated_at: string
+          waste_quantity: number | null
           width: number | null
         }
         Insert: {
+          completed_at?: string | null
           component_id?: string | null
           counter?: number | null
           created_at?: string
           cutting_job_id: string
           height?: number | null
           id?: string
+          material_color?: string | null
+          material_gsm?: number | null
+          material_type?: string | null
+          notes?: string | null
           rate?: number | null
           rewinding?: number | null
           status?: Database["public"]["Enums"]["job_status"] | null
           updated_at?: string
+          waste_quantity?: number | null
           width?: number | null
         }
         Update: {
+          completed_at?: string | null
           component_id?: string | null
           counter?: number | null
           created_at?: string
           cutting_job_id?: string
           height?: number | null
           id?: string
+          material_color?: string | null
+          material_gsm?: number | null
+          material_type?: string | null
+          notes?: string | null
           rate?: number | null
           rewinding?: number | null
           status?: Database["public"]["Enums"]["job_status"] | null
           updated_at?: string
+          waste_quantity?: number | null
           width?: number | null
         }
         Relationships: [
