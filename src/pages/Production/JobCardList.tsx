@@ -389,7 +389,10 @@ const JobCardList = () => {
         title: "Job card deleted successfully",
         description: "The job card and all related jobs have been removed.",
       });
-      console.log("Job card deleted successfully");
+
+      // Navigate to the job cards page to refresh
+      navigate('/production/job-cards');
+      
     } catch (error: any) {
       console.error("Error deleting job card:", error);
       toast({

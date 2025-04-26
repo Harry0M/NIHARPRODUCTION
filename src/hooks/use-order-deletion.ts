@@ -1,9 +1,11 @@
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
+  const navigate = useNavigate();
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -60,6 +62,7 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
       // Allow state updates to complete before triggering any navigation
       setTimeout(() => {
         onOrderDeleted(deletedOrderId);
+        navigate('/orders'); // Add navigation to refresh the page
       }, 0);
       
     } catch (error: any) {
