@@ -4,15 +4,10 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Component } from "@/types/order";
 
 type JobStatus = "pending" | "in_progress" | "completed";
-interface Component {
-  id: string;
-  type: string;
-  size: string | null;
-  color: string | null;
-  gsm: string | null;
-}
+
 interface CuttingComponent {
   component_id: string;
   type: string;
@@ -23,6 +18,7 @@ interface CuttingComponent {
   rate: string;
   status: JobStatus;
 }
+
 interface CuttingJobComponentFormProps {
   components: Component[];
   componentData: CuttingComponent[];
@@ -51,7 +47,7 @@ export function CuttingJobComponentForm({
           {components.map((component, index) => (
             <div key={component.id} className="p-4 border rounded-md space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium capitalize">{component.type}</h3>
+                <h3 className="text-lg font-medium capitalize">{component.component_type}</h3>
                 <div className="flex items-center gap-2 text-sm">
                   {component.size && <span className="bg-slate-100 px-2 py-1 rounded">Size: {component.size}</span>}
                   {component.color && <span className="bg-slate-100 px-2 py-1 rounded">Color: {component.color}</span>}

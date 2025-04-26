@@ -1,3 +1,4 @@
+
 // This file is responsible for all logic and orchestration of the child components.
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
@@ -17,6 +18,7 @@ import { CuttingJobSelection } from "./CuttingJobSelection";
 import { CuttingJobComponentForm } from "./CuttingJobComponentForm";
 import { Database } from "@/integrations/supabase/types";
 import { VendorSelection } from "@/components/production/VendorSelection";
+import { Component } from "@/types/order";
 
 type JobStatus = Database["public"]["Enums"]["job_status"];
 
@@ -32,13 +34,7 @@ interface JobCard {
     bag_width: number;
   };
 }
-interface Component {
-  id: string;
-  type: string;
-  size: string | null;
-  color: string | null;
-  gsm: string | null;
-}
+
 interface CuttingComponent {
   component_id: string;
   type: string;
@@ -125,18 +121,29 @@ export default function CuttingJobForm() {
         
         setJobCard(formattedJobCard);
         
-        // Fetch components data
+        // Fetch components data from order_components table
         const { data: componentsData, error: componentsError } = await supabase
-          .from("components")
-          .select("id, type, size, color, gsm")
+          .from("order_components")
+          .select("id, component_type, size, color, gsm, custom_name")
           .eq("order_id", jobCardData.orders.id);
           
         if (componentsError) throw componentsError;
-        setComponents(componentsData || []);
         
-        const initialComponentData: CuttingComponent[] = componentsData.map(comp => ({
+        // Convert components data to Component type
+        const typedComponents: Component[] = componentsData.map(comp => ({
+          id: comp.id,
+          component_type: comp.component_type,
+          size: comp.size,
+          color: comp.color,
+          gsm: comp.gsm !== null ? String(comp.gsm) : null,
+          custom_name: comp.custom_name
+        }));
+        
+        setComponents(typedComponents || []);
+        
+        const initialComponentData: CuttingComponent[] = typedComponents.map(comp => ({
           component_id: comp.id,
-          type: comp.type,
+          type: comp.component_type,
           width: "",
           height: "",
           counter: "",
@@ -284,7 +291,7 @@ export default function CuttingJobForm() {
           // Map component data to match our interface
           const formattedComponents = data.map(comp => ({
             component_id: comp.component_id || "",
-            type: components.find(c => c.id === comp.component_id)?.type || "",
+            type: components.find(c => c.id === comp.component_id)?.component_type || "",
             width: comp.width?.toString() || "",
             height: comp.height?.toString() || "",
             counter: comp.counter?.toString() || "",
@@ -298,7 +305,7 @@ export default function CuttingJobForm() {
           // If no components found, reset to initial state based on order components
           const initialComponentData = components.map(comp => ({
             component_id: comp.id,
-            type: comp.type,
+            type: comp.component_type,
             width: "",
             height: "",
             counter: "",
@@ -331,7 +338,7 @@ export default function CuttingJobForm() {
     // Reset component data for new job
     const initialComponentData = components.map(comp => ({
       component_id: comp.id,
-      type: comp.type,
+      type: comp.component_type,
       width: "",
       height: "",
       counter: "",
@@ -617,14 +624,14 @@ export default function CuttingJobForm() {
                 </div>
 
                 <div className="space-y-2">
-  <Label>Worker Name</Label>
-  <VendorSelection
-    serviceType="cutting"
-    value={cuttingData.worker_name}
-    onChange={(value) => handleWorkerSelect(value)}
-    placeholder="Select cutter or enter manually"
-  />
-</div>
+                  <Label>Worker Name</Label>
+                  <VendorSelection
+                    serviceType="cutting"
+                    value={cuttingData.worker_name}
+                    onChange={(value) => handleWorkerSelect(value)}
+                    placeholder="Select cutter or enter manually"
+                  />
+                </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
@@ -642,6 +649,17 @@ export default function CuttingJobForm() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {jobCard.order && (
+                  <div className="md:col-span-3">
+                    <ConsumptionCalculator
+                      length={jobCard.order.bag_length}
+                      width={jobCard.order.bag_width}
+                      quantity={jobCard.order.quantity}
+                      onConsumptionCalculated={handleConsumptionCalculated}
+                    />
+                  </div>
+                )}
               </div>
             </form>
           </CardContent>

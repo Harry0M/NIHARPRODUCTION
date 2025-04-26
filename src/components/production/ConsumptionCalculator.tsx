@@ -24,7 +24,7 @@ export const ConsumptionCalculator = ({
       try {
         const calculatedConsumption = ((length * width) / 6339.39) * quantity;
         const roundedConsumption = Math.round(calculatedConsumption * 100) / 100;
-        console.log("Calculated consumption:", roundedConsumption);
+        console.log("Calculated consumption:", roundedConsumption, "for length:", length, "width:", width, "quantity:", quantity);
         setConsumption(roundedConsumption);
         onConsumptionCalculated(roundedConsumption);
       } catch (error) {
@@ -33,6 +33,7 @@ export const ConsumptionCalculator = ({
         onConsumptionCalculated(0);
       }
     } else {
+      console.log("Missing values for consumption calculation:", { length, width, quantity });
       setConsumption(0);
       onConsumptionCalculated(0);
     }
