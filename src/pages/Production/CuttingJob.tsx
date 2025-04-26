@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { ArrowLeft, Scissors } from "lucide-react";
@@ -104,7 +103,6 @@ export default function CuttingJob() {
         material_type: "",
         material_color: "",
         material_gsm: "",
-        waste_quantity: "",
         notes: ""
       }));
       
@@ -150,7 +148,6 @@ export default function CuttingJob() {
               material_type: comp.material_type || "",
               material_color: comp.material_color || "",
               material_gsm: comp.material_gsm?.toString() || "",
-              waste_quantity: comp.waste_quantity?.toString() || "",
               notes: comp.notes || ""
             };
           });
@@ -187,7 +184,6 @@ export default function CuttingJob() {
         material_type: "",
         material_color: "",
         material_gsm: "",
-        waste_quantity: "",
         notes: ""
       }));
       
@@ -251,7 +247,6 @@ export default function CuttingJob() {
           material_type: comp.material_type || null,
           material_color: comp.material_color || null,
           material_gsm: comp.material_gsm ? parseFloat(comp.material_gsm) : null,
-          waste_quantity: comp.waste_quantity ? parseFloat(comp.waste_quantity) : null,
           notes: comp.notes || null
         }));
 
@@ -329,7 +324,6 @@ export default function CuttingJob() {
           material_type: comp.material_type || null,
           material_color: comp.material_color || null,
           material_gsm: comp.material_gsm ? parseFloat(comp.material_gsm) : null,
-          waste_quantity: comp.waste_quantity ? parseFloat(comp.waste_quantity) : null,
           notes: comp.notes || null
         }));
 
@@ -583,154 +577,135 @@ export default function CuttingJob() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Component Cutting Details</CardTitle>
-              <CardDescription>Enter cutting details for each component</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {components && components.map((component, index) => (
-                  <div key={component.id} className="p-4 border rounded-md space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium capitalize">{component.component_type}</h3>
-                      <div className="flex items-center gap-2 text-sm">
-                        {component.size && <span className="bg-slate-100 px-2 py-1 rounded">Size: {component.size}</span>}
-                        {component.color && <span className="bg-slate-100 px-2 py-1 rounded">Color: {component.color}</span>}
-                        {component.gsm && <span className="bg-slate-100 px-2 py-1 rounded">GSM: {component.gsm}</span>}
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label>Material Type</Label>
-                        <Input
-                          type="text"
-                          placeholder="Material type"
-                          value={componentData[index]?.material_type || ""}
-                          onChange={(e) => handleComponentChange(index, "material_type", e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Material Color</Label>
-                        <Input
-                          type="text"
-                          placeholder="Material color"
-                          value={componentData[index]?.material_color || ""}
-                          onChange={(e) => handleComponentChange(index, "material_color", e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Material GSM</Label>
-                        <Input
-                          type="number"
-                          placeholder="Material GSM"
-                          value={componentData[index]?.material_gsm || ""}
-                          onChange={(e) => handleComponentChange(index, "material_gsm", e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                      <div className="space-y-2">
-                        <Label>Width</Label>
-                        <Input
-                          type="text"
-                          placeholder="Width"
-                          value={componentData[index]?.width || ""}
-                          onChange={(e) => handleComponentChange(index, "width", e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Height</Label>
-                        <Input
-                          type="text"
-                          placeholder="Height"
-                          value={componentData[index]?.height || ""}
-                          onChange={(e) => handleComponentChange(index, "height", e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Counter</Label>
-                        <Input
-                          type="text"
-                          placeholder="Counter"
-                          value={componentData[index]?.counter || ""}
-                          onChange={(e) => handleComponentChange(index, "counter", e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Rewinding</Label>
-                        <Input
-                          type="text"
-                          placeholder="Rewinding"
-                          value={componentData[index]?.rewinding || ""}
-                          onChange={(e) => handleComponentChange(index, "rewinding", e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Rate</Label>
-                        <Input
-                          type="text"
-                          placeholder="Rate"
-                          value={componentData[index]?.rate || ""}
-                          onChange={(e) => handleComponentChange(index, "rate", e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Status</Label>
-                        <Select
-                          value={componentData[index]?.status || "pending"}
-                          onValueChange={(value: JobStatus) => handleComponentChange(index, "status", value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="in_progress">In Progress</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Waste Quantity</Label>
-                        <Input
-                          type="number"
-                          placeholder="Waste quantity"
-                          value={componentData[index]?.waste_quantity || ""}
-                          onChange={(e) => handleComponentChange(index, "waste_quantity", e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Notes</Label>
-                      <Textarea
-                        placeholder="Add any notes about the cutting process"
-                        value={componentData[index]?.notes || ""}
-                        onChange={(e) => handleComponentChange(index, "notes", e.target.value)}
-                        className="min-h-[100px]"
-                      />
-                    </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Component Cutting Details</CardTitle>
+          <CardDescription>Enter cutting details for each component</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            {components && components.map((component, index) => (
+              <div key={component.id} className="p-4 border rounded-md space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium capitalize">{component.component_type}</h3>
+                  <div className="flex items-center gap-2 text-sm">
+                    {component.size && <span className="bg-slate-100 px-2 py-1 rounded">Size: {component.size}</span>}
+                    {component.color && <span className="bg-slate-100 px-2 py-1 rounded">Color: {component.color}</span>}
+                    {component.gsm && <span className="bg-slate-100 px-2 py-1 rounded">GSM: {component.gsm}</span>}
                   </div>
-                ))}
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Material Type</Label>
+                    <Input
+                      type="text"
+                      placeholder="Material type"
+                      value={componentData[index]?.material_type || ""}
+                      onChange={(e) => handleComponentChange(index, "material_type", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Material Color</Label>
+                    <Input
+                      type="text"
+                      placeholder="Material color"
+                      value={componentData[index]?.material_color || ""}
+                      onChange={(e) => handleComponentChange(index, "material_color", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Material GSM</Label>
+                    <Input
+                      type="number"
+                      placeholder="Material GSM"
+                      value={componentData[index]?.material_gsm || ""}
+                      onChange={(e) => handleComponentChange(index, "material_gsm", e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="space-y-2">
+                    <Label>Width</Label>
+                    <Input
+                      type="text"
+                      placeholder="Width"
+                      value={componentData[index]?.width || ""}
+                      onChange={(e) => handleComponentChange(index, "width", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Height</Label>
+                    <Input
+                      type="text"
+                      placeholder="Height"
+                      value={componentData[index]?.height || ""}
+                      onChange={(e) => handleComponentChange(index, "height", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Counter</Label>
+                    <Input
+                      type="text"
+                      placeholder="Counter"
+                      value={componentData[index]?.counter || ""}
+                      onChange={(e) => handleComponentChange(index, "counter", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Rewinding</Label>
+                    <Input
+                      type="text"
+                      placeholder="Rewinding"
+                      value={componentData[index]?.rewinding || ""}
+                      onChange={(e) => handleComponentChange(index, "rewinding", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+                    <Select
+                      value={componentData[index]?.status || "pending"}
+                      onValueChange={(value: JobStatus) => handleComponentChange(index, "status", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Notes</Label>
+                  <Textarea
+                    placeholder="Add any notes about the cutting process"
+                    value={componentData[index]?.notes || ""}
+                    onChange={(e) => handleComponentChange(index, "notes", e.target.value)}
+                    className="min-h-[100px]"
+                  />
+                </div>
               </div>
-            </CardContent>
-            <CardFooter className="flex justify-end gap-3 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => window.location.href = `/production/job-cards/${id}`}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={submitting}>
-                {submitting ? "Saving..." : (selectedJobId ? "Update" : "Create")} Cutting Job
-              </Button>
-            </CardFooter>
-          </Card>
+            ))}
+          </div>
+        </CardContent>
+        <CardFooter className="flex justify-end gap-3 pt-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => window.location.href = `/production/job-cards/${id}`}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={submitting}>
+            {submitting ? "Saving..." : (selectedJobId ? "Update" : "Create")} Cutting Job
+          </Button>
+        </CardFooter>
+      </Card>
         </div>
       </form>
     </div>

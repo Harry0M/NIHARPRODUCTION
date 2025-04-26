@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -138,7 +137,6 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
         material_type: "",
         material_color: "",
         material_gsm: "",
-        waste_quantity: "",
         notes: ""
       })) || [];
 
@@ -215,7 +213,6 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
               material_type: comp.material_type || "",
               material_color: comp.material_color || "",
               material_gsm: comp.material_gsm?.toString() || "",
-              waste_quantity: comp.waste_quantity?.toString() || "",
               notes: comp.notes || ""
             };
           });
@@ -250,7 +247,6 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
       material_type: "",
       material_color: "",
       material_gsm: "",
-      waste_quantity: "",
       notes: ""
     }));
     setComponentData(initialComponentData);
@@ -344,7 +340,6 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
             material_type: comp.material_type || null,
             material_color: comp.material_color || null,
             material_gsm: comp.material_gsm ? parseFloat(comp.material_gsm) : null,
-            waste_quantity: comp.waste_quantity ? parseFloat(comp.waste_quantity) : null,
             notes: comp.notes || null
           }));
 
