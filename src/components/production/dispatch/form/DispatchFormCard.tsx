@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -26,9 +27,8 @@ export const DispatchFormCard = ({
     confirm_quantity_check: false,
   });
 
-  // Initialize with an empty batch instead of pre-filling the quantity
   const [batches, setBatches] = useState<BatchData[]>([
-    { quantity: 0, delivery_date: "", notes: "" }
+    { quantity: quantity, delivery_date: "", notes: "" }
   ]);
 
   const handleFieldChange = (field: string, value: string | boolean) => {
@@ -69,9 +69,8 @@ export const DispatchFormCard = ({
     }
 
     // Validate batches
-    const totalBatchQuantity = getTotalBatchQuantity();
-    if (totalBatchQuantity !== quantity) {
-      alert(`Total batch quantity (${totalBatchQuantity}) must equal order quantity (${quantity})`);
+    if (getTotalBatchQuantity() !== quantity) {
+      alert('Total batch quantity must equal order quantity');
       return;
     }
 
@@ -115,8 +114,8 @@ export const DispatchFormCard = ({
             Complete the dispatch information for order #{orderNumber} for {companyName}
           </CardDescription>
         </CardHeader>
-        {/* Order production stages status */}
         <CardContent className="space-y-6">
+          {/* Order production stages status */}
           <div className="p-4 bg-muted/50 rounded-md">
             <h3 className="font-medium mb-3">Production Status</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -144,12 +143,7 @@ export const DispatchFormCard = ({
           {/* Batch Management */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-medium">Dispatch Batches</h3>
-                <p className="text-sm text-muted-foreground">
-                  Remaining quantity: {quantity - getTotalBatchQuantity()}
-                </p>
-              </div>
+              <h3 className="font-medium">Dispatch Batches</h3>
               <Button 
                 type="button" 
                 onClick={addBatch}
@@ -167,7 +161,7 @@ export const DispatchFormCard = ({
                   key={index}
                   batch={batch}
                   index={index}
-                  remainingQuantity={quantity - getTotalBatchQuantity() + Number(batch.quantity)}
+                  maxQuantity={quantity}
                   canDelete={batches.length > 1}
                   onBatchChange={handleBatchChange}
                   onBatchDelete={removeBatch}
@@ -193,7 +187,6 @@ export const DispatchFormCard = ({
             onQuantityChange={(checked) => handleFieldChange('confirm_quantity_check', checked)}
           />
         </CardContent>
-
         <CardFooter className="flex justify-end space-x-2">
           <Button type="submit" disabled={loading || getTotalBatchQuantity() !== quantity}>
             {loading ? "Processing..." : "Complete Dispatch"}

@@ -310,39 +310,29 @@ const Dispatch = () => {
                             <TableCell>{formatDate(order.created_at)}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
-                                {isDispatched ? (
-                                  <>
-                                    <Button
-                                      size="sm"
-                                      onClick={() => navigate(`/dispatch/${order.id}`)}
-                                      variant="outline"
-                                    >
-                                      View Dispatch Details
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      onClick={() => updateOrderStatus(order.id, "completed")}
-                                      variant="outline"
-                                    >
-                                      Mark Completed
-                                    </Button>
-                                  </>
-                                ) : readyForDispatch && (
-                                  <>
-                                    <Button
-                                      size="sm"
-                                      onClick={() => navigate(`/orders/${order.id}`)}
-                                      variant="outline"
-                                    >
-                                      View Order
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      onClick={() => handleStartDispatchProcess(order.id)}
-                                    >
-                                      Create Dispatch
-                                    </Button>
-                                  </>
+                                <Button
+                                  size="sm"
+                                  onClick={() => navigate(`/orders/${order.id}`)}
+                                  variant="outline"
+                                >
+                                  View Details
+                                </Button>
+                                {!isDispatched && readyForDispatch && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleStartDispatchProcess(order.id)}
+                                  >
+                                    Dispatch Order
+                                  </Button>
+                                )}
+                                {isDispatched && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => updateOrderStatus(order.id, "completed")}
+                                    variant="outline"
+                                  >
+                                    Mark Completed
+                                  </Button>
                                 )}
                               </div>
                             </TableCell>

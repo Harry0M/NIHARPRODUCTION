@@ -5,16 +5,6 @@ import { toast } from "@/hooks/use-toast";
 export const useDispatchActions = () => {
   const handleDispatch = async (orderId: string, formData: any) => {
     try {
-      // Validate input data
-      if (!orderId) {
-        throw new Error("Order ID is required");
-      }
-
-      if (!formData.recipient_name || !formData.delivery_address) {
-        throw new Error("Recipient name and delivery address are required");
-      }
-
-      // Create dispatch record
       const { data: dispatchData, error: dispatchError } = await supabase
         .from("order_dispatches")
         .insert([{
@@ -30,18 +20,8 @@ export const useDispatchActions = () => {
         .select()
         .single();
 
-      if (dispatchError) {
-        if (dispatchError.code === '23505') {
-          throw new Error("This order has already been dispatched");
-        }
-        throw dispatchError;
-      }
+      if (dispatchError) throw dispatchError;
 
-      if (!dispatchData?.id) {
-        throw new Error("Failed to create dispatch record");
-      }
-
-      // Create batch records
       const batchInserts = formData.batches.map((batch: any, index: number) => ({
         order_dispatch_id: dispatchData.id,
         batch_number: index + 1,
@@ -54,42 +34,27 @@ export const useDispatchActions = () => {
         .from("dispatch_batches")
         .insert(batchInserts);
 
-      if (batchError) {
-        // Cleanup the dispatch record if batch creation fails
-        await supabase
-          .from("order_dispatches")
-          .delete()
-          .eq("id", dispatchData.id);
-          
-        throw new Error("Failed to create dispatch batches: " + batchError.message);
-      }
+      if (batchError) throw batchError;
 
-      // Update order status
       const { error: statusError } = await supabase
         .from("orders")
         .update({ status: "dispatched" as const })
         .eq("id", orderId);
 
-      if (statusError) {
-        throw new Error("Failed to update order status: " + statusError.message);
-      }
+      if (statusError) throw statusError;
 
       toast({ 
         title: "Dispatch Complete", 
-        description: "Order has been successfully marked as dispatched." 
+        description: "Order has been marked as dispatched!" 
       });
       
       return true;
     } catch (error: any) {
-      const errorMessage = error.message || "An unexpected error occurred";
-      
       toast({
-        title: "Error During Dispatch",
-        description: errorMessage,
+        title: "Error dispatching order",
+        description: error.message,
         variant: "destructive",
       });
-      
-      console.error("Dispatch error:", error);
       return false;
     }
   };
