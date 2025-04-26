@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Package } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -54,6 +54,7 @@ const CatalogList = () => {
               <TableHead>Size (L×W)</TableHead>
               <TableHead>Default Quantity</TableHead>
               <TableHead>Default Rate</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -67,6 +68,19 @@ const CatalogList = () => {
                 <TableCell>{`${product.bag_length}×${product.bag_width}`}</TableCell>
                 <TableCell>{product.default_quantity || 'N/A'}</TableCell>
                 <TableCell>{product.default_rate ? `₹${product.default_rate}` : 'N/A'}</TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/inventory/catalog/${product.id}/orders`);
+                    }}
+                  >
+                    <Package size={16} className="mr-2" />
+                    Orders
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
