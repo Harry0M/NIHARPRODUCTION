@@ -6,6 +6,7 @@ import type { DispatchData, DispatchBatch } from "@/types/dispatch";
 
 export const useDispatchData = (orderId: string) => {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [order, setOrder] = useState<any>(null);
   const [dispatchData, setDispatchData] = useState<DispatchData | null>(null);
   const [dispatchBatches, setDispatchBatches] = useState<DispatchBatch[]>([]);
@@ -19,7 +20,13 @@ export const useDispatchData = (orderId: string) => {
 
   const fetchOrderData = async (orderId: string) => {
     setLoading(true);
+    setError(null);
+    
     try {
+      if (!orderId) {
+        throw new Error("Order ID is required");
+      }
+
       const { data: orderData, error } = await supabase
         .from("orders")
         .select(`
@@ -44,16 +51,14 @@ export const useDispatchData = (orderId: string) => {
         .eq("id", orderId)
         .maybeSingle();
 
-      if (error) throw error;
-      if (!orderData) {
-        toast({
-          title: "Order not found",
-          description: "This order does not exist.",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
+      if (error) {
+        throw error;
       }
+
+      if (!orderData) {
+        throw new Error("Order not found");
+      }
+
       setOrder(orderData);
 
       // Derive production stages status
@@ -84,7 +89,9 @@ export const useDispatchData = (orderId: string) => {
         .eq("order_id", orderId)
         .maybeSingle();
 
-      if (dispatchError) throw dispatchError;
+      if (dispatchError) {
+        throw dispatchError;
+      }
       
       if (dispatch) {
         setDispatchData(dispatch);
@@ -95,17 +102,25 @@ export const useDispatchData = (orderId: string) => {
           .eq("order_dispatch_id", dispatch.id)
           .order("batch_number", { ascending: true });
           
-        if (batchesError) throw batchesError;
+        if (batchesError) {
+          throw batchesError;
+        }
+
         if (batches) {
           setDispatchBatches(batches);
         }
       }
     } catch (err: any) {
+      const errorMessage = err.message || "Failed to load dispatch details";
+      setError(errorMessage);
+      
       toast({
-        title: "Error loading dispatch details",
-        description: err.message,
+        title: "Error Loading Dispatch",
+        description: errorMessage,
         variant: "destructive",
       });
+      
+      console.error("Error fetching dispatch data:", err);
     } finally {
       setLoading(false);
     }
@@ -113,6 +128,7 @@ export const useDispatchData = (orderId: string) => {
 
   return {
     loading,
+    error,
     order,
     dispatchData,
     dispatchBatches,
