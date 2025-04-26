@@ -82,54 +82,28 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
     }
   };
 
-  // Handle company selection - update company_id and clear company_name
+  // Handle company selection - update both company_id and company_name
   const handleCompanySelect = (companyId: string) => {
-    if (companyId) {
-      const selectedCompany = companies.find(c => c.id === companyId);
-      
-      if (selectedCompany) {
-        // Set company_id
-        handleOrderChange({
-          target: {
-            name: 'company_id',
-            value: selectedCompany.id
-          }
-        });
-        
-        // Important: When selecting an existing company, we need to clear the company_name
-        // AND set the visible company name for display purposes
-        handleOrderChange({
-          target: {
-            name: 'company_name',
-            value: ''
-          }
-        });
-      }
-    } else {
-      // If no company is selected, clear both fields
-      handleOrderChange({ target: { name: 'company_id', value: '' } });
-    }
-  };
-
-  // When entering a manual company name, clear the company_id
-  const handleCompanyNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Update company_name with the input value
-    handleOrderChange(e);
+    const selectedCompany = companies.find(c => c.id === companyId);
     
-    // Clear company_id when manually entering a name
-    if (e.target.value) {
+    if (selectedCompany) {
+      // Update company_id
       handleOrderChange({
         target: {
           name: 'company_id',
-          value: ''
+          value: selectedCompany.id
+        }
+      });
+      
+      // Update company_name
+      handleOrderChange({
+        target: {
+          name: 'company_name',
+          value: selectedCompany.name
         }
       });
     }
   };
-
-  // Compute if the form is in a valid state for company selection
-  const isUsingExistingCompany = !!formData.company_id;
-  const isUsingNewCompany = !!formData.company_name && !formData.company_id;
 
   return (
     <Card>
@@ -155,14 +129,14 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
           </Select>
         </div>
 
-        {/* Company selection dropdown */}
+        {/* Update company selection dropdown to store both ID and name */}
         <div className="space-y-2">
-          <Label htmlFor="company_select">Select Existing Company</Label>
+          <Label>Select Company</Label>
           <Select 
-            value={formData.company_id || ""} 
+            value={formData.company_id} 
             onValueChange={handleCompanySelect}
           >
-            <SelectTrigger id="company_select">
+            <SelectTrigger>
               <SelectValue placeholder="Select a company" />
             </SelectTrigger>
             <SelectContent>
@@ -173,33 +147,23 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">Select an existing company or enter a new one below</p>
         </div>
 
-        {/* Company name field - only needed if not selecting from dropdown */}
-        <div className="space-y-2">
-          <Label htmlFor="company_name">
-            New Company Name {!isUsingExistingCompany && <span className="text-destructive">*</span>}
-          </Label>
-          <Input 
-            id="company_name" 
-            name="company_name"
-            value={formData.company_name}
-            onChange={handleCompanyNameChange}
-            placeholder="Enter new company name"
-            required={!isUsingExistingCompany}
-            disabled={isUsingExistingCompany}
-          />
-          <p className="text-xs text-muted-foreground">
-            {isUsingExistingCompany 
-              ? "Using selected company from dropdown" 
-              : "Enter new company name when not selecting from dropdown"}
-          </p>
-        </div>
-
+        {/* Keep existing form fields */}
         <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="quantity">Order Quantity *</Label>
+            <Label htmlFor="company_name">Company Name</Label>
+            <Input 
+              id="company_name" 
+              name="company_name"
+              value={formData.company_name}
+              onChange={handleOrderChange}
+              placeholder="Client company name"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="quantity">Order Quantity</Label>
             <Input 
               id="quantity" 
               name="quantity"
@@ -210,23 +174,11 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
               required
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="order_date">Order Date</Label>
-            <Input 
-              id="order_date"
-              name="order_date"
-              type="date"
-              value={formData.order_date}
-              onChange={handleOrderChange}
-              placeholder="Order date"
-              required
-            />
-          </div>
         </div>
 
         <div className="grid md:grid-cols-3 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="bag_length">Bag Length (inches) *</Label>
+            <Label htmlFor="bag_length">Bag Length (inches)</Label>
             <Input 
               id="bag_length" 
               name="bag_length"
@@ -239,7 +191,7 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="bag_width">Bag Width (inches) *</Label>
+            <Label htmlFor="bag_width">Bag Width (inches)</Label>
             <Input 
               id="bag_width" 
               name="bag_width"
@@ -265,6 +217,21 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
           </div>
         </div>
 
+        {formData.order_date !== undefined && (
+          <div className="space-y-2">
+            <Label htmlFor="order_date">Order Date</Label>
+            <Input 
+              id="order_date"
+              name="order_date"
+              type="date"
+              value={formData.order_date}
+              onChange={handleOrderChange}
+              placeholder="Order date"
+              required
+            />
+          </div>
+        )}
+
         <div className="space-y-2">
           <Label htmlFor="special_instructions">Special Instructions (optional)</Label>
           <Textarea 
@@ -279,4 +246,4 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
       </CardContent>
     </Card>
   );
-}
+};
