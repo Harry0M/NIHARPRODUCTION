@@ -92,6 +92,7 @@ export default function CuttingJobForm() {
   });
   const [componentData, setComponentData] = useState<CuttingComponent[]>([]);
 
+  // Fetch job card and job data
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -169,44 +170,8 @@ export default function CuttingJobForm() {
           
           setExistingJobs(formattedJobs);
           
-          // Use the most recent job as the selected job
-          if (formattedJobs.length > 0) {
-            const mostRecentJob = formattedJobs[0];
-            setSelectedJobId(mostRecentJob.id);
-            
-            setCuttingData({
-              roll_width: mostRecentJob.roll_width,
-              consumption_meters: mostRecentJob.consumption_meters,
-              worker_name: mostRecentJob.worker_name,
-              is_internal: mostRecentJob.is_internal,
-              status: mostRecentJob.status,
-              received_quantity: mostRecentJob.received_quantity
-            });
-            
-            // Fetch components for the selected cutting job
-            const { data: componentsData, error: componentsError } = await supabase
-              .from("cutting_components")
-              .select("*")
-              .eq("cutting_job_id", mostRecentJob.id);
-              
-            if (componentsError) throw componentsError;
-            
-            if (componentsData && componentsData.length > 0) {
-              const formattedComponents = componentsData.map(comp => ({
-                component_id: comp.component_id || "",
-                type: components.find(c => c.id === comp.component_id)?.type || "",
-                width: comp.width?.toString() || "",
-                height: comp.height?.toString() || "",
-                counter: comp.counter?.toString() || "",
-                rewinding: comp.rewinding?.toString() || "",
-                rate: comp.rate?.toString() || "",
-                status: comp.status || "pending"
-              }));
-              
-              setExistingComponents(formattedComponents);
-              setComponentData(formattedComponents);
-            }
-          }
+          // Don't automatically select a job anymore - this is important!
+          // Let user explicitly choose which job to view/edit
         } else {
           // If no existing job, initialize with calculated consumption
           if (jobCardData.orders.bag_length && jobCardData.orders.bag_width && jobCardData.orders.quantity) {
@@ -284,10 +249,12 @@ export default function CuttingJobForm() {
   };
 
   // Handle selection of existing job for editing
-  const handleSelectJob = (jobId: string) => {
+  const handleSelectJob = async (jobId: string) => {
     const selectedJob = existingJobs.find(job => job.id === jobId);
     if (selectedJob) {
       setSelectedJobId(jobId);
+      
+      // Set cutting data from the selected job
       setCuttingData({
         roll_width: selectedJob.roll_width,
         consumption_meters: selectedJob.consumption_meters,
@@ -298,7 +265,7 @@ export default function CuttingJobForm() {
       });
       
       // Fetch components for the selected job
-      const fetchJobComponents = async () => {
+      try {
         const { data, error } = await supabase
           .from("cutting_components")
           .select("*")
@@ -314,6 +281,7 @@ export default function CuttingJobForm() {
         }
         
         if (data && data.length > 0) {
+          // Map component data to match our interface
           const formattedComponents = data.map(comp => ({
             component_id: comp.component_id || "",
             type: components.find(c => c.id === comp.component_id)?.type || "",
@@ -327,7 +295,7 @@ export default function CuttingJobForm() {
           
           setComponentData(formattedComponents);
         } else {
-          // Reset to initial component data if no components found
+          // If no components found, reset to initial state based on order components
           const initialComponentData = components.map(comp => ({
             component_id: comp.id,
             type: comp.type,
@@ -340,15 +308,17 @@ export default function CuttingJobForm() {
           }));
           setComponentData(initialComponentData);
         }
-      };
-      
-      fetchJobComponents();
+      } catch (error) {
+        console.error("Error fetching cutting components:", error);
+      }
     }
   };
 
   // Handle creating a new job entry
   const handleNewJob = () => {
     setSelectedJobId(null);
+    
+    // Reset form data for new job
     setCuttingData({
       roll_width: "",
       consumption_meters: "",
@@ -358,7 +328,7 @@ export default function CuttingJobForm() {
       received_quantity: ""
     });
     
-    // Reset component data
+    // Reset component data for new job
     const initialComponentData = components.map(comp => ({
       component_id: comp.id,
       type: comp.type,
@@ -571,7 +541,7 @@ export default function CuttingJobForm() {
         <CuttingJobSelection
           existingJobs={existingJobs.map(({ id, status }) => ({ id, status }))}
           selectedJobId={selectedJobId}
-          handleSelectJob={setSelectedJobId}
+          handleSelectJob={handleSelectJob}
           handleNewJob={handleNewJob}
         />
       )}

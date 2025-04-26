@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { 
@@ -160,23 +159,19 @@ const PrintingJob = () => {
         if (printingJobs && printingJobs.length > 0) {
           setExistingJobs(printingJobs);
           
-          // Select the most recent job by default
-          setSelectedJobId(printingJobs[0].id);
-          
-          // Populate the form with the selected job's data
-          const selectedJob = printingJobs[0];
+          // We don't auto-select now - user must choose explicitly
+          // Reset form to default state with job card dimensions
           form.reset({
-            pulling: selectedJob.pulling || "",
-            gsm: selectedJob.gsm || "",
-            sheet_length: selectedJob.sheet_length || transformedJobCard.order.bag_length,
-            sheet_width: selectedJob.sheet_width || transformedJobCard.order.bag_width,
-            worker_name: selectedJob.worker_name || "",
-            is_internal: selectedJob.is_internal !== false, // default to true if null
-            status: selectedJob.status as JobStatus || "pending",
-            rate: selectedJob.rate || null,
-            expected_completion_date: selectedJob.expected_completion_date ? new Date(selectedJob.expected_completion_date) : null
+            pulling: "",
+            gsm: "",
+            sheet_length: transformedJobCard.order.bag_length,
+            sheet_width: transformedJobCard.order.bag_width,
+            worker_name: "",
+            is_internal: true,
+            status: "pending",
+            rate: null,
+            expected_completion_date: null
           });
-          setPrintImage(selectedJob.print_image);
         } else {
           // Set defaults from job card for a new job
           form.reset({

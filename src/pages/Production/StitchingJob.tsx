@@ -88,7 +88,7 @@ const StitchingJob = () => {
       
       if (stitchingJobs && stitchingJobs.length > 0) {
         setExistingJobs(stitchingJobs);
-        setSelectedJobId(stitchingJobs[0].id);
+        // Don't auto-select, let the user choose explicitly
       }
       
     } catch (error: any) {

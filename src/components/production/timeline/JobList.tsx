@@ -22,11 +22,11 @@ export const JobList = ({ jobs, type, selectedJob, onJobSelect }: JobListProps) 
   };
 
   return (
-    <div className="mt-2 space-y-1">
+    <div className="mt-2 space-y-1 max-h-60 overflow-y-auto pr-1">
       {jobs.map((job, index) => (
         <div 
           key={job.id} 
-          className={`text-xs flex items-center justify-between gap-2 p-2 rounded-sm cursor-pointer ${
+          className={`text-xs flex items-center justify-between gap-2 p-2 rounded-sm cursor-pointer hover:bg-muted/50 transition-colors ${
             selectedJob.type === type && selectedJob.id === job.id ? 'bg-muted' : ''
           }`}
           onClick={() => onJobSelect(type, job.id)}
@@ -35,13 +35,13 @@ export const JobList = ({ jobs, type, selectedJob, onJobSelect }: JobListProps) 
             <StageStatus 
               status={job.status as any}
               date={job.created_at}
-              tooltip={`${type} job ${index + 1}${job.worker_name ? ` - ${job.worker_name}` : ''}`}
+              tooltip={`${type} job ${job.job_number || index + 1}${job.worker_name ? ` - ${job.worker_name}` : ''}`}
             />
-            <span className="font-medium">
-              {job.worker_name || `Job ${index + 1}`}
+            <span className="font-medium truncate">
+              {job.worker_name || `Job ${job.job_number || index + 1}`}
             </span>
           </div>
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs text-muted-foreground whitespace-nowrap">
             {formatDate(job.created_at)}
           </div>
         </div>
