@@ -35,48 +35,31 @@ export const CompanyOrders = () => {
     },
   });
 
-  // Updated query to fetch all orders for this company
+  // Updated query to fetch all orders for this company (both as main company and as sales account)
   const { data: orders, isLoading } = useQuery({
     queryKey: ['companyOrders', id],
     queryFn: async () => {
-      // First try to get orders with company_id
-      let { data: ordersById, error: errorById } = await supabase
+      // Get orders where company is either the main company or sales account
+      const { data: allOrders, error } = await supabase
         .from('orders')
         .select(`
           *,
           order_components(*)
         `)
-        .eq('company_id', id);
+        .or(`company_id.eq.${id},sales_account_id.eq.${id}`);
       
-      if (errorById) {
+      if (error) {
         toast({
           title: "Error fetching orders",
-          description: errorById.message,
+          description: error.message,
           variant: "destructive"
         });
         return [];
       }
-
-      // Additionally, try to get orders matching company name (for backward compatibility)
-      if (company) {
-        const { data: ordersByName, error: errorByName } = await supabase
-          .from('orders')
-          .select(`
-            *,
-            order_components(*)
-          `)
-          .eq('company_name', company.name)
-          .is('company_id', null); // Only get those that don't have a company_id set
-        
-        if (!errorByName && ordersByName) {
-          // Combine both result sets
-          return [...(ordersById || []), ...(ordersByName || [])];
-        }
-      }
       
-      return ordersById || [];
+      return allOrders || [];
     },
-    enabled: !!company, // Only run this query when company data is available
+    enabled: !!id,
   });
 
   return (
@@ -109,6 +92,8 @@ export const CompanyOrders = () => {
               <TableRow>
                 <TableHead>Order Number</TableHead>
                 <TableHead>Date</TableHead>
+                <TableHead>Company</TableHead>
+                <TableHead>Role</TableHead>
                 <TableHead>Quantity</TableHead>
                 <TableHead>Bag Size</TableHead>
                 <TableHead>Status</TableHead>
@@ -120,6 +105,10 @@ export const CompanyOrders = () => {
                 <TableRow key={order.id} className="cursor-pointer hover:bg-muted" onClick={() => navigate(`/orders/${order.id}`)}>
                   <TableCell>{order.order_number}</TableCell>
                   <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
+                  <TableCell>{order.company_name}</TableCell>
+                  <TableCell>
+                    {order.company_id === id ? 'Main Company' : 'Sales Account'}
+                  </TableCell>
                   <TableCell>{order.quantity}</TableCell>
                   <TableCell>{`${order.bag_length}" × ${order.bag_width}"`}</TableCell>
                   <TableCell>{order.status}</TableCell>
