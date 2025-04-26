@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus } from "lucide-react";
@@ -29,6 +30,7 @@ const OrderNew = () => {
   // Order details state
   const [orderDetails, setOrderDetails] = useState({
     company_name: "",
+    company_id: "", // Add company_id to track selected company
     quantity: "",
     bag_length: "",
     bag_width: "",
@@ -143,6 +145,7 @@ const OrderNew = () => {
         .from("orders")
         .insert({
           company_name,
+          company_id: orderDetails.company_id || null, // Include company_id in the order
           quantity: parseInt(quantity),
           bag_length: parseFloat(bag_length),
           bag_width: parseFloat(bag_width),
@@ -164,15 +167,16 @@ const OrderNew = () => {
       if (allComponents.length > 0) {
         const componentsToInsert = allComponents.map(comp => ({
           order_id: orderData.id,
-          type: comp.type === 'custom' ? 'custom' : comp.type,
+          component_type: comp.type === 'custom' ? 'custom' : comp.type,
           size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
           color: comp.color || null,
           gsm: comp.gsm || null,
-          details: comp.type === 'custom' ? comp.customName : null
+          custom_name: comp.type === 'custom' ? comp.customName : null
         }));
 
+        // Fixed: Changed table name from "components" to "order_components" and adjusted field names
         const { error: componentsError } = await supabase
-          .from("components")
+          .from("order_components")
           .insert(componentsToInsert as any);
         
         if (componentsError) {

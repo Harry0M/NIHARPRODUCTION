@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -81,6 +82,29 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
     }
   };
 
+  // Handle company selection - update both company_id and company_name
+  const handleCompanySelect = (companyId: string) => {
+    const selectedCompany = companies.find(c => c.id === companyId);
+    
+    if (selectedCompany) {
+      // Update company_id
+      handleOrderChange({
+        target: {
+          name: 'company_id',
+          value: selectedCompany.id
+        }
+      });
+      
+      // Update company_name
+      handleOrderChange({
+        target: {
+          name: 'company_name',
+          value: selectedCompany.name
+        }
+      });
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -105,17 +129,12 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
           </Select>
         </div>
 
-        {/* Keep existing company selection dropdown */}
+        {/* Update company selection dropdown to store both ID and name */}
         <div className="space-y-2">
           <Label>Select Company</Label>
           <Select 
             value={formData.company_id} 
-            onValueChange={(value) => handleOrderChange({ 
-              target: { 
-                name: 'company_id', 
-                value 
-              } 
-            })}
+            onValueChange={handleCompanySelect}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select a company" />
