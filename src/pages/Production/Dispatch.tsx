@@ -1,66 +1,13 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { 
-  Search, 
-  Truck, 
-  Check, 
-  AlertTriangle 
-} from "lucide-react";
+import { Truck } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Badge } from "@/components/ui/badge";
+import { DispatchFilters } from "@/components/production/dispatch/list/DispatchFilters";
+import { DispatchTable } from "@/components/production/dispatch/list/DispatchTable";
+import type { OrderWithJobStatus } from "@/components/production/dispatch/types";
+import { useNavigate } from "react-router-dom";
 import { Database } from "@/integrations/supabase/types";
-
-// Extend the order status enum from the database for UI purposes
-type OrderStatus = Database['public']['Enums']['order_status'] | "dispatched";
-
-interface OrderWithJobStatus {
-  id: string;
-  order_number: string;
-  company_name: string;
-  quantity: number;
-  rate: number | null;
-  status: OrderStatus;
-  created_at: string;
-  job_cards: {
-    id: string;
-    job_name: string;
-    status: string;
-    cutting_jobs: {
-      status: string;
-    }[] | null;
-    printing_jobs: {
-      status: string;
-    }[] | null;
-    stitching_jobs: {
-      status: string;
-    }[] | null;
-  }[] | null;
-}
 
 const Dispatch = () => {
   const navigate = useNavigate();
@@ -72,7 +19,7 @@ const Dispatch = () => {
   useEffect(() => {
     fetchOrders();
   }, []);
-  
+
   const fetchOrders = async () => {
     setLoading(true);
     try {
@@ -109,42 +56,7 @@ const Dispatch = () => {
       setLoading(false);
     }
   };
-  
-  const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
-    try {
-      const dbStatus: Database['public']['Enums']['order_status'] = 
-        newStatus === "dispatched" 
-          ? "ready_for_dispatch" 
-          : newStatus as Database['public']['Enums']['order_status'];
-      
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: dbStatus })
-        .eq('id', orderId);
-      
-      if (error) throw error;
-      
-      setOrders(prevOrders => 
-        prevOrders.map(order => 
-          order.id === orderId 
-            ? { ...order, status: newStatus } 
-            : order
-        )
-      );
-      
-      toast({
-        title: "Status Updated",
-        description: `Order status has been updated to ${newStatus}`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error updating status",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-  
+
   const isOrderReadyForDispatch = (order: OrderWithJobStatus): boolean => {
     if (!order.job_cards || order.job_cards.length === 0) return false;
     
@@ -170,22 +82,40 @@ const Dispatch = () => {
     
     return true;
   };
-  
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-100 text-green-800";
-      case "in_progress":
-        return "bg-amber-100 text-amber-800";
-      case "dispatched":
-        return "bg-blue-100 text-blue-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+
+  const updateOrderStatus = async (orderId: string, newStatus: OrderWithJobStatus["status"]) => {
+    try {
+      const dbStatus: Database['public']['Enums']['order_status'] = 
+        newStatus === "dispatched" 
+          ? "ready_for_dispatch" 
+          : newStatus as Database['public']['Enums']['order_status'];
+      
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: dbStatus })
+        .eq('id', orderId);
+
+      if (error) throw error;
+      
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === orderId 
+            ? { ...order, status: newStatus } 
+            : order
+        )
+      );
+      
+      toast({
+        title: "Status Updated",
+        description: `Order status has been updated to ${newStatus}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error updating status",
+        description: error.message,
+        variant: "destructive",
+      });
     }
-  };
-  
-  const handleStartDispatchProcess = (orderId: string) => {
-    navigate(`/dispatch/${orderId}`);
   };
 
   const filteredOrders = orders.filter(order => {
@@ -198,10 +128,6 @@ const Dispatch = () => {
     
     return matchesSearch && matchesStatus;
   });
-  
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
 
   return (
     <div className="space-y-6">
@@ -219,35 +145,13 @@ const Dispatch = () => {
           <CardDescription>View and manage orders that are ready for dispatch</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div className="relative w-64">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search orders..."
-                  className="pl-8"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <Select
-                value={statusFilter}
-                onValueChange={(value) => setStatusFilter(value)}
-              >
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="in_production">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="dispatched">Dispatched</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button onClick={fetchOrders}>Refresh</Button>
-          </div>
+          <DispatchFilters
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
+            onRefresh={fetchOrders}
+          />
 
           {loading ? (
             <div className="flex justify-center items-center py-12">
@@ -266,92 +170,11 @@ const Dispatch = () => {
                   </p>
                 </div>
               ) : (
-                <div className="rounded-md border overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[160px]">Order No.</TableHead>
-                        <TableHead>Company</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Production</TableHead>
-                        <TableHead>Created</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredOrders.map((order) => {
-                        const readyForDispatch = isOrderReadyForDispatch(order);
-                        const isDispatched = order.status === "dispatched";
-                        
-                        return (
-                          <TableRow key={order.id}>
-                            <TableCell className="font-medium">
-                              {order.order_number}
-                            </TableCell>
-                            <TableCell>{order.company_name}</TableCell>
-                            <TableCell>{order.quantity.toLocaleString()} bags</TableCell>
-                            <TableCell>
-                              <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(order.status)}`}>
-                                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                              </span>
-                            </TableCell>
-                            <TableCell>
-                              {readyForDispatch ? (
-                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 flex items-center gap-1">
-                                  <Check size={12} /> Ready
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 flex items-center gap-1">
-                                  <AlertTriangle size={12} /> In Progress
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>{formatDate(order.created_at)}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                {isDispatched ? (
-                                  <>
-                                    <Button
-                                      size="sm"
-                                      onClick={() => navigate(`/dispatch/${order.id}`)}
-                                      variant="outline"
-                                    >
-                                      View Dispatch Details
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      onClick={() => updateOrderStatus(order.id, "completed")}
-                                      variant="outline"
-                                    >
-                                      Mark Completed
-                                    </Button>
-                                  </>
-                                ) : readyForDispatch && (
-                                  <>
-                                    <Button
-                                      size="sm"
-                                      onClick={() => navigate(`/orders/${order.id}`)}
-                                      variant="outline"
-                                    >
-                                      View Order
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      onClick={() => handleStartDispatchProcess(order.id)}
-                                    >
-                                      Create Dispatch
-                                    </Button>
-                                  </>
-                                )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
+                <DispatchTable
+                  orders={filteredOrders}
+                  isOrderReadyForDispatch={isOrderReadyForDispatch}
+                  onUpdateStatus={updateOrderStatus}
+                />
               )}
             </>
           )}
