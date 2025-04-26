@@ -86,7 +86,7 @@ const CompanyList = () => {
       
       const { data, error } = await supabase.rpc(
         'delete_company', 
-        { input_company_id: companyId }  // Updated parameter name
+        { input_company_id: companyId }  // Updated parameter name to match SQL function
       );
       
       if (error) {
