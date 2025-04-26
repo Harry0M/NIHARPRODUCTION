@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -125,32 +126,44 @@ export function useOrderForm(): UseOrderFormReturn {
   };
 
   const handleProductSelect = (components: any[]) => {
-    // Convert catalog components to order components format without affecting company info
-    const orderComponents = components.reduce((acc, component) => {
+    console.log("Selected product components:", components);
+    // Convert catalog components to order components format
+    const standardTypes = ['part', 'border', 'handle', 'chain', 'runner'];
+    const orderComponents: Record<string, any> = {};
+    const newCustomComponents: Component[] = [];
+
+    components.forEach(component => {
+      // Extract length and width from size format "length x width"
+      const sizeValues = component.size?.split('x').map((s: string) => s.trim()) || ['', ''];
+      
       if (component.component_type === 'custom') {
-        setCustomComponents(prev => [...prev, {
+        newCustomComponents.push({
           id: uuidv4(),
           type: 'custom',
           customName: component.custom_name,
           color: component.color,
-          gsm: component.gsm,
-          length: component.size?.split('x')[0] || '',
-          width: component.size?.split('x')[1] || ''
-        }]);
-      } else {
-        acc[component.component_type] = {
+          gsm: component.gsm?.toString(),
+          length: sizeValues[0],
+          width: sizeValues[1]
+        });
+      } else if (standardTypes.includes(component.component_type)) {
+        orderComponents[component.component_type] = {
           id: uuidv4(),
           type: component.component_type,
           color: component.color,
-          gsm: component.gsm,
-          length: component.size?.split('x')[0] || '',
-          width: component.size?.split('x')[1] || ''
+          gsm: component.gsm?.toString(),
+          length: sizeValues[0],
+          width: sizeValues[1]
         };
       }
-      return acc;
-    }, {});
+    });
 
+    console.log("Processed standard components:", orderComponents);
+    console.log("Processed custom components:", newCustomComponents);
+
+    // Update state with the processed components
     setComponents(orderComponents);
+    setCustomComponents(newCustomComponents);
   };
 
   const validateForm = (): boolean => {
@@ -243,6 +256,8 @@ export function useOrderForm(): UseOrderFormReturn {
         ...customComponents
       ].filter(Boolean);
       
+      console.log("Components to be saved:", allComponents);
+      
       if (allComponents.length > 0) {
         const componentsToInsert = allComponents.map(comp => ({
           order_id: orderResult.id,
@@ -252,6 +267,8 @@ export function useOrderForm(): UseOrderFormReturn {
           gsm: comp.gsm || null,
           custom_name: comp.type === 'custom' ? comp.customName : null
         }));
+
+        console.log("Inserting components:", componentsToInsert);
 
         const { error: componentsError } = await supabase
           .from("order_components")
@@ -264,6 +281,8 @@ export function useOrderForm(): UseOrderFormReturn {
             description: componentsError.message,
             variant: "destructive"
           });
+        } else {
+          console.log("Components saved successfully");
         }
       }
       
