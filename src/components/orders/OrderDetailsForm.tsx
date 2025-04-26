@@ -1,4 +1,3 @@
-import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +16,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCatalogProducts } from "@/hooks/use-catalog-products";
 import { AlertCircle } from "lucide-react";
@@ -42,7 +42,7 @@ interface OrderDetailsFormProps {
   };
 }
 
-const OrderDetailsForm = ({ 
+export const OrderDetailsForm = ({ 
   formData, 
   handleOrderChange, 
   onProductSelect,
@@ -88,16 +88,13 @@ const OrderDetailsForm = ({
 
   const handleCompanySelect = (companyId: string | null) => {
     if (companyId && companyId !== "no_selection") {
-      const selectedCompany = companies.find(c => c.id === companyId);
-      if (selectedCompany) {
-        // ONLY set the company_id, DO NOT auto-populate company name
-        handleOrderChange({
-          target: {
-            name: 'company_id',
-            value: companyId
-          }
-        });
-      }
+      // Only set company_id, don't set company_name
+      handleOrderChange({
+        target: {
+          name: 'company_id',
+          value: companyId
+        }
+      });
     } else {
       // Clear company_id when no company is selected
       handleOrderChange({ target: { name: 'company_id', value: null } });
@@ -131,28 +128,6 @@ const OrderDetailsForm = ({
         {/* Company section */}
         <div className="space-y-4 border-b pb-4">
           <div className="space-y-2">
-            <Label htmlFor="company_select">
-              Select Existing Company (Optional)
-            </Label>
-            <Select 
-              value={formData.company_id || "no_selection"} 
-              onValueChange={(value) => handleCompanySelect(value === "no_selection" ? null : value)}
-            >
-              <SelectTrigger id="company_select">
-                <SelectValue placeholder="Select a company" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="no_selection">-- Select a company --</SelectItem>
-                {companies.map((company) => (
-                  <SelectItem key={company.id} value={company.id}>
-                    {company.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="company_name" className="flex items-center gap-1">
               Company Name
               <span className="text-destructive">*</span>
@@ -162,10 +137,9 @@ const OrderDetailsForm = ({
               name="company_name"
               value={formData.company_name}
               onChange={(e) => handleOrderChange(e)}
-              placeholder="Enter company name manually"
+              placeholder="Enter company name"
               required
               className={formErrors.company ? "border-destructive" : ""}
-              autoComplete="off"  // Disable browser autofill
             />
             {formErrors.company && (
               <p className="text-xs text-destructive flex items-center gap-1">
@@ -298,5 +272,3 @@ const OrderDetailsForm = ({
     </Card>
   );
 };
-
-export default OrderDetailsForm;

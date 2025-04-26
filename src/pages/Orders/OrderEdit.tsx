@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { 
@@ -13,7 +14,7 @@ import { ArrowLeft, Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
-import OrderDetailsForm from "@/components/orders/OrderDetailsForm";
+import { OrderDetailsForm } from "@/components/orders/OrderDetailsForm";
 import { ComponentForm, ComponentProps } from "@/components/orders/ComponentForm";
 import { CustomComponent, CustomComponentSection } from "@/components/orders/CustomComponentSection";
 import { v4 as uuidv4 } from "uuid";
