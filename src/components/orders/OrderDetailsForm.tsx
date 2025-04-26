@@ -105,6 +105,20 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
     }
   };
 
+  // Clear company_id when manually entering a company name
+  const handleCompanyNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Clear company_id to ensure we use the manually entered name
+    handleOrderChange({
+      target: {
+        name: 'company_id',
+        value: ''
+      }
+    });
+    
+    // Update company_name with the input value
+    handleOrderChange(e);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -131,7 +145,7 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
 
         {/* Company selection dropdown - this is now mandatory */}
         <div className="space-y-2">
-          <Label htmlFor="company_select">Select Company *</Label>
+          <Label htmlFor="company_select">Select Company</Label>
           <Select 
             value={formData.company_id || ""} 
             onValueChange={handleCompanySelect}
@@ -152,20 +166,21 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
 
         {/* Company name field - only needed if not selecting from dropdown */}
         <div className="space-y-2">
-          <Label htmlFor="company_name">Company Name {!formData.company_id && <span className="text-destructive">*</span>}</Label>
+          <Label htmlFor="company_name">
+            Company Name {!formData.company_id && <span className="text-destructive">*</span>}
+          </Label>
           <Input 
             id="company_name" 
             name="company_name"
             value={formData.company_name}
-            onChange={handleOrderChange}
+            onChange={handleCompanyNameChange}
             placeholder="Client company name"
             required={!formData.company_id}
-            disabled={!!formData.company_id}
           />
           <p className="text-xs text-muted-foreground">
             {formData.company_id 
               ? "Using selected company from dropdown" 
-              : "Enter company name when not selecting from dropdown"}
+              : "Enter new company name when not selecting from dropdown"}
           </p>
         </div>
 
