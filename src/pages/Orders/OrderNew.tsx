@@ -1,8 +1,7 @@
-
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { OrderDetailsForm } from "@/components/orders/OrderDetailsForm";
+import OrderDetailsForm from "@/components/orders/OrderDetailsForm";
 import { StandardComponents } from "@/components/orders/StandardComponents";
 import { CustomComponentSection } from "@/components/orders/CustomComponentSection";
 import { useOrderForm } from "@/hooks/use-order-form";
