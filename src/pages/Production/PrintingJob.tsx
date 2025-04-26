@@ -1,11 +1,10 @@
-
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { ArrowLeft, Printer, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { usePrintingJob } from "@/hooks/use-printing-job";
-import { JobStatus } from "@/types/production";
+import { JobStatus, PrintingJobData } from "@/types/production";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PrintingJobForm } from "@/components/production/printing/PrintingJobForm";
@@ -54,9 +53,17 @@ export default function PrintingJob() {
     }
   });
 
-  const handleSubmit = async (formData: any) => {
+  const handleSubmit = async (formData: PrintingJobData) => {
     try {
-      await createPrintingJob(id!, formData);
+      // Ensure all numeric fields are converted to strings
+      const printingJobData: PrintingJobData = {
+        ...formData,
+        sheet_length: String(formData.sheet_length),
+        sheet_width: String(formData.sheet_width),
+        rate: String(formData.rate || '0'),
+      };
+
+      await createPrintingJob(id!, printingJobData);
       toast({
         title: "Success",
         description: "Printing job created successfully",
@@ -121,7 +128,7 @@ export default function PrintingJob() {
           </Button>
         )}
       </div>
-
+      
       {showNewJobForm && (
         <PrintingJobForm
           bagDimensions={{
@@ -139,14 +146,19 @@ export default function PrintingJob() {
           {printingJobs.map((job) => (
             <PrintingJobForm
               key={job.id}
-              initialData={job}
+              initialData={{
+                ...job,
+                sheet_length: String(job.sheet_length),
+                sheet_width: String(job.sheet_width),
+                rate: String(job.rate || '0')
+              }}
               bagDimensions={{
                 length: jobCard.orders.bag_length,
                 width: jobCard.orders.bag_width
               }}
-              onSubmit={() => {}} // Implement update logic
+              onSubmit={handleSubmit}
               onCancel={() => {}}
-              isSubmitting={false}
+              isSubmitting={submitting}
             />
           ))}
         </div>

@@ -1,20 +1,7 @@
 
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { JobStatus } from "@/types/production";
-
-interface PrintingJobData {
-  pulling: string;
-  gsm: string;
-  sheet_length: string;
-  sheet_width: string;
-  worker_name: string;
-  is_internal: boolean;
-  rate: string;
-  status: JobStatus;
-  expected_completion_date: string;
-  print_image: string;
-}
+import { PrintingJobData, JobStatus } from "@/types/production";
 
 export const usePrintingJob = () => {
   const [submitting, setSubmitting] = useState(false);
@@ -26,11 +13,11 @@ export const usePrintingJob = () => {
         job_card_id: jobCardId,
         pulling: printingData.pulling,
         gsm: printingData.gsm,
-        sheet_length: printingData.sheet_length ? parseFloat(printingData.sheet_length) : null,
-        sheet_width: printingData.sheet_width ? parseFloat(printingData.sheet_width) : null,
+        sheet_length: parseFloat(printingData.sheet_length) || null,
+        sheet_width: parseFloat(printingData.sheet_width) || null,
         worker_name: printingData.worker_name,
         is_internal: printingData.is_internal,
-        rate: printingData.rate ? parseFloat(printingData.rate) : null,
+        rate: parseFloat(printingData.rate) || null,
         status: printingData.status,
         expected_completion_date: printingData.expected_completion_date || null,
         print_image: printingData.print_image
@@ -56,11 +43,11 @@ export const usePrintingJob = () => {
       const formattedData = {
         pulling: printingData.pulling,
         gsm: printingData.gsm,
-        sheet_length: printingData.sheet_length ? parseFloat(printingData.sheet_length) : null,
-        sheet_width: printingData.sheet_width ? parseFloat(printingData.sheet_width) : null,
+        sheet_length: parseFloat(printingData.sheet_length) || null,
+        sheet_width: parseFloat(printingData.sheet_width) || null,
         worker_name: printingData.worker_name,
         is_internal: printingData.is_internal,
-        rate: printingData.rate ? parseFloat(printingData.rate) : null,
+        rate: parseFloat(printingData.rate) || null,
         status: printingData.status,
         expected_completion_date: printingData.expected_completion_date || null,
         print_image: printingData.print_image

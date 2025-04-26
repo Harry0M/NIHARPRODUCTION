@@ -50,3 +50,20 @@ export interface CuttingComponent {
   notes?: string;
   waste_quantity?: string;
 }
+
+export interface PrintingJobData {
+  id?: string;
+  job_card_id: string;
+  pulling: string;
+  gsm: string;
+  sheet_length: string;  // Explicitly define as string
+  sheet_width: string;   // Explicitly define as string
+  worker_name: string;
+  is_internal: boolean;
+  rate: string;
+  status: JobStatus;
+  expected_completion_date: string;
+  print_image: string;
+  created_at?: string;
+  created_by?: string;
+}
