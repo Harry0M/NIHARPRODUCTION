@@ -134,9 +134,6 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
         rewinding: "",
         rate: "",
         status: "pending" as JobStatus,
-        material_type: "",
-        material_color: "",
-        material_gsm: "",
         notes: ""
       })) || [];
 
@@ -210,9 +207,6 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
               rewinding: comp.rewinding?.toString() || "",
               rate: comp.rate?.toString() || "",
               status: comp.status || "pending",
-              material_type: comp.material_type || "",
-              material_color: comp.material_color || "",
-              material_gsm: comp.material_gsm?.toString() || "",
               notes: comp.notes || ""
             };
           });
@@ -244,9 +238,6 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
       rewinding: "",
       rate: "",
       status: "pending" as JobStatus,
-      material_type: "",
-      material_color: "",
-      material_gsm: "",
       notes: ""
     }));
     setComponentData(initialComponentData);
@@ -337,9 +328,6 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
             rewinding: comp.rewinding ? parseFloat(comp.rewinding) : null,
             rate: comp.rate ? parseFloat(comp.rate) : null,
             status: comp.status,
-            material_type: comp.material_type || null,
-            material_color: comp.material_color || null,
-            material_gsm: comp.material_gsm ? parseFloat(comp.material_gsm) : null,
             notes: comp.notes || null
           }));
 
@@ -348,10 +336,7 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
             .from("cutting_components")
             .insert(componentsToInsert);
 
-          if (error) {
-            console.error("Error inserting cutting components:", error);
-            throw error;
-          }
+          if (error) throw error;
         }
       }
 

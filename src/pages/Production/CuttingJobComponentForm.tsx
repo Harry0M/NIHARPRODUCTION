@@ -1,4 +1,3 @@
-
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -43,38 +42,8 @@ export function CuttingJobComponentForm({
                   {component.gsm && <span className="bg-slate-100 px-2 py-1 rounded">GSM: {component.gsm}</span>}
                 </div>
               </div>
-              
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Material Type</Label>
-                  <Input
-                    type="text"
-                    placeholder="Material type"
-                    value={componentData[index]?.material_type || ""}
-                    onChange={(e) => handleComponentChange(index, "material_type", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Material Color</Label>
-                  <Input
-                    type="text"
-                    placeholder="Material color"
-                    value={componentData[index]?.material_color || ""}
-                    onChange={(e) => handleComponentChange(index, "material_color", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Material GSM</Label>
-                  <Input
-                    type="number"
-                    placeholder="Material GSM"
-                    value={componentData[index]?.material_gsm || ""}
-                    onChange={(e) => handleComponentChange(index, "material_gsm", e.target.value)}
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div className="space-y-2">
                   <Label>Width</Label>
                   <Input
@@ -109,15 +78,6 @@ export function CuttingJobComponentForm({
                     placeholder="Rewinding"
                     value={componentData[index]?.rewinding || ""}
                     onChange={(e) => handleComponentChange(index, "rewinding", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Rate</Label>
-                  <Input
-                    type="text"
-                    placeholder="Rate"
-                    value={componentData[index]?.rate || ""}
-                    onChange={(e) => handleComponentChange(index, "rate", e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
