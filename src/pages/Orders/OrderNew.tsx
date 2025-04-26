@@ -27,16 +27,22 @@ const OrderNew = () => {
     components,
     customComponents,
     submitting,
+    formErrors,
     handleOrderChange,
     handleComponentChange,
     handleCustomComponentChange,
     addCustomComponent,
     removeCustomComponent,
     handleProductSelect,
-    handleSubmit
+    handleSubmit,
+    validateForm
   } = useOrderForm();
   
   const onSubmit = async (e: React.FormEvent) => {
+    if (!validateForm()) {
+      return;
+    }
+    
     const orderId = await handleSubmit(e);
     if (orderId) {
       navigate(`/orders/${orderId}`);
@@ -68,6 +74,7 @@ const OrderNew = () => {
           formData={orderDetails}
           handleOrderChange={handleOrderChange}
           onProductSelect={handleProductSelect}
+          formErrors={formErrors}
         />
         
         <Card>

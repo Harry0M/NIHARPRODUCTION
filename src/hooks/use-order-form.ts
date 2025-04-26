@@ -3,17 +3,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
-
-interface OrderFormData {
-  company_name: string;
-  company_id: string;
-  quantity: string;
-  bag_length: string;
-  bag_width: string;
-  rate: string;
-  special_instructions: string;
-  order_date: string;
-}
+import { OrderFormData } from "@/types/order";
 
 interface Component {
   id: string;
@@ -25,13 +15,22 @@ interface Component {
   width?: string;
 }
 
+interface FormErrors {
+  company?: string;
+  quantity?: string;
+  bag_length?: string;
+  bag_width?: string;
+  order_date?: string;
+}
+
 interface UseOrderFormReturn {
   orderDetails: OrderFormData;
   components: Record<string, any>;
   customComponents: Component[];
   submitting: boolean;
+  formErrors: FormErrors;
   handleOrderChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 
-    target: { name: string; value: string } 
+    target: { name: string; value: string | null } 
   }) => void;
   handleComponentChange: (type: string, field: string, value: string) => void;
   handleCustomComponentChange: (index: number, field: string, value: string) => void;
@@ -39,25 +38,14 @@ interface UseOrderFormReturn {
   removeCustomComponent: (index: number) => void;
   handleProductSelect: (components: any[]) => void;
   handleSubmit: (e: React.FormEvent) => Promise<string | undefined>;
-}
-
-// Define the database schema type to match what Supabase expects for inserts
-interface OrderDatabaseSchema {
-  company_name: string | null;
-  company_id: string | null;
-  quantity: number;
-  bag_length: number;
-  bag_width: number;
-  rate: number | null;
-  order_date: string;
-  special_instructions: string | null;
+  validateForm: () => boolean;
 }
 
 export function useOrderForm(): UseOrderFormReturn {
   const [submitting, setSubmitting] = useState(false);
   const [orderDetails, setOrderDetails] = useState<OrderFormData>({
     company_name: "",
-    company_id: "",
+    company_id: null,
     quantity: "",
     bag_length: "",
     bag_width: "",
@@ -66,17 +54,26 @@ export function useOrderForm(): UseOrderFormReturn {
     order_date: new Date().toISOString().split('T')[0]
   });
   
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [components, setComponents] = useState<Record<string, any>>({});
   const [customComponents, setCustomComponents] = useState<Component[]>([]);
 
   const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 
-    target: { name: string; value: string } 
+    target: { name: string; value: string | null } 
   }) => {
     const { name, value } = e.target;
     setOrderDetails(prev => ({
       ...prev,
       [name]: value
     }));
+    
+    // Clear validation error when field is changed
+    if (formErrors[name as keyof FormErrors]) {
+      setFormErrors(prev => ({
+        ...prev,
+        [name]: undefined
+      }));
+    }
   };
 
   const handleComponentChange = (type: string, field: string, value: string) => {
@@ -147,26 +144,52 @@ export function useOrderForm(): UseOrderFormReturn {
     setComponents(orderComponents);
   };
 
+  const validateForm = (): boolean => {
+    const errors: FormErrors = {};
+    let isValid = true;
+
+    // Validate company information
+    if (!orderDetails.company_name) {
+      errors.company = "Company name is required";
+      isValid = false;
+    }
+
+    // Validate quantity
+    if (!orderDetails.quantity || parseFloat(orderDetails.quantity) <= 0) {
+      errors.quantity = "Valid quantity is required";
+      isValid = false;
+    }
+
+    // Validate bag length
+    if (!orderDetails.bag_length || parseFloat(orderDetails.bag_length) <= 0) {
+      errors.bag_length = "Valid bag length is required";
+      isValid = false;
+    }
+
+    // Validate bag width
+    if (!orderDetails.bag_width || parseFloat(orderDetails.bag_width) <= 0) {
+      errors.bag_width = "Valid bag width is required";
+      isValid = false;
+    }
+
+    // Validate order date
+    if (!orderDetails.order_date) {
+      errors.order_date = "Order date is required";
+      isValid = false;
+    }
+
+    setFormErrors(errors);
+    return isValid;
+  };
+
   const handleSubmit = async (e: React.FormEvent): Promise<string | undefined> => {
     e.preventDefault();
     
-    const { company_name, company_id, quantity, bag_length, bag_width } = orderDetails;
-    
-    // Validate the required fields
-    if (!quantity || !bag_length || !bag_width) {
+    // Validate form before submission
+    if (!validateForm()) {
       toast({
-        title: "Missing required fields",
-        description: "Please fill in all required order details including quantity and dimensions",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Validate that either company_name or company_id is provided, but not both
-    if (!company_name && !company_id) {
-      toast({
-        title: "Company information required",
-        description: "Please select an existing company or enter a new company name",
+        title: "Form validation failed",
+        description: "Please correct the highlighted fields",
         variant: "destructive"
       });
       return;
@@ -175,14 +198,13 @@ export function useOrderForm(): UseOrderFormReturn {
     setSubmitting(true);
     
     try {
-      // Create an object that matches our database schema expectations
-      // Important: We need to provide exactly one of company_name or company_id, not both
-      const orderData: OrderDatabaseSchema = {
-        company_name: company_id ? null : company_name,
-        company_id: company_id || null,
-        quantity: parseInt(quantity),
-        bag_length: parseFloat(bag_length),
-        bag_width: parseFloat(bag_width),
+      // Prepare data for database insert
+      const orderData = {
+        company_name: orderDetails.company_id ? null : orderDetails.company_name,
+        company_id: orderDetails.company_id,
+        quantity: parseInt(orderDetails.quantity),
+        bag_length: parseFloat(orderDetails.bag_length),
+        bag_width: parseFloat(orderDetails.bag_width),
         rate: orderDetails.rate ? parseFloat(orderDetails.rate) : null,
         order_date: orderDetails.order_date,
         special_instructions: orderDetails.special_instructions || null
@@ -190,16 +212,21 @@ export function useOrderForm(): UseOrderFormReturn {
 
       console.log("Submitting order data:", orderData);
       
-      // The order_number will be generated by a database trigger, so we don't need to include it
-      // in the orderData object. Instead, we use the `from('orders')` method directly.
+      // Insert the order
       const { data: orderResult, error: orderError } = await supabase
         .from("orders")
-        .insert(orderData as any) // Use type assertion to bypass TypeScript check
+        .insert(orderData)
         .select('id, order_number')
         .single();
       
-      if (orderError) throw orderError;
+      if (orderError) {
+        console.error("Order insertion error:", orderError);
+        throw orderError;
+      }
       
+      console.log("Order created successfully:", orderResult);
+      
+      // Process components if any exist
       const allComponents = [
         ...Object.values(components).filter(Boolean),
         ...customComponents
@@ -240,7 +267,7 @@ export function useOrderForm(): UseOrderFormReturn {
       console.error("Error creating order:", error);
       toast({
         title: "Error creating order",
-        description: error.message,
+        description: error.message || "An unexpected error occurred",
         variant: "destructive"
       });
     } finally {
@@ -253,12 +280,14 @@ export function useOrderForm(): UseOrderFormReturn {
     components,
     customComponents,
     submitting,
+    formErrors,
     handleOrderChange,
     handleComponentChange,
     handleCustomComponentChange,
     addCustomComponent,
     removeCustomComponent,
     handleProductSelect,
-    handleSubmit
+    handleSubmit,
+    validateForm
   };
 }
