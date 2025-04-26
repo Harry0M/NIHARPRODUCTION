@@ -97,6 +97,7 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
         });
         
         // Important: When selecting an existing company, we need to clear the company_name
+        // AND set the visible company name for display purposes
         handleOrderChange({
           target: {
             name: 'company_name',
@@ -278,4 +279,4 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
       </CardContent>
     </Card>
   );
-};
+}
