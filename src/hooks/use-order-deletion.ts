@@ -21,9 +21,6 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
     try {
       console.log("Starting deletion process for order ID:", orderToDelete);
       
-      // First, directly delete the dispatch batches for this order
-      // This is a two-step process - first get dispatches, then delete batches
-      
       // Step 1: Get all dispatches for this order
       const { data: orderDispatches, error: dispatchError } = await supabase
         .from('order_dispatches')
@@ -35,40 +32,45 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
         throw new Error(dispatchError.message);
       }
       
-      // Step 2: If there are dispatches, delete their batches first
+      // Step 2: Delete dispatch batches first (if they exist)
       if (orderDispatches && orderDispatches.length > 0) {
         const dispatchIds = orderDispatches.map(dispatch => dispatch.id);
-        console.log(`Found ${dispatchIds.length} dispatches, deleting their batches...`);
+        console.log(`Found ${dispatchIds.length} dispatches with IDs:`, dispatchIds);
         
-        // Delete all batches for these dispatches
-        const { error: batchDeleteError } = await supabase
-          .from('dispatch_batches')
-          .delete()
-          .in('order_dispatch_id', dispatchIds);
+        // Delete all batches for these dispatches one by one to ensure complete deletion
+        for (const dispatchId of dispatchIds) {
+          console.log(`Deleting batches for dispatch ID: ${dispatchId}`);
+          const { error: batchDeleteError } = await supabase
+            .from('dispatch_batches')
+            .delete()
+            .eq('order_dispatch_id', dispatchId);
+            
+          if (batchDeleteError) {
+            console.error(`Error deleting batches for dispatch ${dispatchId}:`, batchDeleteError);
+            throw new Error(`Failed to delete batches: ${batchDeleteError.message}`);
+          }
           
-        if (batchDeleteError) {
-          console.error("Error deleting dispatch batches:", batchDeleteError);
-          throw new Error(batchDeleteError.message);
+          console.log(`Successfully deleted batches for dispatch ${dispatchId}`);
         }
         
-        console.log("Successfully deleted dispatch batches");
-        
-        // Now we can directly delete the dispatch records
-        const { error: dispatchDeleteError } = await supabase
-          .from('order_dispatches')
-          .delete()
-          .eq('order_id', orderToDelete);
-          
-        if (dispatchDeleteError) {
-          console.error("Error deleting dispatches:", dispatchDeleteError);
-          throw new Error(dispatchDeleteError.message);
+        // Step 3: Now delete the dispatches themselves
+        for (const dispatchId of dispatchIds) {
+          console.log(`Deleting dispatch ID: ${dispatchId}`);
+          const { error: dispatchDeleteError } = await supabase
+            .from('order_dispatches')
+            .delete()
+            .eq('id', dispatchId);
+            
+          if (dispatchDeleteError) {
+            console.error(`Error deleting dispatch ${dispatchId}:`, dispatchDeleteError);
+            throw new Error(`Failed to delete dispatch: ${dispatchDeleteError.message}`);
+          }
         }
         
-        console.log("Successfully deleted dispatches");
+        console.log("Successfully deleted all dispatch records");
       }
       
-      // Now that dispatches and batches are deleted, use the delete_order_completely function
-      // which will handle the rest of the job cards, production jobs, etc.
+      // Step 4: Now call delete_order_completely to handle the rest
       console.log("Calling delete_order_completely function...");
       const { error: deleteError } = await supabase.rpc(
         'delete_order_completely',
