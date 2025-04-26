@@ -4,7 +4,6 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { CuttingComponent } from "@/hooks/use-cutting-job";
 
 type JobStatus = "pending" | "in_progress" | "completed";
 interface Component {
@@ -13,6 +12,16 @@ interface Component {
   size: string | null;
   color: string | null;
   gsm: string | null;
+}
+interface CuttingComponent {
+  component_id: string;
+  type: string;
+  width: string;
+  height: string;
+  counter: string;
+  rewinding: string;
+  rate: string;
+  status: JobStatus;
 }
 interface CuttingJobComponentFormProps {
   components: Component[];
@@ -39,10 +48,15 @@ export function CuttingJobComponentForm({
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          {componentData.map((component, index) => (
-            <div key={component.component_id} className="p-4 border rounded-md space-y-4">
+          {components.map((component, index) => (
+            <div key={component.id} className="p-4 border rounded-md space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-medium capitalize">{component.type}</h3>
+                <div className="flex items-center gap-2 text-sm">
+                  {component.size && <span className="bg-slate-100 px-2 py-1 rounded">Size: {component.size}</span>}
+                  {component.color && <span className="bg-slate-100 px-2 py-1 rounded">Color: {component.color}</span>}
+                  {component.gsm && <span className="bg-slate-100 px-2 py-1 rounded">GSM: {component.gsm}</span>}
+                </div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                 <div className="space-y-2">
@@ -50,7 +64,7 @@ export function CuttingJobComponentForm({
                   <Input
                     type="text"
                     placeholder="Width"
-                    value={component.width}
+                    value={componentData[index]?.width || ""}
                     onChange={(e) => handleComponentChange(index, "width", e.target.value)}
                   />
                 </div>
@@ -59,7 +73,7 @@ export function CuttingJobComponentForm({
                   <Input
                     type="text"
                     placeholder="Height"
-                    value={component.height}
+                    value={componentData[index]?.height || ""}
                     onChange={(e) => handleComponentChange(index, "height", e.target.value)}
                   />
                 </div>
@@ -68,7 +82,7 @@ export function CuttingJobComponentForm({
                   <Input
                     type="text"
                     placeholder="Counter"
-                    value={component.counter}
+                    value={componentData[index]?.counter || ""}
                     onChange={(e) => handleComponentChange(index, "counter", e.target.value)}
                   />
                 </div>
@@ -77,7 +91,7 @@ export function CuttingJobComponentForm({
                   <Input
                     type="text"
                     placeholder="Rewinding"
-                    value={component.rewinding}
+                    value={componentData[index]?.rewinding || ""}
                     onChange={(e) => handleComponentChange(index, "rewinding", e.target.value)}
                   />
                 </div>
@@ -86,14 +100,14 @@ export function CuttingJobComponentForm({
                   <Input
                     type="text"
                     placeholder="Rate"
-                    value={component.rate}
+                    value={componentData[index]?.rate || ""}
                     onChange={(e) => handleComponentChange(index, "rate", e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Status</Label>
                   <Select
-                    value={component.status}
+                    value={componentData[index]?.status || "pending"}
                     onValueChange={(value: JobStatus) => handleComponentChange(index, "status", value)}
                   >
                     <SelectTrigger>
