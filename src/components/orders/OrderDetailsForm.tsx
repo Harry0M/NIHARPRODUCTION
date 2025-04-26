@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +19,8 @@ import {
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCatalogProducts } from "@/hooks/use-catalog-products";
+import { AlertCircle } from "lucide-react";
+import { OrderFormData } from "@/types/order";
 
 interface Company {
   id: string;
@@ -27,23 +28,26 @@ interface Company {
 }
 
 interface OrderDetailsFormProps {
-  formData: {
-    company_name: string;
-    company_id?: string;
-    quantity: string;
-    bag_length: string;
-    bag_width: string;
-    rate: string;
-    special_instructions: string;
-    order_date?: string;
-  };
+  formData: OrderFormData;
   handleOrderChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 
-    target: { name: string; value: string } 
+    target: { name: string; value: string | null } 
   }) => void;
   onProductSelect?: (components: any[]) => void;
+  formErrors: {
+    company?: string;
+    quantity?: string;
+    bag_length?: string;
+    bag_width?: string;
+    order_date?: string;
+  };
 }
 
-export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect }: OrderDetailsFormProps) => {
+const OrderDetailsForm = ({ 
+  formData, 
+  handleOrderChange, 
+  onProductSelect,
+  formErrors 
+}: OrderDetailsFormProps) => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const { data: catalogProducts, isLoading } = useCatalogProducts();
 
@@ -65,7 +69,7 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
   const handleProductSelect = (productId: string) => {
     const selectedProduct = catalogProducts?.find(p => p.id === productId);
     if (selectedProduct) {
-      // Update form fields
+      // Only update bag dimensions, quantity and rate, not the company info
       handleOrderChange({ target: { name: 'bag_length', value: selectedProduct.bag_length.toString() } });
       handleOrderChange({ target: { name: 'bag_width', value: selectedProduct.bag_width.toString() } });
       if (selectedProduct.default_quantity) {
@@ -75,33 +79,34 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
         handleOrderChange({ target: { name: 'rate', value: selectedProduct.default_rate.toString() } });
       }
       
-      // Pass components to parent component
+      // Pass components to parent component if they exist
       if (onProductSelect && selectedProduct.catalog_components) {
         onProductSelect(selectedProduct.catalog_components);
       }
     }
   };
 
-  // Handle company selection - update both company_id and company_name
-  const handleCompanySelect = (companyId: string) => {
-    const selectedCompany = companies.find(c => c.id === companyId);
-    
-    if (selectedCompany) {
-      // Update company_id
-      handleOrderChange({
-        target: {
-          name: 'company_id',
-          value: selectedCompany.id
-        }
-      });
-      
-      // Update company_name
-      handleOrderChange({
-        target: {
-          name: 'company_name',
-          value: selectedCompany.name
-        }
-      });
+  const handleCompanySelect = (companyId: string | null) => {
+    if (companyId && companyId !== "no_selection") {
+      const selectedCompany = companies.find(c => c.id === companyId);
+      if (selectedCompany) {
+        handleOrderChange({
+          target: {
+            name: 'company_id',
+            value: companyId
+          }
+        });
+        // Update company name when selecting from dropdown
+        handleOrderChange({
+          target: {
+            name: 'company_name',
+            value: selectedCompany.name
+          }
+        });
+      }
+    } else {
+      // Clear company_id when no company is selected
+      handleOrderChange({ target: { name: 'company_id', value: null } });
     }
   };
 
@@ -112,7 +117,7 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
         <CardDescription>Enter the basic information for this order</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Add product selection dropdown */}
+        {/* Product selection dropdown */}
         <div className="space-y-2">
           <Label>Select Product (Optional)</Label>
           <Select onValueChange={handleProductSelect}>
@@ -129,49 +134,59 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
           </Select>
         </div>
 
-        {/* Company selection dropdown - this is now mandatory */}
-        <div className="space-y-2">
-          <Label htmlFor="company_select">Select Company *</Label>
-          <Select 
-            value={formData.company_id || ""} 
-            onValueChange={handleCompanySelect}
-          >
-            <SelectTrigger id="company_select">
-              <SelectValue placeholder="Select a company" />
-            </SelectTrigger>
-            <SelectContent>
-              {companies.map((company) => (
-                <SelectItem key={company.id} value={company.id}>
-                  {company.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">Select an existing company or enter a new one below</p>
+        {/* Company section */}
+        <div className="space-y-4 border-b pb-4">
+          <div className="space-y-2">
+            <Label htmlFor="company_select">
+              Select Existing Company (Optional)
+            </Label>
+            <Select 
+              value={formData.company_id || "no_selection"} 
+              onValueChange={(value) => handleCompanySelect(value === "no_selection" ? null : value)}
+            >
+              <SelectTrigger id="company_select">
+                <SelectValue placeholder="Select a company" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="no_selection">-- Select a company --</SelectItem>
+                {companies.map((company) => (
+                  <SelectItem key={company.id} value={company.id}>
+                    {company.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="company_name" className="flex items-center gap-1">
+              Company Name
+              <span className="text-destructive">*</span>
+            </Label>
+            <Input 
+              id="company_name" 
+              name="company_name"
+              value={formData.company_name}
+              onChange={(e) => handleOrderChange(e)}
+              placeholder="Enter company name"
+              required
+              className={formErrors.company ? "border-destructive" : ""}
+            />
+            {formErrors.company && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" /> {formErrors.company}
+              </p>
+            )}
+          </div>
         </div>
 
-        {/* Company name field - only needed if not selecting from dropdown */}
-        <div className="space-y-2">
-          <Label htmlFor="company_name">Company Name {!formData.company_id && <span className="text-destructive">*</span>}</Label>
-          <Input 
-            id="company_name" 
-            name="company_name"
-            value={formData.company_name}
-            onChange={handleOrderChange}
-            placeholder="Client company name"
-            required={!formData.company_id}
-            disabled={!!formData.company_id}
-          />
-          <p className="text-xs text-muted-foreground">
-            {formData.company_id 
-              ? "Using selected company from dropdown" 
-              : "Enter company name when not selecting from dropdown"}
-          </p>
-        </div>
-
+        {/* Order details section */}
         <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="quantity">Order Quantity *</Label>
+            <Label htmlFor="quantity" className="flex items-center gap-1">
+              Order Quantity
+              <span className="text-destructive">*</span>
+            </Label>
             <Input 
               id="quantity" 
               name="quantity"
@@ -180,25 +195,43 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
               onChange={handleOrderChange}
               placeholder="Number of bags"
               required
+              className={formErrors.quantity ? "border-destructive" : ""}
+              min="1"
             />
+            {formErrors.quantity && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" /> {formErrors.quantity}
+              </p>
+            )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="order_date">Order Date</Label>
+            <Label htmlFor="order_date" className="flex items-center gap-1">
+              Order Date
+              <span className="text-destructive">*</span>
+            </Label>
             <Input 
               id="order_date"
               name="order_date"
               type="date"
               value={formData.order_date}
               onChange={handleOrderChange}
-              placeholder="Order date"
               required
+              className={formErrors.order_date ? "border-destructive" : ""}
             />
+            {formErrors.order_date && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" /> {formErrors.order_date}
+              </p>
+            )}
           </div>
         </div>
 
         <div className="grid md:grid-cols-3 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="bag_length">Bag Length (inches) *</Label>
+            <Label htmlFor="bag_length" className="flex items-center gap-1">
+              Bag Length (inches)
+              <span className="text-destructive">*</span>
+            </Label>
             <Input 
               id="bag_length" 
               name="bag_length"
@@ -208,10 +241,20 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
               onChange={handleOrderChange}
               placeholder="Length in inches"
               required
+              className={formErrors.bag_length ? "border-destructive" : ""}
+              min="0"
             />
+            {formErrors.bag_length && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" /> {formErrors.bag_length}
+              </p>
+            )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="bag_width">Bag Width (inches) *</Label>
+            <Label htmlFor="bag_width" className="flex items-center gap-1">
+              Bag Width (inches)
+              <span className="text-destructive">*</span>
+            </Label>
             <Input 
               id="bag_width" 
               name="bag_width"
@@ -221,7 +264,14 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
               onChange={handleOrderChange}
               placeholder="Width in inches"
               required
+              className={formErrors.bag_width ? "border-destructive" : ""}
+              min="0"
             />
+            {formErrors.bag_width && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" /> {formErrors.bag_width}
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="rate">Rate per Bag</Label>
@@ -233,6 +283,7 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
               value={formData.rate}
               onChange={handleOrderChange}
               placeholder="Price per bag"
+              min="0"
             />
           </div>
         </div>
@@ -252,3 +303,5 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
     </Card>
   );
 };
+
+export default OrderDetailsForm;

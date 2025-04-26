@@ -7,6 +7,7 @@ export interface Order {
   id: string;
   order_number: string;
   company_name: string;
+  company_id: string | null;
   quantity: number;
   bag_length: number;
   bag_width: number;
@@ -14,4 +15,16 @@ export interface Order {
   status: OrderStatus;
   rate: number | null;
   created_at: string;
+  special_instructions?: string | null;
+}
+
+export interface OrderFormData {
+  company_name: string;
+  company_id: string | null;
+  quantity: string;
+  bag_length: string;
+  bag_width: string;
+  rate: string;
+  special_instructions: string;
+  order_date: string;
 }
