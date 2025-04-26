@@ -454,8 +454,10 @@ export default function CuttingJobForm() {
             .eq("cutting_job_id", selectedJobId);
         }
         
+        // Filter out components without essential details and validate component_ids
         const componentsToInsert = componentData
           .filter(comp => comp.width || comp.height || comp.counter || comp.rewinding)
+          .filter(comp => comp.component_id) // Ensure component_id exists
           .map(comp => ({
             cutting_job_id: cuttingJobId,
             component_id: comp.component_id,
@@ -468,6 +470,7 @@ export default function CuttingJobForm() {
           }));
         
         if (componentsToInsert.length > 0) {
+          console.log("Inserting components:", componentsToInsert);
           const { error } = await supabase
             .from("cutting_components")
             .insert(componentsToInsert);
