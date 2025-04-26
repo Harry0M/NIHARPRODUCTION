@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +17,6 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCatalogProducts } from "@/hooks/use-catalog-products";
 import { AlertCircle } from "lucide-react";
@@ -90,17 +90,11 @@ const OrderDetailsForm = ({
     if (companyId && companyId !== "no_selection") {
       const selectedCompany = companies.find(c => c.id === companyId);
       if (selectedCompany) {
+        // ONLY set the company_id, DO NOT auto-populate company name
         handleOrderChange({
           target: {
             name: 'company_id',
             value: companyId
-          }
-        });
-        // Update company name when selecting from dropdown
-        handleOrderChange({
-          target: {
-            name: 'company_name',
-            value: selectedCompany.name
           }
         });
       }
@@ -168,9 +162,10 @@ const OrderDetailsForm = ({
               name="company_name"
               value={formData.company_name}
               onChange={(e) => handleOrderChange(e)}
-              placeholder="Enter company name"
+              placeholder="Enter company name manually"
               required
               className={formErrors.company ? "border-destructive" : ""}
+              autoComplete="off"  // Disable browser autofill
             />
             {formErrors.company && (
               <p className="text-xs text-destructive flex items-center gap-1">
