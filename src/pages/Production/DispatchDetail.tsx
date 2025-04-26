@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,11 +32,21 @@ interface DispatchData {
   updated_at?: string;
 }
 
+interface DispatchBatch {
+  id?: string;
+  batch_number: number;
+  quantity: number;
+  delivery_date: string;
+  notes?: string;
+  status?: string;
+}
+
 const DispatchDetail = () => {
   const { id: orderId } = useParams();
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState<any>(null);
   const [dispatchData, setDispatchData] = useState<DispatchData | null>(null);
+  const [dispatchBatches, setDispatchBatches] = useState<DispatchBatch[]>([]);
   const [productionStages, setProductionStages] = useState<StageSummary[]>([]);
   const navigate = useNavigate();
 
@@ -112,8 +123,24 @@ const DispatchDetail = () => {
         .select("*")
         .eq("order_id", orderId)
         .maybeSingle();
+
       if (dispatchError) throw dispatchError;
-      setDispatchData(dispatch);
+      
+      if (dispatch) {
+        setDispatchData(dispatch);
+        
+        // Fetch batches for this dispatch
+        const { data: batches, error: batchesError } = await supabase
+          .from("dispatch_batches")
+          .select("*")
+          .eq("order_dispatch_id", dispatch.id)
+          .order("batch_number", { ascending: true });
+          
+        if (batchesError) throw batchesError;
+        if (batches) {
+          setDispatchBatches(batches);
+        }
+      }
 
     } catch (err: any) {
       toast({
@@ -139,6 +166,7 @@ const DispatchDetail = () => {
           order_id: orderId,
           recipient_name: formData.recipient_name,
           delivery_address: formData.delivery_address,
+          delivery_date: formData.batches[0].delivery_date, // Using the first batch's delivery date as main date
           tracking_number: formData.tracking_number || null,
           notes: formData.notes || null,
           quality_checked: formData.confirm_quality_check,
@@ -259,7 +287,7 @@ const DispatchDetail = () => {
           <div className="space-y-4">
             <h3 className="font-medium">Dispatch Batches</h3>
             <div className="grid gap-4">
-              {batches?.map((batch: any) => (
+              {dispatchBatches.map((batch: any) => (
                 <Card key={batch.id}>
                   <CardHeader className="py-4">
                     <CardTitle className="text-base">Batch {batch.batch_number}</CardTitle>
