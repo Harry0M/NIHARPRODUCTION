@@ -129,14 +129,14 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
           </Select>
         </div>
 
-        {/* Update company selection dropdown to store both ID and name */}
+        {/* Company selection dropdown - this is now mandatory */}
         <div className="space-y-2">
-          <Label>Select Company</Label>
+          <Label htmlFor="company_select">Select Company *</Label>
           <Select 
-            value={formData.company_id} 
+            value={formData.company_id || ""} 
             onValueChange={handleCompanySelect}
           >
-            <SelectTrigger>
+            <SelectTrigger id="company_select">
               <SelectValue placeholder="Select a company" />
             </SelectTrigger>
             <SelectContent>
@@ -147,23 +147,31 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
               ))}
             </SelectContent>
           </Select>
+          <p className="text-xs text-muted-foreground">Select an existing company or enter a new one below</p>
         </div>
 
-        {/* Keep existing form fields */}
+        {/* Company name field - only needed if not selecting from dropdown */}
+        <div className="space-y-2">
+          <Label htmlFor="company_name">Company Name {!formData.company_id && <span className="text-destructive">*</span>}</Label>
+          <Input 
+            id="company_name" 
+            name="company_name"
+            value={formData.company_name}
+            onChange={handleOrderChange}
+            placeholder="Client company name"
+            required={!formData.company_id}
+            disabled={!!formData.company_id}
+          />
+          <p className="text-xs text-muted-foreground">
+            {formData.company_id 
+              ? "Using selected company from dropdown" 
+              : "Enter company name when not selecting from dropdown"}
+          </p>
+        </div>
+
         <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="company_name">Company Name</Label>
-            <Input 
-              id="company_name" 
-              name="company_name"
-              value={formData.company_name}
-              onChange={handleOrderChange}
-              placeholder="Client company name"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="quantity">Order Quantity</Label>
+            <Label htmlFor="quantity">Order Quantity *</Label>
             <Input 
               id="quantity" 
               name="quantity"
@@ -174,11 +182,23 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
               required
             />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="order_date">Order Date</Label>
+            <Input 
+              id="order_date"
+              name="order_date"
+              type="date"
+              value={formData.order_date}
+              onChange={handleOrderChange}
+              placeholder="Order date"
+              required
+            />
+          </div>
         </div>
 
         <div className="grid md:grid-cols-3 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="bag_length">Bag Length (inches)</Label>
+            <Label htmlFor="bag_length">Bag Length (inches) *</Label>
             <Input 
               id="bag_length" 
               name="bag_length"
@@ -191,7 +211,7 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="bag_width">Bag Width (inches)</Label>
+            <Label htmlFor="bag_width">Bag Width (inches) *</Label>
             <Input 
               id="bag_width" 
               name="bag_width"
@@ -216,21 +236,6 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
             />
           </div>
         </div>
-
-        {formData.order_date !== undefined && (
-          <div className="space-y-2">
-            <Label htmlFor="order_date">Order Date</Label>
-            <Input 
-              id="order_date"
-              name="order_date"
-              type="date"
-              value={formData.order_date}
-              onChange={handleOrderChange}
-              placeholder="Order date"
-              required
-            />
-          </div>
-        )}
 
         <div className="space-y-2">
           <Label htmlFor="special_instructions">Special Instructions (optional)</Label>
