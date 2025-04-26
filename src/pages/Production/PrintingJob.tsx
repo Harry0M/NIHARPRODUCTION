@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { 
@@ -38,6 +39,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { VendorSelection } from "@/components/production/VendorSelection";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { v4 as uuidv4 } from "uuid";
 
 type JobStatus = "pending" | "in_progress" | "completed";
 
@@ -85,11 +87,13 @@ const PrintingJob = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [jobCard, setJobCard] = useState<JobCard | null>(null);
   const [existingJobs, setExistingJobs] = useState<PrintingJobData[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [printImage, setPrintImage] = useState<string | null>(null);
+  const [printImageFile, setPrintImageFile] = useState<File | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -200,7 +204,7 @@ const PrintingJob = () => {
     fetchJobCard();
   }, [id, form]);
 
-  const selectJob = (jobId: string) => {
+  const selectJob = async (jobId: string) => {
     setSelectedJobId(jobId);
     const selectedJob = existingJobs.find(job => job.id === jobId);
     
@@ -217,7 +221,13 @@ const PrintingJob = () => {
         rate: selectedJob.rate || null,
         expected_completion_date: selectedJob.expected_completion_date ? new Date(selectedJob.expected_completion_date) : null
       });
-      setPrintImage(selectedJob.print_image);
+      
+      // If there's a print image URL, set it and fetch the image
+      if (selectedJob.print_image) {
+        setPrintImage(selectedJob.print_image);
+      } else {
+        setPrintImage(null);
+      }
     }
   };
 
@@ -238,6 +248,42 @@ const PrintingJob = () => {
     }
     setSelectedJobId(null);
     setPrintImage(null);
+    setPrintImageFile(null);
+  };
+
+  const uploadPrintImage = async (file: File): Promise<string | null> => {
+    if (!file) return null;
+  
+    setUploading(true);
+    try {
+      // Create a unique file name using UUID
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${uuidv4()}.${fileExt}`;
+      const filePath = `printing/${fileName}`;
+      
+      // Upload the file to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('print_designs')
+        .upload(filePath, file);
+      
+      if (error) throw error;
+      
+      // Get public URL for the uploaded file
+      const { data: publicUrlData } = supabase.storage
+        .from('print_designs')
+        .getPublicUrl(filePath);
+      
+      return publicUrlData.publicUrl;
+    } catch (error: any) {
+      toast({
+        title: "Error uploading image",
+        description: error.message,
+        variant: "destructive",
+      });
+      return null;
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handlePrintImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -260,16 +306,15 @@ const PrintingJob = () => {
       // Create a URL for preview
       const imageUrl = URL.createObjectURL(file);
       setPrintImage(imageUrl);
+      setPrintImageFile(file);
       
-      // TODO: In a real application, you would upload this to storage
-      // For now, we're just storing the URL for demonstration purposes
       toast({
         title: "Image selected",
-        description: "The print image has been selected",
+        description: "The print image has been selected and will be uploaded when you save",
       });
     } catch (error: any) {
       toast({
-        title: "Error uploading image",
+        title: "Error selecting image",
         description: error.message,
         variant: "destructive",
       });
@@ -291,6 +336,12 @@ const PrintingJob = () => {
     setLoading(true);
     
     try {
+      // Upload image if a new one was selected
+      let imageUrl = printImage;
+      if (printImageFile) {
+        imageUrl = await uploadPrintImage(printImageFile);
+      }
+      
       // Ensure job_card_id is always set and not optional
       const printingJobData = {
         job_card_id: id,
@@ -298,7 +349,7 @@ const PrintingJob = () => {
         gsm: values.gsm || null,
         sheet_length: values.sheet_length,
         sheet_width: values.sheet_width,
-        print_image: printImage,
+        print_image: imageUrl,
         worker_name: values.worker_name || null,
         is_internal: values.is_internal,
         status: values.status,
@@ -535,7 +586,7 @@ const PrintingJob = () => {
                           type="button" 
                           variant="outline"
                           onClick={() => document.getElementById('print-image-upload')?.click()}
-                          disabled={loading}
+                          disabled={loading || uploading}
                           className="flex gap-2 items-center"
                         >
                           <Upload size={16} />
@@ -549,6 +600,7 @@ const PrintingJob = () => {
                           className="hidden"
                         />
                         {printImage && <span className="text-green-600 text-sm">Image selected</span>}
+                        {uploading && <span className="text-amber-600 text-sm">Uploading...</span>}
                       </div>
                       
                       {printImage && (
@@ -705,7 +757,7 @@ const PrintingJob = () => {
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={loading}>
+                  <Button type="submit" disabled={loading || uploading}>
                     {loading ? "Saving..." : selectedJobId ? "Update Job" : "Create Job"}
                   </Button>
                 </CardFooter>
