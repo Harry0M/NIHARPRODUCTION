@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { CuttingComponent, JobStatus } from "@/types/production";
@@ -21,13 +20,11 @@ export const useCuttingJobSubmit = () => {
     setValidationError(null);
 
     try {
-      // Basic validation
       if (!cuttingData.roll_width) {
         setValidationError("Roll width is required");
         throw new Error("Roll width is required");
       }
 
-      // Convert string values to numbers
       const formattedCuttingData = {
         job_card_id: jobCardId,
         roll_width: parseFloat(cuttingData.roll_width),
@@ -38,7 +35,6 @@ export const useCuttingJobSubmit = () => {
         received_quantity: cuttingData.received_quantity ? parseInt(cuttingData.received_quantity) : null
       };
 
-      // Insert cutting job
       const { data: cuttingJob, error: cuttingError } = await supabase
         .from("cutting_jobs")
         .insert(formattedCuttingData)
@@ -47,7 +43,6 @@ export const useCuttingJobSubmit = () => {
 
       if (cuttingError) throw cuttingError;
 
-      // Convert components data and insert
       if (componentData.length > 0 && cuttingJob) {
         const formattedComponents = componentData.map(comp => ({
           component_id: comp.component_id,
@@ -58,7 +53,8 @@ export const useCuttingJobSubmit = () => {
           rewinding: comp.rewinding ? parseFloat(comp.rewinding) : null,
           rate: comp.rate ? parseFloat(comp.rate) : null,
           status: comp.status,
-          notes: comp.notes || null
+          notes: comp.notes || null,
+          waste_quantity: comp.waste_quantity ? parseFloat(comp.waste_quantity) : null
         }));
 
         const { error: componentsError } = await supabase
@@ -119,7 +115,8 @@ export const useCuttingJobSubmit = () => {
           rewinding: comp.rewinding ? parseFloat(comp.rewinding) : null,
           rate: comp.rate ? parseFloat(comp.rate) : null,
           status: comp.status,
-          notes: comp.notes || null
+          notes: comp.notes || null,
+          waste_quantity: comp.waste_quantity ? parseFloat(comp.waste_quantity) : null
         }));
 
         const { error: componentsError } = await supabase

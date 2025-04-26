@@ -1,4 +1,3 @@
-
 export type JobStatus = "pending" | "in_progress" | "completed";
 
 export interface TimelineJob {
@@ -49,4 +48,5 @@ export interface CuttingComponent {
   rate: string;
   status: JobStatus;
   notes?: string;
+  waste_quantity?: string;
 }
