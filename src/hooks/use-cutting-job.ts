@@ -132,6 +132,8 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
         .eq("order_id", jobCardData.orders.id);
 
       if (componentsError) throw componentsError;
+      
+      console.log("Fetched order components:", componentsData);
       setComponents(componentsData || []);
 
       // Initialize component data
@@ -307,6 +309,7 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
       }
 
       if (cuttingJobId) {
+        // If updating, delete previous components first
         if (selectedJobId) {
           await supabase
             .from("cutting_components")
@@ -314,19 +317,35 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
             .eq("cutting_job_id", selectedJobId);
         }
 
-        const componentsToInsert = componentData
-          .filter(comp => comp.width || comp.height || comp.counter || comp.rewinding)
-          .filter(comp => comp.component_id)
-          .map(comp => ({
-            cutting_job_id: cuttingJobId,
-            component_id: comp.component_id,
-            width: comp.width ? parseFloat(comp.width) : null,
-            height: comp.height ? parseFloat(comp.height) : null,
-            counter: comp.counter ? parseFloat(comp.counter) : null,
-            rewinding: comp.rewinding ? parseFloat(comp.rewinding) : null,
-            rate: comp.rate ? parseFloat(comp.rate) : null,
-            status: comp.status
-          }));
+        // Verify each component_id exists in order_components before inserting
+        const componentsToInsert = [];
+        
+        for (const comp of componentData) {
+          if (comp.width || comp.height || comp.counter || comp.rewinding) {
+            // Check if component_id exists in order_components
+            const { data, error } = await supabase
+              .from("order_components")
+              .select("id")
+              .eq("id", comp.component_id)
+              .single();
+              
+            if (error) {
+              console.error(`Component ID ${comp.component_id} not found in order_components:`, error);
+              continue; // Skip this component
+            }
+            
+            componentsToInsert.push({
+              cutting_job_id: cuttingJobId,
+              component_id: comp.component_id,
+              width: comp.width ? parseFloat(comp.width) : null,
+              height: comp.height ? parseFloat(comp.height) : null,
+              counter: comp.counter ? parseFloat(comp.counter) : null,
+              rewinding: comp.rewinding ? parseFloat(comp.rewinding) : null,
+              rate: comp.rate ? parseFloat(comp.rate) : null,
+              status: comp.status
+            });
+          }
+        }
 
         if (componentsToInsert.length > 0) {
           console.log("Inserting components:", componentsToInsert);
@@ -334,7 +353,10 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
             .from("cutting_components")
             .insert(componentsToInsert);
 
-          if (error) throw error;
+          if (error) {
+            console.error("Error inserting cutting components:", error);
+            throw error;
+          }
         }
       }
 
