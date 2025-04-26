@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { 
@@ -63,6 +62,7 @@ interface Order {
   rate: number | null;
   special_instructions: string | null;
   created_at: string;
+  sales_account_id?: string | null;
 }
 
 interface Component {
@@ -83,6 +83,11 @@ interface JobCard {
   created_at: string;
 }
 
+interface Company {
+  id: string;
+  name: string;
+}
+
 const OrderDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -91,6 +96,7 @@ const OrderDetail = () => {
   const [jobCards, setJobCards] = useState<JobCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [companies, setCompanies] = useState<Company[]>([]);
   
   useEffect(() => {
     const fetchOrderData = async () => {
@@ -137,7 +143,19 @@ const OrderDetail = () => {
       }
     };
     
+    const fetchCompanies = async () => {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id, name')
+        .eq('status', 'active');
+
+      if (!error && data) {
+        setCompanies(data);
+      }
+    };
+    
     fetchOrderData();
+    fetchCompanies();
   }, [id, navigate]);
 
   const handleDeleteOrder = async () => {
@@ -397,6 +415,14 @@ const OrderDetail = () => {
                   <h3 className="text-sm font-medium text-muted-foreground">Company Name</h3>
                   <p className="text-lg">{order.company_name}</p>
                 </div>
+                {order.sales_account_id && (
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Sales Account</h3>
+                    <p className="text-lg">
+                      {companies.find(c => c.id === order.sales_account_id)?.name || 'Unknown Account'}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Order Date</h3>
                   <p className="text-lg">{formatDate(order.order_date)}</p>
