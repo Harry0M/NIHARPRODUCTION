@@ -1,7 +1,6 @@
 
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
 import { CuttingComponent, JobStatus } from "@/types/production";
 
 interface CuttingData {
@@ -17,121 +16,125 @@ export const useCuttingJobSubmit = () => {
   const [submitting, setSubmitting] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  const validateCuttingData = (data: CuttingData) => {
-    if (!data.roll_width.trim()) {
-      setValidationError("Roll width is required");
-      return false;
-    }
-    return true;
-  };
+  const createCuttingJob = async (jobCardId: string, cuttingData: CuttingData, componentData: CuttingComponent[]) => {
+    setSubmitting(true);
+    setValidationError(null);
 
-  const createCuttingJob = async (
-    jobCardId: string,
-    cuttingData: CuttingData,
-    componentData: CuttingComponent[]
-  ) => {
-    if (!validateCuttingData(cuttingData)) {
-      throw new Error("Validation failed");
-    }
+    try {
+      // Basic validation
+      if (!cuttingData.roll_width) {
+        setValidationError("Roll width is required");
+        throw new Error("Roll width is required");
+      }
 
-    // Ensure status is one of the allowed JobStatus values
-    const status: JobStatus = cuttingData.status;
-
-    const { data: jobData, error: jobError } = await supabase
-      .from("cutting_jobs")
-      .insert({
+      // Convert string values to numbers
+      const formattedCuttingData = {
         job_card_id: jobCardId,
         roll_width: parseFloat(cuttingData.roll_width),
         consumption_meters: cuttingData.consumption_meters ? parseFloat(cuttingData.consumption_meters) : null,
-        worker_name: cuttingData.worker_name || null,
+        worker_name: cuttingData.worker_name,
         is_internal: cuttingData.is_internal,
-        status: status,
+        status: cuttingData.status,
         received_quantity: cuttingData.received_quantity ? parseInt(cuttingData.received_quantity) : null
-      })
-      .select()
-      .single();
+      };
 
-    if (jobError) throw jobError;
+      // Insert cutting job
+      const { data: cuttingJob, error: cuttingError } = await supabase
+        .from("cutting_jobs")
+        .insert(formattedCuttingData)
+        .select()
+        .single();
 
-    const componentsToInsert = componentData
-      .filter(comp => comp.width || comp.height || comp.counter || comp.rewinding)
-      .map(comp => ({
-        cutting_job_id: jobData.id,
-        component_id: comp.component_id,
-        component_type: comp.component_type,
-        width: comp.width ? parseFloat(comp.width) : null,
-        height: comp.height ? parseFloat(comp.height) : null,
-        counter: comp.counter ? parseFloat(comp.counter) : null,
-        rewinding: comp.rewinding ? parseFloat(comp.rewinding) : null,
-        rate: comp.rate ? parseFloat(comp.rate) : null,
-        status: comp.status,
-        notes: comp.notes || null
-      }));
+      if (cuttingError) throw cuttingError;
 
-    if (componentsToInsert.length > 0) {
-      const { error } = await supabase
-        .from("cutting_components")
-        .insert(componentsToInsert);
+      // Convert components data and insert
+      if (componentData.length > 0 && cuttingJob) {
+        const formattedComponents = componentData.map(comp => ({
+          component_id: comp.component_id,
+          cutting_job_id: cuttingJob.id,
+          width: comp.width ? parseFloat(comp.width) : null,
+          height: comp.height ? parseFloat(comp.height) : null,
+          counter: comp.counter ? parseFloat(comp.counter) : null,
+          rewinding: comp.rewinding ? parseFloat(comp.rewinding) : null,
+          rate: comp.rate ? parseFloat(comp.rate) : null,
+          status: comp.status,
+          notes: comp.notes || null
+        }));
 
-      if (error) throw error;
+        const { error: componentsError } = await supabase
+          .from("cutting_components")
+          .insert(formattedComponents);
+
+        if (componentsError) throw componentsError;
+      }
+
+      return cuttingJob;
+    } catch (error: any) {
+      console.error("Error creating cutting job:", error);
+      throw error;
+    } finally {
+      setSubmitting(false);
     }
-
-    return jobData;
   };
 
-  const updateCuttingJob = async (
-    jobId: string,
-    cuttingData: CuttingData,
-    componentData: CuttingComponent[]
-  ) => {
-    if (!validateCuttingData(cuttingData)) {
-      throw new Error("Validation failed");
-    }
+  const updateCuttingJob = async (jobId: string, cuttingData: CuttingData, componentData: CuttingComponent[]) => {
+    setSubmitting(true);
+    setValidationError(null);
 
-    // Ensure status is one of the allowed JobStatus values
-    const status: JobStatus = cuttingData.status;
-
-    const { error: jobError } = await supabase
-      .from("cutting_jobs")
-      .update({
+    try {
+      // Convert string values to numbers
+      const formattedCuttingData = {
         roll_width: parseFloat(cuttingData.roll_width),
         consumption_meters: cuttingData.consumption_meters ? parseFloat(cuttingData.consumption_meters) : null,
-        worker_name: cuttingData.worker_name || null,
+        worker_name: cuttingData.worker_name,
         is_internal: cuttingData.is_internal,
-        status: status,
+        status: cuttingData.status,
         received_quantity: cuttingData.received_quantity ? parseInt(cuttingData.received_quantity) : null
-      })
-      .eq("id", jobId);
+      };
 
-    if (jobError) throw jobError;
+      // Update cutting job
+      const { error: updateError } = await supabase
+        .from("cutting_jobs")
+        .update(formattedCuttingData)
+        .eq("id", jobId);
 
-    // Delete existing components
-    await supabase
-      .from("cutting_components")
-      .delete()
-      .eq("cutting_job_id", jobId);
+      if (updateError) throw updateError;
 
-    const componentsToInsert = componentData
-      .filter(comp => comp.width || comp.height || comp.counter || comp.rewinding)
-      .map(comp => ({
-        cutting_job_id: jobId,
-        component_id: comp.component_id,
-        component_type: comp.component_type,
-        width: comp.width ? parseFloat(comp.width) : null,
-        height: comp.height ? parseFloat(comp.height) : null,
-        counter: comp.counter ? parseFloat(comp.counter) : null,
-        rewinding: comp.rewinding ? parseFloat(comp.rewinding) : null,
-        rate: comp.rate ? parseFloat(comp.rate) : null,
-        status: comp.status,
-        notes: comp.notes || null
-      }));
-
-    if (componentsToInsert.length > 0) {
-      const { error } = await supabase
+      // First, delete existing components
+      const { error: deleteError } = await supabase
         .from("cutting_components")
-        .insert(componentsToInsert);
+        .delete()
+        .eq("cutting_job_id", jobId);
 
-      if (error) throw error;
+      if (deleteError) throw deleteError;
+
+      // Insert updated components
+      if (componentData.length > 0) {
+        const formattedComponents = componentData.map(comp => ({
+          component_id: comp.component_id,
+          cutting_job_id: jobId,
+          width: comp.width ? parseFloat(comp.width) : null,
+          height: comp.height ? parseFloat(comp.height) : null,
+          counter: comp.counter ? parseFloat(comp.counter) : null,
+          rewinding: comp.rewinding ? parseFloat(comp.rewinding) : null,
+          rate: comp.rate ? parseFloat(comp.rate) : null,
+          status: comp.status,
+          notes: comp.notes || null
+        }));
+
+        const { error: componentsError } = await supabase
+          .from("cutting_components")
+          .insert(formattedComponents);
+
+        if (componentsError) throw componentsError;
+      }
+
+      return true;
+    } catch (error: any) {
+      console.error("Error updating cutting job:", error);
+      throw error;
+    } finally {
+      setSubmitting(false);
     }
   };
 

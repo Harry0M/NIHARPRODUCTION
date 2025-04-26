@@ -10,7 +10,7 @@ import { CuttingStageList } from "@/components/production/stages/CuttingStageLis
 import { PrintingStageList } from "@/components/production/stages/PrintingStageList";
 import { StitchingStageList } from "@/components/production/stages/StitchingStageList";
 import { DispatchStageList } from "@/components/production/stages/DispatchStageList";
-import { JobsData } from "@/types/production";
+import { JobsData, JobStatus } from "@/types/production";
 
 const ProductionDashboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -138,7 +138,7 @@ const ProductionDashboard = () => {
             worker: job.is_internal ? 'Internal Team' : job.worker_name || 'External',
             material: 'Canvas - 150 GSM',
             consumption: job.consumption_meters || 0,
-            status: job.status,
+            status: job.status as JobStatus,
             daysLeft: Math.floor(Math.random() * 5) + 1, // Placeholder for urgency
             created_at: job.created_at
           };
@@ -160,7 +160,7 @@ const ProductionDashboard = () => {
             worker: job.is_internal ? 'Internal Team' : job.worker_name || 'External',
             design: '2 Color Print - Logo Front',
             screenStatus: 'Ready',
-            status: job.status,
+            status: job.status as JobStatus,
             daysLeft: Math.floor(Math.random() * 5) + 1,
             created_at: job.created_at
           };
@@ -183,7 +183,7 @@ const ProductionDashboard = () => {
             parts: progress > 50 ? 'Ready' : 'In Process',
             handles: progress > 70 ? 'Ready' : 'In Process',
             finishing: progress > 90 ? 'Ready' : 'Pending',
-            status: job.status,
+            status: job.status as JobStatus,
             daysLeft: Math.floor(Math.random() * 3) + 1,
             created_at: job.created_at
           };
@@ -198,7 +198,7 @@ const ProductionDashboard = () => {
           quantity: order.quantity,
           progress: 100,
           worker: 'Internal Team',
-          status: 'ready_for_dispatch',
+          status: 'pending' as JobStatus, // Convert string to JobStatus type
           created_at: order.created_at
         }));
 
