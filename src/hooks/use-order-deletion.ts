@@ -59,11 +59,13 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
         description: "The order and all related records have been removed.",
       });
       
-      // Allow state updates to complete before triggering any navigation
+      // Immediately navigate first to ensure the page refreshes
+      navigate('/orders');
+      
+      // Then call the callback after navigation
       setTimeout(() => {
         onOrderDeleted(deletedOrderId);
-        navigate('/orders'); // Add navigation to refresh the page
-      }, 0);
+      }, 100);
       
     } catch (error: any) {
       console.error("Error in deletion process:", error);
