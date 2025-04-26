@@ -196,22 +196,25 @@ export const useCuttingJob = (id: string): UseCuttingJobReturn => {
         if (error) throw error;
 
         if (data && data.length > 0) {
-          // Map database records to our component interface, explicitly getting component_type
-          const formattedComponents = data.map(comp => ({
-            component_id: comp.component_id || "",
-            component_type: comp.component_type || "", // Access component_type directly from the record
-            width: comp.width?.toString() || "",
-            height: comp.height?.toString() || "",
-            counter: comp.counter?.toString() || "",
-            rewinding: comp.rewinding?.toString() || "",
-            rate: comp.rate?.toString() || "",
-            status: comp.status || "pending",
-            material_type: comp.material_type || "",
-            material_color: comp.material_color || "",
-            material_gsm: comp.material_gsm?.toString() || "",
-            waste_quantity: comp.waste_quantity?.toString() || "",
-            notes: comp.notes || ""
-          }));
+          // Map database records to our component interface
+          const formattedComponents = data.map(comp => {
+            return {
+              component_id: comp.component_id || "",
+              // The component_type field must be retrieved directly from the database record
+              component_type: comp.component_type || "", 
+              width: comp.width?.toString() || "",
+              height: comp.height?.toString() || "",
+              counter: comp.counter?.toString() || "",
+              rewinding: comp.rewinding?.toString() || "",
+              rate: comp.rate?.toString() || "",
+              status: comp.status || "pending",
+              material_type: comp.material_type || "",
+              material_color: comp.material_color || "",
+              material_gsm: comp.material_gsm?.toString() || "",
+              waste_quantity: comp.waste_quantity?.toString() || "",
+              notes: comp.notes || ""
+            };
+          });
           setComponentData(formattedComponents);
         }
       } catch (error: any) {
