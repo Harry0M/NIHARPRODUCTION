@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -199,7 +200,8 @@ export function useOrderForm(): UseOrderFormReturn {
     try {
       // Prepare data for database insert
       const orderData = {
-        company_name: orderDetails.company_id ? null : orderDetails.company_name,
+        // Always provide the company_name from the form, regardless of whether company_id is set
+        company_name: orderDetails.company_name,
         company_id: orderDetails.company_id,
         quantity: parseInt(orderDetails.quantity),
         bag_length: parseFloat(orderDetails.bag_length),
