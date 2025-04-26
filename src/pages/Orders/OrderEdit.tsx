@@ -38,22 +38,12 @@ const OrderEdit = () => {
   
   const [formData, setFormData] = useState({
     company_name: "",
-    company_id: null as string | null,  // Add the missing company_id property
     quantity: "",
     bag_length: "",
     bag_width: "",
     rate: "",
     special_instructions: "",
     order_date: ""
-  });
-  
-  // Add formErrors state
-  const [formErrors, setFormErrors] = useState({
-    company: undefined,
-    quantity: undefined,
-    bag_length: undefined,
-    bag_width: undefined,
-    order_date: undefined
   });
   
   const [components, setComponents] = useState<ComponentData[]>([
@@ -82,7 +72,6 @@ const OrderEdit = () => {
         // Format order data for the form
         setFormData({
           company_name: orderData.company_name,
-          company_id: orderData.company_id,  // Include company_id in the form data
           quantity: orderData.quantity.toString(),
           bag_length: orderData.bag_length.toString(),
           bag_width: orderData.bag_width.toString(),
@@ -160,11 +149,6 @@ const OrderEdit = () => {
   const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
-    // Clear validation error when field is changed
-    if (formErrors[name as keyof typeof formErrors]) {
-      setFormErrors(prev => ({ ...prev, [name]: undefined }));
-    }
   };
 
   const handleComponentChange = (index: number, field: string, value: string) => {
@@ -200,52 +184,21 @@ const OrderEdit = () => {
   };
 
   const validateForm = () => {
-    const errors = {
-      company: undefined,
-      quantity: undefined,
-      bag_length: undefined,
-      bag_width: undefined,
-      order_date: undefined
-    };
-    
-    let isValid = true;
-    
-    if (!formData.company_name) {
-      errors.company = "Company name is required";
-      isValid = false;
-    }
-    
-    if (!formData.quantity || parseInt(formData.quantity) <= 0) {
-      errors.quantity = "Valid quantity is required";
-      isValid = false;
-    }
-    
-    if (!formData.bag_length || parseFloat(formData.bag_length) <= 0) {
-      errors.bag_length = "Valid bag length is required";
-      isValid = false;
-    }
-    
-    if (!formData.bag_width || parseFloat(formData.bag_width) <= 0) {
-      errors.bag_width = "Valid bag width is required";
-      isValid = false;
-    }
-    
-    if (!formData.order_date) {
-      errors.order_date = "Order date is required";
-      isValid = false;
-    }
-    
-    setFormErrors(errors);
-    return isValid;
+    if (!formData.company_name) return "Company name is required";
+    if (!formData.quantity || parseInt(formData.quantity) <= 0) return "Valid quantity is required";
+    if (!formData.bag_length || parseFloat(formData.bag_length) <= 0) return "Valid bag length is required";
+    if (!formData.bag_width || parseFloat(formData.bag_width) <= 0) return "Valid bag width is required";
+    return null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) {
+    const validationError = validateForm();
+    if (validationError) {
       toast({
         title: "Validation Error",
-        description: "Please correct the highlighted fields",
+        description: validationError,
         variant: "destructive"
       });
       return;
@@ -259,7 +212,6 @@ const OrderEdit = () => {
         .from("orders")
         .update({
           company_name: formData.company_name,
-          company_id: formData.company_id,  // Include company_id in the update
           quantity: parseInt(formData.quantity),
           bag_length: parseFloat(formData.bag_length),
           bag_width: parseFloat(formData.bag_width),
@@ -355,7 +307,6 @@ const OrderEdit = () => {
         <OrderDetailsForm 
           formData={formData}
           handleOrderChange={handleOrderChange}
-          formErrors={formErrors}
         />
 
         <Card>
