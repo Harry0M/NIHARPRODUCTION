@@ -9,6 +9,16 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -24,6 +34,10 @@ interface Company {
 
 const CompanyList = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; companyId: string | null }>({
+    isOpen: false,
+    companyId: null
+  });
   const navigate = useNavigate();
 
   // Fetch companies on component mount
@@ -65,6 +79,7 @@ const CompanyList = () => {
         title: "Success",
         description: "Company deleted successfully",
       });
+      setDeleteDialog({ isOpen: false, companyId: null });
       fetchCompanies(); // Refresh the list
     }
   };
@@ -111,7 +126,7 @@ const CompanyList = () => {
                 <Button 
                   variant="destructive" 
                   size="sm"
-                  onClick={() => handleDeleteCompany(company.id)}
+                  onClick={() => setDeleteDialog({ isOpen: true, companyId: company.id })}
                 >
                   <Trash2 size={16} />
                 </Button>
@@ -120,6 +135,30 @@ const CompanyList = () => {
           ))}
         </TableBody>
       </Table>
+
+      <AlertDialog 
+        open={deleteDialog.isOpen} 
+        onOpenChange={(isOpen) => setDeleteDialog({ isOpen, companyId: null })}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the company
+              and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteDialog.companyId && handleDeleteCompany(deleteDialog.companyId)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

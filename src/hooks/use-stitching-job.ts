@@ -66,7 +66,7 @@ export const useStitchingJob = (jobCardId: string | undefined) => {
       if (jobCardError) throw jobCardError;
       if (!jobCardData) throw new Error("Job card not found");
       
-      setJobCard(jobCardData as unknown as JobCard);
+      setJobCard(jobCardData as JobCard);
       
       const { data: stitchingJobs, error: stitchingJobsError } = await supabase
         .from('stitching_jobs')
@@ -98,34 +98,57 @@ export const useStitchingJob = (jobCardId: string | undefined) => {
         description: "Job card information is missing",
         variant: "destructive",
       });
-      return;
+      return false;
     }
     
     setLoading(true);
     
     try {
+      // Convert date objects to strings and ensure numeric fields are properly formatted
       const stitchingJobData = {
         job_card_id: jobCardId,
-        ...values,
+        total_quantity: values.total_quantity ? Number(values.total_quantity) : null,
+        part_quantity: values.part_quantity ? Number(values.part_quantity) : null,
+        border_quantity: values.border_quantity ? Number(values.border_quantity) : null,
+        handle_quantity: values.handle_quantity ? Number(values.handle_quantity) : null,
+        chain_quantity: values.chain_quantity ? Number(values.chain_quantity) : null,
+        runner_quantity: values.runner_quantity ? Number(values.runner_quantity) : null,
+        piping_quantity: values.piping_quantity ? Number(values.piping_quantity) : null,
         start_date: values.start_date ? format(values.start_date, 'yyyy-MM-dd') : null,
         expected_completion_date: values.expected_completion_date ? format(values.expected_completion_date, 'yyyy-MM-dd') : null,
+        notes: values.notes || null,
+        worker_name: values.worker_name || null,
+        is_internal: values.is_internal,
+        status: values.status,
+        rate: values.rate ? Number(values.rate) : null
       };
 
+      console.log('Submitting stitching job data:', stitchingJobData);
+
+      let result;
       if (selectedJobId) {
-        await supabase
+        const { data, error } = await supabase
           .from('stitching_jobs')
           .update(stitchingJobData)
           .eq('id', selectedJobId);
           
+        if (error) throw error;
+        result = data;
+        
         toast({
           title: "Job Updated",
           description: "The stitching job has been updated successfully",
         });
       } else {
-        await supabase
+        const { data, error } = await supabase
           .from('stitching_jobs')
-          .insert(stitchingJobData);
+          .insert(stitchingJobData)
+          .select()
+          .single();
           
+        if (error) throw error;
+        result = data;
+        
         toast({
           title: "Job Created",
           description: "The stitching job has been created successfully",
@@ -144,9 +167,12 @@ export const useStitchingJob = (jobCardId: string | undefined) => {
           .eq('id', jobCard.order.order_number);
       }
         
+      // Refresh job data
+      await fetchJobCard(jobCardId);
       return true;
       
     } catch (error: any) {
+      console.error('Error saving stitching job:', error);
       toast({
         title: "Error saving job",
         description: error.message,
