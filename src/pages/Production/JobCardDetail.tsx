@@ -7,6 +7,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { Component } from "@/types/order";
+import { TimelineJob } from "@/types/production";
 import { OrderInfoCard } from "./JobCardDetail/OrderInfoCard";
 import { ProductionTimelineCard } from "./JobCardDetail/ProductionTimelineCard";
 import { ProductionProgressCard } from "./JobCardDetail/ProductionProgressCard";
@@ -175,6 +176,19 @@ const JobCardDetail = () => {
     );
   };
 
+  // Transform job data to TimelineJob format
+  const mapToTimelineJobs = (jobs: any[], jobType: string): TimelineJob[] => {
+    return jobs.map(job => ({
+      id: job.id,
+      type: jobType,
+      status: job.status,
+      created_at: job.created_at,
+      worker_name: job.worker_name,
+      is_internal: job.is_internal
+    }));
+  };
+
+  // When rendering ProductionTimelineCard, transform the jobs
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
@@ -226,9 +240,9 @@ const JobCardDetail = () => {
             stitchingCount={jobCard.stitching_jobs?.length || 0}
             handleCreateProcess={handleCreateProcess}
             navigateDispatch={() => navigate("/dispatch")}
-            cuttingJobs={jobCard.cutting_jobs}
-            printingJobs={jobCard.printing_jobs}
-            stitchingJobs={jobCard.stitching_jobs}
+            cuttingJobs={mapToTimelineJobs(jobCard.cutting_jobs || [], 'cutting')}
+            printingJobs={mapToTimelineJobs(jobCard.printing_jobs || [], 'printing')}
+            stitchingJobs={mapToTimelineJobs(jobCard.stitching_jobs || [], 'stitching')}
           />
           <ProductionProgressCard
             cuttingJobs={jobCard.cutting_jobs || []}

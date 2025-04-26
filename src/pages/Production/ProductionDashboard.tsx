@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -38,6 +39,7 @@ const ProductionDashboard = () => {
             status,
             roll_width,
             consumption_meters,
+            created_at,
             job_cards(
               id,
               job_name,
@@ -66,6 +68,7 @@ const ProductionDashboard = () => {
             status,
             gsm,
             pulling,
+            created_at,
             job_cards(
               id,
               job_name,
@@ -93,6 +96,7 @@ const ProductionDashboard = () => {
             worker_name,
             status,
             total_quantity,
+            created_at,
             job_cards(
               id,
               job_name,
@@ -135,7 +139,8 @@ const ProductionDashboard = () => {
             material: 'Canvas - 150 GSM',
             consumption: job.consumption_meters || 0,
             status: job.status,
-            daysLeft: Math.floor(Math.random() * 5) + 1 // Placeholder for urgency
+            daysLeft: Math.floor(Math.random() * 5) + 1, // Placeholder for urgency
+            created_at: job.created_at
           };
         });
 
@@ -156,7 +161,8 @@ const ProductionDashboard = () => {
             design: '2 Color Print - Logo Front',
             screenStatus: 'Ready',
             status: job.status,
-            daysLeft: Math.floor(Math.random() * 5) + 1
+            daysLeft: Math.floor(Math.random() * 5) + 1,
+            created_at: job.created_at
           };
         });
 
@@ -178,7 +184,8 @@ const ProductionDashboard = () => {
             handles: progress > 70 ? 'Ready' : 'In Process',
             finishing: progress > 90 ? 'Ready' : 'Pending',
             status: job.status,
-            daysLeft: Math.floor(Math.random() * 3) + 1
+            daysLeft: Math.floor(Math.random() * 3) + 1,
+            created_at: job.created_at
           };
         });
 
@@ -191,7 +198,8 @@ const ProductionDashboard = () => {
           quantity: order.quantity,
           progress: 100,
           worker: 'Internal Team',
-          status: 'ready_for_dispatch'
+          status: 'ready_for_dispatch',
+          created_at: order.created_at
         }));
 
         setJobs({

@@ -1,3 +1,4 @@
+
 export type JobStatus = "pending" | "in_progress" | "completed";
 
 export interface TimelineJob {
@@ -7,20 +8,35 @@ export interface TimelineJob {
   created_at: string;
   worker_name?: string;
   is_internal?: boolean;
+  job_number?: string;
 }
 
 export interface JobData {
   id: string;
+  jobCardId: string;
+  order: string;
+  product: string;
+  quantity: number;
+  progress: number;
+  worker: string;
   status: JobStatus;
-  worker_name?: string;
-  is_internal?: boolean;
   created_at: string;
+  is_internal?: boolean;
+  daysLeft?: number;
+  material?: string;
+  consumption?: number;
+  design?: string;
+  screenStatus?: string;
+  parts?: string;
+  handles?: string;
+  finishing?: string;
 }
 
 export interface JobsData {
   cutting: JobData[];
   printing: JobData[];
   stitching: JobData[];
+  dispatch: JobData[];
 }
 
 export interface CuttingComponent {

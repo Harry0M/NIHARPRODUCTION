@@ -48,7 +48,15 @@ export const useCuttingJobData = (id: string) => {
         .single();
 
       if (jobCardError) throw jobCardError;
-      setJobCard(jobCardData);
+      
+      // Transform jobCardData to match the JobCard interface
+      const formattedJobCard: JobCard = {
+        id: jobCardData.id,
+        job_name: jobCardData.job_name,
+        order: jobCardData.orders
+      };
+      
+      setJobCard(formattedJobCard);
 
       const { data: componentsData, error: componentsError } = await supabase
         .from("order_components")

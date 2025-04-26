@@ -2,14 +2,14 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { CuttingComponent } from "@/types/production";
+import { CuttingComponent, JobStatus } from "@/types/production";
 
 interface CuttingData {
   roll_width: string;
   consumption_meters: string;
   worker_name: string;
   is_internal: boolean;
-  status: string;
+  status: JobStatus;
   received_quantity: string;
 }
 
@@ -34,6 +34,9 @@ export const useCuttingJobSubmit = () => {
       throw new Error("Validation failed");
     }
 
+    // Ensure status is one of the allowed JobStatus values
+    const status: JobStatus = cuttingData.status;
+
     const { data: jobData, error: jobError } = await supabase
       .from("cutting_jobs")
       .insert({
@@ -42,7 +45,7 @@ export const useCuttingJobSubmit = () => {
         consumption_meters: cuttingData.consumption_meters ? parseFloat(cuttingData.consumption_meters) : null,
         worker_name: cuttingData.worker_name || null,
         is_internal: cuttingData.is_internal,
-        status: cuttingData.status,
+        status: status,
         received_quantity: cuttingData.received_quantity ? parseInt(cuttingData.received_quantity) : null
       })
       .select()
@@ -85,6 +88,9 @@ export const useCuttingJobSubmit = () => {
       throw new Error("Validation failed");
     }
 
+    // Ensure status is one of the allowed JobStatus values
+    const status: JobStatus = cuttingData.status;
+
     const { error: jobError } = await supabase
       .from("cutting_jobs")
       .update({
@@ -92,7 +98,7 @@ export const useCuttingJobSubmit = () => {
         consumption_meters: cuttingData.consumption_meters ? parseFloat(cuttingData.consumption_meters) : null,
         worker_name: cuttingData.worker_name || null,
         is_internal: cuttingData.is_internal,
-        status: cuttingData.status,
+        status: status,
         received_quantity: cuttingData.received_quantity ? parseInt(cuttingData.received_quantity) : null
       })
       .eq("id", jobId);
