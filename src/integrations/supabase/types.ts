@@ -927,7 +927,7 @@ export type Database = {
     }
     Functions: {
       delete_company: {
-        Args: { company_id: string }
+        Args: { input_company_id: string }
         Returns: boolean
       }
       delete_order_completely: {

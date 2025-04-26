@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -85,7 +86,7 @@ const CompanyList = () => {
       
       const { data, error } = await supabase.rpc(
         'delete_company', 
-        { input_company_id: companyId }
+        { input_company_id: companyId }  // Updated parameter name
       );
       
       if (error) {
