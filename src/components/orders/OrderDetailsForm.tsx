@@ -42,7 +42,7 @@ interface OrderDetailsFormProps {
   };
 }
 
-export const OrderDetailsForm = ({ 
+const OrderDetailsForm = ({ 
   formData, 
   handleOrderChange, 
   onProductSelect,
@@ -88,13 +88,22 @@ export const OrderDetailsForm = ({
 
   const handleCompanySelect = (companyId: string | null) => {
     if (companyId && companyId !== "no_selection") {
-      // Only set company_id, don't set company_name
-      handleOrderChange({
-        target: {
-          name: 'company_id',
-          value: companyId
-        }
-      });
+      const selectedCompany = companies.find(c => c.id === companyId);
+      if (selectedCompany) {
+        handleOrderChange({
+          target: {
+            name: 'company_id',
+            value: companyId
+          }
+        });
+        // Update company name when selecting from dropdown
+        handleOrderChange({
+          target: {
+            name: 'company_name',
+            value: selectedCompany.name
+          }
+        });
+      }
     } else {
       // Clear company_id when no company is selected
       handleOrderChange({ target: { name: 'company_id', value: null } });
@@ -127,6 +136,28 @@ export const OrderDetailsForm = ({
 
         {/* Company section */}
         <div className="space-y-4 border-b pb-4">
+          <div className="space-y-2">
+            <Label htmlFor="company_select">
+              Select Existing Company (Optional)
+            </Label>
+            <Select 
+              value={formData.company_id || "no_selection"} 
+              onValueChange={(value) => handleCompanySelect(value === "no_selection" ? null : value)}
+            >
+              <SelectTrigger id="company_select">
+                <SelectValue placeholder="Select a company" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="no_selection">-- Select a company --</SelectItem>
+                {companies.map((company) => (
+                  <SelectItem key={company.id} value={company.id}>
+                    {company.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="company_name" className="flex items-center gap-1">
               Company Name
@@ -272,3 +303,5 @@ export const OrderDetailsForm = ({
     </Card>
   );
 };
+
+export default OrderDetailsForm;
