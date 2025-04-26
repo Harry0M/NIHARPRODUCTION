@@ -6,7 +6,7 @@ export type OrderStatus = Database["public"]["Enums"]["order_status"];
 export interface Order {
   id: string;
   order_number: string;
-  company_name: string | null;
+  company_name: string;
   company_id: string | null;
   quantity: number;
   bag_length: number;
@@ -15,4 +15,5 @@ export interface Order {
   status: OrderStatus;
   rate: number | null;
   created_at: string;
+  special_instructions?: string | null;
 }

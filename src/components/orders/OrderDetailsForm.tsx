@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,13 +81,11 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
     }
   };
 
-  // Handle company selection - update company_id and clear company_name
   const handleCompanySelect = (companyId: string) => {
     if (companyId) {
       const selectedCompany = companies.find(c => c.id === companyId);
       
       if (selectedCompany) {
-        // Set company_id
         handleOrderChange({
           target: {
             name: 'company_id',
@@ -96,26 +93,23 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
           }
         });
         
-        // Important: When selecting an existing company, we need to clear the company_name
-        // AND set the visible company name for display purposes
         handleOrderChange({
           target: {
             name: 'company_name',
-            value: ''
+            value: selectedCompany.name
           }
         });
       }
     } else {
-      // If no company is selected, clear both fields
+      // Clear both fields when no company is selected
       handleOrderChange({ target: { name: 'company_id', value: '' } });
+      handleOrderChange({ target: { name: 'company_name', value: '' } });
     }
   };
 
-  // When entering a manual company name, clear the company_id
+  // Handle manual company name input
   const handleCompanyNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Update company_name with the input value
     handleOrderChange(e);
-    
     // Clear company_id when manually entering a name
     if (e.target.value) {
       handleOrderChange({
@@ -138,7 +132,7 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
         <CardDescription>Enter the basic information for this order</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Add product selection dropdown */}
+        {/* Product selection dropdown */}
         <div className="space-y-2">
           <Label>Select Product (Optional)</Label>
           <Select onValueChange={handleProductSelect}>
@@ -155,51 +149,56 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
           </Select>
         </div>
 
-        {/* Company selection dropdown */}
-        <div className="space-y-2">
-          <Label htmlFor="company_select">Select Existing Company</Label>
-          <Select 
-            value={formData.company_id || ""} 
-            onValueChange={handleCompanySelect}
-          >
-            <SelectTrigger id="company_select">
-              <SelectValue placeholder="Select a company" />
-            </SelectTrigger>
-            <SelectContent>
-              {companies.map((company) => (
-                <SelectItem key={company.id} value={company.id}>
-                  {company.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">Select an existing company or enter a new one below</p>
+        {/* Company selection section */}
+        <div className="space-y-4 border-b pb-4">
+          <div className="space-y-2">
+            <Label htmlFor="company_select">
+              Select Existing Company
+            </Label>
+            <Select 
+              value={formData.company_id || ""} 
+              onValueChange={handleCompanySelect}
+            >
+              <SelectTrigger id="company_select">
+                <SelectValue placeholder="Select a company" />
+              </SelectTrigger>
+              <SelectContent>
+                {companies.map((company) => (
+                  <SelectItem key={company.id} value={company.id}>
+                    {company.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="company_name" className="flex items-center gap-1">
+              Company Name
+              <span className="text-destructive">*</span>
+            </Label>
+            <Input 
+              id="company_name" 
+              name="company_name"
+              value={formData.company_name}
+              onChange={handleCompanyNameChange}
+              placeholder="Enter company name"
+              required
+              className={!formData.company_name ? "border-destructive" : ""}
+            />
+            {!formData.company_name && (
+              <p className="text-xs text-destructive">Company name is required</p>
+            )}
+          </div>
         </div>
 
-        {/* Company name field - only needed if not selecting from dropdown */}
-        <div className="space-y-2">
-          <Label htmlFor="company_name">
-            New Company Name {!isUsingExistingCompany && <span className="text-destructive">*</span>}
-          </Label>
-          <Input 
-            id="company_name" 
-            name="company_name"
-            value={formData.company_name}
-            onChange={handleCompanyNameChange}
-            placeholder="Enter new company name"
-            required={!isUsingExistingCompany}
-            disabled={isUsingExistingCompany}
-          />
-          <p className="text-xs text-muted-foreground">
-            {isUsingExistingCompany 
-              ? "Using selected company from dropdown" 
-              : "Enter new company name when not selecting from dropdown"}
-          </p>
-        </div>
-
+        {/* Order details section */}
         <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="quantity">Order Quantity *</Label>
+            <Label htmlFor="quantity" className="flex items-center gap-1">
+              Order Quantity
+              <span className="text-destructive">*</span>
+            </Label>
             <Input 
               id="quantity" 
               name="quantity"
@@ -208,7 +207,12 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
               onChange={handleOrderChange}
               placeholder="Number of bags"
               required
+              className={!formData.quantity ? "border-destructive" : ""}
+              min="1"
             />
+            {!formData.quantity && (
+              <p className="text-xs text-destructive">Quantity is required</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="order_date">Order Date</Label>
@@ -218,7 +222,6 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
               type="date"
               value={formData.order_date}
               onChange={handleOrderChange}
-              placeholder="Order date"
               required
             />
           </div>
@@ -226,7 +229,10 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
 
         <div className="grid md:grid-cols-3 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="bag_length">Bag Length (inches) *</Label>
+            <Label htmlFor="bag_length" className="flex items-center gap-1">
+              Bag Length (inches)
+              <span className="text-destructive">*</span>
+            </Label>
             <Input 
               id="bag_length" 
               name="bag_length"
@@ -236,10 +242,18 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
               onChange={handleOrderChange}
               placeholder="Length in inches"
               required
+              className={!formData.bag_length ? "border-destructive" : ""}
+              min="0"
             />
+            {!formData.bag_length && (
+              <p className="text-xs text-destructive">Length is required</p>
+            )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="bag_width">Bag Width (inches) *</Label>
+            <Label htmlFor="bag_width" className="flex items-center gap-1">
+              Bag Width (inches)
+              <span className="text-destructive">*</span>
+            </Label>
             <Input 
               id="bag_width" 
               name="bag_width"
@@ -249,7 +263,12 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
               onChange={handleOrderChange}
               placeholder="Width in inches"
               required
+              className={!formData.bag_width ? "border-destructive" : ""}
+              min="0"
             />
+            {!formData.bag_width && (
+              <p className="text-xs text-destructive">Width is required</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="rate">Rate per Bag</Label>
@@ -261,6 +280,7 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
               value={formData.rate}
               onChange={handleOrderChange}
               placeholder="Price per bag"
+              min="0"
             />
           </div>
         </div>
@@ -279,4 +299,4 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
       </CardContent>
     </Card>
   );
-}
+};
