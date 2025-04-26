@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { ArrowLeft, Printer, Plus } from "lucide-react";
@@ -5,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { usePrintingJob } from "@/hooks/use-printing-job";
 import { JobStatus, PrintingJobData } from "@/types/production";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PrintingJobForm } from "@/components/production/printing/PrintingJobForm";
 
 export default function PrintingJob() {
   const { id } = useParams();
-  const { submitting, createPrintingJob } = usePrintingJob();
+  const queryClient = useQueryClient();
+  const { submitting, createPrintingJob, updatePrintingJob } = usePrintingJob();
   const [showNewJobForm, setShowNewJobForm] = useState(true);
 
   const { data: jobCard, isLoading: jobCardLoading } = useQuery({
@@ -63,15 +65,28 @@ export default function PrintingJob() {
         rate: String(formData.rate || '0'),
       };
 
-      await createPrintingJob(id!, printingJobData);
-      toast({
-        title: "Success",
-        description: "Printing job created successfully",
-      });
-      setShowNewJobForm(false);
+      if (formData.id) {
+        // Update existing job
+        await updatePrintingJob(formData.id, printingJobData);
+        toast({
+          title: "Success",
+          description: "Printing job updated successfully",
+        });
+      } else {
+        // Create new job
+        await createPrintingJob(id!, printingJobData);
+        toast({
+          title: "Success",
+          description: "Printing job created successfully",
+        });
+        setShowNewJobForm(false);
+      }
+      
+      // Force refresh data
+      queryClient.invalidateQueries({ queryKey: ['printing-jobs', id] });
     } catch (error: any) {
       toast({
-        title: "Error creating printing job",
+        title: "Error saving printing job",
         description: error.message,
         variant: "destructive"
       });
@@ -148,6 +163,7 @@ export default function PrintingJob() {
               key={job.id}
               initialData={{
                 ...job,
+                id: job.id,
                 sheet_length: String(job.sheet_length),
                 sheet_width: String(job.sheet_width),
                 rate: String(job.rate || '0')

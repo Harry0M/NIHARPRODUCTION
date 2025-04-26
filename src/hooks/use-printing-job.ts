@@ -20,8 +20,10 @@ export const usePrintingJob = () => {
         rate: parseFloat(printingData.rate) || null,
         status: printingData.status,
         expected_completion_date: printingData.expected_completion_date || null,
-        print_image: printingData.print_image
+        print_image: printingData.print_image || null
       };
+
+      console.log("Creating printing job with data:", formattedData);
 
       const { error } = await supabase
         .from("printing_jobs")
@@ -50,8 +52,10 @@ export const usePrintingJob = () => {
         rate: parseFloat(printingData.rate) || null,
         status: printingData.status,
         expected_completion_date: printingData.expected_completion_date || null,
-        print_image: printingData.print_image
+        print_image: printingData.print_image || null
       };
+
+      console.log("Updating printing job with data:", formattedData);
 
       const { error } = await supabase
         .from("printing_jobs")

@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
 import { JobStatus } from "@/types/production";
+import { usePrintImage } from "@/hooks/use-print-image";
 
 interface PrintingFormData {
   pulling: string;
@@ -44,6 +45,7 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
   onCancel,
   isSubmitting
 }) => {
+  const { uploadImage, uploading } = usePrintImage();
   const [formData, setFormData] = useState<PrintingFormData>(() => ({
     pulling: initialData?.pulling || "",
     gsm: initialData?.gsm || "",
@@ -56,6 +58,7 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
     expected_completion_date: initialData?.expected_completion_date || "",
     print_image: initialData?.print_image || ""
   }));
+  const [imagePreview, setImagePreview] = useState<string | null>(initialData?.print_image || null);
 
   useEffect(() => {
     // Update sheet dimensions when bag dimensions change
@@ -65,6 +68,28 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
       sheet_width: String(bagDimensions.width || prev.sheet_width)
     }));
   }, [bagDimensions]);
+
+  useEffect(() => {
+    // Update image preview when initialData changes
+    if (initialData?.print_image) {
+      setImagePreview(initialData.print_image);
+    }
+  }, [initialData]);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const imageUrl = await uploadImage(file);
+      if (imageUrl) {
+        setImagePreview(imageUrl);
+        setFormData(prev => ({ ...prev, print_image: imageUrl }));
+      }
+    } catch (error) {
+      console.error("Error uploading image:", error);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -198,19 +223,25 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
               id="print_image"
               type="file"
               accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  // Handle file upload logic here
-                }
-              }}
+              onChange={handleImageUpload}
+              disabled={uploading}
             />
-            {formData.print_image && (
-              <img 
-                src={formData.print_image} 
-                alt="Print design preview" 
-                className="max-w-sm rounded-lg border"
-              />
+            {uploading && (
+              <div className="text-sm text-muted-foreground">Uploading image...</div>
+            )}
+            {imagePreview && (
+              <div className="mt-2">
+                <img 
+                  src={imagePreview} 
+                  alt="Print design preview" 
+                  className="max-w-sm rounded-lg border"
+                />
+                <input 
+                  type="hidden" 
+                  name="print_image" 
+                  value={formData.print_image} 
+                />
+              </div>
             )}
           </div>
         </CardContent>
@@ -220,11 +251,11 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
             type="button"
             variant="outline"
             onClick={onCancel}
-            disabled={isSubmitting}
+            disabled={isSubmitting || uploading}
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting || uploading}>
             {isSubmitting ? "Saving..." : "Save Printing Job"}
           </Button>
         </CardFooter>

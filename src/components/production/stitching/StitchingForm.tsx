@@ -10,6 +10,7 @@ import { WorkerFields } from "./form/WorkerFields";
 import { StatusFields } from "./form/StatusFields";
 import { NotesField } from "./form/NotesField";
 import { stitchingFormSchema, StitchingFormValues } from "./form/types";
+import { useEffect } from "react";
 
 interface StitchingFormProps {
   defaultValues: StitchingFormValues;
@@ -30,10 +31,23 @@ export const StitchingForm = ({
     resolver: zodResolver(stitchingFormSchema),
     defaultValues
   });
+  
+  // Reset form when defaultValues change to ensure saved data is always displayed
+  useEffect(() => {
+    if (defaultValues) {
+      console.log("Resetting form with values:", defaultValues);
+      form.reset(defaultValues);
+    }
+  }, [defaultValues, form]);
+
+  const handleFormSubmit = async (values: StitchingFormValues) => {
+    console.log("Submitting form with values:", values);
+    await onSubmit(values);
+  };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Stitching Details</CardTitle>
