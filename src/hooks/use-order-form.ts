@@ -152,8 +152,29 @@ export function useOrderForm(): UseOrderFormReturn {
     setSubmitting(true);
     
     try {
+      // Fix: When company_id is provided, we need to get the company_name from the selected company
+      // instead of setting it to null
+      let orderCompanyName = company_name;
+      
+      // If we have a company_id but no company_name, fetch the company name
+      if (company_id && !company_name) {
+        const { data: companyData, error: companyError } = await supabase
+          .from("companies")
+          .select("name")
+          .eq("id", company_id)
+          .single();
+          
+        if (companyError) {
+          throw new Error("Could not fetch company information");
+        }
+        
+        if (companyData) {
+          orderCompanyName = companyData.name;
+        }
+      }
+
       const orderData = {
-        company_name: company_id ? null : company_name,
+        company_name: orderCompanyName, // Use the fetched company name or provided name
         company_id: company_id || null,
         quantity: parseInt(quantity),
         bag_length: parseFloat(bag_length),
@@ -167,7 +188,7 @@ export function useOrderForm(): UseOrderFormReturn {
       
       const { data: orderData2, error: orderError } = await supabase
         .from("orders")
-        .insert(orderData as any)
+        .insert(orderData)
         .select('id, order_number')
         .single();
       
@@ -190,7 +211,7 @@ export function useOrderForm(): UseOrderFormReturn {
 
         const { error: componentsError } = await supabase
           .from("order_components")
-          .insert(componentsToInsert as any);
+          .insert(componentsToInsert);
         
         if (componentsError) {
           console.error("Error saving components:", componentsError);

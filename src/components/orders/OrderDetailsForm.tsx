@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -95,7 +94,7 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
         }
       });
       
-      // Update company_name
+      // Also update company_name
       handleOrderChange({
         target: {
           name: 'company_name',
@@ -107,16 +106,18 @@ export const OrderDetailsForm = ({ formData, handleOrderChange, onProductSelect 
 
   // Clear company_id when manually entering a company name
   const handleCompanyNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Clear company_id to ensure we use the manually entered name
-    handleOrderChange({
-      target: {
-        name: 'company_id',
-        value: ''
-      }
-    });
-    
     // Update company_name with the input value
     handleOrderChange(e);
+    
+    // Clear company_id only if we're entering a new name
+    if (e.target.value && e.target.value !== formData.company_name) {
+      handleOrderChange({
+        target: {
+          name: 'company_id',
+          value: ''
+        }
+      });
+    }
   };
 
   return (
