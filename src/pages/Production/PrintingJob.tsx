@@ -60,6 +60,7 @@ export default function PrintingJob() {
       // Ensure all numeric fields are converted to strings
       const printingJobData: PrintingJobData = {
         ...formData,
+        job_card_id: id!, // Use the id from params as job_card_id
         sheet_length: String(formData.sheet_length),
         sheet_width: String(formData.sheet_width),
         rate: String(formData.rate || '0'),
@@ -162,11 +163,18 @@ export default function PrintingJob() {
             <PrintingJobForm
               key={job.id}
               initialData={{
-                ...job,
                 id: job.id,
-                sheet_length: String(job.sheet_length),
-                sheet_width: String(job.sheet_width),
-                rate: String(job.rate || '0')
+                job_card_id: job.job_card_id,
+                pulling: job.pulling || "",
+                gsm: job.gsm || "",
+                sheet_length: String(job.sheet_length || ""),
+                sheet_width: String(job.sheet_width || ""),
+                worker_name: job.worker_name || "",
+                is_internal: job.is_internal || false,
+                rate: String(job.rate || '0'),
+                status: job.status || "pending",
+                expected_completion_date: job.expected_completion_date || "",
+                print_image: job.print_image || ""
               }}
               bagDimensions={{
                 length: jobCard.orders.bag_length,

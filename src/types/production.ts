@@ -1,3 +1,4 @@
+
 export type JobStatus = "pending" | "in_progress" | "completed";
 
 export interface TimelineJob {
@@ -52,12 +53,12 @@ export interface CuttingComponent {
 }
 
 export interface PrintingJobData {
-  id?: string;
+  id?: string;  // Add id as an optional property
   job_card_id: string;
   pulling: string;
   gsm: string;
-  sheet_length: string;  // Explicitly define as string
-  sheet_width: string;   // Explicitly define as string
+  sheet_length: string;  
+  sheet_width: string;   
   worker_name: string;
   is_internal: boolean;
   rate: string;

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -15,6 +14,7 @@ import { JobStatus } from "@/types/production";
 import { usePrintImage } from "@/hooks/use-print-image";
 
 interface PrintingFormData {
+  id?: string; // Add id as an optional property
   pulling: string;
   gsm: string;
   sheet_length: string;
@@ -56,7 +56,8 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
     rate: initialData?.rate || "",
     status: initialData?.status || "pending",
     expected_completion_date: initialData?.expected_completion_date || "",
-    print_image: initialData?.print_image || ""
+    print_image: initialData?.print_image || "",
+    id: initialData?.id // Include id when initializing formData
   }));
   const [imagePreview, setImagePreview] = useState<string | null>(initialData?.print_image || null);
 
@@ -73,6 +74,11 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
     // Update image preview when initialData changes
     if (initialData?.print_image) {
       setImagePreview(initialData.print_image);
+    }
+    
+    // Also update id if present in initialData
+    if (initialData?.id) {
+      setFormData(prev => ({ ...prev, id: initialData.id }));
     }
   }, [initialData]);
 
