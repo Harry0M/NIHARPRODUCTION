@@ -24,6 +24,9 @@ export const BatchForm = ({
   onBatchChange,
   onBatchDelete,
 }: BatchFormProps) => {
+  // Calculate the maximum allowed quantity for this batch
+  const maxQuantity = batch.quantity + remainingQuantity;
+
   return (
     <Card>
       <CardHeader className="py-4">
@@ -50,11 +53,11 @@ export const BatchForm = ({
               value={batch.quantity}
               onChange={(e) => onBatchChange(index, 'quantity', Number(e.target.value))}
               min="1"
-              max={remainingQuantity}
+              max={maxQuantity}
               required
             />
             <p className="text-xs text-muted-foreground">
-              Maximum available: {remainingQuantity}
+              Available: {remainingQuantity} (Max: {maxQuantity})
             </p>
           </div>
           <div className="space-y-2">
