@@ -88,11 +88,8 @@ export default function OrderDetailsForm({
 
   const handleCompanySelect = (companyId: string | null) => {
     if (companyId && companyId !== "no_selection") {
-      const selectedCompany = companies.find(c => c.id === companyId);
-      if (selectedCompany) {
-        handleOrderChange({ target: { name: 'company_id', value: companyId } });
-        handleOrderChange({ target: { name: 'company_name', value: selectedCompany.name } });
-      }
+      // Only set the company_id, do not auto-fill the company name
+      handleOrderChange({ target: { name: 'company_id', value: companyId } });
     } else {
       handleOrderChange({ target: { name: 'company_id', value: null } });
     }
@@ -126,7 +123,10 @@ export default function OrderDetailsForm({
         <div className="space-y-4 border-b pb-4">
           <div className="space-y-2">
             <Label>Select Company (Optional)</Label>
-            <Select onValueChange={handleCompanySelect}>
+            <Select 
+              value={formData.company_id || undefined} 
+              onValueChange={handleCompanySelect}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Choose a company" />
               </SelectTrigger>
@@ -150,10 +150,10 @@ export default function OrderDetailsForm({
               name="company_name"
               value={formData.company_name}
               onChange={(e) => handleOrderChange(e)}
-              placeholder="Enter company name manually or select from above"
+              placeholder="Enter company name manually"
               required
-              className={formErrors.company ? "border-destructive" : ""}
               autoComplete="off"
+              className={formErrors.company ? "border-destructive" : ""}
             />
             {formErrors.company && (
               <p className="text-xs text-destructive flex items-center gap-1">
@@ -286,3 +286,4 @@ export default function OrderDetailsForm({
     </Card>
   );
 }
+
