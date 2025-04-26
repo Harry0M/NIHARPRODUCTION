@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -79,16 +78,14 @@ const CompanyList = () => {
     }
   };
 
-  // Handler for deleting a company
   const handleDeleteCompany = async (companyId: string) => {
     try {
       setIsDeleting(true);
       console.log(`Deleting company with ID: ${companyId}`);
       
-      // Using the delete_company function we created in SQL
       const { data, error } = await supabase.rpc(
         'delete_company', 
-        { company_id: companyId }
+        { input_company_id: companyId }
       );
       
       if (error) {
@@ -98,8 +95,8 @@ const CompanyList = () => {
       
       console.log("Company deletion result:", data);
       
-      // Update local state to remove the company
-      setCompanies(prevCompanies => prevCompanies.filter(company => company.id !== companyId));
+      // Refresh the page after successful deletion
+      window.location.reload();
       
       toast({
         title: "Success",
