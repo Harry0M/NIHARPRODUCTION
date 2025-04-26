@@ -21,7 +21,31 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
     try {
       console.log("Starting deletion process for order ID:", orderToDelete);
       
-      // Use the updated delete_order_completely function
+      // First, check for any dispatch batches associated with this order's dispatches
+      // Get all dispatches for this order
+      const { data: orderDispatches, error: dispatchError } = await supabase
+        .from('order_dispatches')
+        .select('id')
+        .eq('order_id', orderToDelete);
+      
+      if (dispatchError) throw new Error(dispatchError.message);
+      
+      // If there are dispatches, delete their batches first
+      if (orderDispatches && orderDispatches.length > 0) {
+        const dispatchIds = orderDispatches.map(dispatch => dispatch.id);
+        
+        // Delete all batches for these dispatches
+        const { error: batchDeleteError } = await supabase
+          .from('dispatch_batches')
+          .delete()
+          .in('order_dispatch_id', dispatchIds);
+          
+        if (batchDeleteError) throw new Error(batchDeleteError.message);
+        
+        console.log("Successfully deleted dispatch batches");
+      }
+      
+      // Now use the delete_order_completely function which will handle the rest
       const { error: deleteError } = await supabase.rpc(
         'delete_order_completely',
         { order_id: orderToDelete }

@@ -31,7 +31,7 @@ export const DeleteOrderDialog = ({
           <AlertDialogTitle>Are you sure you want to delete this order?</AlertDialogTitle>
           <AlertDialogDescription>
             This will permanently delete the order and all associated job cards, cutting jobs, printing jobs,
-            and stitching jobs. This action cannot be undone.
+            stitching jobs, dispatch records, and dispatch batches. This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
