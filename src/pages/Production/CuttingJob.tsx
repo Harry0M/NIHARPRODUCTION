@@ -109,7 +109,7 @@ export default function CuttingJob() {
           </div>
         </div>
         {!selectedJobId && (
-          <Button onClick={() => handleNewJob()} className="gap-2">
+          <Button onClick={handleNewJob} className="gap-2">
             <Plus size={16} />
             New Cutting Job
           </Button>
@@ -118,11 +118,13 @@ export default function CuttingJob() {
 
       {!selectedJobId && existingJobs && existingJobs.length > 0 && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {existingJobs.map((job) => (
+          {existingJobs.map((job, index) => (
             <Card key={job.id} className="hover:border-primary transition-colors">
               <CardContent className="pt-6">
                 <div className="mb-4">
-                  <p className="font-medium">Job Details</p>
+                  <p className="font-medium">
+                    Job {index + 1}{job.worker_name ? ` - ${job.worker_name}` : ''}
+                  </p>
                   <p className="text-sm text-muted-foreground">Created: {new Date(job.created_at).toLocaleDateString()}</p>
                   <p className="text-sm text-muted-foreground">Status: {job.status}</p>
                 </div>

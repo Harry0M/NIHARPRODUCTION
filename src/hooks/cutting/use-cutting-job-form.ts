@@ -51,19 +51,20 @@ export const useCuttingJobForm = (components: any[]) => {
   };
 
   const handleSelectJob = async (jobId: string, existingJobs: any[]) => {
-    const selectedJob = existingJobs.find(job => job.id === jobId);
-    if (selectedJob) {
+    try {
       setSelectedJobId(jobId);
-      setCuttingData({
-        roll_width: selectedJob.roll_width,
-        consumption_meters: selectedJob.consumption_meters,
-        worker_name: selectedJob.worker_name || "",
-        is_internal: selectedJob.is_internal,
-        status: selectedJob.status,
-        received_quantity: selectedJob.received_quantity?.toString() || ""
-      });
+      
+      const selectedJob = existingJobs.find(job => job.id === jobId);
+      if (selectedJob) {
+        setCuttingData({
+          roll_width: selectedJob.roll_width?.toString() || "",
+          consumption_meters: selectedJob.consumption_meters?.toString() || "",
+          worker_name: selectedJob.worker_name || "",
+          is_internal: selectedJob.is_internal !== false, // Default to true if undefined
+          status: selectedJob.status || "pending",
+          received_quantity: selectedJob.received_quantity?.toString() || ""
+        });
 
-      try {
         const { data, error } = await supabase
           .from("cutting_components")
           .select("*")
@@ -89,10 +90,37 @@ export const useCuttingJobForm = (components: any[]) => {
             };
           });
           setComponentData(formattedComponents);
+        } else {
+          // If no components found, initialize with empty data
+          const initialComponentData = components.map(comp => ({
+            component_id: comp.id,
+            component_type: comp.component_type,
+            width: "",
+            height: "",
+            counter: "",
+            rewinding: "",
+            rate: "",
+            status: "pending" as JobStatus,
+            notes: ""
+          }));
+          setComponentData(initialComponentData);
         }
-      } catch (error: any) {
-        console.error("Error fetching cutting components:", error);
       }
+    } catch (error: any) {
+      console.error("Error fetching cutting components:", error);
+      // Initialize with empty data on error
+      const initialComponentData = components.map(comp => ({
+        component_id: comp.id,
+        component_type: comp.component_type,
+        width: "",
+        height: "",
+        counter: "",
+        rewinding: "",
+        rate: "",
+        status: "pending" as JobStatus,
+        notes: ""
+      }));
+      setComponentData(initialComponentData);
     }
   };
 
