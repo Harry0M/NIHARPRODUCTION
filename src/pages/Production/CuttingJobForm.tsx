@@ -94,7 +94,7 @@ export default function CuttingJobForm() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full">
       <div className="flex items-center gap-2">
         <Button
           variant="ghost"
@@ -126,7 +126,7 @@ export default function CuttingJobForm() {
         />
       )}
 
-      <form id="cutting-form" onSubmit={handleSubmit} className="space-y-6">
+      <form id="cutting-form" onSubmit={handleSubmit} className="space-y-6 pb-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <CuttingJobOrderInfo order={jobCard.order} />
           
