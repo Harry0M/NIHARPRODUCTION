@@ -9,7 +9,7 @@ const AppLayout = () => {
   const isMobile = useIsMobile();
 
   return (
-    <div className="flex min-h-screen max-h-screen overflow-hidden bg-gray-100">
+    <div className="flex min-h-screen max-h-screen overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100/50">
       {!isMobile && <Sidebar />}
       <div className="flex flex-col flex-1 w-full overflow-hidden">
         <Header />

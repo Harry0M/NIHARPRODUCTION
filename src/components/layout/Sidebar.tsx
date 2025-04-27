@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { 
@@ -39,7 +38,7 @@ const Sidebar = () => {
   return (
     <div
       className={cn(
-        "bg-sidebar text-sidebar-foreground border-r border-border flex flex-col transition-all duration-300",
+        "bg-sidebar/95 backdrop-blur-sm text-sidebar-foreground border-r border-border flex flex-col transition-all duration-300 shadow-lg",
         collapsed ? "w-16" : "w-64"
       )}
     >
@@ -62,10 +61,10 @@ const Sidebar = () => {
                 to={item.path}
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center px-3 py-2 rounded-md transition-colors",
+                    "flex items-center px-3 py-2 rounded-md transition-all duration-200",
                     isActive
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                      : "hover:bg-sidebar-accent/50 text-sidebar-foreground/80"
+                      ? "bg-sidebar-accent/80 text-sidebar-accent-foreground font-medium shadow-sm"
+                      : "hover:bg-sidebar-accent/50 text-sidebar-foreground/80 hover:shadow-sm"
                   )
                 }
               >
@@ -78,16 +77,17 @@ const Sidebar = () => {
           ))}
         </ul>
       </nav>
-      <div className="p-4 border-t border-border">
+
+      <div className="p-4 border-t border-border/50">
         <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-between")}>
-          <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center ring-2 ring-primary/20">
             <span className="font-medium text-sm">BM</span>
           </div>
           {!collapsed && (
             <div className="ml-3">
               <button 
                 onClick={signOut}
-                className="text-sm text-sidebar-foreground hover:text-primary transition-colors"
+                className="text-sm text-sidebar-foreground/80 hover:text-primary transition-colors"
               >
                 Sign Out
               </button>

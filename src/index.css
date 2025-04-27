@@ -97,7 +97,7 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground selection:bg-primary/10;
     position: relative;
   }
 
@@ -110,5 +110,20 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+  }
+
+  /* Add smooth transitions */
+  .transition-all {
+    @apply duration-200 ease-in-out;
+  }
+
+  /* Improve button hover states */
+  button:not(:disabled):hover {
+    @apply transform transition-transform duration-200;
+  }
+
+  /* Improve card aesthetics */
+  .card {
+    @apply bg-white/80 backdrop-blur-sm border border-gray-200/50 shadow-sm hover:shadow-md transition-shadow duration-200;
   }
 }
