@@ -180,7 +180,13 @@ export default function PrintingJob() {
 
       {selectedJobId && printingJobs && (
         <PrintingJobForm
-          initialData={printingJobs.find(job => job.id === selectedJobId)}
+          initialData={{
+            ...printingJobs.find(job => job.id === selectedJobId)!,
+            // Convert numeric database values to strings for the form
+            sheet_length: String(printingJobs.find(job => job.id === selectedJobId)!.sheet_length || ''),
+            sheet_width: String(printingJobs.find(job => job.id === selectedJobId)!.sheet_width || ''),
+            rate: String(printingJobs.find(job => job.id === selectedJobId)!.rate || '')
+          }}
           bagDimensions={{
             length: jobCard.orders.bag_length,
             width: jobCard.orders.bag_width
