@@ -183,6 +183,18 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
     navigate(`/production/${job.type}/${jobDetails.job_card_id}`);
   };
 
+  // Helper function to get badge variant based on status
+  const getBadgeVariant = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return "secondary"; // Use secondary instead of success
+      case 'in_progress':
+        return "default";   // Use default instead of warning
+      default:
+        return "outline";
+    }
+  };
+
   const renderJobSpecificDetails = () => {
     if (!jobDetails) return null;
     
@@ -219,7 +231,7 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
                     <div key={component.id} className="p-3 border rounded-md">
                       <div className="flex items-center justify-between mb-2">
                         <div className="font-medium capitalize">{component.component_type}</div>
-                        <Badge variant={component.status === 'completed' ? 'success' : component.status === 'in_progress' ? 'warning' : 'outline'}>
+                        <Badge variant={getBadgeVariant(component.status)}>
                           {component.status}
                         </Badge>
                       </div>
