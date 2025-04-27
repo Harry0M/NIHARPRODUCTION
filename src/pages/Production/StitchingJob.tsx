@@ -1,9 +1,10 @@
+
 import { useNavigate, useParams } from "react-router-dom";
 import { JobCardInfo } from "@/components/production/stitching/JobCardInfo";
 import { StitchingForm } from "@/components/production/stitching/StitchingForm";
 import { useStitchingJob } from "@/hooks/use-stitching-job";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Stitch, Plus } from "lucide-react";
+import { ArrowLeft, Scissors, Plus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 const StitchingJob = () => {
@@ -79,7 +80,7 @@ const StitchingJob = () => {
           </Button>
           <div>
             <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-              <Stitch className="h-8 w-8" />
+              <Scissors className="h-8 w-8" /> {/* Replaced Stitch with Scissors */}
               Stitching Jobs
             </h1>
             <p className="text-muted-foreground">
