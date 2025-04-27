@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import { ArrowLeft, Scissors } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -100,9 +100,6 @@ export default function CuttingJob() {
         rewinding: "",
         rate: "",
         status: "pending" as JobStatus,
-        material_type: "",
-        material_color: "",
-        material_gsm: "",
         notes: ""
       }));
       
@@ -145,9 +142,6 @@ export default function CuttingJob() {
               rewinding: comp.rewinding?.toString() || "",
               rate: comp.rate?.toString() || "",
               status: comp.status || "pending",
-              material_type: comp.material_type || "",
-              material_color: comp.material_color || "",
-              material_gsm: comp.material_gsm?.toString() || "",
               notes: comp.notes || ""
             };
           });
@@ -181,9 +175,6 @@ export default function CuttingJob() {
         rewinding: "",
         rate: "",
         status: "pending" as JobStatus,
-        material_type: "",
-        material_color: "",
-        material_gsm: "",
         notes: ""
       }));
       
@@ -244,9 +235,6 @@ export default function CuttingJob() {
           rewinding: comp.rewinding ? parseFloat(comp.rewinding) : null,
           rate: comp.rate ? parseFloat(comp.rate) : null,
           status: comp.status,
-          material_type: comp.material_type || null,
-          material_color: comp.material_color || null,
-          material_gsm: comp.material_gsm ? parseFloat(comp.material_gsm) : null,
           notes: comp.notes || null
         }));
 
@@ -321,9 +309,6 @@ export default function CuttingJob() {
           rewinding: comp.rewinding ? parseFloat(comp.rewinding) : null,
           rate: comp.rate ? parseFloat(comp.rate) : null,
           status: comp.status,
-          material_type: comp.material_type || null,
-          material_color: comp.material_color || null,
-          material_gsm: comp.material_gsm ? parseFloat(comp.material_gsm) : null,
           notes: comp.notes || null
         }));
 
@@ -595,36 +580,6 @@ export default function CuttingJob() {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>Material Type</Label>
-                    <Input
-                      type="text"
-                      placeholder="Material type"
-                      value={componentData[index]?.material_type || ""}
-                      onChange={(e) => handleComponentChange(index, "material_type", e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Material Color</Label>
-                    <Input
-                      type="text"
-                      placeholder="Material color"
-                      value={componentData[index]?.material_color || ""}
-                      onChange={(e) => handleComponentChange(index, "material_color", e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Material GSM</Label>
-                    <Input
-                      type="number"
-                      placeholder="Material GSM"
-                      value={componentData[index]?.material_gsm || ""}
-                      onChange={(e) => handleComponentChange(index, "material_gsm", e.target.value)}
-                    />
-                  </div>
-                </div>
-
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   <div className="space-y-2">
                     <Label>Width</Label>
