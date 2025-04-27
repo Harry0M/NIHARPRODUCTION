@@ -1,8 +1,9 @@
 
-import { Bell, Search, Plus, PlusCircle } from "lucide-react";
+import { Bell, Search, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { Link, useLocation } from "react-router-dom";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -74,20 +75,20 @@ const Header = () => {
   };
 
   return (
-    <header className="h-16 border-b border-border bg-background px-4 flex items-center justify-between">
+    <header className="h-16 border-b border-border bg-background/95 backdrop-blur-sm px-4 flex items-center justify-between sticky top-0 z-40">
       <div className="flex items-center gap-3 w-full max-w-md">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search Nihar orders, jobs..."
-            className="h-9 w-full rounded-md border border-input px-9 py-2 text-sm bg-background"
+            className="h-9 w-full rounded-md border border-input px-9 py-2 text-sm bg-background/50"
           />
         </div>
       </div>
       <div className="flex items-center gap-3">
         {getActionButton()}
-        
+        <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">

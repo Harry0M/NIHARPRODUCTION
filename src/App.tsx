@@ -4,10 +4,10 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
+import { ColorSchemeProvider } from "./context/ColorSchemeContext";
 import AppRoutes from "./AppRoutes";
 import * as React from "react";
 
-// Create a new QueryClient instance
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -16,16 +16,17 @@ const queryClient = new QueryClient({
   },
 });
 
-// Remove StrictMode to prevent potential double initialization
 const App: React.FC = () => {
   return (
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <AppRoutes />
-          <Toaster />
-          <Sonner />
-        </TooltipProvider>
+        <ColorSchemeProvider>
+          <TooltipProvider>
+            <AppRoutes />
+            <Toaster />
+            <Sonner />
+          </TooltipProvider>
+        </ColorSchemeProvider>
       </QueryClientProvider>
     </BrowserRouter>
   );
