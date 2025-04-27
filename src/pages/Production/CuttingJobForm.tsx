@@ -126,35 +126,37 @@ export default function CuttingJobForm() {
         />
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <CuttingJobOrderInfo order={jobCard.order} />
-        
-        <form id="cutting-form" onSubmit={handleSubmit} className="contents">
-          <CuttingDetailsForm
-            cuttingData={cuttingData}
-            validationError={validationError}
-            orderInfo={{
-              bag_length: jobCard.order.bag_length,
-              bag_width: jobCard.order.bag_width,
-              quantity: jobCard.order.quantity
-            }}
-            onInputChange={handleInputChange}
-            onCheckboxChange={handleCheckboxChange}
-            onSelectChange={handleSelectChange}
-            onWorkerSelect={handleWorkerSelect}
-            onConsumptionCalculated={handleConsumptionCalculated}
-          />
+      <form id="cutting-form" onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <CuttingJobOrderInfo order={jobCard.order} />
+          
+          <div className="lg:col-span-2">
+            <CuttingDetailsForm
+              cuttingData={cuttingData}
+              validationError={validationError}
+              orderInfo={{
+                bag_length: jobCard.order.bag_length,
+                bag_width: jobCard.order.bag_width,
+                quantity: jobCard.order.quantity
+              }}
+              onInputChange={handleInputChange}
+              onCheckboxChange={handleCheckboxChange}
+              onSelectChange={handleSelectChange}
+              onWorkerSelect={handleWorkerSelect}
+              onConsumptionCalculated={handleConsumptionCalculated}
+            />
+          </div>
+        </div>
 
-          <CuttingJobComponentForm
-            components={components}
-            componentData={componentData}
-            handleComponentChange={handleComponentChange}
-            handleGoBack={handleGoBack}
-            submitting={submitting}
-            selectedJobId={selectedJobId}
-          />
-        </form>
-      </div>
+        <CuttingJobComponentForm
+          components={components}
+          componentData={componentData}
+          handleComponentChange={handleComponentChange}
+          handleGoBack={handleGoBack}
+          submitting={submitting}
+          selectedJobId={selectedJobId}
+        />
+      </form>
     </div>
   );
 }

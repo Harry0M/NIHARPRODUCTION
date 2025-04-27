@@ -41,7 +41,7 @@ export function CuttingJobDetailsForm({
   onConsumptionCalculated
 }: CuttingJobDetailsFormProps) {
   return (
-    <Card className="w-full h-fit">
+    <Card className="w-full">
       <CardHeader className="space-y-1">
         <CardTitle>Cutting Details</CardTitle>
         <CardDescription>Enter details for the cutting process</CardDescription>
