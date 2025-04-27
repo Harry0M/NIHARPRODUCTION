@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { ArrowLeft, Printer, Plus } from "lucide-react";
@@ -8,12 +9,14 @@ import { JobStatus, PrintingJobData } from "@/types/production";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PrintingJobForm } from "@/components/production/printing/PrintingJobForm";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function PrintingJob() {
   const { id } = useParams();
   const queryClient = useQueryClient();
   const { submitting, createPrintingJob, updatePrintingJob } = usePrintingJob();
-  const [showNewJobForm, setShowNewJobForm] = useState(true);
+  const [showNewJobForm, setShowNewJobForm] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
   const { data: jobCard, isLoading: jobCardLoading } = useQuery({
     queryKey: ['job-card', id],
@@ -56,24 +59,21 @@ export default function PrintingJob() {
 
   const handleSubmit = async (formData: PrintingJobData) => {
     try {
-      // Ensure all numeric fields are converted to strings
       const printingJobData: PrintingJobData = {
         ...formData,
-        job_card_id: id!, // Use the id from params as job_card_id
+        job_card_id: id!,
         sheet_length: String(formData.sheet_length),
         sheet_width: String(formData.sheet_width),
         rate: String(formData.rate || '0'),
       };
 
       if (formData.id) {
-        // Update existing job
         await updatePrintingJob(formData.id, printingJobData);
         toast({
           title: "Success",
           description: "Printing job updated successfully",
         });
       } else {
-        // Create new job
         await createPrintingJob(id!, printingJobData);
         toast({
           title: "Success",
@@ -82,7 +82,7 @@ export default function PrintingJob() {
         setShowNewJobForm(false);
       }
       
-      // Force refresh data
+      setSelectedJobId(null);
       queryClient.invalidateQueries({ queryKey: ['printing-jobs', id] });
     } catch (error: any) {
       toast({
@@ -136,7 +136,7 @@ export default function PrintingJob() {
             </p>
           </div>
         </div>
-        {!showNewJobForm && (
+        {!showNewJobForm && !selectedJobId && (
           <Button onClick={() => setShowNewJobForm(true)} className="gap-2">
             <Plus size={16} />
             New Printing Job
@@ -156,35 +156,39 @@ export default function PrintingJob() {
         />
       )}
 
-      {!printingJobsLoading && printingJobs && printingJobs.length > 0 && (
-        <div className="grid gap-4">
+      {!showNewJobForm && !selectedJobId && !printingJobsLoading && printingJobs && printingJobs.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {printingJobs.map((job) => (
-            <PrintingJobForm
-              key={job.id}
-              initialData={{
-                id: job.id,
-                job_card_id: job.job_card_id,
-                pulling: job.pulling || "",
-                gsm: job.gsm || "",
-                sheet_length: String(job.sheet_length || ""),
-                sheet_width: String(job.sheet_width || ""),
-                worker_name: job.worker_name || "",
-                is_internal: job.is_internal || false,
-                rate: String(job.rate || '0'),
-                status: job.status || "pending",
-                expected_completion_date: job.expected_completion_date || "",
-                print_image: job.print_image || ""
-              }}
-              bagDimensions={{
-                length: jobCard.orders.bag_length,
-                width: jobCard.orders.bag_width
-              }}
-              onSubmit={handleSubmit}
-              onCancel={() => {}}
-              isSubmitting={submitting}
-            />
+            <Card key={job.id} className="hover:border-primary transition-colors">
+              <CardContent className="pt-6">
+                <div className="mb-4">
+                  <p className="font-medium">Job Details</p>
+                  <p className="text-sm text-muted-foreground">Created: {new Date(job.created_at).toLocaleDateString()}</p>
+                  <p className="text-sm text-muted-foreground">Status: {job.status}</p>
+                </div>
+                <Button 
+                  onClick={() => setSelectedJobId(job.id)}
+                  className="w-full"
+                >
+                  Edit Printing Job
+                </Button>
+              </CardContent>
+            </Card>
           ))}
         </div>
+      )}
+
+      {selectedJobId && printingJobs && (
+        <PrintingJobForm
+          initialData={printingJobs.find(job => job.id === selectedJobId)}
+          bagDimensions={{
+            length: jobCard.orders.bag_length,
+            width: jobCard.orders.bag_width
+          }}
+          onSubmit={handleSubmit}
+          onCancel={() => setSelectedJobId(null)}
+          isSubmitting={submitting}
+        />
       )}
     </div>
   );
