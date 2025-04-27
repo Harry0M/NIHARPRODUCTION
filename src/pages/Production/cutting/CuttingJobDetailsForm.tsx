@@ -41,8 +41,8 @@ export function CuttingJobDetailsForm({
   onConsumptionCalculated
 }: CuttingJobDetailsFormProps) {
   return (
-    <Card className="md:col-span-2 w-full">
-      <CardHeader>
+    <Card className="w-full h-fit">
+      <CardHeader className="space-y-1">
         <CardTitle>Cutting Details</CardTitle>
         <CardDescription>Enter details for the cutting process</CardDescription>
       </CardHeader>
@@ -95,15 +95,6 @@ export function CuttingJobDetailsForm({
             />
           </div>
 
-          <div className="flex items-center space-x-2 pt-2">
-            <Checkbox 
-              id="is_internal"
-              checked={cuttingData.is_internal}
-              onCheckedChange={onCheckboxChange}
-            />
-            <Label htmlFor="is_internal">Internal Cutting (In-house)</Label>
-          </div>
-
           <div className="space-y-2">
             <Label>Worker Name</Label>
             <VendorSelection
@@ -113,6 +104,15 @@ export function CuttingJobDetailsForm({
               placeholder="Select cutter or enter manually"
               className="w-full"
             />
+          </div>
+
+          <div className="flex items-center space-x-2 pt-2">
+            <Checkbox 
+              id="is_internal"
+              checked={cuttingData.is_internal}
+              onCheckedChange={onCheckboxChange}
+            />
+            <Label htmlFor="is_internal">Internal Cutting (In-house)</Label>
           </div>
 
           <div className="space-y-2">
