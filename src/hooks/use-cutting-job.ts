@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { useCuttingJobData } from "./cutting/use-cutting-job-data";
@@ -65,6 +64,7 @@ export const useCuttingJob = (id: string) => {
     cuttingData,
     componentData,
     validationError,
+    submitting,
     setCuttingData,
     setComponentData,
     handleSelectJob: (jobId: string) => handleSelectJob(jobId, existingJobs),
