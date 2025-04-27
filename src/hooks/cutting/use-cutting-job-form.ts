@@ -26,6 +26,7 @@ export const useCuttingJobForm = (components: any[]) => {
   const [componentData, setComponentData] = useState<CuttingComponent[]>([]);
 
   const handleNewJob = () => {
+    // Reset the form state completely
     setSelectedJobId(null);
     setCuttingData({
       roll_width: "",
@@ -36,6 +37,7 @@ export const useCuttingJobForm = (components: any[]) => {
       received_quantity: ""
     });
 
+    // Initialize component data with empty values for a new job
     const initialComponentData = components.map(comp => ({
       component_id: comp.id,
       component_type: comp.component_type,
