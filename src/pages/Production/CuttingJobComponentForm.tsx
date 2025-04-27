@@ -1,11 +1,11 @@
+
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Component } from "@/types/order";
 import { CuttingComponent, JobStatus } from "@/types/production";
+import { ComponentStatusSelect } from "@/components/production/cutting/ComponentStatusSelect";
+import { ComponentMeasurements } from "@/components/production/cutting/ComponentMeasurements";
+import { ComponentNotes } from "@/components/production/cutting/ComponentNotes";
 
 interface CuttingJobComponentFormProps {
   components: Component[];
@@ -24,6 +24,10 @@ export function CuttingJobComponentForm({
   submitting,
   selectedJobId
 }: CuttingJobComponentFormProps) {
+  const handleMeasurementChange = (index: number) => (field: string, value: string) => {
+    handleComponentChange(index, field, value);
+  };
+
   return (
     <Card className="md:col-span-3">
       <CardHeader>
@@ -43,70 +47,25 @@ export function CuttingJobComponentForm({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div className="space-y-2">
-                  <Label>Width</Label>
-                  <Input
-                    type="text"
-                    placeholder="Width"
-                    value={componentData[index]?.width || ""}
-                    onChange={(e) => handleComponentChange(index, "width", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Height</Label>
-                  <Input
-                    type="text"
-                    placeholder="Height"
-                    value={componentData[index]?.height || ""}
-                    onChange={(e) => handleComponentChange(index, "height", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Counter</Label>
-                  <Input
-                    type="text"
-                    placeholder="Counter"
-                    value={componentData[index]?.counter || ""}
-                    onChange={(e) => handleComponentChange(index, "counter", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Rewinding</Label>
-                  <Input
-                    type="text"
-                    placeholder="Rewinding"
-                    value={componentData[index]?.rewinding || ""}
-                    onChange={(e) => handleComponentChange(index, "rewinding", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select
-                    value={componentData[index]?.status || "pending"}
-                    onValueChange={(value: JobStatus) => handleComponentChange(index, "status", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              <ComponentMeasurements
+                width={componentData[index]?.width || ""}
+                height={componentData[index]?.height || ""}
+                counter={componentData[index]?.counter || ""}
+                rewinding={componentData[index]?.rewinding || ""}
+                onMeasurementChange={handleMeasurementChange(index)}
+              />
 
               <div className="space-y-2">
-                <Label>Notes</Label>
-                <Textarea
-                  placeholder="Add any notes about the cutting process"
-                  value={componentData[index]?.notes || ""}
-                  onChange={(e) => handleComponentChange(index, "notes", e.target.value)}
-                  className="min-h-[100px]"
+                <ComponentStatusSelect
+                  status={componentData[index]?.status || "pending"}
+                  onChange={(value) => handleComponentChange(index, "status", value)}
                 />
               </div>
+
+              <ComponentNotes
+                notes={componentData[index]?.notes || ""}
+                onChange={(value) => handleComponentChange(index, "notes", value)}
+              />
             </div>
           ))}
         </div>
