@@ -2,6 +2,7 @@
 import { StageStatus } from "@/components/production/StageStatus";
 import { TimelineJob } from "@/types/production";
 import { format } from "date-fns";
+import { useNavigate } from "react-router-dom";
 
 interface JobListProps {
   jobs: TimelineJob[];
@@ -11,6 +12,8 @@ interface JobListProps {
 }
 
 export const JobList = ({ jobs, type, selectedJob, onJobSelect }: JobListProps) => {
+  const navigate = useNavigate();
+
   if (jobs.length === 0) return null;
 
   const formatDate = (dateString: string) => {
@@ -18,6 +21,24 @@ export const JobList = ({ jobs, type, selectedJob, onJobSelect }: JobListProps) 
       return format(new Date(dateString), "MMM d, yyyy");
     } catch (e) {
       return "Invalid date";
+    }
+  };
+
+  const handleJobClick = (jobType: string, jobId: string) => {
+    // Select the job in the timeline
+    onJobSelect(jobType, jobId);
+    
+    // Navigate to the appropriate job details page based on the job type
+    switch (jobType) {
+      case 'cutting':
+        navigate(`/production/cutting/${jobId}`);
+        break;
+      case 'printing':
+        navigate(`/production/printing/${jobId}`);
+        break;
+      case 'stitching':
+        navigate(`/production/stitching/${jobId}`);
+        break;
     }
   };
 
@@ -29,7 +50,7 @@ export const JobList = ({ jobs, type, selectedJob, onJobSelect }: JobListProps) 
           className={`text-xs flex items-center justify-between gap-2 p-2 rounded-sm cursor-pointer hover:bg-muted/50 transition-colors ${
             selectedJob.type === type && selectedJob.id === job.id ? 'bg-muted' : ''
           }`}
-          onClick={() => onJobSelect(type, job.id)}
+          onClick={() => handleJobClick(type, job.id)}
         >
           <div className="flex items-center gap-2">
             <StageStatus 
