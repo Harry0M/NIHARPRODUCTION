@@ -47,7 +47,7 @@ export function CuttingJobDetailsForm({
         <CardDescription>Enter details for the cutting process</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
           <div className="space-y-2">
             <Label htmlFor="roll_width" className={`text-primary font-medium ${validationError ? 'text-destructive' : ''}`}>
               Roll Width (Required) *
@@ -60,7 +60,7 @@ export function CuttingJobDetailsForm({
               value={cuttingData.roll_width}
               onChange={onInputChange}
               required
-              className={`border-2 ${validationError ? 'border-destructive' : 'border-primary'} focus:ring-2 focus:ring-primary`}
+              className={`border-2 ${validationError ? 'border-destructive' : 'border-input'} focus:ring-2 focus:ring-primary`}
             />
             {validationError && (
               <p className="text-sm font-medium text-destructive mt-1">
@@ -78,6 +78,7 @@ export function CuttingJobDetailsForm({
               value={cuttingData.consumption_meters}
               onChange={onInputChange}
               placeholder="Material consumption"
+              className="border-input"
             />
           </div>
 
@@ -90,10 +91,11 @@ export function CuttingJobDetailsForm({
               placeholder="Final quantity after cutting"
               value={cuttingData.received_quantity}
               onChange={onInputChange}
+              className="border-input"
             />
           </div>
 
-          <div className="flex items-center space-x-2 pt-8">
+          <div className="flex items-center space-x-2 pt-2">
             <Checkbox 
               id="is_internal"
               checked={cuttingData.is_internal}
@@ -109,6 +111,7 @@ export function CuttingJobDetailsForm({
               value={cuttingData.worker_name}
               onChange={onWorkerSelect}
               placeholder="Select cutter or enter manually"
+              className="w-full"
             />
           </div>
 
@@ -116,9 +119,9 @@ export function CuttingJobDetailsForm({
             <Label htmlFor="status">Status</Label>
             <Select
               value={cuttingData.status}
-              onValueChange={(value: JobStatus) => onSelectChange("status", value)}
+              onValueChange={(value) => onSelectChange("status", value)}
             >
-              <SelectTrigger id="status">
+              <SelectTrigger id="status" className="w-full">
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>
@@ -129,7 +132,7 @@ export function CuttingJobDetailsForm({
             </Select>
           </div>
 
-          <div className="md:col-span-2 mt-4">
+          <div className="md:col-span-2 mt-4 bg-muted/30 p-4 rounded-lg">
             <ConsumptionCalculator
               length={orderInfo.bag_length}
               width={orderInfo.bag_width}
