@@ -1,4 +1,3 @@
-
 export type JobStatus = "pending" | "in_progress" | "completed";
 
 export interface TimelineJob {
@@ -9,6 +8,7 @@ export interface TimelineJob {
   worker_name?: string;
   is_internal?: boolean;
   job_number?: string;
+  job_card_id?: string;  // Added this field to help with navigation
 }
 
 export interface JobData {

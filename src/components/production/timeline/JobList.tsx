@@ -2,7 +2,6 @@
 import { StageStatus } from "@/components/production/StageStatus";
 import { TimelineJob } from "@/types/production";
 import { format } from "date-fns";
-import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { JobDetailsModal } from "./JobDetailsModal";
 
@@ -14,7 +13,6 @@ interface JobListProps {
 }
 
 export const JobList = ({ jobs, type, selectedJob, onJobSelect }: JobListProps) => {
-  const navigate = useNavigate();
   const [selectedJobForModal, setSelectedJobForModal] = useState<TimelineJob | null>(null);
 
   if (jobs.length === 0) return null;
