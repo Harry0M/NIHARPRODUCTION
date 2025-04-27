@@ -1,13 +1,13 @@
 
 import React from "react";
 import { useParams } from "react-router-dom";
-import { ArrowLeft, Scissors } from "lucide-react";
+import { ArrowLeft, Scissors, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CuttingJobOrderInfo } from "./CuttingJobOrderInfo";
-import { CuttingJobSelection } from "./CuttingJobSelection";
 import { CuttingJobComponentForm } from "./CuttingJobComponentForm";
 import { CuttingJobDetailsForm } from "./cutting/CuttingJobDetailsForm";
 import { useCuttingJob } from "@/hooks/use-cutting-job";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function CuttingJob() {
   const { id } = useParams();
@@ -86,69 +86,90 @@ export default function CuttingJob() {
   }
 
   return (
-    <div className="space-y-6 w-full">
-      <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1"
-          onClick={handleGoBack}
-          type="button"
-        >
-          <ArrowLeft size={16} />
-          Back
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Scissors className="h-6 w-6" />
-            Cutting Job
-          </h1>
-          <p className="text-muted-foreground">
-            {selectedJobId ? "Update" : "Create"} cutting job for {jobCard?.job_name}
-          </p>
-        </div>
-      </div>
-
-      {existingJobs.length > 0 && (
-        <CuttingJobSelection
-          existingJobs={existingJobs.map(({ id, status }) => ({ id, status }))}
-          selectedJobId={selectedJobId}
-          handleSelectJob={handleSelectJob}
-          handleNewJob={handleNewJob}
-        />
-      )}
-
-      <form id="cutting-form" onSubmit={handleSubmit} className="space-y-6 pb-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <CuttingJobOrderInfo order={jobCard.order} />
-          
-          <div className="lg:col-span-2">
-            <CuttingJobDetailsForm
-              cuttingData={cuttingData}
-              validationError={validationError}
-              orderInfo={{
-                bag_length: jobCard.order.bag_length,
-                bag_width: jobCard.order.bag_width,
-                quantity: jobCard.order.quantity
-              }}
-              onInputChange={handleInputChange}
-              onCheckboxChange={handleCheckboxChange}
-              onSelectChange={handleSelectChange}
-              onWorkerSelect={handleWorkerSelect}
-              onConsumptionCalculated={handleConsumptionCalculated}
-            />
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleGoBack}
+            className="gap-1"
+          >
+            <ArrowLeft size={16} />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+              <Scissors className="h-8 w-8" />
+              Cutting Jobs
+            </h1>
+            <p className="text-muted-foreground">
+              Manage cutting jobs for {jobCard.job_name}
+            </p>
           </div>
         </div>
-        
-        <CuttingJobComponentForm
-          components={components}
-          componentData={componentData}
-          handleComponentChange={handleComponentChange}
-          handleGoBack={handleGoBack}
-          submitting={submitting}
-          selectedJobId={selectedJobId}
-        />
-      </form>
+        {!selectedJobId && (
+          <Button onClick={() => handleNewJob()} className="gap-2">
+            <Plus size={16} />
+            New Cutting Job
+          </Button>
+        )}
+      </div>
+
+      {!selectedJobId && existingJobs && existingJobs.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {existingJobs.map((job) => (
+            <Card key={job.id} className="hover:border-primary transition-colors">
+              <CardContent className="pt-6">
+                <div className="mb-4">
+                  <p className="font-medium">Job Details</p>
+                  <p className="text-sm text-muted-foreground">Created: {new Date(job.created_at).toLocaleDateString()}</p>
+                  <p className="text-sm text-muted-foreground">Status: {job.status}</p>
+                </div>
+                <Button 
+                  onClick={() => handleSelectJob(job.id)}
+                  className="w-full"
+                >
+                  Edit Cutting Job
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {(selectedJobId || (!existingJobs || existingJobs.length === 0)) && (
+        <form id="cutting-form" onSubmit={handleSubmit} className="space-y-6 pb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <CuttingJobOrderInfo order={jobCard.order} />
+            <div className="lg:col-span-2">
+              <CuttingJobDetailsForm
+                cuttingData={cuttingData}
+                validationError={validationError}
+                orderInfo={{
+                  bag_length: jobCard.order.bag_length,
+                  bag_width: jobCard.order.bag_width,
+                  quantity: jobCard.order.quantity
+                }}
+                onInputChange={handleInputChange}
+                onCheckboxChange={handleCheckboxChange}
+                onSelectChange={handleSelectChange}
+                onWorkerSelect={handleWorkerSelect}
+                onConsumptionCalculated={handleConsumptionCalculated}
+              />
+            </div>
+          </div>
+          
+          <CuttingJobComponentForm
+            components={components}
+            componentData={componentData}
+            handleComponentChange={handleComponentChange}
+            handleGoBack={handleGoBack}
+            submitting={submitting}
+            selectedJobId={selectedJobId}
+          />
+        </form>
+      )}
     </div>
   );
 }
