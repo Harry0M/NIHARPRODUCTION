@@ -119,7 +119,7 @@ export function CuttingJobDetailsForm({
             <Label htmlFor="status">Status</Label>
             <Select
               value={cuttingData.status}
-              onValueChange={(value) => onSelectChange("status", value)}
+              onValueChange={(value) => onSelectChange("status", value as JobStatus)}
             >
               <SelectTrigger id="status" className="w-full">
                 <SelectValue placeholder="Select status" />
