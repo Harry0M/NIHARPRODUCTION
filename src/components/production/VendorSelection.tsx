@@ -24,15 +24,13 @@ interface VendorSelectionProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  className?: string;
 }
 
 export const VendorSelection = ({
   serviceType,
   value,
   onChange,
-  placeholder = "Select vendor...",
-  className
+  placeholder = "Select vendor..."
 }: VendorSelectionProps) => {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -114,7 +112,7 @@ export const VendorSelection = ({
 
   if (isManualMode) {
     return (
-      <div className={`flex gap-2 ${className}`}>
+      <div className="flex gap-2">
         <Input
           value={manualInput}
           onChange={handleManualInputChange}
@@ -138,7 +136,7 @@ export const VendorSelection = ({
   }
 
   return (
-    <div className={`flex gap-2 ${className}`}>
+    <div className="flex gap-2">
       <div className="flex-1">
         <Select
           value={vendors.some(v => v.name === value) ? value : ""}
