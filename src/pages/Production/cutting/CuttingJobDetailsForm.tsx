@@ -41,13 +41,13 @@ export function CuttingJobDetailsForm({
   onConsumptionCalculated
 }: CuttingJobDetailsFormProps) {
   return (
-    <Card>
+    <Card className="md:col-span-2 w-full">
       <CardHeader>
         <CardTitle>Cutting Details</CardTitle>
         <CardDescription>Enter details for the cutting process</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <Label htmlFor="roll_width" className={`text-primary font-medium ${validationError ? 'text-destructive' : ''}`}>
               Roll Width (Required) *
@@ -129,7 +129,7 @@ export function CuttingJobDetailsForm({
             </Select>
           </div>
 
-          <div className="md:col-span-3">
+          <div className="md:col-span-2 mt-4">
             <ConsumptionCalculator
               length={orderInfo.bag_length}
               width={orderInfo.bag_width}

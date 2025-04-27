@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { 
   Select, 
@@ -24,13 +23,15 @@ interface VendorSelectionProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  className?: string;
 }
 
 export const VendorSelection = ({
   serviceType,
   value,
   onChange,
-  placeholder = "Select vendor..."
+  placeholder = "Select vendor...",
+  className
 }: VendorSelectionProps) => {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -112,7 +113,7 @@ export const VendorSelection = ({
 
   if (isManualMode) {
     return (
-      <div className="flex gap-2">
+      <div className={`flex gap-2 ${className}`}>
         <Input
           value={manualInput}
           onChange={handleManualInputChange}
@@ -136,7 +137,7 @@ export const VendorSelection = ({
   }
 
   return (
-    <div className="flex gap-2">
+    <div className={`flex gap-2 ${className}`}>
       <div className="flex-1">
         <Select
           value={vendors.some(v => v.name === value) ? value : ""}
