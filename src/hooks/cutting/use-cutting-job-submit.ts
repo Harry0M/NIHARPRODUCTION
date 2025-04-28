@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -26,12 +27,15 @@ export const useCuttingJobSubmit = () => {
 
       if (cuttingError) throw cuttingError;
 
-      // Insert components
+      // Insert components - remove component_type from the data being inserted
       for (const component of componentData) {
+        // Create a copy of the component data without the component_type field
+        const { component_type, ...componentDataToInsert } = component;
+        
         const { error: componentError } = await supabase
           .from('cutting_components')
           .insert({
-            ...component,
+            ...componentDataToInsert,
             cutting_job_id: cuttingJob.id
           });
 
@@ -69,6 +73,9 @@ export const useCuttingJobSubmit = () => {
 
       // Update or insert components
       for (const component of componentData) {
+        // Remove component_type from the data being inserted or updated
+        const { component_type, ...componentDataToUse } = component;
+        
         // Check if the component already exists
         const { data: existingComponent, error: selectError } = await supabase
           .from('cutting_components')
@@ -77,13 +84,13 @@ export const useCuttingJobSubmit = () => {
           .eq('component_id', component.component_id)
           .single();
 
-        if (selectError) throw selectError;
+        if (selectError && selectError.code !== 'PGRST116') throw selectError;
 
         if (existingComponent) {
           // Update existing component
           const { error: updateComponentError } = await supabase
             .from('cutting_components')
-            .update(component)
+            .update(componentDataToUse)
             .eq('cutting_job_id', jobId)
             .eq('component_id', component.component_id);
 
@@ -96,7 +103,7 @@ export const useCuttingJobSubmit = () => {
           const { error: insertComponentError } = await supabase
             .from('cutting_components')
             .insert({
-              ...component,
+              ...componentDataToUse,
               cutting_job_id: jobId
             });
 
