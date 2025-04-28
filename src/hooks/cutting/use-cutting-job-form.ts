@@ -36,6 +36,7 @@ export const useCuttingJobForm = (components: any[]) => {
       received_quantity: ""
     });
 
+    // Initialize componentData with the provided components
     const initialComponentData = components.map(comp => ({
       component_id: comp.id,
       component_type: comp.component_type,
@@ -55,8 +56,8 @@ export const useCuttingJobForm = (components: any[]) => {
     if (selectedJob) {
       setSelectedJobId(jobId);
       setCuttingData({
-        roll_width: selectedJob.roll_width,
-        consumption_meters: selectedJob.consumption_meters,
+        roll_width: selectedJob.roll_width?.toString() || "",
+        consumption_meters: selectedJob.consumption_meters?.toString() || "",
         worker_name: selectedJob.worker_name || "",
         is_internal: selectedJob.is_internal,
         status: selectedJob.status,
@@ -71,25 +72,26 @@ export const useCuttingJobForm = (components: any[]) => {
 
         if (error) throw error;
 
-        if (data && data.length > 0) {
-          const formattedComponents = data.map(comp => {
-            const originalComponent = components.find(c => c.id === comp.component_id);
-            const componentType = originalComponent ? originalComponent.component_type : "";
-            
-            return {
-              component_id: comp.component_id || "",
-              component_type: componentType,
-              width: comp.width?.toString() || "",
-              height: comp.height?.toString() || "",
-              counter: comp.counter?.toString() || "",
-              rewinding: comp.rewinding?.toString() || "",
-              rate: comp.rate?.toString() || "",
-              status: comp.status || "pending",
-              notes: comp.notes || ""
-            };
-          });
-          setComponentData(formattedComponents);
-        }
+        // Ensure we have a componentData entry for each component
+        // This prevents the foreign key constraint issues
+        const formattedComponents = components.map(comp => {
+          // Find if this component has existing data
+          const existingComponent = data?.find(c => c.component_id === comp.id);
+          
+          return {
+            component_id: comp.id,
+            component_type: comp.component_type,
+            width: existingComponent?.width?.toString() || "",
+            height: existingComponent?.height?.toString() || "",
+            counter: existingComponent?.counter?.toString() || "",
+            rewinding: existingComponent?.rewinding?.toString() || "",
+            rate: existingComponent?.rate?.toString() || "",
+            status: existingComponent?.status || "pending",
+            notes: existingComponent?.notes || ""
+          };
+        });
+        
+        setComponentData(formattedComponents);
       } catch (error: any) {
         console.error("Error fetching cutting components:", error);
       }

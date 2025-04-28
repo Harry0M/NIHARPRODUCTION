@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { CuttingComponent, JobStatus } from "@/types/production";
@@ -78,6 +79,11 @@ export const useCuttingJobSubmit = () => {
     setValidationError(null);
 
     try {
+      if (!cuttingData.roll_width) {
+        setValidationError("Roll width is required");
+        throw new Error("Roll width is required");
+      }
+
       // Convert string values to numbers
       const formattedCuttingData = {
         roll_width: parseFloat(cuttingData.roll_width),
@@ -104,26 +110,37 @@ export const useCuttingJobSubmit = () => {
 
       if (deleteError) throw deleteError;
 
-      // Insert updated components
+      // Insert updated components - make sure all components have valid component_id
       if (componentData.length > 0) {
-        const formattedComponents = componentData.map(comp => ({
-          component_id: comp.component_id,
-          cutting_job_id: jobId,
-          width: comp.width ? parseFloat(comp.width) : null,
-          height: comp.height ? parseFloat(comp.height) : null,
-          counter: comp.counter ? parseFloat(comp.counter) : null,
-          rewinding: comp.rewinding ? parseFloat(comp.rewinding) : null,
-          rate: comp.rate ? parseFloat(comp.rate) : null,
-          status: comp.status,
-          notes: comp.notes || null,
-          waste_quantity: comp.waste_quantity ? parseFloat(comp.waste_quantity) : null
-        }));
+        const formattedComponents = componentData.map(comp => {
+          if (!comp.component_id) {
+            console.error("Missing component_id in componentData", comp);
+          }
+
+          return {
+            component_id: comp.component_id, // Ensure this is always set
+            cutting_job_id: jobId,
+            width: comp.width ? parseFloat(comp.width) : null,
+            height: comp.height ? parseFloat(comp.height) : null,
+            counter: comp.counter ? parseFloat(comp.counter) : null,
+            rewinding: comp.rewinding ? parseFloat(comp.rewinding) : null,
+            rate: comp.rate ? parseFloat(comp.rate) : null,
+            status: comp.status,
+            notes: comp.notes || null,
+            waste_quantity: comp.waste_quantity ? parseFloat(comp.waste_quantity) : null
+          };
+        });
+
+        console.log("Inserting updated components:", formattedComponents);
 
         const { error: componentsError } = await supabase
           .from("cutting_components")
           .insert(formattedComponents);
 
-        if (componentsError) throw componentsError;
+        if (componentsError) {
+          console.error("Error inserting components:", componentsError);
+          throw componentsError;
+        }
       }
 
       return true;

@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { ArrowLeft, Scissors } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,13 @@ export default function CuttingJob() {
     handleNewJob,
     handleSubmit
   } = useCuttingJob(id || "");
+
+  // When component mounts and no job is selected, initialize a new job
+  useEffect(() => {
+    if (!loading && !selectedJobId && components.length > 0 && componentData.length === 0) {
+      handleNewJob();
+    }
+  }, [loading, selectedJobId, components, componentData]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { useCuttingJobData } from "./cutting/use-cutting-job-data";
@@ -31,13 +32,25 @@ export const useCuttingJob = (id: string) => {
     setValidationError(null);
     
     try {
+      // Validate componentData to ensure all component_id fields are set
+      const validComponents = componentData.every(comp => !!comp.component_id);
+      if (!validComponents) {
+        throw new Error("Some components are missing their IDs. Please try again.");
+      }
+
       if (selectedJobId) {
+        console.log("Updating existing job:", selectedJobId);
+        console.log("Component data:", componentData);
+        
         await updateCuttingJob(selectedJobId, cuttingData, componentData);
         toast({
           title: "Cutting Job Updated",
           description: "The cutting job has been updated successfully"
         });
       } else {
+        console.log("Creating new job for card:", id);
+        console.log("Component data:", componentData);
+        
         await createCuttingJob(id, cuttingData, componentData);
         toast({
           title: "Cutting Job Created",
@@ -47,6 +60,7 @@ export const useCuttingJob = (id: string) => {
 
       navigate(`/production/job-cards/${id}`);
     } catch (error: any) {
+      console.error("Error in handleSubmit:", error);
       toast({
         title: "Error saving cutting job",
         description: error.message,
