@@ -1,11 +1,12 @@
 
 import { toast } from "@/hooks/use-toast";
 import { Check, X, AlertTriangle, Info } from "lucide-react";
+import { ReactNode } from "react";
 
 type ToastType = "success" | "error" | "warning" | "info";
 
 interface ShowToastOptions {
-  title: string;
+  title: string | ReactNode;
   description?: string;
   type?: ToastType;
 }
@@ -39,12 +40,14 @@ export const showToast = ({ title, description, type = "info" }: ShowToastOption
   const { icon: Icon, className } = getToastConfig(type);
 
   toast({
-    title: (
-      <div className="flex items-center gap-2">
-        <Icon className={`h-4 w-4 ${className}`} />
-        {title}
-      </div>
-    ),
+    title: typeof title === "string" 
+      ? (
+          <div className="flex items-center gap-2">
+            <Icon className={`h-4 w-4 ${className}`} />
+            {title}
+          </div>
+        ) 
+      : title,
     description: description,
     className: "animate-in slide-in-from-top-full duration-300",
   });
