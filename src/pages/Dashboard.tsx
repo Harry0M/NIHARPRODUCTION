@@ -4,6 +4,7 @@ import { ProductionMetricsChart } from "@/components/dashboard/ProductionMetrics
 import { Button } from "@/components/ui/button";
 import { KeyboardShortcutsHelp } from "@/components/keyboard/KeyboardShortcutsHelp";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { OfflineStatusIndicator } from "@/components/ui/offline-status-indicator";
 
 const Dashboard = () => {
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
@@ -55,6 +56,8 @@ const Dashboard = () => {
           <ProductionMetricsChart />
         </div>
       </div>
+      
+      <OfflineStatusIndicator />
     </div>
   );
 };
