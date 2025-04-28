@@ -6,6 +6,7 @@ import { OrderTable } from "./OrderTable";
 import { OrderCard } from "./OrderCard";
 import { EmptyOrdersState } from "./EmptyOrdersState";
 import { OrderFilter, OrderFilters } from "@/components/orders/OrderFilter";
+import { SkeletonTable } from "@/components/ui/skeleton-loader";
 
 interface OrderContentProps {
   orders: Order[];
@@ -35,9 +36,7 @@ export const OrderContent = ({
         <OrderFilter filters={filters} setFilters={setFilters} />
 
         {loading ? (
-          <div className="flex justify-center items-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
+          <SkeletonTable rows={5} columns={6} />
         ) : orders.length === 0 ? (
           <EmptyOrdersState hasFilters={hasFilters} />
         ) : (

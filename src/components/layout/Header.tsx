@@ -4,16 +4,70 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { Link, useLocation } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { KeyboardShortcutsDialog } from "@/components/keyboard/KeyboardShortcutsDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useEffect, useRef } from "react";
+import { toast } from "@/hooks/use-toast";
 
 const Header = () => {
   const { user } = useAuth();
   const location = useLocation();
+  const searchRef = useRef<HTMLInputElement>(null);
+  
+  // Setup keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle shortcuts when not in an input/textarea
+      if (
+        document.activeElement instanceof HTMLInputElement ||
+        document.activeElement instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+
+      // Search shortcut
+      if (e.key === "/" && searchRef.current) {
+        e.preventDefault();
+        searchRef.current.focus();
+      }
+      
+      // Navigation shortcuts (g + key)
+      if (e.key === "g") {
+        const handleSecondKey = (e2: KeyboardEvent) => {
+          if (e2.key === "d") window.location.href = "/dashboard";
+          if (e2.key === "o") window.location.href = "/orders";
+          if (e2.key === "p") window.location.href = "/production";
+          if (e2.key === "j") window.location.href = "/production/job-cards";
+          
+          document.removeEventListener("keydown", handleSecondKey);
+        };
+        
+        // Listen for the second key
+        document.addEventListener("keydown", handleSecondKey, { once: true });
+      }
+      
+      // Create new shortcuts (n + key)
+      if (e.key === "n") {
+        const handleSecondKey = (e2: KeyboardEvent) => {
+          if (e2.key === "o") window.location.href = "/orders/new";
+          if (e2.key === "j") window.location.href = "/production/job-cards/new";
+          
+          document.removeEventListener("keydown", handleSecondKey);
+        };
+        
+        // Listen for the second key
+        document.addEventListener("keydown", handleSecondKey, { once: true });
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const getActionButton = () => {
     if (location.pathname === '/orders') {
@@ -80,14 +134,16 @@ const Header = () => {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
+            ref={searchRef}
             type="text"
-            placeholder="Search Nihar orders, jobs..."
+            placeholder="Search Nihar orders, jobs... (Press / to focus)"
             className="h-9 w-full rounded-md border border-input px-9 py-2 text-sm bg-background/50"
           />
         </div>
       </div>
       <div className="flex items-center gap-3">
         {getActionButton()}
+        <KeyboardShortcutsDialog />
         <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -99,7 +155,16 @@ const Header = () => {
           <DropdownMenuContent align="end" className="w-80">
             <div className="flex items-center justify-between px-4 py-2 border-b">
               <h3 className="font-medium">Notifications</h3>
-              <Button variant="ghost" size="sm">Mark all as read</Button>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => toast({
+                  title: "All notifications marked as read",
+                  description: "You have no unread notifications"
+                })}
+              >
+                Mark all as read
+              </Button>
             </div>
             <div className="py-2 max-h-80 overflow-y-auto">
               <div className="px-4 py-3 hover:bg-muted cursor-pointer">

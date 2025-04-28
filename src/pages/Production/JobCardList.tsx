@@ -6,6 +6,7 @@ import JobCardFilters from "@/components/production/job-cards/JobCardFilters";
 import JobCardEmptyState from "@/components/production/job-cards/JobCardEmptyState";
 import JobCardTable from "@/components/production/job-cards/JobCardTable";
 import JobCardDeleteDialog from "@/components/production/job-cards/JobCardDeleteDialog";
+import { SkeletonTable } from "@/components/ui/skeleton-loader";
 
 import { useJobCards } from "@/hooks/job-cards/useJobCards";
 import { useJobCardStatus } from "@/hooks/job-cards/useJobCardStatus";
@@ -61,9 +62,7 @@ const JobCardList = () => {
           />
 
           {loading ? (
-            <div className="flex justify-center items-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
+            <SkeletonTable rows={5} columns={5} />
           ) : (
             <>
               {filteredJobCards.length === 0 ? (

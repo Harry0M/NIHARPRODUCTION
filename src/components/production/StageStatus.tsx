@@ -23,7 +23,7 @@ export const StageStatus: React.FC<StageStatusProps> = ({ status, date, tooltip 
       case "completed":
         return "bg-green-100 text-green-800 border-green-200";
       case "in_progress":
-        return "bg-amber-100 text-amber-800 border-amber-200";
+        return "bg-amber-100 text-amber-800 border-amber-200 animate-pulse";
       case "cancelled":
         return "bg-red-100 text-red-800 border-red-200";
       default:
@@ -36,7 +36,7 @@ export const StageStatus: React.FC<StageStatusProps> = ({ status, date, tooltip 
       case "completed":
         return <Check className="h-3.5 w-3.5" />;
       case "in_progress":
-        return <Clock className="h-3.5 w-3.5" />;
+        return <Clock className="h-3.5 w-3.5 animate-spin-slow" />;
       default:
         return null;
     }
@@ -46,7 +46,7 @@ export const StageStatus: React.FC<StageStatusProps> = ({ status, date, tooltip 
 
   const content = (
     <div className="flex items-center space-x-2">
-      <Badge variant="outline" className={`${getStatusColor()} capitalize flex items-center gap-1`}>
+      <Badge variant="outline" className={`${getStatusColor()} capitalize flex items-center gap-1 transition-all duration-300`}>
         {getStatusIcon()}
         {status.replace(/_/g, " ")}
       </Badge>

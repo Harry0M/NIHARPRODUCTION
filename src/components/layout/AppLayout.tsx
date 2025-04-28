@@ -4,6 +4,7 @@ import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileNavigation from "./MobileNavigation";
+import { BreadcrumbTrail } from "@/components/navigation/BreadcrumbTrail";
 
 const AppLayout = () => {
   const isMobile = useIsMobile();
@@ -15,6 +16,7 @@ const AppLayout = () => {
         <Header />
         <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
           <div className="container mx-auto max-w-7xl p-4 md:p-6">
+            <BreadcrumbTrail />
             <Outlet />
           </div>
         </main>
