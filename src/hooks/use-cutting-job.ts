@@ -152,6 +152,13 @@ export const useCuttingJob = (jobCardId: string) => {
     
     // Initialize components with empty data
     initializeComponentData();
+    
+    // Update URL to indicate we're creating a new job
+    window.history.replaceState(
+      null, 
+      '', 
+      `/production/cutting/${jobCardId}?new=true`
+    );
   };
 
   const handleSelectJob = async (jobId: string) => {
@@ -182,13 +189,13 @@ export const useCuttingJob = (jobCardId: string) => {
 
         // Format component data for the form
         if (data && data.length > 0) {
+          // Map component data to include component_type from the original components
           const formattedComponents = data.map(comp => {
             const originalComponent = components.find(c => c.id === comp.component_id);
-            const componentType = originalComponent ? originalComponent.component_type : "";
             
             return {
               component_id: comp.component_id || "",
-              component_type: componentType,
+              component_type: originalComponent ? originalComponent.component_type : "",
               width: comp.width?.toString() || "",
               height: comp.height?.toString() || "",
               counter: comp.counter?.toString() || "",
@@ -249,6 +256,15 @@ export const useCuttingJob = (jobCardId: string) => {
         received_quantity: cuttingData.received_quantity ? parseInt(cuttingData.received_quantity) : null
       };
 
+      // Verify all component IDs exist in the database
+      const verifiedComponentData = componentData.filter(comp => {
+        const validComponent = components.find(c => c.id === comp.component_id);
+        if (!validComponent) {
+          console.error(`Invalid component ID: ${comp.component_id}`);
+        }
+        return validComponent;
+      });
+
       let cuttingJobId: string;
 
       if (selectedJobId) {
@@ -282,9 +298,9 @@ export const useCuttingJob = (jobCardId: string) => {
         cuttingJobId = cuttingJob.id;
       }
 
-      // Insert/update components
-      if (componentData.length > 0) {
-        const formattedComponents = componentData.map(comp => ({
+      // Insert/update components, making sure to only include fields from the database schema
+      if (verifiedComponentData.length > 0) {
+        const formattedComponents = verifiedComponentData.map(comp => ({
           component_id: comp.component_id,
           cutting_job_id: cuttingJobId,
           width: comp.width ? parseFloat(comp.width) : null,
@@ -293,14 +309,18 @@ export const useCuttingJob = (jobCardId: string) => {
           rewinding: comp.rewinding ? parseFloat(comp.rewinding) : null,
           rate: comp.rate ? parseFloat(comp.rate) : null,
           status: comp.status,
-          notes: comp.notes || null
+          notes: comp.notes || null,
+          waste_quantity: comp.waste_quantity ? parseFloat(comp.waste_quantity) : null
         }));
 
         const { error: componentsError } = await supabase
           .from("cutting_components")
           .insert(formattedComponents);
 
-        if (componentsError) throw componentsError;
+        if (componentsError) {
+          console.error("Error inserting components:", componentsError);
+          throw componentsError;
+        }
       }
 
       toast({
@@ -309,6 +329,13 @@ export const useCuttingJob = (jobCardId: string) => {
           ? "The cutting job has been updated successfully" 
           : "The cutting job has been created successfully"
       });
+
+      // Clear URL parameters
+      window.history.replaceState(
+        null, 
+        '', 
+        `/production/job-cards/${jobCardId}`
+      );
 
       // Navigate back to job card details
       navigate(`/production/job-cards/${jobCardId}`);

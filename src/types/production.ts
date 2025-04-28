@@ -41,8 +41,8 @@ export interface JobsData {
 }
 
 export interface CuttingComponent {
-  component_id: string;
-  component_type: string;
+  component_id: string;  // This is the order_components.id value
+  component_type?: string; // Type of component (added for display purposes)
   width: string;
   height: string;
   counter: string;
