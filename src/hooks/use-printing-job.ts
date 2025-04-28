@@ -1,80 +1,108 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { PrintingJobData, JobStatus } from "@/types/production";
+import { toast } from "@/hooks/use-toast";
+import { JobStatus } from "@/types/production";
+
+interface PrintingData {
+  pulling: string;
+  gsm: string;
+  sheet_length: string;
+  sheet_width: string;
+  worker_name: string;
+  is_internal: boolean;
+  rate: string;
+  status: JobStatus;
+  expected_completion_date: string;
+  print_image: string;
+}
 
 export const usePrintingJob = () => {
+  const [printingData, setPrintingData] = useState<PrintingData>({
+    pulling: "",
+    gsm: "",
+    sheet_length: "",
+    sheet_width: "",
+    worker_name: "",
+    is_internal: true,
+    rate: "",
+    status: "pending",
+    expected_completion_date: "",
+    print_image: ""
+  });
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const createPrintingJob = async (jobCardId: string, printingData: PrintingJobData) => {
-    setSubmitting(true);
+  const createPrintingJob = async (jobCardId: string, jobData: any) => {
     try {
-      const formattedData = {
-        job_card_id: jobCardId,
-        pulling: printingData.pulling,
-        gsm: printingData.gsm,
-        sheet_length: parseFloat(printingData.sheet_length) || null,
-        sheet_width: parseFloat(printingData.sheet_width) || null,
-        worker_name: printingData.worker_name,
-        is_internal: printingData.is_internal,
-        rate: parseFloat(printingData.rate) || null,
-        status: printingData.status,
-        expected_completion_date: printingData.expected_completion_date || null,
-        print_image: printingData.print_image || null
-      };
+      // Format job name as "job number-worker_name"
+      const jobName = `${jobData.worker_name ? jobData.worker_name : 'worker'}-${new Date().getTime().toString().slice(-4)}`;
 
-      console.log("Creating printing job with data:", formattedData);
-
-      const { error } = await supabase
-        .from("printing_jobs")
-        .insert(formattedData);
+      const { data, error } = await supabase
+        .from('printing_jobs')
+        .insert({
+          ...jobData,
+          job_card_id: jobCardId,
+          worker_name: jobName
+        })
+        .select()
+        .single();
 
       if (error) throw error;
-      return true;
-    } catch (error) {
-      console.error("Error creating printing job:", error);
+
+      return data;
+    } catch (error: any) {
+      console.error('Error in createPrintingJob:', error);
       throw error;
-    } finally {
-      setSubmitting(false);
     }
   };
 
-  const updatePrintingJob = async (jobId: string, printingData: PrintingJobData) => {
+  const updatePrintingJob = async (jobId: string, jobData: any) => {
     setSubmitting(true);
+    setError(null);
+
     try {
-      const formattedData = {
-        pulling: printingData.pulling,
-        gsm: printingData.gsm,
-        sheet_length: parseFloat(printingData.sheet_length) || null,
-        sheet_width: parseFloat(printingData.sheet_width) || null,
-        worker_name: printingData.worker_name,
-        is_internal: printingData.is_internal,
-        rate: parseFloat(printingData.rate) || null,
-        status: printingData.status,
-        expected_completion_date: printingData.expected_completion_date || null,
-        print_image: printingData.print_image || null
-      };
+      const { data, error } = await supabase
+        .from('printing_jobs')
+        .update(jobData)
+        .eq('id', jobId)
+        .select()
+        .single();
 
-      console.log("Updating printing job with data:", formattedData);
+      if (error) {
+        setError(error.message);
+        toast({
+          title: "Error updating printing job",
+          description: error.message,
+          variant: "destructive"
+        });
+        return null;
+      }
 
-      const { error } = await supabase
-        .from("printing_jobs")
-        .update(formattedData)
-        .eq("id", jobId);
+      toast({
+        title: "Printing Job Updated",
+        description: "The printing job has been updated successfully"
+      });
 
-      if (error) throw error;
-      return true;
-    } catch (error) {
-      console.error("Error updating printing job:", error);
-      throw error;
+      return data;
+    } catch (error: any) {
+      setError(error.message);
+      toast({
+        title: "Error updating printing job",
+        description: error.message,
+        variant: "destructive"
+      });
+      return null;
     } finally {
       setSubmitting(false);
     }
   };
 
   return {
-    submitting,
+    printingData,
+    setPrintingData,
     createPrintingJob,
-    updatePrintingJob
+    updatePrintingJob,
+    submitting,
+    error,
   };
 };

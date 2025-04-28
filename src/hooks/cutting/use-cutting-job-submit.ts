@@ -1,151 +1,118 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { CuttingComponent, JobStatus } from "@/types/production";
-
-interface CuttingData {
-  roll_width: string;
-  consumption_meters: string;
-  worker_name: string;
-  is_internal: boolean;
-  status: JobStatus;
-  received_quantity: string;
-}
+import { toast } from "@/hooks/use-toast";
 
 export const useCuttingJobSubmit = () => {
   const [submitting, setSubmitting] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  const createCuttingJob = async (jobCardId: string, cuttingData: CuttingData, componentData: CuttingComponent[]) => {
+  const createCuttingJob = async (jobCardId: string, cuttingData: any, componentData: any[]) => {
     setSubmitting(true);
     setValidationError(null);
 
     try {
-      if (!cuttingData.roll_width) {
-        setValidationError("Roll width is required");
-        throw new Error("Roll width is required");
-      }
-
-      const formattedCuttingData = {
-        job_card_id: jobCardId,
-        roll_width: parseFloat(cuttingData.roll_width),
-        consumption_meters: cuttingData.consumption_meters ? parseFloat(cuttingData.consumption_meters) : null,
-        worker_name: cuttingData.worker_name,
-        is_internal: cuttingData.is_internal,
-        status: cuttingData.status,
-        received_quantity: cuttingData.received_quantity ? parseInt(cuttingData.received_quantity) : null
-      };
+      // Format job name as "job number-worker_name"
+      const jobName = `${cuttingData.worker_name ? cuttingData.worker_name : 'worker'}-${new Date().getTime().toString().slice(-4)}`;
 
       const { data: cuttingJob, error: cuttingError } = await supabase
-        .from("cutting_jobs")
-        .insert(formattedCuttingData)
+        .from('cutting_jobs')
+        .insert({
+          ...cuttingData,
+          job_card_id: jobCardId,
+          worker_name: jobName
+        })
         .select()
         .single();
 
       if (cuttingError) throw cuttingError;
 
-      if (componentData.length > 0 && cuttingJob) {
-        const formattedComponents = componentData.map(comp => ({
-          component_id: comp.component_id,
-          cutting_job_id: cuttingJob.id,
-          width: comp.width ? parseFloat(comp.width) : null,
-          height: comp.height ? parseFloat(comp.height) : null,
-          counter: comp.counter ? parseFloat(comp.counter) : null,
-          rewinding: comp.rewinding ? parseFloat(comp.rewinding) : null,
-          rate: comp.rate ? parseFloat(comp.rate) : null,
-          status: comp.status,
-          notes: comp.notes || null,
-          waste_quantity: comp.waste_quantity ? parseFloat(comp.waste_quantity) : null
-        }));
+      // Insert components
+      for (const component of componentData) {
+        const { error: componentError } = await supabase
+          .from('cutting_components')
+          .insert({
+            ...component,
+            cutting_job_id: cuttingJob.id
+          });
 
-        const { error: componentsError } = await supabase
-          .from("cutting_components")
-          .insert(formattedComponents);
-
-        if (componentsError) throw componentsError;
+        if (componentError) {
+          console.error("Error inserting component:", componentError);
+          throw componentError; // Re-throw to prevent partial inserts
+        }
       }
 
       return cuttingJob;
     } catch (error: any) {
-      console.error("Error creating cutting job:", error);
+      console.error('Error in createCuttingJob:', error);
+      toast({
+        title: "Error creating cutting job",
+        description: error.message,
+        variant: "destructive"
+      });
       throw error;
     } finally {
       setSubmitting(false);
     }
   };
 
-  const updateCuttingJob = async (jobId: string, cuttingData: CuttingData, componentData: CuttingComponent[]) => {
+  const updateCuttingJob = async (jobId: string, cuttingData: any, componentData: any[]) => {
     setSubmitting(true);
     setValidationError(null);
 
     try {
-      if (!cuttingData.roll_width) {
-        setValidationError("Roll width is required");
-        throw new Error("Roll width is required");
-      }
-
-      // Convert string values to numbers
-      const formattedCuttingData = {
-        roll_width: parseFloat(cuttingData.roll_width),
-        consumption_meters: cuttingData.consumption_meters ? parseFloat(cuttingData.consumption_meters) : null,
-        worker_name: cuttingData.worker_name,
-        is_internal: cuttingData.is_internal,
-        status: cuttingData.status,
-        received_quantity: cuttingData.received_quantity ? parseInt(cuttingData.received_quantity) : null
-      };
-
-      // Update cutting job
       const { error: updateError } = await supabase
-        .from("cutting_jobs")
-        .update(formattedCuttingData)
-        .eq("id", jobId);
+        .from('cutting_jobs')
+        .update(cuttingData)
+        .eq('id', jobId);
 
       if (updateError) throw updateError;
 
-      // First, delete existing components
-      const { error: deleteError } = await supabase
-        .from("cutting_components")
-        .delete()
-        .eq("cutting_job_id", jobId);
+      // Update or insert components
+      for (const component of componentData) {
+        // Check if the component already exists
+        const { data: existingComponent, error: selectError } = await supabase
+          .from('cutting_components')
+          .select('id')
+          .eq('cutting_job_id', jobId)
+          .eq('component_id', component.component_id)
+          .single();
 
-      if (deleteError) throw deleteError;
+        if (selectError) throw selectError;
 
-      // Insert updated components - make sure all components have valid component_id
-      if (componentData.length > 0) {
-        const formattedComponents = componentData.map(comp => {
-          if (!comp.component_id) {
-            console.error("Missing component_id in componentData", comp);
+        if (existingComponent) {
+          // Update existing component
+          const { error: updateComponentError } = await supabase
+            .from('cutting_components')
+            .update(component)
+            .eq('cutting_job_id', jobId)
+            .eq('component_id', component.component_id);
+
+          if (updateComponentError) {
+            console.error("Error updating component:", updateComponentError);
+            throw updateComponentError;
           }
+        } else {
+          // Insert new component
+          const { error: insertComponentError } = await supabase
+            .from('cutting_components')
+            .insert({
+              ...component,
+              cutting_job_id: jobId
+            });
 
-          return {
-            component_id: comp.component_id, // Ensure this is always set
-            cutting_job_id: jobId,
-            width: comp.width ? parseFloat(comp.width) : null,
-            height: comp.height ? parseFloat(comp.height) : null,
-            counter: comp.counter ? parseFloat(comp.counter) : null,
-            rewinding: comp.rewinding ? parseFloat(comp.rewinding) : null,
-            rate: comp.rate ? parseFloat(comp.rate) : null,
-            status: comp.status,
-            notes: comp.notes || null,
-            waste_quantity: comp.waste_quantity ? parseFloat(comp.waste_quantity) : null
-          };
-        });
-
-        console.log("Inserting updated components:", formattedComponents);
-
-        const { error: componentsError } = await supabase
-          .from("cutting_components")
-          .insert(formattedComponents);
-
-        if (componentsError) {
-          console.error("Error inserting components:", componentsError);
-          throw componentsError;
+          if (insertComponentError) {
+            console.error("Error inserting component:", insertComponentError);
+            throw insertComponentError;
+          }
         }
       }
-
-      return true;
     } catch (error: any) {
-      console.error("Error updating cutting job:", error);
+      console.error('Error in updateCuttingJob:', error);
+      toast({
+        title: "Error updating cutting job",
+        description: error.message,
+        variant: "destructive"
+      });
       throw error;
     } finally {
       setSubmitting(false);
