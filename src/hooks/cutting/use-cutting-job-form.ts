@@ -36,9 +36,8 @@ export const useCuttingJobForm = (components: any[]) => {
       received_quantity: ""
     });
 
-    // Ensure each component has a valid component_id when initializing
     const initialComponentData = components.map(comp => ({
-      component_id: comp.id, // This is critical - must have a valid component_id
+      component_id: comp.id,
       component_type: comp.component_type,
       width: "",
       height: "",
@@ -48,7 +47,6 @@ export const useCuttingJobForm = (components: any[]) => {
       status: "pending" as JobStatus,
       notes: ""
     }));
-    
     setComponentData(initialComponentData);
   };
 
@@ -57,11 +55,11 @@ export const useCuttingJobForm = (components: any[]) => {
     if (selectedJob) {
       setSelectedJobId(jobId);
       setCuttingData({
-        roll_width: selectedJob.roll_width || "",
-        consumption_meters: selectedJob.consumption_meters?.toString() || "",
+        roll_width: selectedJob.roll_width,
+        consumption_meters: selectedJob.consumption_meters,
         worker_name: selectedJob.worker_name || "",
-        is_internal: selectedJob.is_internal !== false, // Default to true if undefined
-        status: selectedJob.status || "pending",
+        is_internal: selectedJob.is_internal,
+        status: selectedJob.status,
         received_quantity: selectedJob.received_quantity?.toString() || ""
       });
 
@@ -79,7 +77,7 @@ export const useCuttingJobForm = (components: any[]) => {
             const componentType = originalComponent ? originalComponent.component_type : "";
             
             return {
-              component_id: comp.component_id || "", // Ensure component_id is never null
+              component_id: comp.component_id || "",
               component_type: componentType,
               width: comp.width?.toString() || "",
               height: comp.height?.toString() || "",
@@ -91,14 +89,9 @@ export const useCuttingJobForm = (components: any[]) => {
             };
           });
           setComponentData(formattedComponents);
-        } else {
-          // If no components were found, initialize with the current components
-          handleNewJob();
         }
       } catch (error: any) {
         console.error("Error fetching cutting components:", error);
-        // Initialize with empty components as fallback
-        handleNewJob();
       }
     }
   };

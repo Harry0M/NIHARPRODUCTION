@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { useCuttingJobData } from "./cutting/use-cutting-job-data";
@@ -39,16 +38,7 @@ export const useCuttingJob = (id: string) => {
           description: "The cutting job has been updated successfully"
         });
       } else {
-        // When creating a new job, ensure component data has correct component_id values
-        const validatedComponentData = componentData.map((comp, index) => {
-          // Make sure each item has a valid component_id
-          return {
-            ...comp,
-            component_id: components[index]?.id || comp.component_id
-          };
-        });
-        
-        await createCuttingJob(id, cuttingData, validatedComponentData);
+        await createCuttingJob(id, cuttingData, componentData);
         toast({
           title: "Cutting Job Created",
           description: "The cutting job has been created successfully"
