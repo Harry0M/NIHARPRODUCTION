@@ -1,3 +1,4 @@
+
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +7,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, MoreHorizontal, Plus, Trash } from "lucide-react";
 import { formatDate, getStatusColor, getStatusDisplay } from "@/utils/orderUtils";
 import type { Order } from "@/types/order";
-import { OrderDetailsCollapsible } from "./OrderDetailsCollapsible";
 
 interface OrderCardProps {
   order: Order;
@@ -81,7 +81,6 @@ export const OrderCard = ({ order, onDeleteClick, isSelected = false, onSelectCh
               {getStatusDisplay(order.status)}
             </span>
           </div>
-          <OrderDetailsCollapsible order={order} />
         </div>
       </CardContent>
     </Card>
