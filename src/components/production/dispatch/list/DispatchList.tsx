@@ -9,7 +9,8 @@ import { PaginationControls } from "@/components/ui/pagination-controls";
 import { usePagination } from "@/hooks/use-pagination";
 import { OrderWithJobStatus } from "../types";
 import { supabase } from "@/integrations/supabase/client";
-import { showToast } from "@/components/ui/enhanced-toast";
+import { toast } from "@/hooks/use-toast";
+import { Database } from "@/integrations/supabase/types";
 
 export function DispatchList() {
   const { orders, loading, error } = useDispatchData();
@@ -82,11 +83,15 @@ export function DispatchList() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+  const updateOrderStatus = async (orderId: string, newStatus: OrderWithJobStatus["status"]) => {
     try {
+      // Ensure we're using a valid enum value for the database
+      const dbStatus: Database['public']['Enums']['order_status'] = 
+        newStatus as Database['public']['Enums']['order_status'];
+      
       const { error } = await supabase
         .from('orders')
-        .update({ status: newStatus })
+        .update({ status: dbStatus })
         .eq('id', orderId);
       
       if (error) throw error;
@@ -94,23 +99,22 @@ export function DispatchList() {
       // Update local state
       setFilteredOrders(prev => 
         prev.map(order => 
-          order.id === orderId ? { ...order, status: newStatus as any } : order
+          order.id === orderId ? { ...order, status: newStatus } : order
         )
       );
       
-      showToast({
+      toast({
         title: "Status updated",
         description: `Order status has been changed to ${newStatus}`,
-        type: "success"
       });
       
       return Promise.resolve();
     } catch (error: any) {
       console.error("Error updating order status:", error);
-      showToast({
+      toast({
         title: "Update failed",
         description: error.message,
-        type: "error"
+        variant: "destructive"
       });
       
       return Promise.reject(error);
