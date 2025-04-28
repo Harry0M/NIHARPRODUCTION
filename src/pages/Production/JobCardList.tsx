@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { 
@@ -68,139 +69,137 @@ interface JobCard {
   }[];
 }
 
-const canStartStage = (jobCard: JobCard, stage: string) => {
-  const hasCuttingJobs = jobCard.cutting_jobs && jobCard.cutting_jobs.length > 0;
-  const hasPrintingJobs = jobCard.printing_jobs && jobCard.printing_jobs.length > 0;
-  const hasStitchingJobs = jobCard.stitching_jobs && jobCard.stitching_jobs.length > 0;
+const JobCardList = () => {
+  const [jobCards, setJobCards] = useState<JobCard[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [jobCardToDelete, setJobCardToDelete] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const navigate = useNavigate();
 
-  // Check if at least one cutting job is completed instead of requiring all to be completed
-  const isCuttingStarted = hasCuttingJobs;
-  const isPrintingStarted = hasPrintingJobs;
-  const isStitchingStarted = hasStitchingJobs;
-  
-  // Check if at least one job is completed for each stage
-  const isCuttingCompleted = hasCuttingJobs && 
-    jobCard.cutting_jobs.some(job => job.status === 'completed');
-  const isPrintingCompleted = hasPrintingJobs && 
-    jobCard.printing_jobs.some(job => job.status === 'completed');
-  const isStitchingCompleted = hasStitchingJobs && 
-    jobCard.stitching_jobs.every(job => job.status === 'completed');
+  const canStartStage = (jobCard: JobCard, stage: string) => {
+    const hasCuttingJobs = jobCard.cutting_jobs && jobCard.cutting_jobs.length > 0;
+    const hasPrintingJobs = jobCard.printing_jobs && jobCard.printing_jobs.length > 0;
+    const hasStitchingJobs = jobCard.stitching_jobs && jobCard.stitching_jobs.length > 0;
 
-  switch (stage) {
-    case 'cutting':
-      return true; // Cutting can always be started
-    case 'printing':
-      return isCuttingStarted || isPrintingStarted; // Either cutting is started or printing already exists
-    case 'stitching':
-      return isPrintingStarted || isStitchingStarted; // Either printing is started or stitching already exists
-    case 'dispatch':
-      return isStitchingCompleted; // All stitching jobs must be complete
-    default:
-      return false;
-  }
-};
-
-const handleStageClick = (stage: string, jobId: string) => {
-  const jobCard = jobCards.find(card => card.id === jobId);
-  if (!jobCard) return;
-
-  if (!canStartStage(jobCard, stage)) {
-    const requiredStage = stage === 'printing' ? 'cutting' : 
-                        stage === 'stitching' ? 'printing' : 
-                        'stitching';
+    // Check if at least one cutting job is completed instead of requiring all to be completed
+    const isCuttingStarted = hasCuttingJobs;
+    const isPrintingStarted = hasPrintingJobs;
+    const isStitchingStarted = hasStitchingJobs;
     
-    toast({
-      title: "Cannot start " + stage,
-      description: `Please complete the ${requiredStage} stage first.`,
-      variant: "destructive"
-    });
-    return;
-  }
+    // Check if at least one job is completed for each stage
+    const isCuttingCompleted = hasCuttingJobs && 
+      jobCard.cutting_jobs.some(job => job.status === 'completed');
+    const isPrintingCompleted = hasPrintingJobs && 
+      jobCard.printing_jobs.some(job => job.status === 'completed');
+    const isStitchingCompleted = hasStitchingJobs && 
+      jobCard.stitching_jobs.every(job => job.status === 'completed');
 
-  switch (stage) {
-    case 'cutting':
-      handleCuttingClick(jobId);
-      break;
-    case 'printing':
-      handlePrintingClick(jobId);
-      break;
-    case 'stitching':
-      handleStitchingClick(jobId);
-      break;
-    default:
-      break;
-  }
-};
+    switch (stage) {
+      case 'cutting':
+        return true; // Cutting can always be started
+      case 'printing':
+        return isCuttingStarted || isPrintingStarted; // Either cutting is started or printing already exists
+      case 'stitching':
+        return isPrintingStarted || isStitchingStarted; // Either printing is started or stitching already exists
+      case 'dispatch':
+        return isStitchingCompleted; // All stitching jobs must be complete
+      default:
+        return false;
+    }
+  };
 
-const getJobCardStatus = (jobCard: JobCard) => {
-  // Check if there are any stitching jobs
-  const hasStitchingJobs = jobCard.stitching_jobs && jobCard.stitching_jobs.length > 0;
-  const hasPrintingJobs = jobCard.printing_jobs && jobCard.printing_jobs.length > 0;
-  
-  // Check if all stitching jobs are completed
-  const isStitchingCompleted = hasStitchingJobs && 
-    jobCard.stitching_jobs.every(job => job.status === 'completed');
-  
-  // Check if all printing jobs are completed
-  const isPrintingCompleted = hasPrintingJobs && 
-    jobCard.printing_jobs.every(job => job.status === 'completed');
+  const handleStageClick = (stage: string, jobId: string) => {
+    const jobCard = jobCards.find(card => card.id === jobId);
+    if (!jobCard) return;
 
-  if (isStitchingCompleted) {
-    return 'completed';
-  } else if (isPrintingCompleted) {
-    return 'in_progress';
-  } else {
-    return 'pending';
-  }
-};
+    if (!canStartStage(jobCard, stage)) {
+      const requiredStage = stage === 'printing' ? 'cutting' : 
+                          stage === 'stitching' ? 'printing' : 
+                          'stitching';
+      
+      toast({
+        title: "Cannot start " + stage,
+        description: `Please complete the ${requiredStage} stage first.`,
+        variant: "destructive"
+      });
+      return;
+    }
 
-const fetchJobCards = async () => {
-  setLoading(true);
-  try {
-    const { data, error } = await supabase
-      .from('job_cards')
-      .select(`
-        id, 
-        job_name, 
-        status, 
-        created_at,
-        order_id,
-        orders (
-          id,
-          order_number,
-          company_name
-        ),
-        cutting_jobs (
-          id,
-          status
-        ),
-        printing_jobs (
-          id,
-          status
-        ),
-        stitching_jobs (
-          id,
-          status
-        )
-      `)
-      .order('created_at', { ascending: false });
-  
-    if (error) throw error;
-  
-    // Transform the data to ensure proper typing
-    const formattedData: JobCard[] = (data || []).map(item => ({
-      id: item.id,
-      job_name: item.job_name,
-      created_at: item.created_at,
-      order: {
-        id: item.orders?.id || '',
-        order_number: item.orders?.order_number || '',
-        company_name: item.orders?.company_name || ''
-      },
-      cutting_jobs: item.cutting_jobs || [],
-      printing_jobs: item.printing_jobs || [],
-      stitching_jobs: item.stitching_jobs || [],
-      status: getJobCardStatus({
+    switch (stage) {
+      case 'cutting':
+        handleCuttingClick(jobId);
+        break;
+      case 'printing':
+        handlePrintingClick(jobId);
+        break;
+      case 'stitching':
+        handleStitchingClick(jobId);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const getJobCardStatus = (jobCard: JobCard) => {
+    // Check if there are any stitching jobs
+    const hasStitchingJobs = jobCard.stitching_jobs && jobCard.stitching_jobs.length > 0;
+    const hasPrintingJobs = jobCard.printing_jobs && jobCard.printing_jobs.length > 0;
+    
+    // Check if all stitching jobs are completed
+    const isStitchingCompleted = hasStitchingJobs && 
+      jobCard.stitching_jobs.every(job => job.status === 'completed');
+    
+    // Check if all printing jobs are completed
+    const isPrintingCompleted = hasPrintingJobs && 
+      jobCard.printing_jobs.every(job => job.status === 'completed');
+
+    if (isStitchingCompleted) {
+      return 'completed';
+    } else if (isPrintingCompleted) {
+      return 'in_progress';
+    } else {
+      return 'pending';
+    }
+  };
+
+  const fetchJobCards = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('job_cards')
+        .select(`
+          id, 
+          job_name, 
+          status, 
+          created_at,
+          order_id,
+          orders (
+            id,
+            order_number,
+            company_name
+          ),
+          cutting_jobs (
+            id,
+            status
+          ),
+          printing_jobs (
+            id,
+            status
+          ),
+          stitching_jobs (
+            id,
+            status
+          )
+        `)
+        .order('created_at', { ascending: false });
+    
+      if (error) throw error;
+    
+      // Transform the data to ensure proper typing
+      const formattedData: JobCard[] = (data || []).map(item => ({
         id: item.id,
         job_name: item.job_name,
         created_at: item.created_at,
@@ -212,98 +211,110 @@ const fetchJobCards = async () => {
         cutting_jobs: item.cutting_jobs || [],
         printing_jobs: item.printing_jobs || [],
         stitching_jobs: item.stitching_jobs || [],
-        status: '' // This will be overwritten by getJobCardStatus
-      })
-    }));
-  
-    setJobCards(formattedData);
-  } catch (error: any) {
-    toast({
-      title: "Error fetching job cards",
-      description: error.message,
-      variant: "destructive",
-    });
-  } finally {
-    setLoading(false);
-  }
-};
-
-useEffect(() => {
-  fetchJobCards();
-}, []);
-
-const filteredJobCards = jobCards.filter(jobCard => {
-  const matchesSearch = (
-    jobCard.job_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    jobCard.order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    jobCard.order.company_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  
-  const matchesStatus = statusFilter === "all" || jobCard.status === statusFilter;
-  
-  return matchesSearch && matchesStatus;
-});
-
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString();
-};
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case "completed":
-      return "bg-green-100 text-green-800";
-    case "in_progress":
-      return "bg-amber-100 text-amber-800";
-    default:
-      return "bg-gray-100 text-gray-800";
-  }
-};
-
-const getStatusDisplay = (status: string) => {
-  return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-};
-
-// Fixed: Use direct navigation without state to avoid issues with back button
-const handleViewDetails = (jobId: string) => {
-  navigate(`/production/job-cards/${jobId}`);
-};
-
-const handleCuttingClick = (jobId: string) => {
-  navigate(`/production/cutting/${jobId}`);
-};
-
-const handlePrintingClick = (jobId: string) => {
-  navigate(`/production/printing/${jobId}`);
-};
-
-const handleStitchingClick = (jobId: string) => {
-  navigate(`/production/stitching/${jobId}`);
-};
-
-const handleDeleteJobCard = async () => {
-  if (!jobCardToDelete) return;
-
-  setDeleteLoading(true);
-  try {
-    console.log("Attempting to delete job card with ID:", jobCardToDelete);
+        status: getJobCardStatus({
+          id: item.id,
+          job_name: item.job_name,
+          created_at: item.created_at,
+          order: {
+            id: item.orders?.id || '',
+            order_number: item.orders?.order_number || '',
+            company_name: item.orders?.company_name || ''
+          },
+          cutting_jobs: item.cutting_jobs || [],
+          printing_jobs: item.printing_jobs || [],
+          stitching_jobs: item.stitching_jobs || [],
+          status: '' // This will be overwritten by getJobCardStatus
+        })
+      }));
     
-    // Delete all related cutting components
+      setJobCards(formattedData);
+    } catch (error: any) {
+      toast({
+        title: "Error fetching job cards",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchJobCards();
+  }, []);
+
+  const filteredJobCards = jobCards.filter(jobCard => {
+    const matchesSearch = (
+      jobCard.job_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      jobCard.order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      jobCard.order.company_name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
+    const matchesStatus = statusFilter === "all" || jobCard.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "completed":
+        return "bg-green-100 text-green-800";
+      case "in_progress":
+        return "bg-amber-100 text-amber-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getStatusDisplay = (status: string) => {
+    return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  const handleViewDetails = (jobId: string) => {
+    navigate(`/production/job-cards/${jobId}`);
+  };
+
+  const handleCuttingClick = (jobId: string) => {
+    navigate(`/production/cutting/${jobId}`);
+  };
+
+  const handlePrintingClick = (jobId: string) => {
+    navigate(`/production/printing/${jobId}`);
+  };
+
+  const handleStitchingClick = (jobId: string) => {
+    navigate(`/production/stitching/${jobId}`);
+  };
+
+  const handleDeleteJobCard = async () => {
+    if (!jobCardToDelete) return;
+
+    setDeleteLoading(true);
     try {
-      const { data: cuttingJobs } = await supabase
-        .from('cutting_jobs')
-        .select('id')
-        .eq('job_card_id', jobCardToDelete);
+      console.log("Attempting to delete job card with ID:", jobCardToDelete);
       
-      if (cuttingJobs && cuttingJobs.length > 0) {
-        console.log(`Found ${cuttingJobs.length} cutting jobs to delete components from`);
-        for (const job of cuttingJobs) {
-          const { error } = await supabase
-            .from('cutting_components')
-            .delete()
-            .eq('cutting_job_id', job.id);
-          
-          if (error) {
-            console.error(`Error deleting cutting components for job ${job.id}:`, error);
+      // Delete all related cutting components
+      try {
+        const { data: cuttingJobs } = await supabase
+          .from('cutting_jobs')
+          .select('id')
+          .eq('job_card_id', jobCardToDelete);
+        
+        if (cuttingJobs && cuttingJobs.length > 0) {
+          console.log(`Found ${cuttingJobs.length} cutting jobs to delete components from`);
+          for (const job of cuttingJobs) {
+            const { error } = await supabase
+              .from('cutting_components')
+              .delete()
+              .eq('cutting_job_id', job.id);
+            
+            if (error) {
+              console.error(`Error deleting cutting components for job ${job.id}:`, error);
+            }
           }
         }
       } catch (error) {
@@ -378,7 +389,6 @@ const handleDeleteJobCard = async () => {
 
       // Navigate to the job cards page to refresh
       navigate('/production/job-cards');
-      
     } catch (error: any) {
       console.error("Error deleting job card:", error);
       toast({
