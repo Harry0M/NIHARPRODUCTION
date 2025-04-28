@@ -50,7 +50,7 @@ const CatalogList = () => {
       setIsDeleting(true);
       console.log(`Deleting product with ID: ${productToDelete}`);
       
-      // First, delete the associated components
+      // First, delete all associated components
       const { error: componentsError } = await supabase
         .from('catalog_components')
         .delete()
@@ -61,7 +61,7 @@ const CatalogList = () => {
         throw componentsError;
       }
       
-      // Then delete the product itself
+      // Then delete the catalog product itself
       const { error } = await supabase
         .from('catalog')
         .delete()
@@ -73,6 +73,19 @@ const CatalogList = () => {
       }
       
       toast.success("Product deleted successfully");
+      
+      // Verify the deletion was successful
+      const { data: checkProduct } = await supabase
+        .from('catalog')
+        .select('id')
+        .eq('id', productToDelete)
+        .maybeSingle();
+      
+      if (checkProduct) {
+        throw new Error("Product still exists after deletion attempt");
+      }
+      
+      // Finally, refetch the data
       await refetch();
     } catch (error: any) {
       console.error('Error in handleDeleteProduct:', error);
