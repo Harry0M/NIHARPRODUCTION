@@ -1,16 +1,17 @@
 
-import React, { useEffect } from "react";
+import React from "react";
 import { useParams } from "react-router-dom";
 import { ArrowLeft, Scissors, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CuttingJobOrderInfo } from "./CuttingJobOrderInfo";
-import { CuttingJobComponentForm } from "./CuttingJobComponentForm";
+import { CuttingJobOrderInfo } from "./cutting/CuttingJobOrderInfo";
+import { CuttingJobComponentForm } from "./cutting/CuttingJobComponentForm";
 import { CuttingJobDetailsForm } from "./cutting/CuttingJobDetailsForm";
 import { useCuttingJob } from "@/hooks/use-cutting-job";
 import { Card, CardContent } from "@/components/ui/card";
+import { JobStatus } from "@/types/production";
 
 export default function CuttingJob() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   
   const {
     jobCard,
@@ -20,13 +21,14 @@ export default function CuttingJob() {
     selectedJobId,
     cuttingData,
     componentData,
-    validationError,
     submitting,
+    validationError,
     setCuttingData,
     setComponentData,
-    handleSelectJob,
     handleNewJob,
-    handleSubmit
+    handleSelectJob,
+    handleSubmit,
+    handleGoBack
   } = useCuttingJob(id || "");
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,7 +36,7 @@ export default function CuttingJob() {
     setCuttingData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSelectChange = (name: string, value: any) => {
+  const handleSelectChange = (name: string, value: JobStatus) => {
     setCuttingData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -46,7 +48,7 @@ export default function CuttingJob() {
     setCuttingData(prev => ({ ...prev, worker_name: workerId }));
   };
 
-  const handleComponentChange = (index: number, field: string, value: string) => {
+  const handleComponentChange = (index: number, field: string, value: string | JobStatus) => {
     setComponentData(prev => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
@@ -61,15 +63,9 @@ export default function CuttingJob() {
     }));
   };
 
-  const handleGoBack = () => {
-    window.location.href = `/production/job-cards/${id}`;
-  };
-
   const handleCreateNewJob = () => {
-    console.log("Creating new cutting job");
-    // Force reset all form state
     handleNewJob();
-    // Ensure the UI shows the form instead of job cards
+    // Update URL to indicate we're creating a new job
     window.history.replaceState(
       null, 
       '', 
@@ -96,6 +92,14 @@ export default function CuttingJob() {
       </div>
     );
   }
+
+  // Show form if either:
+  // 1. User is editing an existing job (selectedJobId is set)
+  // 2. User is creating a new job (URL has ?new=true)
+  // 3. There are no existing jobs yet
+  const showForm = selectedJobId !== null || 
+                  window.location.search.includes('new=true') || 
+                  existingJobs.length === 0;
 
   return (
     <div className="space-y-6">
@@ -130,7 +134,7 @@ export default function CuttingJob() {
         </Button>
       </div>
 
-      {!selectedJobId && existingJobs && existingJobs.length > 0 && !window.location.search.includes('new=true') && (
+      {!showForm && existingJobs.length > 0 && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {existingJobs.map((job, index) => (
             <Card key={job.id} className="hover:border-primary transition-colors">
@@ -154,18 +158,18 @@ export default function CuttingJob() {
         </div>
       )}
 
-      {(selectedJobId || (!existingJobs || existingJobs.length === 0) || window.location.search.includes('new=true')) && (
+      {showForm && (
         <form id="cutting-form" onSubmit={handleSubmit} className="space-y-6 pb-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <CuttingJobOrderInfo order={jobCard.order} />
+            <CuttingJobOrderInfo order={jobCard.orders} />
             <div className="lg:col-span-2">
               <CuttingJobDetailsForm
                 cuttingData={cuttingData}
                 validationError={validationError}
                 orderInfo={{
-                  bag_length: jobCard.order.bag_length,
-                  bag_width: jobCard.order.bag_width,
-                  quantity: jobCard.order.quantity
+                  bag_length: jobCard.orders.bag_length,
+                  bag_width: jobCard.orders.bag_width,
+                  quantity: jobCard.orders.quantity
                 }}
                 onInputChange={handleInputChange}
                 onCheckboxChange={handleCheckboxChange}

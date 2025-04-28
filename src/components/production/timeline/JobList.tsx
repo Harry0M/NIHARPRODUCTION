@@ -45,7 +45,7 @@ export const JobList = ({ jobs, type, selectedJob, onJobSelect }: JobListProps) 
           >
             <div className="flex items-center gap-2">
               <StageStatus 
-                status={job.status as any}
+                status={job.status}
                 date={job.created_at}
                 tooltip={`${type} job ${job.job_number || index + 1}${job.worker_name ? ` - ${job.worker_name}` : ''}`}
               />

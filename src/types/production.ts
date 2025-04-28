@@ -1,3 +1,4 @@
+
 export type JobStatus = "pending" | "in_progress" | "completed";
 
 export interface TimelineJob {
@@ -8,7 +9,7 @@ export interface TimelineJob {
   worker_name?: string;
   is_internal?: boolean;
   job_number?: string;
-  job_card_id?: string;  // Added this field to help with navigation
+  job_card_id?: string;
 }
 
 export interface JobData {
@@ -53,7 +54,7 @@ export interface CuttingComponent {
 }
 
 export interface PrintingJobData {
-  id?: string;  // Add id as an optional property
+  id?: string;
   job_card_id: string;
   pulling: string;
   gsm: string;

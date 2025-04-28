@@ -79,4 +79,4 @@ export const CuttingStageList = ({ jobs }: CuttingStageListProps) => {
       ))}
     </div>
   );
-};
+}
