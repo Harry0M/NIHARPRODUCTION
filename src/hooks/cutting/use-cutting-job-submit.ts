@@ -7,6 +7,23 @@ export const useCuttingJobSubmit = () => {
   const [submitting, setSubmitting] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  // Helper function to sanitize numeric fields
+  const sanitizeNumericFields = (data: any) => {
+    const result = { ...data };
+    
+    // List of fields that should be numeric
+    const numericFields = ['width', 'height', 'counter', 'rewinding', 'rate', 'waste_quantity'];
+    
+    // Convert empty strings to null for numeric fields
+    numericFields.forEach(field => {
+      if (field in result && (result[field] === '' || result[field] === undefined)) {
+        result[field] = null;
+      }
+    });
+    
+    return result;
+  };
+
   const createCuttingJob = async (jobCardId: string, cuttingData: any, componentData: any[]) => {
     setSubmitting(true);
     setValidationError(null);
@@ -15,10 +32,18 @@ export const useCuttingJobSubmit = () => {
       // Format job name as "job number-worker_name"
       const jobName = `${cuttingData.worker_name ? cuttingData.worker_name : 'worker'}-${new Date().getTime().toString().slice(-4)}`;
 
+      // Sanitize the cutting data numeric fields
+      const sanitizedCuttingData = {
+        ...cuttingData,
+        roll_width: cuttingData.roll_width === '' ? null : cuttingData.roll_width,
+        consumption_meters: cuttingData.consumption_meters === '' ? null : cuttingData.consumption_meters,
+        received_quantity: cuttingData.received_quantity === '' ? null : cuttingData.received_quantity
+      };
+
       const { data: cuttingJob, error: cuttingError } = await supabase
         .from('cutting_jobs')
         .insert({
-          ...cuttingData,
+          ...sanitizedCuttingData,
           job_card_id: jobCardId,
           worker_name: jobName
         })
@@ -32,10 +57,13 @@ export const useCuttingJobSubmit = () => {
         // Create a copy of the component data without the component_type field
         const { component_type, ...componentDataToInsert } = component;
         
+        // Sanitize numeric fields before inserting
+        const sanitizedComponentData = sanitizeNumericFields(componentDataToInsert);
+        
         const { error: componentError } = await supabase
           .from('cutting_components')
           .insert({
-            ...componentDataToInsert,
+            ...sanitizedComponentData,
             cutting_job_id: cuttingJob.id
           });
 
@@ -64,9 +92,17 @@ export const useCuttingJobSubmit = () => {
     setValidationError(null);
 
     try {
+      // Sanitize the cutting data numeric fields
+      const sanitizedCuttingData = {
+        ...cuttingData,
+        roll_width: cuttingData.roll_width === '' ? null : cuttingData.roll_width,
+        consumption_meters: cuttingData.consumption_meters === '' ? null : cuttingData.consumption_meters,
+        received_quantity: cuttingData.received_quantity === '' ? null : cuttingData.received_quantity
+      };
+
       const { error: updateError } = await supabase
         .from('cutting_jobs')
-        .update(cuttingData)
+        .update(sanitizedCuttingData)
         .eq('id', jobId);
 
       if (updateError) throw updateError;
@@ -75,6 +111,9 @@ export const useCuttingJobSubmit = () => {
       for (const component of componentData) {
         // Remove component_type from the data being inserted or updated
         const { component_type, ...componentDataToUse } = component;
+        
+        // Sanitize numeric fields
+        const sanitizedComponentData = sanitizeNumericFields(componentDataToUse);
         
         // Check if the component already exists
         const { data: existingComponent, error: selectError } = await supabase
@@ -90,7 +129,7 @@ export const useCuttingJobSubmit = () => {
           // Update existing component
           const { error: updateComponentError } = await supabase
             .from('cutting_components')
-            .update(componentDataToUse)
+            .update(sanitizedComponentData)
             .eq('cutting_job_id', jobId)
             .eq('component_id', component.component_id);
 
@@ -103,7 +142,7 @@ export const useCuttingJobSubmit = () => {
           const { error: insertComponentError } = await supabase
             .from('cutting_components')
             .insert({
-              ...componentDataToUse,
+              ...sanitizedComponentData,
               cutting_job_id: jobId
             });
 
