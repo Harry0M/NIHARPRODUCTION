@@ -1,12 +1,16 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Check, Trash } from "lucide-react";
 import JobCardListHeader from "@/components/production/job-cards/JobCardListHeader";
 import JobCardFilters from "@/components/production/job-cards/JobCardFilters";
 import JobCardEmptyState from "@/components/production/job-cards/JobCardEmptyState";
 import JobCardTable from "@/components/production/job-cards/JobCardTable";
 import JobCardDeleteDialog from "@/components/production/job-cards/JobCardDeleteDialog";
-import { SkeletonTable } from "@/components/ui/skeleton-loader";
+import { SkeletonTable } from "@/components/ui/skeleton-table";
+import { showToast } from "@/components/ui/enhanced-toast";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 
 import { useJobCards } from "@/hooks/job-cards/useJobCards";
 import { useJobCardStatus } from "@/hooks/job-cards/useJobCardStatus";
@@ -16,6 +20,7 @@ import { useJobCardDelete } from "@/hooks/job-cards/useJobCardDelete";
 const JobCardList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedJobCards, setSelectedJobCards] = useState<string[]>([]);
   
   const { jobCards, setJobCards, loading } = useJobCards();
   const { getStatusColor, getStatusDisplay } = useJobCardStatus();
@@ -27,6 +32,30 @@ const JobCardList = () => {
     confirmDeleteJobCard, 
     handleDeleteJobCard 
   } = useJobCardDelete(setJobCards);
+
+  // Set up keyboard shortcuts
+  const shortcuts = {
+    'a': () => {
+      if (selectedJobCards.length > 0) {
+        const allSelected = filteredJobCards.length === selectedJobCards.length;
+        handleSelectAllJobCards(!allSelected);
+      } else if (filteredJobCards.length > 0) {
+        handleSelectAllJobCards(true);
+      }
+    },
+    'escape': () => {
+      if (selectedJobCards.length > 0) {
+        setSelectedJobCards([]);
+      }
+    },
+    'delete': () => {
+      if (selectedJobCards.length === 1) {
+        confirmDeleteJobCard(selectedJobCards[0]);
+      }
+    }
+  };
+  
+  useKeyboardShortcuts(shortcuts);
 
   const filteredJobCards = jobCards.filter(jobCard => {
     const matchesSearch = (
@@ -44,9 +73,92 @@ const JobCardList = () => {
     handleStageClick(stage, id, jobCards);
   };
 
+  const handleSelectJobCard = (id: string, isSelected: boolean) => {
+    if (isSelected) {
+      setSelectedJobCards(prev => [...prev, id]);
+    } else {
+      setSelectedJobCards(prev => prev.filter(jobCardId => jobCardId !== id));
+    }
+  };
+
+  const handleSelectAllJobCards = (isSelected: boolean) => {
+    if (isSelected) {
+      setSelectedJobCards(filteredJobCards.map(card => card.id));
+    } else {
+      setSelectedJobCards([]);
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedJobCards.length === 0) return;
+    
+    if (window.confirm(`Are you sure you want to delete ${selectedJobCards.length} job cards?`)) {
+      // In a real implementation, you'd want to delete these in the database
+      setJobCards(prev => prev.filter(card => !selectedJobCards.includes(card.id)));
+      showToast({
+        title: `${selectedJobCards.length} job cards deleted`,
+        type: "success"
+      });
+      setSelectedJobCards([]);
+    }
+  };
+
+  const handleBulkStatusUpdate = (status: string) => {
+    if (selectedJobCards.length === 0) return;
+    
+    // In a real implementation, you'd want to update these in the database
+    const updatedJobCards = jobCards.map(card => {
+      if (selectedJobCards.includes(card.id)) {
+        return { ...card, status: status as any };
+      }
+      return card;
+    });
+    
+    setJobCards(updatedJobCards);
+    showToast({
+      title: `Updated ${selectedJobCards.length} job cards to ${status}`,
+      type: "success"
+    });
+    setSelectedJobCards([]);
+  };
+
   return (
     <div className="space-y-6">
       <JobCardListHeader />
+
+      {selectedJobCards.length > 0 && (
+        <div className="bg-muted/80 border rounded-md p-2 flex items-center justify-between animate-in slide-in-from-top">
+          <div className="text-sm font-medium">
+            {selectedJobCards.length} {selectedJobCards.length === 1 ? 'job card' : 'job cards'} selected
+          </div>
+          <div className="flex items-center gap-2">
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => handleBulkStatusUpdate('in_progress')}
+            >
+              <Check className="h-4 w-4 mr-1" />
+              Mark In Progress
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => handleBulkStatusUpdate('completed')}
+            >
+              <Check className="h-4 w-4 mr-1" />
+              Mark Completed
+            </Button>
+            <Button 
+              size="sm" 
+              variant="destructive"
+              onClick={handleBulkDelete}
+            >
+              <Trash className="h-4 w-4 mr-1" />
+              Delete
+            </Button>
+          </div>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -76,6 +188,9 @@ const JobCardList = () => {
                   canStartStage={canStartStage}
                   getStatusColor={getStatusColor}
                   getStatusDisplay={getStatusDisplay}
+                  selectedJobCards={selectedJobCards}
+                  onSelectJobCard={handleSelectJobCard}
+                  onSelectAllJobCards={handleSelectAllJobCards}
                 />
               )}
             </>

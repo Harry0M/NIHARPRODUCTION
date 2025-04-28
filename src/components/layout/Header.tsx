@@ -1,10 +1,12 @@
 
-import { Bell, Search, Plus } from "lucide-react";
+import { Bell, Search, Plus, Keyboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { Link, useLocation } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { KeyboardShortcutsDialog } from "@/components/keyboard/KeyboardShortcutsDialog";
+import { useState } from "react";
+import { KeyboardShortcutsHelp } from "@/components/keyboard/KeyboardShortcutsHelp";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,11 +15,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useEffect, useRef } from "react";
 import { toast } from "@/hooks/use-toast";
+import { KeyboardShortcut } from "@/components/ui/keyboard-shortcut";
 
 const Header = () => {
   const { user } = useAuth();
   const location = useLocation();
   const searchRef = useRef<HTMLInputElement>(null);
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   
   // Setup keyboard shortcuts
   useEffect(() => {
@@ -34,6 +38,12 @@ const Header = () => {
       if (e.key === "/" && searchRef.current) {
         e.preventDefault();
         searchRef.current.focus();
+      }
+      
+      // Show keyboard shortcuts help
+      if (e.key === "?") {
+        e.preventDefault();
+        setShowKeyboardShortcuts(true);
       }
       
       // Navigation shortcuts (g + key)
@@ -139,11 +149,21 @@ const Header = () => {
             placeholder="Search Nihar orders, jobs... (Press / to focus)"
             className="h-9 w-full rounded-md border border-input px-9 py-2 text-sm bg-background/50"
           />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+            <KeyboardShortcut keys={["/"]} size="sm" />
+          </div>
         </div>
       </div>
       <div className="flex items-center gap-3">
         {getActionButton()}
-        <KeyboardShortcutsDialog />
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="relative"
+          onClick={() => setShowKeyboardShortcuts(true)}
+        >
+          <Keyboard className="h-5 w-5" />
+        </Button>
         <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -188,6 +208,11 @@ const Header = () => {
           </span>
         )}
       </div>
+      
+      <KeyboardShortcutsHelp 
+        open={showKeyboardShortcuts} 
+        onOpenChange={setShowKeyboardShortcuts} 
+      />
     </header>
   );
 };

@@ -1,6 +1,7 @@
 
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Eye, MoreHorizontal, Plus, Trash } from "lucide-react";
@@ -10,14 +11,34 @@ import type { Order } from "@/types/order";
 interface OrderTableProps {
   orders: Order[];
   onDeleteClick: (orderId: string) => void;
+  selectedOrders?: string[];
+  onSelectOrder?: (orderId: string, isSelected: boolean) => void;
+  onSelectAllOrders?: (isSelected: boolean) => void;
 }
 
-export const OrderTable = ({ orders, onDeleteClick }: OrderTableProps) => {
+export const OrderTable = ({ 
+  orders, 
+  onDeleteClick, 
+  selectedOrders = [], 
+  onSelectOrder = () => {}, 
+  onSelectAllOrders = () => {} 
+}: OrderTableProps) => {
+  const allSelected = orders.length > 0 && selectedOrders.length === orders.length;
+  const someSelected = selectedOrders.length > 0 && selectedOrders.length < orders.length;
+
   return (
     <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-[50px]">
+              <Checkbox 
+                checked={allSelected}
+                onCheckedChange={(checked) => onSelectAllOrders(!!checked)}
+                aria-label="Select all orders"
+                className={someSelected ? "opacity-50" : ""}
+              />
+            </TableHead>
             <TableHead className="w-[180px]">Order Number</TableHead>
             <TableHead>Company</TableHead>
             <TableHead className="text-right">Quantity</TableHead>
@@ -29,7 +50,14 @@ export const OrderTable = ({ orders, onDeleteClick }: OrderTableProps) => {
         </TableHeader>
         <TableBody>
           {orders.map((order) => (
-            <TableRow key={order.id}>
+            <TableRow key={order.id} className={selectedOrders.includes(order.id) ? "bg-muted/50" : ""}>
+              <TableCell>
+                <Checkbox 
+                  checked={selectedOrders.includes(order.id)}
+                  onCheckedChange={(checked) => onSelectOrder(order.id, !!checked)}
+                  aria-label={`Select order ${order.order_number}`}
+                />
+              </TableCell>
               <TableCell className="font-medium">
                 <Link 
                   to={`/orders/${order.id}`}

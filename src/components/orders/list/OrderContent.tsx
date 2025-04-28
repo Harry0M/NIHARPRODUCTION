@@ -6,7 +6,7 @@ import { OrderTable } from "./OrderTable";
 import { OrderCard } from "./OrderCard";
 import { EmptyOrdersState } from "./EmptyOrdersState";
 import { OrderFilter, OrderFilters } from "@/components/orders/OrderFilter";
-import { SkeletonTable } from "@/components/ui/skeleton-loader";
+import { SkeletonTable } from "@/components/ui/skeleton-table";
 
 interface OrderContentProps {
   orders: Order[];
@@ -14,6 +14,9 @@ interface OrderContentProps {
   filters: OrderFilters;
   setFilters: React.Dispatch<React.SetStateAction<OrderFilters>>;
   onDeleteClick: (orderId: string) => void;
+  selectedOrders?: string[];
+  onSelectOrder?: (orderId: string, isSelected: boolean) => void;
+  onSelectAllOrders?: (isSelected: boolean) => void;
 }
 
 export const OrderContent = ({ 
@@ -21,7 +24,10 @@ export const OrderContent = ({
   loading, 
   filters, 
   setFilters, 
-  onDeleteClick 
+  onDeleteClick,
+  selectedOrders,
+  onSelectOrder,
+  onSelectAllOrders
 }: OrderContentProps) => {
   const isMobile = useIsMobile();
   const hasFilters = filters.searchTerm !== "" || filters.status !== "all" || filters.dateRange.from !== "" || filters.dateRange.to !== "";
@@ -48,6 +54,8 @@ export const OrderContent = ({
                     key={order.id}
                     order={order}
                     onDeleteClick={onDeleteClick}
+                    isSelected={selectedOrders?.includes(order.id) || false}
+                    onSelectChange={(isSelected) => onSelectOrder?.(order.id, isSelected)}
                   />
                 ))}
               </div>
@@ -55,6 +63,9 @@ export const OrderContent = ({
               <OrderTable
                 orders={orders}
                 onDeleteClick={onDeleteClick}
+                selectedOrders={selectedOrders}
+                onSelectOrder={onSelectOrder}
+                onSelectAllOrders={onSelectAllOrders}
               />
             )}
           </>

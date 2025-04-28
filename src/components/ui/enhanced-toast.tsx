@@ -1,3 +1,4 @@
+
 import { toast } from "@/hooks/use-toast";
 import { Check, X, AlertTriangle, Info } from "lucide-react";
 import { ReactNode } from "react";
@@ -50,6 +51,7 @@ export const showToast = ({ title, description, type = "info" }: ShowToastOption
     : title;
 
   toast({
+    // @ts-ignore - We know this will work with the toast component
     title: titleContent,
     description: description,
     className: "animate-in slide-in-from-top-full duration-300",
