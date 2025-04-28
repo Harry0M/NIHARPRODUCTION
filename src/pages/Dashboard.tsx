@@ -1,10 +1,13 @@
 
+import { useState } from "react";
 import { ProductionMetricsChart } from "@/components/dashboard/ProductionMetricsChart";
 import { Button } from "@/components/ui/button";
 import { KeyboardShortcutsHelp } from "@/components/keyboard/KeyboardShortcutsHelp";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 
 const Dashboard = () => {
+  const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
+  
   const { defineNavigationShortcuts } = useKeyboardShortcuts({
     ignoreInputFields: true,
     preventDefault: true
@@ -33,7 +36,10 @@ const Dashboard = () => {
         <p className="text-muted-foreground">Overview of your production metrics and status</p>
         
         <div className="mt-4 flex items-center gap-2">
-          <KeyboardShortcutsHelp />
+          <KeyboardShortcutsHelp 
+            open={showKeyboardHelp} 
+            onOpenChange={setShowKeyboardHelp} 
+          />
           <Button 
             variant="outline" 
             className="text-sm"

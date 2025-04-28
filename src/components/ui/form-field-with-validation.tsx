@@ -5,7 +5,11 @@ import { Check, AlertCircle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import * as React from "react";
 
-interface FormFieldWithValidationProps extends InputProps {
+// Create a custom interface that omits the 'error' property from InputProps
+// and then extends it with our own properties
+type FormFieldProps = Omit<InputProps, 'error' | 'success'>;
+
+interface FormFieldWithValidationProps extends FormFieldProps {
   id: string;
   label: string;
   description?: string;
