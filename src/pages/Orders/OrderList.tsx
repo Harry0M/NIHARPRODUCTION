@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -206,15 +207,15 @@ const OrderList = () => {
             <Button 
               size="sm" 
               variant="outline"
-              onClick={() => handleBulkStatusUpdate('in_progress')}
+              onClick={() => handleBulkStatusUpdate('in_production' as OrderStatus)}
             >
               <ArrowUp className="h-4 w-4 mr-1" />
-              Mark In Progress
+              Mark In Production
             </Button>
             <Button 
               size="sm" 
               variant="outline"
-              onClick={() => handleBulkStatusUpdate('completed')}
+              onClick={() => handleBulkStatusUpdate('completed' as OrderStatus)}
             >
               <Check className="h-4 w-4 mr-1" />
               Mark Completed
