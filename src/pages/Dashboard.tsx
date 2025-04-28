@@ -5,6 +5,9 @@ import { BarChart, Package, Truck, Users, Layers, Calendar, AlertCircle } from "
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { SkeletonTable } from "@/components/ui/skeleton-table";
+import { StatusBadge, StatusType } from "@/components/ui/status-badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type Stats = {
   activeOrders: number;
@@ -279,6 +282,30 @@ const Dashboard = () => {
     }
   ];
 
+  if (loading) {
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i} className="min-h-[120px]">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-6 w-16" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          <SkeletonTable rows={4} columns={2} />
+          <SkeletonTable rows={4} columns={3} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div>
@@ -286,120 +313,107 @@ const Dashboard = () => {
         <p className="text-muted-foreground">Overview of your manufacturing operations</p>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center items-center h-[60vh]">
-          <div className="flex flex-col items-center gap-2">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            <p className="text-muted-foreground">Loading dashboard...</p>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            {statsCards.map((card) => (
-              <Link key={card.title} to={card.linkTo} className="block">
-                <Card className={`hover:border-primary hover:shadow-md transition-all duration-200 min-h-[120px] ${card.className}`}>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-                    <card.icon className="h-5 w-5 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{card.value}</div>
-                    {card.change && (
-                      <p className={`text-xs ${card.positive === true ? 'text-green-500' : card.positive === false ? 'text-red-500' : 'text-muted-foreground'}`}>
-                        {card.change}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Production Overview</CardTitle>
+      <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        {statsCards.map((card) => (
+          <Link key={card.title} to={card.linkTo} className="block">
+            <Card className={`hover:border-primary hover:shadow-md transition-all duration-200 min-h-[120px] ${card.className}`}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
+                <card.icon className="h-5 w-5 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {productionStages.map((stage) => (
-                    <div key={stage.name}>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-sm font-medium">{stage.name}</span>
-                        <span className="text-sm text-muted-foreground">{stage.complete}%</span>
-                      </div>
-                      <Progress value={stage.complete} className="h-2" />
-                    </div>
+                <div className="text-2xl font-bold">{card.value}</div>
+                {card.change && (
+                  <p className={`text-xs ${card.positive === true ? 'text-green-500' : card.positive === false ? 'text-red-500' : 'text-muted-foreground'}`}>
+                    {card.change}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Production Overview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {productionStages.map((stage) => (
+                <div key={stage.name}>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-sm font-medium">{stage.name}</span>
+                    <span className="text-sm text-muted-foreground">{stage.complete}%</span>
+                  </div>
+                  <Progress value={stage.complete} className="h-2" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle>Monthly Production</CardTitle>
+            <BarChart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="h-[220px] flex items-center justify-center border-2 border-dashed border-muted rounded-md">
+              <p className="text-muted-foreground">Production chart will appear here</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Orders</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {recentOrders.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="py-3 px-4 text-left font-medium">Order ID</th>
+                    <th className="py-3 px-4 text-left font-medium">Customer</th>
+                    <th className="py-3 px-4 text-left font-medium">Product</th>
+                    <th className="py-3 px-4 text-left font-medium">Quantity</th>
+                    <th className="py-3 px-4 text-left font-medium">Status</th>
+                    <th className="py-3 px-4 text-left font-medium">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentOrders.map((order) => (
+                    <tr 
+                      key={order.id} 
+                      className="border-b hover:bg-muted/50 cursor-pointer transition-colors duration-200"
+                      onClick={() => window.location.href = `/orders/${order.id}`}
+                    >
+                      <td className="py-3 px-4">{order.order_number}</td>
+                      <td className="py-3 px-4">{order.company_name}</td>
+                      <td className="py-3 px-4">{order.product}</td>
+                      <td className="py-3 px-4">{order.quantity.toLocaleString()}</td>
+                      <td className="py-3 px-4">
+                        <StatusBadge status={order.status as StatusType} />
+                      </td>
+                      <td className="py-3 px-4">{formatDate(order.date)}</td>
+                    </tr>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                <CardTitle>Monthly Production</CardTitle>
-                <BarChart className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="h-[220px] flex items-center justify-center border-2 border-dashed border-muted rounded-md">
-                  <p className="text-muted-foreground">Production chart will appear here</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Orders</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {recentOrders.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="py-3 px-4 text-left font-medium">Order ID</th>
-                        <th className="py-3 px-4 text-left font-medium">Customer</th>
-                        <th className="py-3 px-4 text-left font-medium">Product</th>
-                        <th className="py-3 px-4 text-left font-medium">Quantity</th>
-                        <th className="py-3 px-4 text-left font-medium">Status</th>
-                        <th className="py-3 px-4 text-left font-medium">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recentOrders.map((order) => (
-                        <tr 
-                          key={order.id} 
-                          className="border-b hover:bg-muted/50 cursor-pointer"
-                          onClick={() => window.location.href = `/orders/${order.id}`}
-                        >
-                          <td className="py-3 px-4">{order.order_number}</td>
-                          <td className="py-3 px-4">{order.company_name}</td>
-                          <td className="py-3 px-4">{order.product}</td>
-                          <td className="py-3 px-4">{order.quantity.toLocaleString()}</td>
-                          <td className="py-3 px-4">
-                            <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(order.status)}`}>
-                              {getStatusDisplay(order.status)}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">{formatDate(order.date)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">No recent orders found</p>
-                  <Link to="/orders/new" className="text-primary hover:underline inline-block mt-2">
-                    Create your first order
-                  </Link>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </>
-      )}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No recent orders found</p>
+              <Link to="/orders/new" className="text-primary hover:underline inline-block mt-2">
+                Create your first order
+              </Link>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

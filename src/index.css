@@ -168,3 +168,31 @@
   }
 }
 
+@layer utilities {
+  .h-safe {
+    height: calc(100% - env(safe-area-inset-bottom));
+  }
+
+  .padding-safe {
+    padding: env(safe-area-inset-bottom);
+  }
+
+  .animate-in {
+    animation: animate-in 0.3s ease-out;
+  }
+
+  .slide-in-from-top-full {
+    --tw-enter-translate-y: -100%;
+  }
+
+  @keyframes animate-in {
+    from {
+      opacity: 0;
+      transform: translateY(var(--tw-enter-translate-y, 0));
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
