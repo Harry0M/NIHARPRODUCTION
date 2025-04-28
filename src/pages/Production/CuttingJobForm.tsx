@@ -1,0 +1,162 @@
+
+import { useState } from "react";
+import { useParams } from "react-router-dom";
+import { ArrowLeft, Scissors } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
+import { CuttingJobOrderInfo } from "./CuttingJobOrderInfo";
+import { CuttingJobSelection } from "./CuttingJobSelection";
+import { CuttingJobComponentForm } from "./CuttingJobComponentForm";
+import { CuttingDetailsForm } from "@/components/production/cutting/CuttingDetailsForm";
+import { useCuttingJob } from "@/hooks/use-cutting-job";
+import { JobStatus } from "@/types/production";
+
+export default function CuttingJobForm() {
+  const { id } = useParams();
+  const [submitting, setSubmitting] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  const {
+    jobCard,
+    loading,
+    components,
+    existingJobs,
+    selectedJobId,
+    cuttingData,
+    componentData,
+    setCuttingData,
+    setComponentData,
+    handleSelectJob,
+    handleNewJob,
+    handleSubmit
+  } = useCuttingJob(id || "");
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setCuttingData(prev => ({ ...prev, [name]: value }));
+    if (name === 'roll_width' && validationError) {
+      setValidationError(null);
+    }
+  };
+
+  const handleSelectChange = (name: string, value: JobStatus) => {
+    setCuttingData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleCheckboxChange = (checked: boolean) => {
+    setCuttingData(prev => ({ ...prev, is_internal: checked }));
+  };
+
+  const handleWorkerSelect = (workerId: string) => {
+    setCuttingData(prev => ({
+      ...prev,
+      worker_name: workerId || ""
+    }));
+  };
+
+  const handleComponentChange = (index: number, field: string, value: string | JobStatus) => {
+    setComponentData(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const handleConsumptionCalculated = (meters: number) => {
+    setCuttingData(prev => ({
+      ...prev,
+      consumption_meters: meters.toString()
+    }));
+  };
+
+  const handleGoBack = () => {
+    window.location.href = `/production/job-cards/${id}`;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[50vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!jobCard) {
+    return (
+      <div className="text-center py-8">
+        <h2 className="text-2xl font-bold mb-2">Job Card Not Found</h2>
+        <p className="mb-4">The job card you're looking for doesn't exist or has been deleted.</p>
+        <Button onClick={() => window.location.href = "/production/job-cards"}>
+          Return to Job Cards
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 w-full">
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1"
+          onClick={handleGoBack}
+          type="button"
+        >
+          <ArrowLeft size={16} />
+          Back
+        </Button>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <Scissors className="h-6 w-6" />
+            Cutting Job
+          </h1>
+          <p className="text-muted-foreground">
+            {selectedJobId ? "Update" : "Create"} cutting job for {jobCard?.job_name}
+          </p>
+        </div>
+      </div>
+
+      {existingJobs.length > 0 && (
+        <CuttingJobSelection
+          existingJobs={existingJobs.map(({ id, status }) => ({ id, status }))}
+          selectedJobId={selectedJobId}
+          handleSelectJob={handleSelectJob}
+          handleNewJob={handleNewJob}
+        />
+      )}
+
+      <form id="cutting-form" onSubmit={handleSubmit} className="space-y-6 pb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <CuttingJobOrderInfo order={jobCard.order} />
+          
+          <div className="lg:col-span-2">
+            <CuttingDetailsForm
+              cuttingData={cuttingData}
+              validationError={validationError}
+              orderInfo={{
+                bag_length: jobCard.order.bag_length,
+                bag_width: jobCard.order.bag_width,
+                quantity: jobCard.order.quantity
+              }}
+              onInputChange={handleInputChange}
+              onCheckboxChange={handleCheckboxChange}
+              onSelectChange={handleSelectChange}
+              onWorkerSelect={handleWorkerSelect}
+              onConsumptionCalculated={handleConsumptionCalculated}
+            />
+          </div>
+        </div>
+
+        <CuttingJobComponentForm
+          components={components}
+          componentData={componentData}
+          handleComponentChange={handleComponentChange}
+          handleGoBack={handleGoBack}
+          submitting={submitting}
+          selectedJobId={selectedJobId}
+        />
+      </form>
+    </div>
+  );
+}

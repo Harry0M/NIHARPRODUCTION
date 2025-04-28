@@ -34,6 +34,12 @@ interface JobCardDetails {
     status: OrderStatus;
     components: Component[];
   };
+  cutting_jobs: {
+    id: string;
+    status: JobStatus;
+    worker_name: string | null;
+    created_at: string;
+  }[];
   printing_jobs: {
     id: string;
     status: JobStatus;
@@ -84,6 +90,7 @@ const JobCardDetail = () => {
             bag_length, bag_width, order_date, status,
             components:order_components (id, component_type, size, color, gsm, custom_name)
           ),
+          cutting_jobs (id, status, worker_name, created_at),
           printing_jobs (id, status, worker_name, created_at),
           stitching_jobs (id, status, worker_name, created_at)
         `)
@@ -139,6 +146,9 @@ const JobCardDetail = () => {
     
     // Navigate to the appropriate process page
     switch (process) {
+      case "cutting":
+        navigate(`/production/cutting/${id}`);
+        break;
       case "printing":
         navigate(`/production/printing/${id}`);
         break;
@@ -225,14 +235,17 @@ const JobCardDetail = () => {
             getStatusBadge={getStatusBadge}
           />
           <ProductionTimelineCard
+            cuttingCount={jobCard.cutting_jobs?.length || 0}
             printingCount={jobCard.printing_jobs?.length || 0}
             stitchingCount={jobCard.stitching_jobs?.length || 0}
             handleCreateProcess={handleCreateProcess}
             navigateDispatch={() => navigate("/dispatch")}
+            cuttingJobs={mapToTimelineJobs(jobCard.cutting_jobs || [], 'cutting')}
             printingJobs={mapToTimelineJobs(jobCard.printing_jobs || [], 'printing')}
             stitchingJobs={mapToTimelineJobs(jobCard.stitching_jobs || [], 'stitching')}
           />
           <ProductionProgressCard
+            cuttingJobs={jobCard.cutting_jobs || []}
             printingJobs={jobCard.printing_jobs || []}
             stitchingJobs={jobCard.stitching_jobs || []}
             getStatusColor={getStatusColor}

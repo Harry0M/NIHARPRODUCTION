@@ -1,6 +1,6 @@
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Printer, PackageCheck, Clock } from "lucide-react";
+import { Scissors, Printer, PackageCheck, Clock, AlertTriangle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
 import { useState } from "react";
@@ -10,19 +10,23 @@ import { DispatchStage } from "@/components/production/timeline/DispatchStage";
 import { TimelineJob } from "@/types/production";
 
 interface ProductionTimelineCardProps {
+  cuttingCount: number;
   printingCount: number;
   stitchingCount: number;
   handleCreateProcess: (process: string) => void;
   navigateDispatch: () => void;
+  cuttingJobs?: TimelineJob[];
   printingJobs?: TimelineJob[];
   stitchingJobs?: TimelineJob[];
 }
 
 export const ProductionTimelineCard = ({
+  cuttingCount,
   printingCount,
   stitchingCount,
   handleCreateProcess,
   navigateDispatch,
+  cuttingJobs = [],
   printingJobs = [],
   stitchingJobs = [],
 }: ProductionTimelineCardProps) => {
@@ -31,9 +35,12 @@ export const ProductionTimelineCard = ({
     id: null
   });
   
+  const isCuttingStarted = cuttingJobs.length > 0;
   const isPrintingStarted = printingJobs.length > 0;
   const isStitchingStarted = stitchingJobs.length > 0;
   
+  // Check if at least one job in each stage is completed to allow progression
+  const isCuttingCompleted = cuttingJobs.some(job => job.status === 'completed');
   const isPrintingCompleted = printingJobs.some(job => job.status === 'completed');
   const isStitchingCompleted = stitchingJobs.length > 0 && 
     stitchingJobs.some(job => job.status === 'completed');
@@ -42,7 +49,18 @@ export const ProductionTimelineCard = ({
     const jobId = selectedJob.type === process ? selectedJob.id : null;
     
     switch (process) {
+      case 'cutting':
+        handleCreateProcess(process);
+        break;
       case 'printing':
+        if (!isCuttingStarted && !isPrintingStarted) {
+          toast({
+            title: "Cannot start printing",
+            description: "Please create at least one cutting job first.",
+            variant: "destructive"
+          });
+          return;
+        }
         handleCreateProcess(process);
         break;
       case 'stitching':
@@ -82,6 +100,24 @@ export const ProductionTimelineCard = ({
         <div className="space-y-4">
           <div>
             <StageHeader
+              icon={<Scissors className="h-5 w-5" />}
+              title="Cutting"
+              count={cuttingCount}
+              onNewJob={() => {
+                setSelectedJob({ type: "", id: null });
+                handleProcessClick('cutting');
+              }}
+            />
+            <JobList
+              jobs={cuttingJobs}
+              type="cutting"
+              selectedJob={selectedJob}
+              onJobSelect={(type, id) => setSelectedJob({ type, id })}
+            />
+          </div>
+
+          <div>
+            <StageHeader
               icon={<Printer className="h-5 w-5" />}
               title="Printing"
               count={printingCount}
@@ -89,6 +125,7 @@ export const ProductionTimelineCard = ({
                 setSelectedJob({ type: "", id: null });
                 handleProcessClick('printing');
               }}
+              disabled={!isCuttingStarted && !isPrintingStarted}
             />
             <JobList
               jobs={printingJobs}

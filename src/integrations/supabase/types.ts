@@ -175,6 +175,131 @@ export type Database = {
           },
         ]
       }
+      cutting_components: {
+        Row: {
+          completed_at: string | null
+          component_id: string | null
+          counter: number | null
+          created_at: string
+          cutting_job_id: string
+          height: number | null
+          id: string
+          material_color: string | null
+          material_gsm: number | null
+          material_type: string | null
+          notes: string | null
+          rate: number | null
+          rewinding: number | null
+          status: Database["public"]["Enums"]["job_status"] | null
+          updated_at: string
+          waste_quantity: number | null
+          width: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          component_id?: string | null
+          counter?: number | null
+          created_at?: string
+          cutting_job_id: string
+          height?: number | null
+          id?: string
+          material_color?: string | null
+          material_gsm?: number | null
+          material_type?: string | null
+          notes?: string | null
+          rate?: number | null
+          rewinding?: number | null
+          status?: Database["public"]["Enums"]["job_status"] | null
+          updated_at?: string
+          waste_quantity?: number | null
+          width?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          component_id?: string | null
+          counter?: number | null
+          created_at?: string
+          cutting_job_id?: string
+          height?: number | null
+          id?: string
+          material_color?: string | null
+          material_gsm?: number | null
+          material_type?: string | null
+          notes?: string | null
+          rate?: number | null
+          rewinding?: number | null
+          status?: Database["public"]["Enums"]["job_status"] | null
+          updated_at?: string
+          waste_quantity?: number | null
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cutting_components_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "components"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cutting_components_cutting_job_id_fkey"
+            columns: ["cutting_job_id"]
+            isOneToOne: false
+            referencedRelation: "cutting_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cutting_jobs: {
+        Row: {
+          consumption_meters: number | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_internal: boolean | null
+          job_card_id: string
+          received_quantity: number | null
+          roll_width: number | null
+          status: Database["public"]["Enums"]["job_status"] | null
+          updated_at: string
+          worker_name: string | null
+        }
+        Insert: {
+          consumption_meters?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_internal?: boolean | null
+          job_card_id: string
+          received_quantity?: number | null
+          roll_width?: number | null
+          status?: Database["public"]["Enums"]["job_status"] | null
+          updated_at?: string
+          worker_name?: string | null
+        }
+        Update: {
+          consumption_meters?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_internal?: boolean | null
+          job_card_id?: string
+          received_quantity?: number | null
+          roll_width?: number | null
+          status?: Database["public"]["Enums"]["job_status"] | null
+          updated_at?: string
+          worker_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cutting_jobs_job_card_id_fkey"
+            columns: ["job_card_id"]
+            isOneToOne: false
+            referencedRelation: "job_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dispatch_batches: {
         Row: {
           batch_number: number
