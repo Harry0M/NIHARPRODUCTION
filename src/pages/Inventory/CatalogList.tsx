@@ -29,6 +29,7 @@ import { toast } from "sonner";
 const CatalogList = () => {
   const navigate = useNavigate();
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { data: products, isLoading, refetch } = useQuery({
     queryKey: ['catalog'],
@@ -46,20 +47,39 @@ const CatalogList = () => {
     if (!productToDelete) return;
 
     try {
+      setIsDeleting(true);
+      console.log(`Deleting product with ID: ${productToDelete}`);
+      
+      // First, delete the associated components
+      const { error: componentsError } = await supabase
+        .from('catalog_components')
+        .delete()
+        .eq('catalog_id', productToDelete);
+        
+      if (componentsError) {
+        console.error("Error deleting product components:", componentsError);
+        throw componentsError;
+      }
+      
+      // Then delete the product itself
       const { error } = await supabase
         .from('catalog')
         .delete()
         .eq('id', productToDelete);
 
-      if (error) throw error;
-
+      if (error) {
+        console.error("Error deleting product:", error);
+        throw error;
+      }
+      
       toast.success("Product deleted successfully");
-      refetch();
-    } catch (error) {
-      console.error('Error deleting product:', error);
-      toast.error("Failed to delete product");
+      await refetch();
+    } catch (error: any) {
+      console.error('Error in handleDeleteProduct:', error);
+      toast.error(`Failed to delete product: ${error.message}`);
     } finally {
       setProductToDelete(null);
+      setIsDeleting(false);
     }
   };
 
@@ -131,7 +151,7 @@ const CatalogList = () => {
         </Table>
       )}
 
-      <AlertDialog open={!!productToDelete} onOpenChange={() => setProductToDelete(null)}>
+      <AlertDialog open={!!productToDelete} onOpenChange={(isOpen) => !isDeleting && setProductToDelete(isOpen ? productToDelete : null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -140,8 +160,20 @@ const CatalogList = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteProduct}>Delete</AlertDialogAction>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteProduct}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <div className="flex items-center gap-2">
+                  <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></span>
+                  Deleting...
+                </div>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
