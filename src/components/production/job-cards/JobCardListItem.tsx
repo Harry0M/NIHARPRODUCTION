@@ -1,6 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { TableRow, TableCell } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +20,8 @@ interface JobCardListItemProps {
   canStartStage: (jobCard: JobCardData, stage: string) => boolean;
   getStatusColor: (status: string) => string;
   getStatusDisplay: (status: string) => string;
+  isSelected?: boolean;
+  onSelectChange?: (isSelected: boolean) => void;
 }
 
 const JobCardListItem = ({
@@ -28,10 +31,21 @@ const JobCardListItem = ({
   confirmDeleteJobCard,
   canStartStage,
   getStatusColor,
-  getStatusDisplay
+  getStatusDisplay,
+  isSelected = false,
+  onSelectChange
 }: JobCardListItemProps) => {
   return (
-    <TableRow key={jobCard.id}>
+    <TableRow key={jobCard.id} className={isSelected ? "bg-muted/50" : ""}>
+      {onSelectChange && (
+        <TableCell>
+          <Checkbox 
+            checked={isSelected}
+            onCheckedChange={(checked) => onSelectChange(!!checked)}
+            aria-label={`Select job card ${jobCard.job_name}`}
+          />
+        </TableCell>
+      )}
       <TableCell className="font-medium">
         <Button 
           variant="link" 
