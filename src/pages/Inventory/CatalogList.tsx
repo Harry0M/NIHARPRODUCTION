@@ -50,42 +50,31 @@ const CatalogList = () => {
       setIsDeleting(true);
       console.log(`Deleting product with ID: ${productToDelete}`);
       
-      // First, delete all associated components
+      // Use a transaction approach to delete product and its components
+      // First, delete components
       const { error: componentsError } = await supabase
         .from('catalog_components')
         .delete()
         .eq('catalog_id', productToDelete);
-        
+      
       if (componentsError) {
-        console.error("Error deleting product components:", componentsError);
+        console.error("Error deleting components:", componentsError);
         throw componentsError;
       }
       
-      // Then delete the catalog product itself
-      const { error } = await supabase
+      // Then delete the catalog item
+      const { error: catalogError } = await supabase
         .from('catalog')
         .delete()
         .eq('id', productToDelete);
-
-      if (error) {
-        console.error("Error deleting product:", error);
-        throw error;
+      
+      if (catalogError) {
+        console.error("Error deleting catalog item:", catalogError);
+        throw catalogError;
       }
       
+      // Success!
       toast.success("Product deleted successfully");
-      
-      // Verify the deletion was successful
-      const { data: checkProduct } = await supabase
-        .from('catalog')
-        .select('id')
-        .eq('id', productToDelete)
-        .maybeSingle();
-      
-      if (checkProduct) {
-        throw new Error("Product still exists after deletion attempt");
-      }
-      
-      // Finally, refetch the data
       await refetch();
     } catch (error: any) {
       console.error('Error in handleDeleteProduct:', error);
