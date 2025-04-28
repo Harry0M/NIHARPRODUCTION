@@ -177,16 +177,12 @@ export type Database = {
       }
       cutting_components: {
         Row: {
-          completed_at: string | null
-          component_id: string | null
+          component_id: string
           counter: number | null
           created_at: string
           cutting_job_id: string
           height: number | null
           id: string
-          material_color: string | null
-          material_gsm: number | null
-          material_type: string | null
           notes: string | null
           rate: number | null
           rewinding: number | null
@@ -196,16 +192,12 @@ export type Database = {
           width: number | null
         }
         Insert: {
-          completed_at?: string | null
-          component_id?: string | null
+          component_id: string
           counter?: number | null
           created_at?: string
           cutting_job_id: string
           height?: number | null
           id?: string
-          material_color?: string | null
-          material_gsm?: number | null
-          material_type?: string | null
           notes?: string | null
           rate?: number | null
           rewinding?: number | null
@@ -215,16 +207,12 @@ export type Database = {
           width?: number | null
         }
         Update: {
-          completed_at?: string | null
-          component_id?: string | null
+          component_id?: string
           counter?: number | null
           created_at?: string
           cutting_job_id?: string
           height?: number | null
           id?: string
-          material_color?: string | null
-          material_gsm?: number | null
-          material_type?: string | null
           notes?: string | null
           rate?: number | null
           rewinding?: number | null
@@ -238,7 +226,7 @@ export type Database = {
             foreignKeyName: "cutting_components_component_id_fkey"
             columns: ["component_id"]
             isOneToOne: false
-            referencedRelation: "components"
+            referencedRelation: "order_components"
             referencedColumns: ["id"]
           },
           {

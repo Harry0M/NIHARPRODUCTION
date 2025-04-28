@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -35,48 +34,48 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
     }
   }, [job, open]);
 
-  const fetchJobDetails = async (jobId: string, jobType: string) => {
-    if (!jobId || !jobType) return;
+const fetchJobDetails = async (jobId: string, jobType: string) => {
+  if (!jobId || !jobType) return;
+  
+  setLoading(true);
+  try {
+    let data;
     
-    setLoading(true);
-    try {
-      let data;
-      
-      switch (jobType) {
-        case 'cutting':
-          const { data: cuttingData, error: cuttingError } = await supabase
-            .from('cutting_jobs')
-            .select(`
-              *,
-              job_card:job_cards (
-                job_name, job_number
-              ),
-              components:cutting_components (
-                id, component_type, width, height, counter, rewinding, rate, status, notes, waste_quantity
-              )
-            `)
-            .eq('id', jobId)
-            .single();
+    switch (jobType) {
+      case 'cutting':
+        const { data: cuttingData, error: cuttingError } = await supabase
+          .from('cutting_jobs')
+          .select(`
+            *,
+            job_card:job_cards (
+              job_name, job_number
+            ),
+            components:cutting_components (
+              id, component_type, width, height, counter, rewinding, rate, status, notes, waste_quantity
+            )
+          `)
+          .eq('id', jobId)
+          .single();
+        
+        if (cuttingError) throw cuttingError;
+        data = cuttingData;
+        break;
           
-          if (cuttingError) throw cuttingError;
-          data = cuttingData;
-          break;
+      case 'printing':
+        const { data: printingData, error: printingError } = await supabase
+          .from('printing_jobs')
+          .select(`
+            *,
+            job_card:job_cards (
+              job_name, job_number
+            )
+          `)
+          .eq('id', jobId)
+          .single();
           
-        case 'printing':
-          const { data: printingData, error: printingError } = await supabase
-            .from('printing_jobs')
-            .select(`
-              *,
-              job_card:job_cards (
-                job_name, job_number
-              )
-            `)
-            .eq('id', jobId)
-            .single();
-          
-          if (printingError) throw printingError;
-          data = printingData;
-          break;
+        if (printingError) throw printingError;
+        data = printingData;
+        break;
           
         case 'stitching':
           const { data: stitchingData, error: stitchingError } = await supabase

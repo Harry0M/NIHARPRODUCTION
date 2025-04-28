@@ -68,3 +68,17 @@ export interface PrintingJobData {
   created_at?: string;
   created_by?: string;
 }
+
+export interface CuttingJobData {
+  id: string;
+  job_card_id: string;
+  roll_width: number | null;
+  consumption_meters: number | null;
+  worker_name: string | null;
+  is_internal: boolean;
+  status: JobStatus;
+  received_quantity: number | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+}
