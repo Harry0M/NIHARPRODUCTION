@@ -17,14 +17,13 @@ interface CuttingJobSelectionProps {
 export function CuttingJobSelection({
   existingJobs,
   selectedJobId,
-  handleSelectJob,
-  handleNewJob
+  handleSelectJob
 }: CuttingJobSelectionProps) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Job Selection</CardTitle>
-        <CardDescription>Select an existing job to edit or create a new one</CardDescription>
+        <CardDescription>Select an existing job to edit</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -39,13 +38,6 @@ export function CuttingJobSelection({
                 Job {index + 1} ({job.status})
               </Button>
             ))}
-            <Button
-              variant={selectedJobId === null ? "default" : "outline"}
-              onClick={handleNewJob}
-              className="flex items-center"
-            >
-              Create New Job
-            </Button>
           </div>
         </div>
       </CardContent>
