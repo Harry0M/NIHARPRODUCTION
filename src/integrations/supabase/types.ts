@@ -914,6 +914,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_catalog_product: {
+        Args: { input_catalog_id: string }
+        Returns: boolean
+      }
       delete_company: {
         Args: { input_company_id: string }
         Returns: boolean

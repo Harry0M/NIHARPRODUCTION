@@ -50,27 +50,13 @@ const CatalogList = () => {
       setIsDeleting(true);
       console.log(`Deleting product with ID: ${productToDelete}`);
       
-      // Use a transaction approach to delete product and its components
-      // First, delete components
-      const { error: componentsError } = await supabase
-        .from('catalog_components')
-        .delete()
-        .eq('catalog_id', productToDelete);
+      // Call the RPC function to delete the catalog product
+      const { data, error } = await supabase
+        .rpc('delete_catalog_product', { input_catalog_id: productToDelete });
       
-      if (componentsError) {
-        console.error("Error deleting components:", componentsError);
-        throw componentsError;
-      }
-      
-      // Then delete the catalog item
-      const { error: catalogError } = await supabase
-        .from('catalog')
-        .delete()
-        .eq('id', productToDelete);
-      
-      if (catalogError) {
-        console.error("Error deleting catalog item:", catalogError);
-        throw catalogError;
+      if (error) {
+        console.error("Error deleting product:", error);
+        throw error;
       }
       
       // Success!
