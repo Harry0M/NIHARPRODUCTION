@@ -93,6 +93,7 @@ export interface JobCardData {
     id: string;
     order_number: string;
     company_name: string;
+    quantity?: number;  // Added quantity as an optional property
   };
   cutting_jobs: {
     id: string;

@@ -50,13 +50,38 @@ export const useStitchingJob = (jobCardId?: string) => {
             order_number,
             company_name,
             quantity
+          ),
+          cutting_jobs (
+            id,
+            status
+          ),
+          printing_jobs (
+            id,
+            status
+          ),
+          stitching_jobs (
+            id,
+            status
           )
         `)
         .eq('id', jobCardId)
         .single();
       
       if (error) throw error;
-      setJobCard(data as JobCardData);
+
+      // Ensure the data has all the required properties for JobCardData
+      const formattedJobCard: JobCardData = {
+        id: data.id,
+        job_name: data.job_name,
+        status: data.status,
+        created_at: data.created_at,
+        order: data.order,
+        cutting_jobs: data.cutting_jobs || [],
+        printing_jobs: data.printing_jobs || [],
+        stitching_jobs: data.stitching_jobs || []
+      };
+      
+      setJobCard(formattedJobCard);
     } catch (err: any) {
       console.error('Error fetching job card:', err);
       setError(err);
@@ -93,8 +118,9 @@ export const useStitchingJob = (jobCardId?: string) => {
 
   const createStitchingJob = async (jobCardId: string, jobData: any) => {
     try {
-      // Format job name as "job number-worker_name"
-      const jobName = `${jobData.worker_name ? jobData.worker_name : 'worker'}-${new Date().getTime().toString().slice(-4)}`;
+      // Format job name as "worker_name-timestamp"
+      const timestamp = new Date().getTime().toString().slice(-4);
+      const jobName = `${jobData.worker_name || 'worker'}-${timestamp}`;
 
       const { data, error } = await supabase
         .from('stitching_jobs')

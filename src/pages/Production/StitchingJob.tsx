@@ -75,7 +75,7 @@ export default function StitchingJob() {
       {showNewJobForm && (
         <StitchingForm
           defaultValues={{
-            total_quantity: jobCard.order?.quantity || null,
+            total_quantity: jobCard.order && jobCard.order.quantity ? jobCard.order.quantity : null,
             part_quantity: null,
             border_quantity: null,
             handle_quantity: null,
