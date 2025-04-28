@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { CuttingComponent, JobStatus } from "@/types/production";
 
@@ -25,6 +25,28 @@ export const useCuttingJobForm = (components: any[]) => {
 
   const [componentData, setComponentData] = useState<CuttingComponent[]>([]);
 
+  // Initialize component data when components change or on reset
+  useEffect(() => {
+    if (components.length > 0 && !selectedJobId) {
+      initializeComponentData();
+    }
+  }, [components, selectedJobId]);
+
+  const initializeComponentData = () => {
+    const initialComponentData = components.map(comp => ({
+      component_id: comp.id,
+      component_type: comp.component_type,
+      width: "",
+      height: "",
+      counter: "",
+      rewinding: "",
+      rate: "",
+      status: "pending" as JobStatus,
+      notes: ""
+    }));
+    setComponentData(initialComponentData);
+  };
+
   const handleNewJob = () => {
     // Reset the form state completely
     setSelectedJobId(null);
@@ -38,18 +60,9 @@ export const useCuttingJobForm = (components: any[]) => {
     });
 
     // Initialize component data with empty values for a new job
-    const initialComponentData = components.map(comp => ({
-      component_id: comp.id,
-      component_type: comp.component_type,
-      width: "",
-      height: "",
-      counter: "",
-      rewinding: "",
-      rate: "",
-      status: "pending" as JobStatus,
-      notes: ""
-    }));
-    setComponentData(initialComponentData);
+    initializeComponentData();
+    
+    console.log("Form reset for new cutting job");
   };
 
   const handleSelectJob = async (jobId: string, existingJobs: any[]) => {
@@ -94,55 +107,15 @@ export const useCuttingJobForm = (components: any[]) => {
           setComponentData(formattedComponents);
         } else {
           // If no components found, initialize with empty data
-          const initialComponentData = components.map(comp => ({
-            component_id: comp.id,
-            component_type: comp.component_type,
-            width: "",
-            height: "",
-            counter: "",
-            rewinding: "",
-            rate: "",
-            status: "pending" as JobStatus,
-            notes: ""
-          }));
-          setComponentData(initialComponentData);
+          initializeComponentData();
         }
       }
     } catch (error: any) {
       console.error("Error fetching cutting components:", error);
       // Initialize with empty data on error
-      const initialComponentData = components.map(comp => ({
-        component_id: comp.id,
-        component_type: comp.component_type,
-        width: "",
-        height: "",
-        counter: "",
-        rewinding: "",
-        rate: "",
-        status: "pending" as JobStatus,
-        notes: ""
-      }));
-      setComponentData(initialComponentData);
+      initializeComponentData();
     }
   };
-
-  // Initialize componentData when components change
-  useState(() => {
-    if (components.length > 0 && componentData.length === 0 && !selectedJobId) {
-      const initialComponentData = components.map(comp => ({
-        component_id: comp.id,
-        component_type: comp.component_type,
-        width: "",
-        height: "",
-        counter: "",
-        rewinding: "",
-        rate: "",
-        status: "pending" as JobStatus,
-        notes: ""
-      }));
-      setComponentData(initialComponentData);
-    }
-  });
 
   return {
     selectedJobId,
@@ -151,6 +124,7 @@ export const useCuttingJobForm = (components: any[]) => {
     setCuttingData,
     setComponentData,
     handleNewJob,
-    handleSelectJob
+    handleSelectJob,
+    initializeComponentData
   };
 };

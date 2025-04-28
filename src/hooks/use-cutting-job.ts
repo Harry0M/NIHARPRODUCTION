@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { useCuttingJobData } from "./cutting/use-cutting-job-data";
@@ -14,7 +15,8 @@ export const useCuttingJob = (id: string) => {
     setCuttingData,
     setComponentData,
     handleNewJob,
-    handleSelectJob
+    handleSelectJob,
+    initializeComponentData
   } = useCuttingJobForm(components);
   const {
     submitting,
@@ -45,6 +47,8 @@ export const useCuttingJob = (id: string) => {
         });
       }
 
+      // Clear URL params after successful submission
+      window.history.replaceState(null, '', `/production/job-cards/${id}`);
       navigate(`/production/job-cards/${id}`);
     } catch (error: any) {
       toast({
@@ -69,6 +73,7 @@ export const useCuttingJob = (id: string) => {
     setComponentData,
     handleSelectJob: (jobId: string) => handleSelectJob(jobId, existingJobs),
     handleNewJob,
-    handleSubmit
+    handleSubmit,
+    initializeComponentData
   };
 };

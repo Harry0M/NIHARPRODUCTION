@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { ArrowLeft, Scissors, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -66,8 +66,15 @@ export default function CuttingJob() {
   };
 
   const handleCreateNewJob = () => {
-    // Make sure we properly reset the form state
+    console.log("Creating new cutting job");
+    // Force reset all form state
     handleNewJob();
+    // Ensure the UI shows the form instead of job cards
+    window.history.replaceState(
+      null, 
+      '', 
+      `/production/cutting/${id}?new=true`
+    );
   };
 
   if (loading) {
@@ -113,13 +120,17 @@ export default function CuttingJob() {
             </p>
           </div>
         </div>
-        <Button onClick={handleCreateNewJob} className="gap-2">
+        <Button 
+          onClick={handleCreateNewJob} 
+          className="gap-2"
+          type="button"
+        >
           <Plus size={16} />
           New Cutting Job
         </Button>
       </div>
 
-      {!selectedJobId && existingJobs && existingJobs.length > 0 && (
+      {!selectedJobId && existingJobs && existingJobs.length > 0 && !window.location.search.includes('new=true') && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {existingJobs.map((job, index) => (
             <Card key={job.id} className="hover:border-primary transition-colors">
@@ -143,7 +154,7 @@ export default function CuttingJob() {
         </div>
       )}
 
-      {(selectedJobId || (!existingJobs || existingJobs.length === 0)) && (
+      {(selectedJobId || (!existingJobs || existingJobs.length === 0) || window.location.search.includes('new=true')) && (
         <form id="cutting-form" onSubmit={handleSubmit} className="space-y-6 pb-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <CuttingJobOrderInfo order={jobCard.order} />
