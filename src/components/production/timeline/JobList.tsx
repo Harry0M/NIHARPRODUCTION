@@ -45,12 +45,12 @@ export const JobList = ({ jobs, type, selectedJob, onJobSelect }: JobListProps) 
           >
             <div className="flex items-center gap-2">
               <StageStatus 
-                status={job.status}
+                status={job.status as any}
                 date={job.created_at}
                 tooltip={`${type} job ${job.job_number || index + 1}${job.worker_name ? ` - ${job.worker_name}` : ''}`}
               />
               <span className="font-medium truncate">
-                {job.worker_name ? `Job ${index + 1} - ${job.worker_name}` : `Job ${job.job_number || index + 1}`}
+                {job.worker_name || `Job ${job.job_number || index + 1}`}
               </span>
             </div>
             <div className="text-xs text-muted-foreground whitespace-nowrap">

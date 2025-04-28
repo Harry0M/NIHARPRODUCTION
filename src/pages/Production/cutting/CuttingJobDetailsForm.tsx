@@ -41,7 +41,7 @@ export function CuttingJobDetailsForm({
   onConsumptionCalculated
 }: CuttingJobDetailsFormProps) {
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader className="space-y-1">
         <CardTitle>Cutting Details</CardTitle>
         <CardDescription>Enter details for the cutting process</CardDescription>
@@ -49,7 +49,7 @@ export function CuttingJobDetailsForm({
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
           <div className="space-y-2">
-            <Label htmlFor="roll_width" className={`font-medium ${validationError ? 'text-destructive' : 'text-primary'}`}>
+            <Label htmlFor="roll_width" className={`text-primary font-medium ${validationError ? 'text-destructive' : ''}`}>
               Roll Width (Required) *
             </Label>
             <Input 
@@ -60,7 +60,7 @@ export function CuttingJobDetailsForm({
               value={cuttingData.roll_width}
               onChange={onInputChange}
               required
-              className={`border-2 ${validationError ? 'border-destructive' : 'border-input'}`}
+              className={`border-2 ${validationError ? 'border-destructive' : 'border-input'} focus:ring-2 focus:ring-primary`}
             />
             {validationError && (
               <p className="text-sm font-medium text-destructive mt-1">
@@ -78,6 +78,7 @@ export function CuttingJobDetailsForm({
               value={cuttingData.consumption_meters}
               onChange={onInputChange}
               placeholder="Material consumption"
+              className="border-input"
             />
           </div>
 
@@ -90,6 +91,7 @@ export function CuttingJobDetailsForm({
               placeholder="Final quantity after cutting"
               value={cuttingData.received_quantity}
               onChange={onInputChange}
+              className="border-input"
             />
           </div>
 

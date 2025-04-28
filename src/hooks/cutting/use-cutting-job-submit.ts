@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { CuttingComponent, JobStatus } from "@/types/production";
@@ -45,7 +44,6 @@ export const useCuttingJobSubmit = () => {
       if (cuttingError) throw cuttingError;
 
       if (componentData.length > 0 && cuttingJob) {
-        // Remove component_type from the data we're sending to the database since it's not in the schema
         const formattedComponents = componentData.map(comp => ({
           component_id: comp.component_id,
           cutting_job_id: cuttingJob.id,
@@ -63,10 +61,7 @@ export const useCuttingJobSubmit = () => {
           .from("cutting_components")
           .insert(formattedComponents);
 
-        if (componentsError) {
-          console.error("Error inserting components:", componentsError);
-          throw componentsError;
-        }
+        if (componentsError) throw componentsError;
       }
 
       return cuttingJob;
@@ -128,10 +123,7 @@ export const useCuttingJobSubmit = () => {
           .from("cutting_components")
           .insert(formattedComponents);
 
-        if (componentsError) {
-          console.error("Error updating components:", componentsError);
-          throw componentsError;
-        }
+        if (componentsError) throw componentsError;
       }
 
       return true;

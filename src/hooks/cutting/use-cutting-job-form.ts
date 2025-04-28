@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { CuttingComponent, JobStatus } from "@/types/production";
 
@@ -25,14 +25,17 @@ export const useCuttingJobForm = (components: any[]) => {
 
   const [componentData, setComponentData] = useState<CuttingComponent[]>([]);
 
-  // Initialize component data when components change or on reset
-  useEffect(() => {
-    if (components.length > 0 && !selectedJobId) {
-      initializeComponentData();
-    }
-  }, [components, selectedJobId]);
+  const handleNewJob = () => {
+    setSelectedJobId(null);
+    setCuttingData({
+      roll_width: "",
+      consumption_meters: "",
+      worker_name: "",
+      is_internal: true,
+      status: "pending",
+      received_quantity: ""
+    });
 
-  const initializeComponentData = () => {
     const initialComponentData = components.map(comp => ({
       component_id: comp.id,
       component_type: comp.component_type,
@@ -47,39 +50,20 @@ export const useCuttingJobForm = (components: any[]) => {
     setComponentData(initialComponentData);
   };
 
-  const handleNewJob = () => {
-    // Reset the form state completely
-    setSelectedJobId(null);
-    setCuttingData({
-      roll_width: "",
-      consumption_meters: "",
-      worker_name: "",
-      is_internal: true,
-      status: "pending",
-      received_quantity: ""
-    });
-
-    // Initialize component data with empty values for a new job
-    initializeComponentData();
-    
-    console.log("Form reset for new cutting job");
-  };
-
   const handleSelectJob = async (jobId: string, existingJobs: any[]) => {
-    try {
+    const selectedJob = existingJobs.find(job => job.id === jobId);
+    if (selectedJob) {
       setSelectedJobId(jobId);
-      
-      const selectedJob = existingJobs.find(job => job.id === jobId);
-      if (selectedJob) {
-        setCuttingData({
-          roll_width: selectedJob.roll_width?.toString() || "",
-          consumption_meters: selectedJob.consumption_meters?.toString() || "",
-          worker_name: selectedJob.worker_name || "",
-          is_internal: selectedJob.is_internal !== false, // Default to true if undefined
-          status: selectedJob.status || "pending",
-          received_quantity: selectedJob.received_quantity?.toString() || ""
-        });
+      setCuttingData({
+        roll_width: selectedJob.roll_width,
+        consumption_meters: selectedJob.consumption_meters,
+        worker_name: selectedJob.worker_name || "",
+        is_internal: selectedJob.is_internal,
+        status: selectedJob.status,
+        received_quantity: selectedJob.received_quantity?.toString() || ""
+      });
 
+      try {
         const { data, error } = await supabase
           .from("cutting_components")
           .select("*")
@@ -105,15 +89,10 @@ export const useCuttingJobForm = (components: any[]) => {
             };
           });
           setComponentData(formattedComponents);
-        } else {
-          // If no components found, initialize with empty data
-          initializeComponentData();
         }
+      } catch (error: any) {
+        console.error("Error fetching cutting components:", error);
       }
-    } catch (error: any) {
-      console.error("Error fetching cutting components:", error);
-      // Initialize with empty data on error
-      initializeComponentData();
     }
   };
 
@@ -124,7 +103,6 @@ export const useCuttingJobForm = (components: any[]) => {
     setCuttingData,
     setComponentData,
     handleNewJob,
-    handleSelectJob,
-    initializeComponentData
+    handleSelectJob
   };
 };
