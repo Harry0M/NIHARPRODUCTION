@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, MoreHorizontal, Plus, Trash } from "lucide-react";
 import { formatDate, getStatusColor, getStatusDisplay } from "@/utils/orderUtils";
 import type { Order } from "@/types/order";
@@ -11,31 +10,20 @@ import type { Order } from "@/types/order";
 interface OrderCardProps {
   order: Order;
   onDeleteClick: (orderId: string) => void;
-  isSelected?: boolean;
-  onSelectChange?: (isSelected: boolean) => void;
 }
 
-export const OrderCard = ({ order, onDeleteClick, isSelected = false, onSelectChange }: OrderCardProps) => {
+export const OrderCard = ({ order, onDeleteClick }: OrderCardProps) => {
   return (
-    <Card className={`mb-4 ${isSelected ? "border-primary" : ""}`}>
+    <Card className="mb-4">
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
-          <div className="flex items-center gap-2">
-            {onSelectChange && (
-              <Checkbox
-                checked={isSelected}
-                onCheckedChange={(checked) => onSelectChange(!!checked)}
-                aria-label={`Select order ${order.order_number}`}
-              />
-            )}
-            <div>
-              <CardTitle className="text-lg">
-                <Link to={`/orders/${order.id}`} className="hover:text-primary hover:underline">
-                  {order.order_number}
-                </Link>
-              </CardTitle>
-              <CardDescription>{order.company_name}</CardDescription>
-            </div>
+          <div>
+            <CardTitle className="text-lg">
+              <Link to={`/orders/${order.id}`} className="hover:text-primary hover:underline">
+                {order.order_number}
+              </Link>
+            </CardTitle>
+            <CardDescription>{order.company_name}</CardDescription>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
