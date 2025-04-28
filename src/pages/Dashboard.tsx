@@ -1,16 +1,53 @@
 
 import { ProductionMetricsChart } from "@/components/dashboard/ProductionMetricsChart";
+import { Button } from "@/components/ui/button";
+import { KeyboardShortcutsHelp } from "@/components/keyboard/KeyboardShortcutsHelp";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 
 const Dashboard = () => {
+  const { defineNavigationShortcuts } = useKeyboardShortcuts({
+    ignoreInputFields: true,
+    preventDefault: true
+  });
+
+  // Define keyboard shortcuts for dashboard
+  const shortcuts = {
+    ...defineNavigationShortcuts(),
+    'h': () => document.getElementById('dashboard-header')?.focus(),
+    'c': () => document.getElementById('production-chart')?.focus()
+  };
+
+  // Use keyboard shortcuts
+  useKeyboardShortcuts(shortcuts);
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <h1 
+          id="dashboard-header" 
+          className="text-3xl font-bold tracking-tight" 
+          tabIndex={0}
+        >
+          Dashboard
+        </h1>
         <p className="text-muted-foreground">Overview of your production metrics and status</p>
+        
+        <div className="mt-4 flex items-center gap-2">
+          <KeyboardShortcutsHelp />
+          <Button 
+            variant="outline" 
+            className="text-sm"
+            aria-label="View accessibility settings"
+          >
+            Accessibility Settings
+          </Button>
+        </div>
       </div>
       
       <div className="grid gap-6">
-        <ProductionMetricsChart />
+        <div id="production-chart" tabIndex={0}>
+          <ProductionMetricsChart />
+        </div>
       </div>
     </div>
   );
