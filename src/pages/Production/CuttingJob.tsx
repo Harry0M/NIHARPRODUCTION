@@ -65,6 +65,11 @@ export default function CuttingJob() {
     window.location.href = `/production/job-cards/${id}`;
   };
 
+  const handleCreateNewJob = () => {
+    // Make sure we properly reset the form state
+    handleNewJob();
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[50vh]">
@@ -108,12 +113,10 @@ export default function CuttingJob() {
             </p>
           </div>
         </div>
-        {!selectedJobId && (
-          <Button onClick={handleNewJob} className="gap-2">
-            <Plus size={16} />
-            New Cutting Job
-          </Button>
-        )}
+        <Button onClick={handleCreateNewJob} className="gap-2">
+          <Plus size={16} />
+          New Cutting Job
+        </Button>
       </div>
 
       {!selectedJobId && existingJobs && existingJobs.length > 0 && (

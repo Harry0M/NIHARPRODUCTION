@@ -126,6 +126,24 @@ export const useCuttingJobForm = (components: any[]) => {
     }
   };
 
+  // Initialize componentData when components change
+  useState(() => {
+    if (components.length > 0 && componentData.length === 0 && !selectedJobId) {
+      const initialComponentData = components.map(comp => ({
+        component_id: comp.id,
+        component_type: comp.component_type,
+        width: "",
+        height: "",
+        counter: "",
+        rewinding: "",
+        rate: "",
+        status: "pending" as JobStatus,
+        notes: ""
+      }));
+      setComponentData(initialComponentData);
+    }
+  });
+
   return {
     selectedJobId,
     cuttingData,
