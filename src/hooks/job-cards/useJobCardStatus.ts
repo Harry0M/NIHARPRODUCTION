@@ -1,5 +1,5 @@
 
-import { JobCardData } from "@/types/production";
+import { JobCardData, JobStatus } from "@/types/production";
 
 export const useJobCardStatus = () => {
   const getStatusColor = (status: string): string => {
@@ -17,7 +17,7 @@ export const useJobCardStatus = () => {
     return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  const getJobCardStatus = (jobCard: JobCardData): string => {
+  const getJobCardStatus = (jobCard: JobCardData): JobStatus => {
     // Check if there are any stitching jobs
     const hasStitchingJobs = jobCard.stitching_jobs && jobCard.stitching_jobs.length > 0;
     const hasPrintingJobs = jobCard.printing_jobs && jobCard.printing_jobs.length > 0;

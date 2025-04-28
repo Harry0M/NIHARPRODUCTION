@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { JobCardData } from "@/types/production";
+import { JobCardData, JobStatus } from "@/types/production";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useJobCardStatus } from "./useJobCardStatus";
@@ -44,19 +44,8 @@ export const useJobCards = () => {
       if (error) throw error;
     
       // Transform the data to ensure proper typing
-      const formattedData: JobCardData[] = (data || []).map(item => ({
-        id: item.id,
-        job_name: item.job_name,
-        created_at: item.created_at,
-        order: {
-          id: item.orders?.id || '',
-          order_number: item.orders?.order_number || '',
-          company_name: item.orders?.company_name || ''
-        },
-        cutting_jobs: item.cutting_jobs || [],
-        printing_jobs: item.printing_jobs || [],
-        stitching_jobs: item.stitching_jobs || [],
-        status: getJobCardStatus({
+      const formattedData: JobCardData[] = (data || []).map(item => {
+        const jobCardData: JobCardData = {
           id: item.id,
           job_name: item.job_name,
           created_at: item.created_at,
@@ -68,9 +57,13 @@ export const useJobCards = () => {
           cutting_jobs: item.cutting_jobs || [],
           printing_jobs: item.printing_jobs || [],
           stitching_jobs: item.stitching_jobs || [],
-          status: '' // This will be overwritten by getJobCardStatus
-        })
-      }));
+          status: 'pending' as JobStatus // Default value for proper typing
+        };
+        
+        // Now determine the actual status
+        jobCardData.status = getJobCardStatus(jobCardData);
+        return jobCardData;
+      });
     
       setJobCards(formattedData);
     } catch (error: any) {
