@@ -6,12 +6,12 @@ import { DispatchForm } from "@/components/production/DispatchForm";
 import { OrderInfoCard } from "@/components/production/dispatch/OrderInfoCard";
 import { DispatchDetails } from "@/components/production/dispatch/DispatchDetails";
 import { PageHeader } from "@/components/production/dispatch/PageHeader";
-import { useDispatchData } from "@/hooks/use-dispatch-data";
+import { useOrderDispatchData } from "@/hooks/use-dispatch-data";
 import { useDispatchActions } from "@/hooks/use-dispatch-actions";
 
 const DispatchDetail = () => {
   const { id: orderId } = useParams();
-  const { loading, order, dispatchData, dispatchBatches, productionStages } = useDispatchData(orderId || '');
+  const { order, dispatchData, dispatchBatches, productionStages, loading } = useOrderDispatchData(orderId || '');
   const { handleDispatch } = useDispatchActions();
 
   const handleDownloadCSV = () => {

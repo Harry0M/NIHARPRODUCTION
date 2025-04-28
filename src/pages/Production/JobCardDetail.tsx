@@ -181,7 +181,7 @@ const JobCardDetail = () => {
     return jobs.map(job => ({
       id: job.id,
       type: jobType,
-      status: job.status,
+      status: job.status as JobStatus,
       created_at: job.created_at,
       worker_name: job.worker_name,
       is_internal: job.is_internal

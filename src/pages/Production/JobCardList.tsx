@@ -164,7 +164,6 @@ const JobCardList = () => {
     }
   };
 
-  // Update the fetchJobCards function to use the new status
   const fetchJobCards = async () => {
     setLoading(true);
     try {
@@ -196,40 +195,40 @@ const JobCardList = () => {
         `)
         .order('created_at', { ascending: false });
     
-    if (error) throw error;
+      if (error) throw error;
     
-    // Transform the data to ensure proper typing
-    const formattedData = data?.map(item => ({
-      id: item.id,
-      job_name: item.job_name,
-      created_at: item.created_at,
-      order: {
-        id: item.orders?.id,
-        order_number: item.orders?.order_number,
-        company_name: item.orders?.company_name
-      },
-      cutting_jobs: item.cutting_jobs || [],
-      printing_jobs: item.printing_jobs || [],
-      stitching_jobs: item.stitching_jobs || [],
-      status: getJobCardStatus({
-        ...item,
+      // Transform the data to ensure proper typing
+      const formattedData: JobCard[] = (data || []).map(item => ({
+        id: item.id,
+        job_name: item.job_name,
+        created_at: item.created_at,
+        order: {
+          id: item.orders?.id || '',
+          order_number: item.orders?.order_number || '',
+          company_name: item.orders?.company_name || ''
+        },
         cutting_jobs: item.cutting_jobs || [],
         printing_jobs: item.printing_jobs || [],
         stitching_jobs: item.stitching_jobs || [],
-      })
-    })) || [];
+        status: getJobCardStatus({
+          ...item,
+          cutting_jobs: item.cutting_jobs || [],
+          printing_jobs: item.printing_jobs || [],
+          stitching_jobs: item.stitching_jobs || [],
+        })
+      }));
     
-    setJobCards(formattedData);
-  } catch (error: any) {
-    toast({
-      title: "Error fetching job cards",
-      description: error.message,
-      variant: "destructive",
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+      setJobCards(formattedData);
+    } catch (error: any) {
+      toast({
+        title: "Error fetching job cards",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchJobCards();
