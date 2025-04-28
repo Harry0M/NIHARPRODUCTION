@@ -16,13 +16,7 @@ export const OrderDetailsCollapsible = ({ order }: OrderDetailsCollapsibleProps)
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <div className="flex items-center justify-between">
         <CollapsibleTrigger asChild>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="p-0 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-ring"
-            aria-expanded={isOpen}
-            aria-controls={`details-content-${order.id}`}
-          >
+          <Button variant="ghost" size="sm" className="p-0">
             {isOpen ? (
               <ChevronUp className="h-4 w-4" />
             ) : (
@@ -34,10 +28,7 @@ export const OrderDetailsCollapsible = ({ order }: OrderDetailsCollapsibleProps)
           </Button>
         </CollapsibleTrigger>
       </div>
-      <CollapsibleContent 
-        className="space-y-2"
-        id={`details-content-${order.id}`}
-      >
+      <CollapsibleContent className="space-y-2">
         <div className="rounded-md bg-muted/50 p-4 mt-2">
           <div className="grid gap-2 text-sm">
             <div className="flex justify-between">
