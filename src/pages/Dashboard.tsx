@@ -1,11 +1,7 @@
-
-// Fixes on fetching database counts (use count params) and general fetch for orders and vendors properly
-// We'll leverage count from supabase .select with exact count options to get proper stats counts.
-
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { BarChart, Package, Truck, Users, Layers } from "lucide-react";
+import { BarChart, Package, Truck, Users, Layers, Calendar, AlertCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -15,6 +11,8 @@ type Stats = {
   inProduction: number;
   readyForDispatch: number;
   activeVendors: number;
+  dueThisWeek: number;
+  jobsInProgress: number;
 };
 
 type ProductionStage = {
@@ -38,6 +36,8 @@ const Dashboard = () => {
     inProduction: 0,
     readyForDispatch: 0,
     activeVendors: 0,
+    dueThisWeek: 0,
+    jobsInProgress: 0,
   });
   const [productionStages, setProductionStages] = useState<ProductionStage[]>([
     { name: "Cutting", complete: 0 },
@@ -154,11 +154,31 @@ const Dashboard = () => {
           date: order.order_date
         })) || [];
 
+        // New: Fetch orders due this week
+        const nextWeek = new Date();
+        nextWeek.setDate(nextWeek.getDate() + 7);
+        const { count: dueThisWeekCount, error: dueThisWeekError } = await supabase
+          .from('orders')
+          .select('id', { count: 'exact', head: true })
+          .lt('order_date', nextWeek.toISOString())
+          .gt('order_date', new Date().toISOString())
+          .not('status', 'eq', 'completed');
+        if (dueThisWeekError) throw dueThisWeekError;
+
+        // New: Fetch jobs in progress
+        const { count: jobsInProgressCount, error: jobsInProgressError } = await supabase
+          .from('job_cards')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'in_progress');
+        if (jobsInProgressError) throw jobsInProgressError;
+
         setStats({
           activeOrders: activeOrdersCount || 0,
           inProduction: inProductionCount || 0,
           readyForDispatch: readyForDispatchCount || 0,
           activeVendors: activeVendorsCount || 0,
+          dueThisWeek: dueThisWeekCount || 0,
+          jobsInProgress: jobsInProgressCount || 0,
         });
         setProductionStages(newProductionStages);
         setRecentOrders(formattedOrders);
@@ -209,7 +229,8 @@ const Dashboard = () => {
       icon: Package,
       change: "",
       positive: null,
-      linkTo: "/orders?status=in_production"
+      linkTo: "/orders?status=in_production",
+      className: "bg-blue-50"
     },
     {
       title: "In Production",
@@ -217,7 +238,8 @@ const Dashboard = () => {
       icon: Layers,
       change: "",
       positive: null,
-      linkTo: "/production"
+      linkTo: "/production",
+      className: "bg-amber-50"
     },
     {
       title: "Ready for Dispatch",
@@ -225,7 +247,8 @@ const Dashboard = () => {
       icon: Truck,
       change: "",
       positive: null,
-      linkTo: "/orders?status=ready_for_dispatch"
+      linkTo: "/orders?status=ready_for_dispatch",
+      className: "bg-green-50"
     },
     {
       title: "Active Vendors",
@@ -233,14 +256,33 @@ const Dashboard = () => {
       icon: Users,
       change: "",
       positive: null,
-      linkTo: "/vendors"
+      linkTo: "/vendors",
+      className: "bg-purple-50"
+    },
+    {
+      title: "Due This Week",
+      value: stats.dueThisWeek.toString(),
+      icon: Calendar,
+      change: "",
+      positive: null,
+      linkTo: "/orders?due=week",
+      className: stats.dueThisWeek > 0 ? "bg-yellow-50" : "bg-gray-50"
+    },
+    {
+      title: "Jobs in Progress",
+      value: stats.jobsInProgress.toString(),
+      icon: AlertCircle,
+      change: "",
+      positive: null,
+      linkTo: "/production/job-cards?status=in_progress",
+      className: "bg-blue-50"
     }
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 md:p-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">Overview of your manufacturing operations</p>
       </div>
 
@@ -253,13 +295,13 @@ const Dashboard = () => {
         </div>
       ) : (
         <>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             {statsCards.map((card) => (
               <Link key={card.title} to={card.linkTo} className="block">
-                <Card className="hover:border-primary hover:shadow-md transition-all duration-200">
+                <Card className={`hover:border-primary hover:shadow-md transition-all duration-200 min-h-[120px] ${card.className}`}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-                    <card.icon className="h-4 w-4 text-muted-foreground" />
+                    <card.icon className="h-5 w-5 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{card.value}</div>
