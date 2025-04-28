@@ -1,9 +1,95 @@
-import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 
-export const useStitchingJob = () => {
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import { JobCardData, JobStatus } from "@/types/production";
+
+interface StitchingJobData {
+  id: string;
+  job_card_id: string;
+  worker_name: string;
+  is_internal: boolean;
+  total_quantity: number | null;
+  part_quantity: number | null;
+  border_quantity: number | null;
+  handle_quantity: number | null;
+  chain_quantity: number | null;
+  runner_quantity: number | null;
+  piping_quantity: number | null;
+  start_date: string | null;
+  expected_completion_date: string | null;
+  notes: string | null;
+  status: JobStatus;
+  rate: number | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+}
+
+export const useStitchingJob = (jobCardId?: string) => {
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [jobCard, setJobCard] = useState<JobCardData | null>(null);
+  const [existingJobs, setExistingJobs] = useState<StitchingJobData[]>([]);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+
+  const fetchJobCard = async () => {
+    if (!jobCardId) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('job_cards')
+        .select(`
+          id,
+          job_name,
+          status,
+          created_at,
+          order:orders (
+            id,
+            order_number,
+            company_name,
+            quantity
+          )
+        `)
+        .eq('id', jobCardId)
+        .single();
+      
+      if (error) throw error;
+      setJobCard(data as JobCardData);
+    } catch (err: any) {
+      console.error('Error fetching job card:', err);
+      setError(err);
+    }
+  };
+
+  const fetchStitchingJobs = async () => {
+    if (!jobCardId) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('stitching_jobs')
+        .select('*')
+        .eq('job_card_id', jobCardId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setExistingJobs(data);
+    } catch (err: any) {
+      console.error('Error fetching stitching jobs:', err);
+      setError(err);
+    } finally {
+      setFetching(false);
+    }
+  };
+
+  useEffect(() => {
+    if (jobCardId) {
+      setFetching(true);
+      fetchJobCard();
+      fetchStitchingJobs();
+    }
+  }, [jobCardId]);
 
   const createStitchingJob = async (jobCardId: string, jobData: any) => {
     try {
@@ -79,11 +165,48 @@ export const useStitchingJob = () => {
     }
   };
 
+  const handleSubmit = async (values: any) => {
+    setLoading(true);
+    try {
+      if (selectedJobId) {
+        await updateStitchingJob(selectedJobId, values);
+        toast({
+          title: "Success",
+          description: "Stitching job has been updated",
+        });
+      } else {
+        await createStitchingJob(jobCardId!, values);
+        toast({
+          title: "Success",
+          description: "New stitching job has been created",
+        });
+      }
+      await fetchStitchingJobs(); // Refresh the job list
+      return true;
+    } catch (err: any) {
+      console.error("Failed to save stitching job:", err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to save stitching job",
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     loading,
     error,
+    fetching,
+    jobCard,
+    existingJobs,
+    selectedJobId,
+    setSelectedJobId,
     createStitchingJob,
     updateStitchingJob,
-    deleteStitchingJob
+    deleteStitchingJob,
+    handleSubmit
   };
 };

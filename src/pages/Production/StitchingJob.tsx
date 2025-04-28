@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, PackageCheck, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStitchingJob } from "@/hooks/use-stitching-job";
@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export default function StitchingJob() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const {
     loading,
     fetching,
@@ -33,7 +34,7 @@ export default function StitchingJob() {
       <div className="text-center py-8">
         <h2 className="text-2xl font-bold mb-2">Job Card Not Found</h2>
         <p className="mb-4">The job card you're looking for doesn't exist or has been deleted.</p>
-        <Button onClick={() => window.location.href = "/production/job-cards"}>
+        <Button onClick={() => navigate("/production/job-cards")}>
           Return to Job Cards
         </Button>
       </div>
@@ -47,7 +48,7 @@ export default function StitchingJob() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => window.location.href = `/production/job-cards/${id}`}
+            onClick={() => navigate(`/production/job-cards/${id}`)}
             className="gap-1"
           >
             <ArrowLeft size={16} />
@@ -74,7 +75,7 @@ export default function StitchingJob() {
       {showNewJobForm && (
         <StitchingForm
           defaultValues={{
-            total_quantity: jobCard.order.quantity || null,
+            total_quantity: jobCard.order?.quantity || null,
             part_quantity: null,
             border_quantity: null,
             handle_quantity: null,
