@@ -13,6 +13,9 @@ export interface CustomComponent {
   width?: string;
   length?: string;
   details?: string;
+  material_id?: string;
+  roll_width?: string;
+  consumption?: string;
 }
 
 export interface CustomComponentSectionProps {
@@ -76,7 +79,10 @@ export const CustomComponentSection = ({
               length: component.length || "",
               color: component.color || "",
               gsm: component.gsm || "",
-              name: component.customName || component.details
+              name: component.customName || component.details,
+              material_id: component.material_id || "",
+              roll_width: component.roll_width || "",
+              consumption: component.consumption || ""
             }}
             index={index}
             isCustom={true}

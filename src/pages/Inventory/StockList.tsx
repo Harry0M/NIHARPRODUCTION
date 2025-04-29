@@ -13,7 +13,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { TabsList, TabsTrigger, Tabs, TabsContent } from "@/components/ui/tabs";
 
 const StockList = () => {
   const navigate = useNavigate();
@@ -40,7 +39,7 @@ const StockList = () => {
           </Button>
           <Button onClick={() => navigate('/inventory/stock/new')}>
             <Plus size={16} className="mr-2" />
-            Add Stock
+            Add Raw Material
           </Button>
         </div>
       </CardHeader>
@@ -51,7 +50,7 @@ const StockList = () => {
           </div>
         ) : stock?.length === 0 ? (
           <div className="text-center p-8">
-            <p className="text-muted-foreground">No inventory stock found.</p>
+            <p className="text-muted-foreground">No inventory stock found. Add raw materials to get started.</p>
           </div>
         ) : (
           <Table>
@@ -63,7 +62,7 @@ const StockList = () => {
                 <TableHead>Quantity</TableHead>
                 <TableHead>Unit</TableHead>
                 <TableHead>Alt. Unit</TableHead>
-                <TableHead>Supplier</TableHead>
+                <TableHead>Cost Tracking</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -73,13 +72,30 @@ const StockList = () => {
                   className="cursor-pointer hover:bg-muted"
                   onClick={() => navigate(`/inventory/stock/${item.id}`)}
                 >
-                  <TableCell>{item.material_type}</TableCell>
+                  <TableCell className="font-medium">{item.material_type}</TableCell>
                   <TableCell>{item.color || 'N/A'}</TableCell>
                   <TableCell>{item.gsm || 'N/A'}</TableCell>
-                  <TableCell>{item.quantity}</TableCell>
+                  <TableCell>
+                    {item.quantity}
+                    {item.reorder_level && item.quantity <= item.reorder_level && (
+                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                        Low
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell>{item.unit}</TableCell>
                   <TableCell>{item.alternate_unit || 'N/A'}</TableCell>
-                  <TableCell>{item.suppliers?.name || 'N/A'}</TableCell>
+                  <TableCell>
+                    {item.track_cost ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                        Enabled
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                        Disabled
+                      </span>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

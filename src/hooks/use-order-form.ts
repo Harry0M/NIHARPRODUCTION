@@ -1,8 +1,10 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
 import { OrderFormData } from "@/types/order";
+import { useQuery } from "@tanstack/react-query";
 
 interface Component {
   id: string;
@@ -12,6 +14,9 @@ interface Component {
   gsm?: string;
   length?: string;
   width?: string;
+  material_id?: string;
+  roll_width?: string;
+  consumption?: string;
 }
 
 interface FormErrors {
@@ -35,7 +40,7 @@ interface UseOrderFormReturn {
   handleCustomComponentChange: (index: number, field: string, value: string) => void;
   addCustomComponent: () => void;
   removeCustomComponent: (index: number) => void;
-  handleProductSelect: (components: any[]) => void;
+  handleProductSelect: (productId: string) => void;
   handleSubmit: (e: React.FormEvent) => Promise<string | undefined>;
   validateForm: () => boolean;
 }
@@ -57,6 +62,48 @@ export function useOrderForm(): UseOrderFormReturn {
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [components, setComponents] = useState<Record<string, any>>({});
   const [customComponents, setCustomComponents] = useState<Component[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+
+  // Fetch inventory data for calculations
+  const { data: inventoryItems } = useQuery({
+    queryKey: ['inventory'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('inventory')
+        .select('*');
+      
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch catalog product details when a product is selected
+  const { data: selectedProduct } = useQuery({
+    queryKey: ['catalog-product', selectedProductId],
+    queryFn: async () => {
+      if (!selectedProductId) return null;
+      
+      const { data, error } = await supabase
+        .from('catalog')
+        .select(`
+          *,
+          catalog_components(*)
+        `)
+        .eq('id', selectedProductId)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedProductId,
+  });
+
+  // Update components when product data changes
+  useEffect(() => {
+    if (selectedProduct && selectedProduct.catalog_components) {
+      processCatalogComponents(selectedProduct.catalog_components);
+    }
+  }, [selectedProduct]);
 
   const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 
     target: { name: string; value: string | null } 
@@ -76,6 +123,11 @@ export function useOrderForm(): UseOrderFormReturn {
       }));
     }
     
+    // If we're changing the quantity, update component consumption values if BOM is selected
+    if (name === 'quantity' && selectedProduct) {
+      updateComponentConsumptions(value);
+    }
+    
     // Clear validation error when field is changed
     if (formErrors[name as keyof FormErrors]) {
       setFormErrors(prev => ({
@@ -85,18 +137,80 @@ export function useOrderForm(): UseOrderFormReturn {
     }
   };
 
+  const updateComponentConsumptions = (quantityStr: string) => {
+    const quantity = parseInt(quantityStr) || 1;
+    
+    // Ignore if no components are loaded or no product is selected
+    if (!selectedProduct || !selectedProduct.catalog_components) return;
+    
+    // Update standard components
+    const updatedComponents = {...components};
+    
+    Object.keys(updatedComponents).forEach(type => {
+      const component = updatedComponents[type];
+      const catalogComponent = selectedProduct.catalog_components.find(c => c.component_type === type);
+      
+      if (catalogComponent && component) {
+        const baseConsumption = catalogComponent.consumption || 0;
+        const newConsumption = (baseConsumption * quantity).toFixed(2);
+        updatedComponents[type] = {
+          ...component,
+          consumption: newConsumption
+        };
+      }
+    });
+    
+    setComponents(updatedComponents);
+    
+    // Update custom components
+    const updatedCustomComponents = customComponents.map(component => {
+      const catalogComponent = selectedProduct.catalog_components.find(
+        c => c.component_type === 'custom' && c.custom_name === component.customName
+      );
+      
+      if (catalogComponent) {
+        const baseConsumption = catalogComponent.consumption || 0;
+        const newConsumption = (baseConsumption * quantity).toFixed(2);
+        return {
+          ...component,
+          consumption: newConsumption
+        };
+      }
+      
+      return component;
+    });
+    
+    setCustomComponents(updatedCustomComponents);
+  };
+
   const handleComponentChange = (type: string, field: string, value: string) => {
     setComponents(prev => {
       const component = prev[type] || { 
         id: uuidv4(),
         type 
       };
+      
+      const updatedComponent = {
+        ...component,
+        [field]: value
+      };
+      
+      // Recalculate consumption if length, width or roll_width changes
+      if ((field === 'length' || field === 'width' || field === 'roll_width') && 
+          updatedComponent.length && updatedComponent.width && updatedComponent.roll_width) {
+        const length = parseFloat(updatedComponent.length);
+        const width = parseFloat(updatedComponent.width);
+        const rollWidth = parseFloat(updatedComponent.roll_width);
+        
+        if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && rollWidth > 0) {
+          const orderQuantity = parseInt(orderDetails.quantity) || 1;
+          updatedComponent.consumption = ((length * width) / (rollWidth * 39.39) * orderQuantity).toFixed(2);
+        }
+      }
+      
       return {
         ...prev,
-        [type]: {
-          ...component,
-          [field]: value
-        }
+        [type]: updatedComponent
       };
     });
   };
@@ -104,7 +218,26 @@ export function useOrderForm(): UseOrderFormReturn {
   const handleCustomComponentChange = (index: number, field: string, value: string) => {
     setCustomComponents(prev => {
       const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
+      
+      // Update the specified field
+      updated[index] = { 
+        ...updated[index], 
+        [field]: value 
+      };
+      
+      // Recalculate consumption if needed
+      if ((field === 'length' || field === 'width' || field === 'roll_width') && 
+          updated[index].length && updated[index].width && updated[index].roll_width) {
+        const length = parseFloat(updated[index].length);
+        const width = parseFloat(updated[index].width);
+        const rollWidth = parseFloat(updated[index].roll_width);
+        
+        if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && rollWidth > 0) {
+          const orderQuantity = parseInt(orderDetails.quantity) || 1;
+          updated[index].consumption = ((length * width) / (rollWidth * 39.39) * orderQuantity).toFixed(2);
+        }
+      }
+      
       return updated;
     });
   };
@@ -124,20 +257,23 @@ export function useOrderForm(): UseOrderFormReturn {
     setCustomComponents(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleProductSelect = (components: any[]) => {
-    console.log("Selected product components:", components);
+  const processCatalogComponents = (catalogComponents: any[]) => {
+    console.log("Processing catalog components:", catalogComponents);
     
-    if (!components || components.length === 0) {
+    if (!catalogComponents || catalogComponents.length === 0) {
       console.log("No components to process");
       return;
     }
+    
+    // Get order quantity multiplier
+    const orderQuantity = parseInt(orderDetails.quantity) || 1;
     
     // Clear existing components first
     const standardTypes = ['part', 'border', 'handle', 'chain', 'runner'];
     const newOrderComponents: Record<string, any> = {};
     const newCustomComponents: Component[] = [];
 
-    components.forEach(component => {
+    catalogComponents.forEach(component => {
       if (!component) return;
       
       // Extract length and width from size format "length x width"
@@ -146,17 +282,29 @@ export function useOrderForm(): UseOrderFormReturn {
         const sizeValues = component.size.split('x').map((s: string) => s.trim());
         length = sizeValues[0] || '';
         width = sizeValues[1] || '';
+      } else {
+        length = component.length?.toString() || '';
+        width = component.width?.toString() || '';
       }
       
-      if (component.component_type === 'custom') {
+      // Calculate consumption based on order quantity
+      let consumption = '';
+      if (component.consumption) {
+        consumption = (component.consumption * orderQuantity).toFixed(2);
+      }
+      
+      if (component.component_type === 'custom' || !standardTypes.includes(component.component_type)) {
         newCustomComponents.push({
           id: uuidv4(),
           type: 'custom',
-          customName: component.custom_name || '',
+          customName: component.custom_name || component.component_type,
           color: component.color || '',
           gsm: component.gsm?.toString() || '',
           length,
-          width
+          width,
+          material_id: component.material_id || '',
+          roll_width: component.roll_width?.toString() || '',
+          consumption
         });
       } else if (standardTypes.includes(component.component_type)) {
         newOrderComponents[component.component_type] = {
@@ -165,7 +313,10 @@ export function useOrderForm(): UseOrderFormReturn {
           color: component.color || '',
           gsm: component.gsm?.toString() || '',
           length,
-          width
+          width,
+          material_id: component.material_id || '',
+          roll_width: component.roll_width?.toString() || '',
+          consumption
         };
       }
     });
@@ -178,12 +329,28 @@ export function useOrderForm(): UseOrderFormReturn {
     setCustomComponents(newCustomComponents);
   };
 
+  const handleProductSelect = (productId: string) => {
+    console.log("Selected product ID:", productId);
+    setSelectedProductId(productId);
+    
+    // The rest will be handled by the useEffect that watches selectedProduct
+    if (selectedProduct) {
+      // Update order details from the selected product
+      setOrderDetails(prev => ({
+        ...prev,
+        bag_length: selectedProduct.bag_length?.toString() || prev.bag_length,
+        bag_width: selectedProduct.bag_width?.toString() || prev.bag_width,
+        rate: selectedProduct.default_rate?.toString() || prev.rate,
+      }));
+    }
+  };
+
   const validateForm = (): boolean => {
     const errors: FormErrors = {};
     let isValid = true;
 
     // Validate company information
-    if (!orderDetails.company_name) {
+    if (!orderDetails.company_name && !orderDetails.company_id) {
       errors.company = "Company name is required";
       isValid = false;
     }
@@ -214,6 +381,81 @@ export function useOrderForm(): UseOrderFormReturn {
 
     setFormErrors(errors);
     return isValid;
+  };
+
+  const updateInventoryStock = async () => {
+    // Skip if no inventory items are loaded
+    if (!inventoryItems) return;
+    
+    // Collect all materials and their consumption
+    const materialUsage: Record<string, number> = {};
+    
+    // Process standard components
+    Object.values(components).forEach(comp => {
+      if (comp.material_id && comp.consumption) {
+        const materialId = comp.material_id;
+        const consumption = parseFloat(comp.consumption);
+        
+        if (!isNaN(consumption)) {
+          if (!materialUsage[materialId]) {
+            materialUsage[materialId] = consumption;
+          } else {
+            materialUsage[materialId] += consumption;
+          }
+        }
+      }
+    });
+    
+    // Process custom components
+    customComponents.forEach(comp => {
+      if (comp.material_id && comp.consumption) {
+        const materialId = comp.material_id;
+        const consumption = parseFloat(comp.consumption);
+        
+        if (!isNaN(consumption)) {
+          if (!materialUsage[materialId]) {
+            materialUsage[materialId] = consumption;
+          } else {
+            materialUsage[materialId] += consumption;
+          }
+        }
+      }
+    });
+    
+    // Update inventory for each used material
+    for (const [materialId, usage] of Object.entries(materialUsage)) {
+      try {
+        // Get current inventory level
+        const { data: material, error: fetchError } = await supabase
+          .from('inventory')
+          .select('quantity')
+          .eq('id', materialId)
+          .single();
+        
+        if (fetchError) {
+          console.error(`Error fetching inventory for material ${materialId}:`, fetchError);
+          continue;
+        }
+        
+        // Calculate new quantity
+        const currentQuantity = material.quantity || 0;
+        const newQuantity = currentQuantity - usage;
+        
+        // Update inventory
+        const { error: updateError } = await supabase
+          .from('inventory')
+          .update({ quantity: newQuantity >= 0 ? newQuantity : 0 })
+          .eq('id', materialId);
+        
+        if (updateError) {
+          console.error(`Error updating inventory for material ${materialId}:`, updateError);
+        } else {
+          console.log(`Updated inventory for material ${materialId}: ${currentQuantity} - ${usage} = ${newQuantity}`);
+        }
+      } catch (error) {
+        console.error(`Error processing material ${materialId}:`, error);
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent): Promise<string | undefined> => {
@@ -277,12 +519,14 @@ export function useOrderForm(): UseOrderFormReturn {
           size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
           color: comp.color || null,
           gsm: comp.gsm || null,
-          custom_name: comp.type === 'custom' ? comp.customName : null
+          custom_name: comp.type === 'custom' ? comp.customName : null,
+          material_id: comp.material_id || null,
+          roll_width: comp.roll_width ? parseFloat(comp.roll_width) : null,
+          consumption: comp.consumption ? parseFloat(comp.consumption) : null
         }));
 
         console.log("Inserting components:", componentsToInsert);
 
-        // Fixed: Using the correct table name "order_components" instead of "components"
         const { error: componentsError } = await supabase
           .from("order_components")
           .insert(componentsToInsert);
@@ -296,6 +540,9 @@ export function useOrderForm(): UseOrderFormReturn {
           });
         } else {
           console.log("Components saved successfully");
+          
+          // Update inventory stock levels
+          await updateInventoryStock();
         }
       }
       

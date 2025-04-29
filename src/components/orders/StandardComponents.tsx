@@ -23,7 +23,16 @@ export function StandardComponents({ components, componentOptions, onChange }: S
             <ComponentForm
               key={type}
               title={type.charAt(0).toUpperCase() + type.slice(1)}
-              component={components[type] || { type, width: "", length: "", color: "", gsm: "" }}
+              component={components[type] || { 
+                type, 
+                width: "", 
+                length: "", 
+                color: "", 
+                gsm: "",
+                material_id: "",
+                roll_width: "",
+                consumption: "" 
+              }}
               index={index}
               componentOptions={componentOptions}
               onChange={(field, value) => onChange(type, field, value)}

@@ -33,7 +33,7 @@ interface OrderDetailsFormProps {
   handleOrderChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 
     target: { name: string; value: string | null } 
   }) => void;
-  onProductSelect?: (components: any[]) => void;
+  onProductSelect?: (productId: string) => void;
   formErrors: {
     company?: string;
     quantity?: string;
@@ -69,22 +69,9 @@ export const OrderDetailsForm = ({
   }, []);
 
   const handleProductSelect = (productId: string) => {
-    const selectedProduct = catalogProducts?.find(p => p.id === productId);
-    if (selectedProduct) {
-      // Only update bag dimensions, quantity and rate, not the company info
-      handleOrderChange({ target: { name: 'bag_length', value: selectedProduct.bag_length.toString() } });
-      handleOrderChange({ target: { name: 'bag_width', value: selectedProduct.bag_width.toString() } });
-      if (selectedProduct.default_quantity) {
-        handleOrderChange({ target: { name: 'quantity', value: selectedProduct.default_quantity.toString() } });
-      }
-      if (selectedProduct.default_rate) {
-        handleOrderChange({ target: { name: 'rate', value: selectedProduct.default_rate.toString() } });
-      }
-      
-      // Pass components to parent component if they exist
-      if (onProductSelect && selectedProduct.catalog_components) {
-        onProductSelect(selectedProduct.catalog_components);
-      }
+    // Call parent handler if provided
+    if (onProductSelect) {
+      onProductSelect(productId);
     }
   };
 
@@ -112,7 +99,7 @@ export const OrderDetailsForm = ({
       <CardContent className="space-y-4">
         {/* Product selection dropdown */}
         <div className="space-y-2">
-          <Label>Select Product (Optional)</Label>
+          <Label>Select Product (BOM)</Label>
           <Select onValueChange={handleProductSelect}>
             <SelectTrigger>
               <SelectValue placeholder="Choose a product template" />
@@ -120,11 +107,14 @@ export const OrderDetailsForm = ({
             <SelectContent>
               {catalogProducts?.map((product) => (
                 <SelectItem key={product.id} value={product.id}>
-                  {product.name}
+                  {product.name} ({product.bag_length}x{product.bag_width} inches)
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          <p className="text-xs text-muted-foreground">
+            Selecting a product will auto-fill dimensions, rate and components
+          </p>
         </div>
 
         {/* Company section */}
@@ -292,7 +282,7 @@ export const OrderDetailsForm = ({
           <Textarea 
             id="special_instructions" 
             name="special_instructions"
-            value={formData.special_instructions}
+            value={formData.special_instructions || ''}
             onChange={handleOrderChange}
             placeholder="Any additional notes or requirements"
             rows={3}
