@@ -1,9 +1,5 @@
-
 import { useState } from "react";
-import { v4 as uuidv4 } from "uuid";
-import { toast } from "sonner";
-import { OrderFormData, OrderStatus, ComponentData } from "@/types/order";
-import { UseOrderFormHook } from "./types";
+import { OrderFormData, OrderStatus } from "@/types/order";
 import { validateOrderForm } from "./validation";
 import { submitOrder } from "./submit";
 import {
@@ -13,59 +9,39 @@ import {
   removeCustomComponent as removeCustomComponentUtil,
   handleProductSelect as handleProductSelectUtil
 } from "./component-handlers";
+import { useOrderFormState } from "./use-order-form-state";
+import { useOrderFormActions } from "./use-order-form-actions";
+import { UseOrderFormHook } from "./types";
 
 export const useOrderForm = (initialOrder?: OrderFormData): UseOrderFormHook => {
-  // Order details state
-  const [orderDetails, setOrderDetails] = useState<OrderFormData>(initialOrder || {
-    company_name: "",
-    company_id: null,
-    sales_account_id: null,
-    quantity: "",
-    bag_length: "",
-    bag_width: "",
-    rate: "",
-    order_date: new Date().toISOString().split('T')[0],
-    special_instructions: "",
-    status: "pending" as OrderStatus,
+  // Get order form state from a separate hook
+  const {
+    orderDetails,
+    components,
+    customComponents,
+    formErrors,
+    submitting,
+    setOrderDetails,
+    setComponents,
+    setCustomComponents,
+    setFormErrors,
+    setSubmitting
+  } = useOrderFormState(initialOrder);
+  
+  // Use a separate hook for actions to keep this hook clean
+  const {
+    handleOrderChange,
+    validateForm,
+    handleSubmit
+  } = useOrderFormActions({
+    orderDetails,
+    formErrors,
+    setOrderDetails,
+    setFormErrors,
+    setSubmitting,
+    components,
+    customComponents
   });
-  
-  // Form validation errors
-  const [formErrors, setFormErrors] = useState<{
-    company?: string;
-    quantity?: string;
-    bag_length?: string;
-    bag_width?: string;
-    order_date?: string;
-  }>({});
-  
-  // Components state
-  const [components, setComponents] = useState<Record<string, ComponentData>>({});
-  
-  // Custom components state
-  const [customComponents, setCustomComponents] = useState<ComponentData[]>([]);
-  
-  // Loading/submitting state
-  const [submitting, setSubmitting] = useState(false);
-  
-  // Handle changes to order details
-  const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 
-    target: { name: string; value: string | null } 
-  }) => {
-    const { name, value } = e.target;
-    
-    setOrderDetails(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear validation error when field is updated
-    if (formErrors[name as keyof typeof formErrors]) {
-      setFormErrors(prev => ({
-        ...prev,
-        [name]: undefined
-      }));
-    }
-  };
   
   // Handle changes to standard components
   const handleComponentChange = (type: string, field: string, value: string) => {
@@ -113,35 +89,6 @@ export const useOrderForm = (initialOrder?: OrderFormData): UseOrderFormHook => 
     // Update component states
     setComponents(standardComponents);
     setCustomComponents(customItems);
-  };
-  
-  // Validate form before submission
-  const validateForm = () => {
-    const errors = validateOrderForm(orderDetails);
-    
-    // Update error state and return validation result
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-  
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate form
-    if (!validateForm()) {
-      toast.error("Please correct the errors in the form");
-      return null;
-    }
-    
-    setSubmitting(true);
-    
-    try {
-      const orderId = await submitOrder(orderDetails, components, customComponents);
-      return orderId;
-    } finally {
-      setSubmitting(false);
-    }
   };
   
   return {

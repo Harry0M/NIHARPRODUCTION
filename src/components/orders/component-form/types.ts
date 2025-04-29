@@ -1,7 +1,18 @@
 
-import { ComponentProps as BaseComponentProps } from "../ComponentForm";
-
-export type ComponentProps = BaseComponentProps;
+export interface ComponentProps {
+  id?: string;
+  type: string;
+  length?: string;
+  width?: string;
+  color?: string;
+  gsm?: string;
+  customName?: string;
+  name?: string;
+  material_id?: string;
+  roll_width?: string;
+  consumption?: number;
+  details?: string;
+}
 
 export interface ComponentFormProps {
   component: ComponentProps;
