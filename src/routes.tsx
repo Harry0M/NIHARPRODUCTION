@@ -13,10 +13,12 @@ import StockList from './pages/Inventory/StockList';
 import CatalogList from './pages/Inventory/CatalogList';
 import Index from './pages/Index';
 import InventoryLayout from './layouts/InventoryLayout';
+import Auth from './pages/Auth';
+import AppLayout from './components/layout/AppLayout';
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Create simple layouts for the routes until the real ones are properly built
 const MainLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
-const AuthLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
 const JobCardLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
 const OrderLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
 const VendorLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
@@ -36,8 +38,7 @@ const PlaceholderPage = ({ title }: { title: string }) => (
 
 // Create lazy loading routes
 const Home = () => <PlaceholderPage title="Home" />;
-const SignIn = () => <PlaceholderPage title="Sign In" />;
-const SignUp = () => <PlaceholderPage title="Sign Up" />;
+const Dashboard = () => <PlaceholderPage title="Dashboard" />;
 const Orders = () => <PlaceholderPage title="Orders" />;
 const OrderDetails = () => <PlaceholderPage title="Order Details" />;
 const OrderEdit = () => <PlaceholderPage title="Order Edit" />;
@@ -77,93 +78,194 @@ const routes: RouteObject[] = [
     element: <MainLayout><Index /></MainLayout>,
   },
   {
-    path: 'auth',
-    element: <AuthLayout><Outlet /></AuthLayout>,
+    path: 'auth/*',
+    element: <Auth />,
+  },
+  {
+    path: 'dashboard',
+    element: <ProtectedRoute />,
     children: [
-      { path: '', element: <Navigate to="/auth/signin" replace /> },
-      { path: 'signin', element: <SignIn /> },
-      { path: 'signup', element: <SignUp /> },
-    ],
+      { path: '', element: <AppLayout><Dashboard /></AppLayout> }
+    ]
   },
   {
     path: 'orders',
-    element: <OrderLayout><Outlet /></OrderLayout>,
+    element: <ProtectedRoute />,
     children: [
-      { path: '', element: <Orders /> },
-      { path: ':id', element: <OrderDetails /> },
-      { path: 'new', element: <Suspense fallback={<>Loading...</>}><OrderNew /></Suspense> },
-      { path: ':id/edit', element: <OrderEdit /> },
+      { 
+        path: '', 
+        element: <OrderLayout><Orders /></OrderLayout> 
+      },
+      { 
+        path: ':id', 
+        element: <OrderLayout><OrderDetails /></OrderLayout> 
+      },
+      { 
+        path: 'new', 
+        element: <OrderLayout><Suspense fallback={<>Loading...</>}><OrderNew /></Suspense></OrderLayout> 
+      },
+      { 
+        path: ':id/edit', 
+        element: <OrderLayout><OrderEdit /></OrderLayout> 
+      },
     ]
   },
   {
     path: 'job-cards',
-    element: <JobCardLayout><Outlet /></JobCardLayout>,
+    element: <ProtectedRoute />,
     children: [
-      { path: '', element: <JobCards /> },
-      { path: ':id', element: <JobCardDetails /> },
-      { path: ':id/cutting-jobs', element: <CuttingJobs /> },
-      { path: ':id/printing-jobs', element: <PrintingJobs /> },
-      { path: ':id/stitching-jobs', element: <StitchingJobs /> },
+      { 
+        path: '', 
+        element: <JobCardLayout><JobCards /></JobCardLayout> 
+      },
+      { 
+        path: ':id', 
+        element: <JobCardLayout><JobCardDetails /></JobCardLayout> 
+      },
+      { 
+        path: ':id/cutting-jobs', 
+        element: <JobCardLayout><CuttingJobs /></JobCardLayout> 
+      },
+      { 
+        path: ':id/printing-jobs', 
+        element: <JobCardLayout><PrintingJobs /></JobCardLayout> 
+      },
+      { 
+        path: ':id/stitching-jobs', 
+        element: <JobCardLayout><StitchingJobs /></JobCardLayout> 
+      },
     ]
   },
   {
     path: 'companies',
-    element: <CompanyLayout><Outlet /></CompanyLayout>,
+    element: <ProtectedRoute />,
     children: [
-      { path: '', element: <Companies /> },
-      { path: ':id', element: <CompanyDetails /> },
-      { path: 'new', element: <CompanyNew /> },
-      { path: ':id/edit', element: <CompanyEdit /> },
+      { 
+        path: '', 
+        element: <CompanyLayout><Companies /></CompanyLayout> 
+      },
+      { 
+        path: ':id', 
+        element: <CompanyLayout><CompanyDetails /></CompanyLayout> 
+      },
+      { 
+        path: 'new', 
+        element: <CompanyLayout><CompanyNew /></CompanyLayout> 
+      },
+      { 
+        path: ':id/edit', 
+        element: <CompanyLayout><CompanyEdit /></CompanyLayout> 
+      },
     ]
   },
   {
     path: 'suppliers',
-    element: <SupplierLayout><Outlet /></SupplierLayout>,
+    element: <ProtectedRoute />,
     children: [
-      { path: '', element: <Suppliers /> },
-      { path: ':id', element: <SupplierDetails /> },
-      { path: 'new', element: <SupplierNew /> },
-      { path: ':id/edit', element: <SupplierEdit /> },
+      { 
+        path: '', 
+        element: <SupplierLayout><Suppliers /></SupplierLayout> 
+      },
+      { 
+        path: ':id', 
+        element: <SupplierLayout><SupplierDetails /></SupplierLayout> 
+      },
+      { 
+        path: 'new', 
+        element: <SupplierLayout><SupplierNew /></SupplierLayout> 
+      },
+      { 
+        path: ':id/edit', 
+        element: <SupplierLayout><SupplierEdit /></SupplierLayout> 
+      },
     ]
   },
   {
     path: 'transactions',
-    element: <TransactionLayout><Outlet /></TransactionLayout>,
+    element: <ProtectedRoute />,
     children: [
-      { path: '', element: <Transactions /> },
-      { path: ':id', element: <TransactionDetails /> },
-      { path: 'new', element: <TransactionNew /> },
-      { path: ':id/edit', element: <TransactionEdit /> },
+      { 
+        path: '', 
+        element: <TransactionLayout><Transactions /></TransactionLayout> 
+      },
+      { 
+        path: ':id', 
+        element: <TransactionLayout><TransactionDetails /></TransactionLayout> 
+      },
+      { 
+        path: 'new', 
+        element: <TransactionLayout><TransactionNew /></TransactionLayout> 
+      },
+      { 
+        path: ':id/edit', 
+        element: <TransactionLayout><TransactionEdit /></TransactionLayout> 
+      },
     ]
   },
   {
     path: 'profile',
-    element: <ProfileLayout><Outlet /></ProfileLayout>,
+    element: <ProtectedRoute />,
     children: [
-      { path: '', element: <Profile /> },
+      { 
+        path: '', 
+        element: <ProfileLayout><Profile /></ProfileLayout> 
+      },
     ]
   },
   {
     path: 'dispatch',
-    element: <DispatchLayout><Outlet /></DispatchLayout>,
+    element: <ProtectedRoute />,
     children: [
-      { path: '', element: <DispatchList /> },
-      { path: ':id', element: <DispatchDetails /> },
-      { path: 'new', element: <DispatchNew /> },
+      { 
+        path: '', 
+        element: <DispatchLayout><DispatchList /></DispatchLayout> 
+      },
+      { 
+        path: ':id', 
+        element: <DispatchLayout><DispatchDetails /></DispatchLayout> 
+      },
+      { 
+        path: 'new', 
+        element: <DispatchLayout><DispatchNew /></DispatchLayout> 
+      },
     ]
   },
   {
     path: 'inventory',
-    element: <InventoryLayout />,
+    element: <ProtectedRoute />,
     children: [
-      { path: '', element: <Navigate to="/inventory/stock" replace /> },
-      { path: 'stock', element: <StockList /> },
-      { path: 'stock/new', element: <StockJournalForm /> },
-      { path: 'stock/:id', element: <StockJournalForm /> },
-      { path: 'catalog', element: <CatalogList /> },
-      { path: 'catalog/new', element: <CatalogNew /> },
-      { path: 'catalog/:id', element: <CatalogOrdersWrapper /> },
-      { path: 'catalog/:id/orders', element: <CatalogOrders /> },
+      { 
+        path: '', 
+        element: <Navigate to="/inventory/stock" replace /> 
+      },
+      { 
+        path: 'stock', 
+        element: <InventoryLayout><StockList /></InventoryLayout> 
+      },
+      { 
+        path: 'stock/new', 
+        element: <InventoryLayout><StockJournalForm /></InventoryLayout> 
+      },
+      { 
+        path: 'stock/:id', 
+        element: <InventoryLayout><StockJournalForm /></InventoryLayout> 
+      },
+      { 
+        path: 'catalog', 
+        element: <InventoryLayout><CatalogList /></InventoryLayout> 
+      },
+      { 
+        path: 'catalog/new', 
+        element: <InventoryLayout><CatalogNew /></InventoryLayout> 
+      },
+      { 
+        path: 'catalog/:id', 
+        element: <InventoryLayout><CatalogOrdersWrapper /></InventoryLayout> 
+      },
+      { 
+        path: 'catalog/:id/orders', 
+        element: <InventoryLayout><CatalogOrders /></InventoryLayout> 
+      },
     ]
   }
 ];

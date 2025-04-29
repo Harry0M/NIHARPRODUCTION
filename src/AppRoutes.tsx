@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import routes, { Router } from "./routes";
 import { supabase } from "@/integrations/supabase/client";
-import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { AuthProvider } from "@/context/AuthContext";
 
 const AppRoutes = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -53,7 +53,7 @@ const AppRoutes = () => {
     // Add a small delay to ensure Supabase client is fully initialized
     const timer = setTimeout(() => {
       checkSession();
-    }, 100);
+    }, 200);
     
     return () => clearTimeout(timer);
   }, []);

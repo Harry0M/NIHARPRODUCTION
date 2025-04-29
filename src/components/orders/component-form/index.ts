@@ -1,3 +1,3 @@
 
-export { ComponentForm } from './ComponentForm';
-export type { ComponentProps } from './types';
+export { default as ComponentForm } from './ComponentForm';
+export * from './types';
