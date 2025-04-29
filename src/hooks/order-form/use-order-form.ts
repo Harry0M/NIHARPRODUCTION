@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
-import { OrderFormData, OrderStatus } from "@/types/order";
+import { OrderFormData, OrderStatus, ComponentData } from "@/types/order";
 import { UseOrderFormHook } from "./types";
 import { validateOrderForm } from "./validation";
 import { submitOrder } from "./submit";
@@ -107,7 +107,7 @@ export const useOrderForm = (initialOrder?: OrderFormData): UseOrderFormHook => 
   const handleProductSelect = (catalogComponents: any[]) => {
     const { standardComponents, customItems } = handleProductSelectUtil(
       catalogComponents, 
-      orderDetails.quantity
+      parseInt(orderDetails.quantity) || 1
     );
     
     // Update component states

@@ -99,11 +99,7 @@ export const handleProductSelect = (
     const isStandard = standardTypes.includes(comp.component_type);
     
     // Calculate consumption based on order quantity
-    const quantity = parseInt(orderQuantity) || 1;
-    let consumption = comp.consumption;
-    if (consumption && quantity > 1) {
-      consumption = consumption * quantity;
-    }
+    const consumption = comp.consumption ? comp.consumption * orderQuantity : undefined;
     
     const componentData: ComponentData = {
       id: uuidv4(),
