@@ -2,62 +2,78 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, RouteObject, useRoutes, useParams } from 'react-router-dom';
 
-import { MainLayout } from '@/layouts/MainLayout';
-import { AuthLayout } from '@/layouts/AuthLayout';
-import { InventoryLayout } from '@/layouts/InventoryLayout';
-import { JobCardLayout } from '@/layouts/JobCardLayout';
-import { OrderLayout } from '@/layouts/OrderLayout';
-import { VendorLayout } from '@/layouts/VendorLayout';
-import { CompanyLayout } from '@/layouts/CompanyLayout';
-import { SupplierLayout } from '@/layouts/SupplierLayout';
-import { TransactionLayout } from '@/layouts/TransactionLayout';
-import { ProfileLayout } from '@/layouts/ProfileLayout';
-import { DispatchLayout } from '@/layouts/DispatchLayout';
+import { MainLayout } from './layouts/MainLayout';
+import { AuthLayout } from './layouts/AuthLayout';
+import { InventoryLayout } from './layouts/InventoryLayout';
+import { JobCardLayout } from './layouts/JobCardLayout';
+import { OrderLayout } from './layouts/OrderLayout';
+import { VendorLayout } from './layouts/VendorLayout';
+import { CompanyLayout } from './layouts/CompanyLayout';
+import { SupplierLayout } from './layouts/SupplierLayout';
+import { TransactionLayout } from './layouts/TransactionLayout';
+import { ProfileLayout } from './layouts/ProfileLayout';
+import { DispatchLayout } from './layouts/DispatchLayout';
 
-import { Shell } from '@/components/Shell';
-import { checkSupabaseConnection } from '@/integrations/supabase/client';
+import { Shell } from './components/Shell';
+import { checkSupabaseConnection } from './integrations/supabase/client';
 import { useEffect, useState } from 'react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from './components/ui/alert';
 import { Info } from 'lucide-react';
+
+// Direct imports for inventory pages
 import StockJournalForm from './pages/Inventory/StockJournalForm';
 import CatalogNew from './pages/Inventory/CatalogNew';
 import StockList from './pages/Inventory/StockList';
 import CatalogList from './pages/Inventory/CatalogList';
+import CatalogOrders from './pages/Inventory/CatalogOrders';
+import StockNew from './pages/Inventory/StockNew';
 
-interface LayoutProps {
-  children?: React.ReactNode;
-}
+// Lazy loaded pages
+const Home = lazy(() => import('./pages/Home'));
+const SignIn = lazy(() => import('./pages/Auth/SignIn'));
+const SignUp = lazy(() => import('./pages/Auth/SignUp'));
 
-const Home = lazy(() => import('@/pages/Home'));
-const SignIn = lazy(() => import('@/pages/Auth/SignIn'));
-const SignUp = lazy(() => import('@/pages/Auth/SignUp'));
-const Orders = lazy(() => import('@/pages/Orders'));
-const OrderDetails = lazy(() => import('@/pages/Orders/OrderDetails'));
-const OrderNew = lazy(() => import('@/pages/Orders/OrderNew'));
-const OrderEdit = lazy(() => import('@/pages/Orders/OrderEdit'));
-const JobCards = lazy(() => import('@/pages/JobCards'));
-const JobCardDetails = lazy(() => import('@/pages/JobCards/JobCardDetails'));
-const CuttingJobs = lazy(() => import('@/pages/JobCards/CuttingJobs'));
-const PrintingJobs = lazy(() => import('@/pages/JobCards/PrintingJobs'));
-const StitchingJobs = lazy(() => import('@/pages/JobCards/StitchingJobs'));
-const Companies = lazy(() => import('@/pages/Companies'));
-const CompanyDetails = lazy(() => import('@/pages/Companies/CompanyDetails'));
-const CompanyNew = lazy(() => import('@/pages/Companies/CompanyNew'));
-const CompanyEdit = lazy(() => import('@/pages/Companies/CompanyEdit'));
-const Suppliers = lazy(() => import('@/pages/Suppliers'));
-const SupplierDetails = lazy(() => import('@/pages/Suppliers/SupplierDetails'));
-const SupplierNew = lazy(() => import('@/pages/Suppliers/SupplierNew'));
-const SupplierEdit = lazy(() => import('@/pages/Suppliers/SupplierEdit'));
-const Transactions = lazy(() => import('@/pages/Transactions'));
-const TransactionDetails = lazy(() => import('@/pages/Transactions/TransactionDetails'));
-const TransactionNew = lazy(() => import('@/pages/Transactions/TransactionNew'));
-const TransactionEdit = lazy(() => import('@/pages/Transactions/TransactionEdit'));
-const Profile = lazy(() => import('@/pages/Profile'));
-const DispatchList = lazy(() => import('@/pages/Dispatch/DispatchList'));
-const DispatchDetails = lazy(() => import('@/pages/Dispatch/DispatchDetails'));
-const DispatchNew = lazy(() => import('@/pages/Dispatch/DispatchNew'));
-const CatalogOrders = lazy(() => import('@/pages/Inventory/CatalogOrders'));
-const StockNew = lazy(() => import('@/pages/Inventory/StockNew'));
+// Placeholder components for missing pages
+const PlaceholderPage = ({ title = "Page Coming Soon" }) => (
+  <div className="flex flex-col items-center justify-center min-h-[60vh] p-6">
+    <h1 className="text-2xl font-bold mb-4">{title}</h1>
+    <p className="text-muted-foreground text-center max-w-md">
+      This page is currently under development. Please check back later.
+    </p>
+  </div>
+);
+
+// Create placeholders for missing pages
+const Orders = () => <PlaceholderPage title="Orders" />;
+const OrderDetails = ({ id }: { id?: string }) => <PlaceholderPage title={`Order Details: ${id}`} />;
+const OrderNew = () => <PlaceholderPage title="New Order" />;
+const OrderEdit = ({ id }: { id?: string }) => <PlaceholderPage title={`Edit Order: ${id}`} />;
+
+const JobCards = () => <PlaceholderPage title="Job Cards" />;
+const JobCardDetails = ({ id }: { id?: string }) => <PlaceholderPage title={`Job Card Details: ${id}`} />;
+const CuttingJobs = ({ id }: { id?: string }) => <PlaceholderPage title={`Cutting Jobs: ${id}`} />;
+const PrintingJobs = ({ id }: { id?: string }) => <PlaceholderPage title={`Printing Jobs: ${id}`} />;
+const StitchingJobs = ({ id }: { id?: string }) => <PlaceholderPage title={`Stitching Jobs: ${id}`} />;
+
+const Companies = () => <PlaceholderPage title="Companies" />;
+const CompanyDetails = ({ id }: { id?: string }) => <PlaceholderPage title={`Company Details: ${id}`} />;
+const CompanyNew = () => <PlaceholderPage title="New Company" />;
+const CompanyEdit = ({ id }: { id?: string }) => <PlaceholderPage title={`Edit Company: ${id}`} />;
+
+const Suppliers = () => <PlaceholderPage title="Suppliers" />;
+const SupplierDetails = ({ id }: { id?: string }) => <PlaceholderPage title={`Supplier Details: ${id}`} />;
+const SupplierNew = () => <PlaceholderPage title="New Supplier" />;
+const SupplierEdit = ({ id }: { id?: string }) => <PlaceholderPage title={`Edit Supplier: ${id}`} />;
+
+const Transactions = () => <PlaceholderPage title="Transactions" />;
+const TransactionDetails = ({ id }: { id?: string }) => <PlaceholderPage title={`Transaction Details: ${id}`} />;
+const TransactionNew = () => <PlaceholderPage title="New Transaction" />;
+const TransactionEdit = ({ id }: { id?: string }) => <PlaceholderPage title={`Edit Transaction: ${id}`} />;
+
+const Profile = () => <PlaceholderPage title="User Profile" />;
+const DispatchList = () => <PlaceholderPage title="Dispatch List" />;
+const DispatchDetails = ({ id }: { id?: string }) => <PlaceholderPage title={`Dispatch Details: ${id}`} />;
+const DispatchNew = () => <PlaceholderPage title="New Dispatch" />;
 
 const routes: RouteObject[] = [
   {
@@ -80,67 +96,67 @@ const routes: RouteObject[] = [
     path: 'orders',
     element: <OrderLayout />,
     children: [
-      { path: '', element: <Suspense fallback={<>Loading...</>}><Orders /></Suspense> },
-      { path: ':id', element: <Suspense fallback={<>Loading...</>}><OrderDetails id={useParams().id} /></Suspense> },
-      { path: 'new', element: <Suspense fallback={<>Loading...</>}><OrderNew /></Suspense> },
-      { path: ':id/edit', element: <Suspense fallback={<>Loading...</>}><OrderEdit id={useParams().id} /></Suspense> },
+      { path: '', element: <Orders /> },
+      { path: ':id', element: <OrderDetails id={useParams().id} /> },
+      { path: 'new', element: <OrderNew /> },
+      { path: ':id/edit', element: <OrderEdit id={useParams().id} /> },
     ]
   },
   {
     path: 'job-cards',
     element: <JobCardLayout />,
     children: [
-      { path: '', element: <Suspense fallback={<>Loading...</>}><JobCards /></Suspense> },
-      { path: ':id', element: <Suspense fallback={<>Loading...</>}><JobCardDetails id={useParams().id} /></Suspense> },
-      { path: ':id/cutting-jobs', element: <Suspense fallback={<>Loading...</>}><CuttingJobs id={useParams().id} /></Suspense> },
-      { path: ':id/printing-jobs', element: <Suspense fallback={<>Loading...</>}><PrintingJobs id={useParams().id} /></Suspense> },
-      { path: ':id/stitching-jobs', element: <Suspense fallback={<>Loading...</>}><StitchingJobs id={useParams().id} /></Suspense> },
+      { path: '', element: <JobCards /> },
+      { path: ':id', element: <JobCardDetails id={useParams().id} /> },
+      { path: ':id/cutting-jobs', element: <CuttingJobs id={useParams().id} /> },
+      { path: ':id/printing-jobs', element: <PrintingJobs id={useParams().id} /> },
+      { path: ':id/stitching-jobs', element: <StitchingJobs id={useParams().id} /> },
     ]
   },
   {
     path: 'companies',
     element: <CompanyLayout />,
     children: [
-      { path: '', element: <Suspense fallback={<>Loading...</>}><Companies /></Suspense> },
-      { path: ':id', element: <Suspense fallback={<>Loading...</>}><CompanyDetails id={useParams().id} /></Suspense> },
-      { path: 'new', element: <Suspense fallback={<>Loading...</>}><CompanyNew /></Suspense> },
-      { path: ':id/edit', element: <Suspense fallback={<>Loading...</>}><CompanyEdit id={useParams().id} /></Suspense> },
+      { path: '', element: <Companies /> },
+      { path: ':id', element: <CompanyDetails id={useParams().id} /> },
+      { path: 'new', element: <CompanyNew /> },
+      { path: ':id/edit', element: <CompanyEdit id={useParams().id} /> },
     ]
   },
   {
     path: 'suppliers',
     element: <SupplierLayout />,
     children: [
-      { path: '', element: <Suspense fallback={<>Loading...</>}><Suppliers /></Suspense> },
-      { path: ':id', element: <Suspense fallback={<>Loading...</>}><SupplierDetails id={useParams().id} /></Suspense> },
-      { path: 'new', element: <Suspense fallback={<>Loading...</>}><SupplierNew /></Suspense> },
-      { path: ':id/edit', element: <Suspense fallback={<>Loading...</>}><SupplierEdit id={useParams().id} /></Suspense> },
+      { path: '', element: <Suppliers /> },
+      { path: ':id', element: <SupplierDetails id={useParams().id} /> },
+      { path: 'new', element: <SupplierNew /> },
+      { path: ':id/edit', element: <SupplierEdit id={useParams().id} /> },
     ]
   },
   {
     path: 'transactions',
     element: <TransactionLayout />,
     children: [
-      { path: '', element: <Suspense fallback={<>Loading...</>}><Transactions /></Suspense> },
-      { path: ':id', element: <Suspense fallback={<>Loading...</>}><TransactionDetails id={useParams().id} /></Suspense> },
-      { path: 'new', element: <Suspense fallback={<>Loading...</>}><TransactionNew /></Suspense> },
-      { path: ':id/edit', element: <Suspense fallback={<>Loading...</>}><TransactionEdit id={useParams().id} /></Suspense> },
+      { path: '', element: <Transactions /> },
+      { path: ':id', element: <TransactionDetails id={useParams().id} /> },
+      { path: 'new', element: <TransactionNew /> },
+      { path: ':id/edit', element: <TransactionEdit id={useParams().id} /> },
     ]
   },
   {
     path: 'profile',
     element: <ProfileLayout />,
     children: [
-      { path: '', element: <Suspense fallback={<>Loading...</>}><Profile /></Suspense> },
+      { path: '', element: <Profile /> },
     ]
   },
   {
     path: 'dispatch',
     element: <DispatchLayout />,
     children: [
-      { path: '', element: <Suspense fallback={<>Loading...</>}><DispatchList /></Suspense> },
-      { path: ':id', element: <Suspense fallback={<>Loading...</>}><DispatchDetails id={useParams().id} /></Suspense> },
-      { path: 'new', element: <Suspense fallback={<>Loading...</>}><DispatchNew /></Suspense> },
+      { path: '', element: <DispatchList /> },
+      { path: ':id', element: <DispatchDetails id={useParams().id} /> },
+      { path: 'new', element: <DispatchNew /> },
     ]
   },
   {
