@@ -33,12 +33,6 @@ const Home = lazy(() => import('./pages/Home'));
 const SignIn = lazy(() => import('./pages/Auth/SignIn'));
 const SignUp = lazy(() => import('./pages/Auth/SignUp'));
 
-// Helper function for getting ID from useParams
-const getParamsId = () => {
-  const params = useParams();
-  return params.id;
-};
-
 // Placeholder components for missing pages
 const PlaceholderPage = ({ title = "Page Coming Soon" }) => (
   <div className="flex flex-col items-center justify-center min-h-[60vh] p-6">
@@ -51,35 +45,41 @@ const PlaceholderPage = ({ title = "Page Coming Soon" }) => (
 
 // Create placeholders for missing pages
 const Orders = () => <PlaceholderPage title="Orders" />;
-const OrderDetails = () => <PlaceholderPage title={`Order Details: ${getParamsId()}`} />;
+const OrderDetails = () => <PlaceholderPage title={`Order Details: ${useParams().id}`} />;
 const OrderNew = lazy(() => import('./pages/Orders/OrderNew'));
-const OrderEdit = () => <PlaceholderPage title={`Edit Order: ${getParamsId()}`} />;
+const OrderEdit = () => <PlaceholderPage title={`Edit Order: ${useParams().id}`} />;
 
 const JobCards = () => <PlaceholderPage title="Job Cards" />;
-const JobCardDetails = () => <PlaceholderPage title={`Job Card Details: ${getParamsId()}`} />;
-const CuttingJobs = () => <PlaceholderPage title={`Cutting Jobs: ${getParamsId()}`} />;
-const PrintingJobs = () => <PlaceholderPage title={`Printing Jobs: ${getParamsId()}`} />;
-const StitchingJobs = () => <PlaceholderPage title={`Stitching Jobs: ${getParamsId()}`} />;
+const JobCardDetails = () => <PlaceholderPage title={`Job Card Details: ${useParams().id}`} />;
+const CuttingJobs = () => <PlaceholderPage title={`Cutting Jobs: ${useParams().id}`} />;
+const PrintingJobs = () => <PlaceholderPage title={`Printing Jobs: ${useParams().id}`} />;
+const StitchingJobs = () => <PlaceholderPage title={`Stitching Jobs: ${useParams().id}`} />;
 
 const Companies = () => <PlaceholderPage title="Companies" />;
-const CompanyDetails = () => <PlaceholderPage title={`Company Details: ${getParamsId()}`} />;
+const CompanyDetails = () => <PlaceholderPage title={`Company Details: ${useParams().id}`} />;
 const CompanyNew = () => <PlaceholderPage title="New Company" />;
-const CompanyEdit = () => <PlaceholderPage title={`Edit Company: ${getParamsId()}`} />;
+const CompanyEdit = () => <PlaceholderPage title={`Edit Company: ${useParams().id}`} />;
 
 const Suppliers = () => <PlaceholderPage title="Suppliers" />;
-const SupplierDetails = () => <PlaceholderPage title={`Supplier Details: ${getParamsId()}`} />;
+const SupplierDetails = () => <PlaceholderPage title={`Supplier Details: ${useParams().id}`} />;
 const SupplierNew = () => <PlaceholderPage title="New Supplier" />;
-const SupplierEdit = () => <PlaceholderPage title={`Edit Supplier: ${getParamsId()}`} />;
+const SupplierEdit = () => <PlaceholderPage title={`Edit Supplier: ${useParams().id}`} />;
 
 const Transactions = () => <PlaceholderPage title="Transactions" />;
-const TransactionDetails = () => <PlaceholderPage title={`Transaction Details: ${getParamsId()}`} />;
+const TransactionDetails = () => <PlaceholderPage title={`Transaction Details: ${useParams().id}`} />;
 const TransactionNew = () => <PlaceholderPage title="New Transaction" />;
-const TransactionEdit = () => <PlaceholderPage title={`Edit Transaction: ${getParamsId()}`} />;
+const TransactionEdit = () => <PlaceholderPage title={`Edit Transaction: ${useParams().id}`} />;
 
 const Profile = () => <PlaceholderPage title="User Profile" />;
 const DispatchList = () => <PlaceholderPage title="Dispatch List" />;
-const DispatchDetails = () => <PlaceholderPage title={`Dispatch Details: ${getParamsId()}`} />;
+const DispatchDetails = () => <PlaceholderPage title={`Dispatch Details: ${useParams().id}`} />;
 const DispatchNew = () => <PlaceholderPage title="New Dispatch" />;
+
+// Create a component for catalog redirect that safely uses the useParams hook
+const CatalogRedirect = () => {
+  const { id } = useParams();
+  return <Navigate to={`/orders?catalogId=${id}`} replace />;
+};
 
 const routes: RouteObject[] = [
   {
@@ -175,7 +175,7 @@ const routes: RouteObject[] = [
       { path: 'stock/:id', element: <StockJournalForm /> },
       { path: 'catalog', element: <CatalogList /> },
       { path: 'catalog/new', element: <CatalogNew /> },
-      { path: 'catalog/:id', element: <Navigate to={`/orders?catalogId=${getParamsId()}`} replace /> },
+      { path: 'catalog/:id', element: <CatalogRedirect /> },
       { path: 'catalog/:id/orders', element: <CatalogOrders /> },
     ]
   }
