@@ -18,6 +18,8 @@ export interface CustomComponentSectionProps {
   addCustomComponent?: () => void;
 }
 
+export { CustomComponent };
+
 export const CustomComponentSection = ({
   // Use either provided props pattern
   components,

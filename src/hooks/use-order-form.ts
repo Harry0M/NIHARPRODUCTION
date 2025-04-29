@@ -1,8 +1,9 @@
+
 import { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { OrderFormData } from "@/types/order";
+import { OrderFormData, OrderStatus } from "@/types/order";
 
 export interface ComponentData {
   id?: string;
@@ -29,7 +30,7 @@ export const useOrderForm = (initialOrder?: OrderFormData) => {
     rate: "",
     order_date: new Date().toISOString().split('T')[0],
     special_instructions: "",
-    status: "pending",
+    status: "pending" as OrderStatus,
   });
   
   // Form validation errors
@@ -280,7 +281,7 @@ export const useOrderForm = (initialOrder?: OrderFormData) => {
             component_type: comp.type,
             color: comp.color || null,
             size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
-            details: comp.customName || null,
+            custom_name: comp.customName || null,
             material_id: comp.material_id && comp.material_id !== 'not_applicable' ? comp.material_id : null,
             roll_width: comp.roll_width ? parseFloat(comp.roll_width) : null,
             consumption: consumption

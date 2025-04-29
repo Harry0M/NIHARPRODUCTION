@@ -28,7 +28,7 @@ export interface OrderFormData {
   rate: string;
   special_instructions: string;
   order_date: string;
-  status?: string;
+  status?: OrderStatus;
   sales_account_id?: string | null;
 }
 

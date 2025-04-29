@@ -71,6 +71,20 @@ const CatalogList = () => {
     }
   };
 
+  const calculateMaterialCost = (product: any): number => {
+    // Calculate material cost: total_cost - (cutting + printing + stitching + transport charges)
+    if (product.total_cost) {
+      const productionCharges = (
+        Number(product.cutting_charge || 0) + 
+        Number(product.printing_charge || 0) + 
+        Number(product.stitching_charge || 0) + 
+        Number(product.transport_charge || 0)
+      );
+      return Number(product.total_cost) - productionCharges;
+    }
+    return 0;
+  };
+
   return (
     <Card>
       <div className="p-4 flex justify-between">
@@ -112,7 +126,7 @@ const CatalogList = () => {
                 <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{`${product.bag_length}×${product.bag_width}`}</TableCell>
                 <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{product.default_quantity || 'N/A'}</TableCell>
                 <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{product.default_rate ? `₹${product.default_rate}` : 'N/A'}</TableCell>
-                <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{product.total_cost ? `₹${product.total_cost - (product.cutting_charge + product.printing_charge + product.stitching_charge + product.transport_charge).toFixed(2)}` : 'N/A'}</TableCell>
+                <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{product.total_cost ? `₹${calculateMaterialCost(product).toFixed(2)}` : 'N/A'}</TableCell>
                 <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{product.total_cost ? `₹${product.total_cost}` : 'N/A'}</TableCell>
                 <TableCell className="text-right space-x-2">
                   <Button

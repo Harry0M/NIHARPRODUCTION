@@ -1,6 +1,6 @@
 
-import { lazy, Suspense } from 'react';
-import { Navigate, RouteObject, useParams } from 'react-router-dom';
+import { lazy, Suspense, ReactNode } from 'react';
+import { Navigate, RouteObject, useParams, useRoutes } from 'react-router-dom';
 
 // Import local layouts that exist in the project
 import { Shell } from '@/components/ui/sidebar';
@@ -13,19 +13,19 @@ import CatalogNew from './pages/Inventory/CatalogNew';
 import StockList from './pages/Inventory/StockList';
 import CatalogList from './pages/Inventory/CatalogList';
 import Index from './pages/Index';
+import InventoryLayout from './layouts/InventoryLayout';
 
 // Create simple layouts for the routes until the real ones are properly built
-const MainLayout = ({ children }: { children: React.ReactNode }) => <div className="p-6">{children}</div>;
-const AuthLayout = ({ children }: { children: React.ReactNode }) => <div className="p-6">{children}</div>;
-const InventoryLayout = ({ children }: { children: React.ReactNode }) => <div className="p-6">{children}</div>;
-const JobCardLayout = ({ children }: { children: React.ReactNode }) => <div className="p-6">{children}</div>;
-const OrderLayout = ({ children }: { children: React.ReactNode }) => <div className="p-6">{children}</div>;
-const VendorLayout = ({ children }: { children: React.ReactNode }) => <div className="p-6">{children}</div>;
-const CompanyLayout = ({ children }: { children: React.ReactNode }) => <div className="p-6">{children}</div>;
-const SupplierLayout = ({ children }: { children: React.ReactNode }) => <div className="p-6">{children}</div>;
-const TransactionLayout = ({ children }: { children: React.ReactNode }) => <div className="p-6">{children}</div>;
-const ProfileLayout = ({ children }: { children: React.ReactNode }) => <div className="p-6">{children}</div>;
-const DispatchLayout = ({ children }: { children: React.ReactNode }) => <div className="p-6">{children}</div>;
+const MainLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
+const AuthLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
+const JobCardLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
+const OrderLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
+const VendorLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
+const CompanyLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
+const SupplierLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
+const TransactionLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
+const ProfileLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
+const DispatchLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
 
 // Simple placeholder page component for routes
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -66,6 +66,12 @@ const DispatchNew = () => <PlaceholderPage title="New Dispatch" />;
 const CatalogOrders = () => <PlaceholderPage title="Catalog Orders" />;
 const OrderNew = lazy(() => import('@/pages/Orders/OrderNew'));
 
+// Function to handle catalog ID parameter
+const CatalogOrdersWrapper = () => {
+  const { id } = useParams();
+  return <Navigate to={`/orders?catalogId=${id}`} replace />;
+};
+
 const routes: RouteObject[] = [
   {
     path: '/',
@@ -73,7 +79,7 @@ const routes: RouteObject[] = [
   },
   {
     path: 'auth',
-    element: <AuthLayout />,
+    element: <AuthLayout><Outlet /></AuthLayout>,
     children: [
       { path: '', element: <Navigate to="/auth/signin" replace /> },
       { path: 'signin', element: <SignIn /> },
@@ -82,7 +88,7 @@ const routes: RouteObject[] = [
   },
   {
     path: 'orders',
-    element: <OrderLayout />,
+    element: <OrderLayout><Outlet /></OrderLayout>,
     children: [
       { path: '', element: <Orders /> },
       { path: ':id', element: <OrderDetails /> },
@@ -92,7 +98,7 @@ const routes: RouteObject[] = [
   },
   {
     path: 'job-cards',
-    element: <JobCardLayout />,
+    element: <JobCardLayout><Outlet /></JobCardLayout>,
     children: [
       { path: '', element: <JobCards /> },
       { path: ':id', element: <JobCardDetails /> },
@@ -103,7 +109,7 @@ const routes: RouteObject[] = [
   },
   {
     path: 'companies',
-    element: <CompanyLayout />,
+    element: <CompanyLayout><Outlet /></CompanyLayout>,
     children: [
       { path: '', element: <Companies /> },
       { path: ':id', element: <CompanyDetails /> },
@@ -113,7 +119,7 @@ const routes: RouteObject[] = [
   },
   {
     path: 'suppliers',
-    element: <SupplierLayout />,
+    element: <SupplierLayout><Outlet /></SupplierLayout>,
     children: [
       { path: '', element: <Suppliers /> },
       { path: ':id', element: <SupplierDetails /> },
@@ -123,7 +129,7 @@ const routes: RouteObject[] = [
   },
   {
     path: 'transactions',
-    element: <TransactionLayout />,
+    element: <TransactionLayout><Outlet /></TransactionLayout>,
     children: [
       { path: '', element: <Transactions /> },
       { path: ':id', element: <TransactionDetails /> },
@@ -133,14 +139,14 @@ const routes: RouteObject[] = [
   },
   {
     path: 'profile',
-    element: <ProfileLayout />,
+    element: <ProfileLayout><Outlet /></ProfileLayout>,
     children: [
       { path: '', element: <Profile /> },
     ]
   },
   {
     path: 'dispatch',
-    element: <DispatchLayout />,
+    element: <DispatchLayout><Outlet /></DispatchLayout>,
     children: [
       { path: '', element: <DispatchList /> },
       { path: ':id', element: <DispatchDetails /> },
@@ -157,11 +163,15 @@ const routes: RouteObject[] = [
       { path: 'stock/:id', element: <StockJournalForm /> },
       { path: 'catalog', element: <CatalogList /> },
       { path: 'catalog/new', element: <CatalogNew /> },
-      { path: 'catalog/:id', element: <Navigate to={`/orders?catalogId=${useParams().id}`} replace /> },
+      { path: 'catalog/:id', element: <CatalogOrdersWrapper /> },
       { path: 'catalog/:id/orders', element: <CatalogOrders /> },
     ]
   }
 ];
+
+function Outlet() {
+  return <div>{useRoutes([])}</div>;
+}
 
 export default routes;
 
