@@ -10,10 +10,9 @@ interface MaterialInfoCardProps {
     color: string;
     gsm: string;
     supplier_id: string;
-    reorder_level: string;
   };
-  suppliers: any[] | undefined;
-  handleChange: (e: React.ChangeEvent<HTMLInputElement> | { target: { name: string; value: string } }) => void;
+  suppliers: Array<{ id: string; name: string }> | undefined;
+  handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleSelectChange: (name: string, value: string) => void;
 }
 
@@ -22,75 +21,63 @@ export const MaterialInfoCard = ({ formData, suppliers, handleChange, handleSele
     <Card>
       <CardHeader>
         <CardTitle>Material Information</CardTitle>
-        <CardDescription>Enter the basic information for this material</CardDescription>
+        <CardDescription>Enter details about this material</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="material_type">Material Name/Type *</Label>
+            <Label htmlFor="material_type">Material Type</Label>
             <Input
               id="material_type"
               name="material_type"
               value={formData.material_type}
               onChange={handleChange}
-              placeholder="Enter material name or type"
+              placeholder="Enter material type"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="supplier_id">Supplier</Label>
+            <Label htmlFor="supplier_id">Supplier (Optional)</Label>
             <Select 
               value={formData.supplier_id} 
               onValueChange={(value) => handleSelectChange('supplier_id', value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select a supplier" />
+                <SelectValue placeholder="Select supplier" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {suppliers?.map(supplier => (
-                  <SelectItem key={supplier.id} value={supplier.id}>{supplier.name}</SelectItem>
+                <SelectItem value="">None</SelectItem>
+                {suppliers?.map((supplier) => (
+                  <SelectItem key={supplier.id} value={supplier.id}>
+                    {supplier.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="color">Color</Label>
+            <Label htmlFor="color">Color (Optional)</Label>
             <Input
               id="color"
               name="color"
               value={formData.color}
               onChange={handleChange}
-              placeholder="Material color"
+              placeholder="Enter color"
             />
           </div>
-
+          
           <div className="space-y-2">
-            <Label htmlFor="gsm">GSM</Label>
+            <Label htmlFor="gsm">GSM (Optional)</Label>
             <Input
               id="gsm"
               name="gsm"
               value={formData.gsm}
               onChange={handleChange}
-              placeholder="GSM value"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="reorder_level">Reorder Level</Label>
-            <Input
-              id="reorder_level"
-              name="reorder_level"
-              type="number"
-              min="0"
-              step="0.01"
-              value={formData.reorder_level}
-              onChange={handleChange}
-              placeholder="Minimum quantity threshold"
+              placeholder="Enter GSM"
             />
           </div>
         </div>
