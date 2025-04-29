@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Plus, Package, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -127,7 +126,7 @@ const CatalogList = () => {
                 <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{product.default_quantity || 'N/A'}</TableCell>
                 <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{product.default_rate ? `₹${product.default_rate}` : 'N/A'}</TableCell>
                 <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{product.total_cost ? `₹${calculateMaterialCost(product).toFixed(2)}` : 'N/A'}</TableCell>
-                <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{product.total_cost ? `₹${product.total_cost}` : 'N/A'}</TableCell>
+                <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{product.total_cost ? `₹${Number(product.total_cost).toFixed(2)}` : 'N/A'}</TableCell>
                 <TableCell className="text-right space-x-2">
                   <Button
                     variant="ghost"

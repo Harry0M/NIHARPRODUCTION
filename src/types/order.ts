@@ -30,6 +30,7 @@ export interface OrderFormData {
   order_date: string;
   status?: OrderStatus;
   sales_account_id?: string | null;
+  order_number?: string; // Adding this to match the database schema
 }
 
 export interface Component {

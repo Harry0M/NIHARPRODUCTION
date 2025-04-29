@@ -3,7 +3,6 @@ import { lazy, Suspense, ReactNode } from 'react';
 import { Navigate, RouteObject, useParams, useRoutes } from 'react-router-dom';
 
 // Import local layouts that exist in the project
-import { Shell } from '@/components/ui/sidebar';
 import { checkSupabaseConnection } from '@/integrations/supabase/client';
 import { useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -170,7 +169,7 @@ const routes: RouteObject[] = [
 ];
 
 function Outlet() {
-  return <div>{useRoutes([])}</div>;
+  return useRoutes([]);
 }
 
 export default routes;

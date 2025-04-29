@@ -18,7 +18,8 @@ export interface CustomComponentSectionProps {
   addCustomComponent?: () => void;
 }
 
-export { CustomComponent };
+// Use export type when re-exporting with isolatedModules enabled
+export type { CustomComponent };
 
 export const CustomComponentSection = ({
   // Use either provided props pattern
