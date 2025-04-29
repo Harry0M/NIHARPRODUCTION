@@ -28,6 +28,7 @@ export function StandardComponents({ components, componentOptions, onChange }: S
               componentOptions={componentOptions}
               onChange={(field, value) => onChange(type, field, value)}
               handleChange={() => {}}
+              disableConsumptionFields={type === "chain" || type === "runner"}
             />
           ))}
         </div>

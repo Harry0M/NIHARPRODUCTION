@@ -8,7 +8,9 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface ComponentProps {
   id?: string;
@@ -20,6 +22,9 @@ export interface ComponentProps {
   name?: string;
   customName?: string;
   details?: string;
+  material_id?: string;
+  roll_width?: string;
+  consumption?: number;
 }
 
 interface ComponentFormProps {
@@ -33,6 +38,7 @@ interface ComponentFormProps {
   title?: string;
   handleChange: (index: number, field: string, value: string) => void;
   onChange?: (field: string, value: string) => void;
+  disableConsumptionFields?: boolean;
 }
 
 export const ComponentForm = ({ 
@@ -42,10 +48,46 @@ export const ComponentForm = ({
   componentOptions,
   title,
   handleChange,
-  onChange
+  onChange,
+  disableConsumptionFields = false
 }: ComponentFormProps) => {
   // State to track if user wants to enter custom GSM
   const [isCustomGsm, setIsCustomGsm] = useState(false);
+  
+  // Get inventory materials for material selection
+  const { data: materials } = useQuery({
+    queryKey: ['materials'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('inventory')
+        .select('id, material_type, gsm, color, unit');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+  
+  // Calculate consumption whenever dimensions or roll width change
+  useEffect(() => {
+    // Skip for chain and runner components
+    if (disableConsumptionFields || component.type === 'chain' || component.type === 'runner') {
+      return;
+    }
+    
+    const length = parseFloat(component.length || '0');
+    const width = parseFloat(component.width || '0');
+    const roll_width = parseFloat(component.roll_width || '0');
+    
+    if (length && width && roll_width) {
+      const consumption = ((length * width) / (roll_width * 39.39));
+      
+      if (onChange) {
+        onChange('consumption', consumption.toFixed(4));
+      } else {
+        handleChange(index, 'consumption', consumption.toFixed(4));
+      }
+    }
+  }, [component.length, component.width, component.roll_width, component.type, index]);
 
   const onFieldChange = (field: string, value: string) => {
     if (onChange) {
@@ -55,6 +97,12 @@ export const ComponentForm = ({
     }
   };
 
+  // Get selected material details
+  const selectedMaterial = materials?.find(m => m.id === component.material_id);
+  
+  // Show consumption calculation fields for all components except chain and runner
+  const showConsumptionFields = !disableConsumptionFields && component.type !== 'chain' && component.type !== 'runner';
+  
   return (
     <div className="py-4 first:pt-0 last:pb-0">
       {title && !isCustom && (
@@ -109,51 +157,67 @@ export const ComponentForm = ({
             </SelectContent>
           </Select>
         </div>
+        
+        {/* Replace GSM dropdown with material selection */}
         <div className="space-y-2">
-          <Label>GSM</Label>
-          {isCustomGsm ? (
-            <div className="flex gap-2">
-              <Input
-                type="number"
-                placeholder="Enter GSM value"
-                value={component.gsm || ''}
-                onChange={(e) => onFieldChange('gsm', e.target.value)}
-                className="flex-1"
-              />
-              <button
-                type="button"
-                onClick={() => setIsCustomGsm(false)}
-                className="px-3 py-2 text-xs border rounded hover:bg-secondary"
-              >
-                Use List
-              </button>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <Select 
-                value={component.gsm || undefined} 
-                onValueChange={(value) => onFieldChange('gsm', value)}
-              >
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Select GSM" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="not_applicable">Not Applicable</SelectItem>
-                  {componentOptions.gsm.map(option => (
-                    <SelectItem key={option} value={option}>{option}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <button
-                type="button"
-                onClick={() => setIsCustomGsm(true)}
-                className="px-3 py-2 text-xs border rounded hover:bg-secondary"
-              >
-                Custom
-              </button>
-            </div>
+          <Label>Material</Label>
+          <Select 
+            value={component.material_id || undefined} 
+            onValueChange={(value) => onFieldChange('material_id', value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select material" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="not_applicable">Not Applicable</SelectItem>
+              {materials?.map(material => (
+                <SelectItem key={material.id} value={material.id}>
+                  {material.material_type} 
+                  {material.gsm ? ` - ${material.gsm} GSM` : ''}
+                  {material.color ? ` - ${material.color}` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedMaterial && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Unit: {selectedMaterial.unit}
+            </p>
           )}
         </div>
+        
+        {/* Add roll width field for all components except chain and runner */}
+        {showConsumptionFields && (
+          <>
+            <div className="space-y-2">
+              <Label>Roll Width (inches)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="Roll width in inches"
+                value={component.roll_width || ''}
+                onChange={(e) => onFieldChange('roll_width', e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Consumption</Label>
+              <Input
+                type="number"
+                step="0.0001"
+                placeholder="Calculated consumption"
+                value={component.consumption?.toString() || ''}
+                readOnly
+                className="bg-gray-50"
+              />
+              {selectedMaterial && component.consumption && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {component.consumption.toFixed(4)} {selectedMaterial.unit}
+                </p>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

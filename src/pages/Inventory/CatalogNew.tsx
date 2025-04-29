@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
@@ -10,8 +10,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ComponentForm } from "@/components/orders/ComponentForm";
 import { CustomComponent, CustomComponentSection } from "@/components/orders/CustomComponentSection";
+import { MaterialCostSummary } from "@/components/inventory/MaterialCostSummary";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
+import { useMaterials } from "@/hooks/use-materials";
 
 const componentOptions = {
   color: ["Red", "Blue", "Green", "Black", "White", "Yellow", "Brown", "Orange", "Purple", "Gray", "Custom"],
@@ -21,6 +23,7 @@ const componentOptions = {
 const CatalogNew = () => {
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
+  const { data: materials } = useMaterials();
   
   // Product details state
   const [productDetails, setProductDetails] = useState({
@@ -28,8 +31,13 @@ const CatalogNew = () => {
     description: "",
     bag_length: "",
     bag_width: "",
-    default_quantity: "",
-    default_rate: ""
+    default_quantity: "1",
+    default_rate: "",
+    cutting_charge: "0",
+    printing_charge: "0",
+    stitching_charge: "0",
+    transport_charge: "0",
+    total_cost: "0"
   });
   
   // Standard components state
@@ -37,6 +45,36 @@ const CatalogNew = () => {
   
   // Custom added components state
   const [customComponents, setCustomComponents] = useState<CustomComponent[]>([]);
+  
+  // Track material usages for cost calculation
+  const [materialUsages, setMaterialUsages] = useState<Array<{material_id: string, consumption: number}>>([]);
+  
+  // Update material usages whenever components change
+  useEffect(() => {
+    const usages: Array<{material_id: string, consumption: number}> = [];
+    
+    // Add usages from standard components
+    Object.values(components).forEach(component => {
+      if (component.material_id && component.material_id !== 'not_applicable' && component.consumption) {
+        usages.push({
+          material_id: component.material_id,
+          consumption: parseFloat(component.consumption) || 0
+        });
+      }
+    });
+    
+    // Add usages from custom components
+    customComponents.forEach(component => {
+      if (component.material_id && component.material_id !== 'not_applicable' && component.consumption) {
+        usages.push({
+          material_id: component.material_id,
+          consumption: parseFloat(component.consumption.toString()) || 0
+        });
+      }
+    });
+    
+    setMaterialUsages(usages);
+  }, [components, customComponents]);
   
   const handleProductChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -85,16 +123,21 @@ const CatalogNew = () => {
     setCustomComponents(prev => prev.filter((_, i) => i !== index));
   };
   
+  const handleTotalCostCalculated = (cost: number) => {
+    setProductDetails(prev => ({
+      ...prev,
+      total_cost: cost.toFixed(2)
+    }));
+  };
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate required fields
     const { name, bag_length, bag_width } = productDetails;
     if (!name || !bag_length || !bag_width) {
-      toast({
-        title: "Missing required fields",
-        description: "Please fill in all required product details",
-        variant: "destructive"
+      toast.error("Missing required fields", {
+        description: "Please fill in all required product details"
       });
       return;
     }
@@ -115,8 +158,13 @@ const CatalogNew = () => {
           description: productDetails.description,
           bag_length: parseFloat(bag_length),
           bag_width: parseFloat(bag_width),
-          default_quantity: productDetails.default_quantity ? parseInt(productDetails.default_quantity) : null,
+          default_quantity: productDetails.default_quantity ? parseInt(productDetails.default_quantity) : 1,
           default_rate: productDetails.default_rate ? parseFloat(productDetails.default_rate) : null,
+          cutting_charge: parseFloat(productDetails.cutting_charge) || 0,
+          printing_charge: parseFloat(productDetails.printing_charge) || 0,
+          stitching_charge: parseFloat(productDetails.stitching_charge) || 0,
+          transport_charge: parseFloat(productDetails.transport_charge) || 0,
+          total_cost: parseFloat(productDetails.total_cost) || null,
           created_by: userData.user?.id
         })
         .select('id')
@@ -124,7 +172,7 @@ const CatalogNew = () => {
       
       if (catalogError) throw catalogError;
       
-      // Prepare component data for insertion
+      // Prepare component data for insertion with material and consumption info
       const allComponents = [
         ...Object.values(components).filter(Boolean),
         ...customComponents
@@ -134,10 +182,15 @@ const CatalogNew = () => {
         const componentsToInsert = allComponents.map(comp => ({
           catalog_id: catalogData.id,
           component_type: comp.type === 'custom' ? comp.customName : comp.type,
+          length: comp.length ? parseFloat(comp.length) : null,
+          width: comp.width ? parseFloat(comp.width) : null,
           size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
           color: comp.color || null,
           gsm: comp.gsm ? parseFloat(comp.gsm) : null,
-          custom_name: comp.type === 'custom' ? comp.customName : null
+          custom_name: comp.type === 'custom' ? comp.customName : null,
+          material_id: comp.material_id !== 'not_applicable' ? comp.material_id : null,
+          roll_width: comp.roll_width ? parseFloat(comp.roll_width) : null,
+          consumption: comp.consumption ? parseFloat(comp.consumption) : null
         }));
 
         const { error: componentsError } = await supabase
@@ -146,16 +199,13 @@ const CatalogNew = () => {
         
         if (componentsError) {
           console.error("Error saving components:", componentsError);
-          toast({
-            title: "Error saving components",
-            description: componentsError.message,
-            variant: "destructive"
+          toast.error("Error saving components", {
+            description: componentsError.message
           });
         }
       }
       
-      toast({
-        title: "Product created successfully",
+      toast.success("Product created successfully", {
         description: `Product "${name}" has been added to catalog`
       });
       
@@ -164,15 +214,19 @@ const CatalogNew = () => {
       
     } catch (error: any) {
       console.error("Error creating product:", error);
-      toast({
-        title: "Error creating product",
-        description: error.message,
-        variant: "destructive"
+      toast.error("Error creating product", {
+        description: error.message
       });
     } finally {
       setSubmitting(false);
     }
   };
+
+  // Calculate production charges
+  const cuttingCharge = parseFloat(productDetails.cutting_charge) || 0;
+  const printingCharge = parseFloat(productDetails.printing_charge) || 0;
+  const stitchingCharge = parseFloat(productDetails.stitching_charge) || 0;
+  const transportCharge = parseFloat(productDetails.transport_charge) || 0;
   
   return (
     <div className="space-y-6">
@@ -188,8 +242,8 @@ const CatalogNew = () => {
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">New Product</h1>
-            <p className="text-muted-foreground">Add a new product to your catalog</p>
+            <h1 className="text-3xl font-bold tracking-tight">New BOM</h1>
+            <p className="text-muted-foreground">Create a new bill of materials</p>
           </div>
         </div>
       </div>
@@ -281,6 +335,62 @@ const CatalogNew = () => {
                   />
                 </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="cutting_charge">Cutting Charge (₹)</Label>
+                  <Input
+                    id="cutting_charge"
+                    name="cutting_charge"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={productDetails.cutting_charge}
+                    onChange={handleProductChange}
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="printing_charge">Printing Charge (₹)</Label>
+                  <Input
+                    id="printing_charge"
+                    name="printing_charge"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={productDetails.printing_charge}
+                    onChange={handleProductChange}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="stitching_charge">Stitching Charge (₹)</Label>
+                  <Input
+                    id="stitching_charge"
+                    name="stitching_charge"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={productDetails.stitching_charge}
+                    onChange={handleProductChange}
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="transport_charge">Transport Charge (₹)</Label>
+                  <Input
+                    id="transport_charge"
+                    name="transport_charge"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={productDetails.transport_charge}
+                    onChange={handleProductChange}
+                  />
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -295,50 +405,18 @@ const CatalogNew = () => {
               <div className="space-y-6">
                 <h2 className="text-lg font-medium">Standard Components</h2>
                 <div className="divide-y divide-border">
-                  <ComponentForm
-                    title="Part"
-                    component={components.part || { type: "part", width: "", length: "", color: "", gsm: "" }}
-                    index={0}
-                    componentOptions={componentOptions}
-                    onChange={(field, value) => handleComponentChange("part", field, value)}
-                    handleChange={() => {}}
-                  />
-                  
-                  <ComponentForm
-                    title="Border"
-                    component={components.border || { type: "border", width: "", length: "", color: "", gsm: "" }}
-                    index={1}
-                    componentOptions={componentOptions}
-                    onChange={(field, value) => handleComponentChange("border", field, value)}
-                    handleChange={() => {}}
-                  />
-                  
-                  <ComponentForm
-                    title="Handle"
-                    component={components.handle || { type: "handle", width: "", length: "", color: "", gsm: "" }}
-                    index={2}
-                    componentOptions={componentOptions}
-                    onChange={(field, value) => handleComponentChange("handle", field, value)}
-                    handleChange={() => {}}
-                  />
-                  
-                  <ComponentForm
-                    title="Chain"
-                    component={components.chain || { type: "chain", width: "", length: "", color: "", gsm: "" }}
-                    index={3}
-                    componentOptions={componentOptions}
-                    onChange={(field, value) => handleComponentChange("chain", field, value)}
-                    handleChange={() => {}}
-                  />
-                  
-                  <ComponentForm
-                    title="Runner"
-                    component={components.runner || { type: "runner", width: "", length: "", color: "", gsm: "" }}
-                    index={4}
-                    componentOptions={componentOptions}
-                    onChange={(field, value) => handleComponentChange("runner", field, value)}
-                    handleChange={() => {}}
-                  />
+                  {["part", "border", "handle", "chain", "runner"].map((type, index) => (
+                    <ComponentForm
+                      key={type}
+                      title={type.charAt(0).toUpperCase() + type.slice(1)}
+                      component={components[type] || { type, width: "", length: "", color: "", material_id: "" }}
+                      index={index}
+                      componentOptions={componentOptions}
+                      onChange={(field, value) => handleComponentChange(type, field, value)}
+                      handleChange={() => {}}
+                      disableConsumptionFields={type === "chain" || type === "runner"}
+                    />
+                  ))}
                 </div>
               </div>
               
@@ -366,21 +444,29 @@ const CatalogNew = () => {
               </div>
             </div>
           </CardContent>
-          <CardFooter>
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate("/inventory/catalog")}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={submitting}>
-                {submitting ? "Saving..." : "Save Product"}
-              </Button>
-            </div>
-          </CardFooter>
         </Card>
+
+        <MaterialCostSummary 
+          materialUsages={materialUsages}
+          cuttingCharge={cuttingCharge}
+          printingCharge={printingCharge}
+          stitchingCharge={stitchingCharge}
+          transportCharge={transportCharge}
+          onTotalCostCalculated={handleTotalCostCalculated}
+        />
+        
+        <div className="flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate("/inventory/catalog")}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={submitting}>
+            {submitting ? "Saving..." : "Save BOM"}
+          </Button>
+        </div>
       </form>
     </div>
   );

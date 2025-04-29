@@ -15,11 +15,16 @@ export type Database = {
           bag_width: number
           created_at: string
           created_by: string | null
+          cutting_charge: number | null
           default_quantity: number | null
           default_rate: number | null
           description: string | null
           id: string
           name: string
+          printing_charge: number | null
+          stitching_charge: number | null
+          total_cost: number | null
+          transport_charge: number | null
           updated_at: string
         }
         Insert: {
@@ -27,11 +32,16 @@ export type Database = {
           bag_width: number
           created_at?: string
           created_by?: string | null
+          cutting_charge?: number | null
           default_quantity?: number | null
           default_rate?: number | null
           description?: string | null
           id?: string
           name: string
+          printing_charge?: number | null
+          stitching_charge?: number | null
+          total_cost?: number | null
+          transport_charge?: number | null
           updated_at?: string
         }
         Update: {
@@ -39,11 +49,16 @@ export type Database = {
           bag_width?: number
           created_at?: string
           created_by?: string | null
+          cutting_charge?: number | null
           default_quantity?: number | null
           default_rate?: number | null
           description?: string | null
           id?: string
           name?: string
+          printing_charge?: number | null
+          stitching_charge?: number | null
+          total_cost?: number | null
+          transport_charge?: number | null
           updated_at?: string
         }
         Relationships: []
@@ -53,34 +68,49 @@ export type Database = {
           catalog_id: string
           color: string | null
           component_type: string
+          consumption: number | null
           created_at: string
           custom_name: string | null
           gsm: number | null
           id: string
+          length: number | null
+          material_id: string | null
+          roll_width: number | null
           size: string | null
           updated_at: string
+          width: number | null
         }
         Insert: {
           catalog_id: string
           color?: string | null
           component_type: string
+          consumption?: number | null
           created_at?: string
           custom_name?: string | null
           gsm?: number | null
           id?: string
+          length?: number | null
+          material_id?: string | null
+          roll_width?: number | null
           size?: string | null
           updated_at?: string
+          width?: number | null
         }
         Update: {
           catalog_id?: string
           color?: string | null
           component_type?: string
+          consumption?: number | null
           created_at?: string
           custom_name?: string | null
           gsm?: number | null
           id?: string
+          length?: number | null
+          material_id?: string | null
+          roll_width?: number | null
           size?: string | null
           updated_at?: string
+          width?: number | null
         }
         Relationships: [
           {
@@ -88,6 +118,13 @@ export type Database = {
             columns: ["catalog_id"]
             isOneToOne: false
             referencedRelation: "catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_components_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
             referencedColumns: ["id"]
           },
         ]
@@ -334,41 +371,56 @@ export type Database = {
       }
       inventory: {
         Row: {
+          alternate_unit: string | null
           color: string | null
+          conversion_rate: number | null
           created_at: string
           created_by: string | null
           gsm: string | null
           id: string
           material_type: string
+          purchase_price: number | null
           quantity: number
           reorder_level: number | null
+          selling_price: number | null
           supplier_id: string | null
+          track_cost: boolean | null
           unit: string
           updated_at: string
         }
         Insert: {
+          alternate_unit?: string | null
           color?: string | null
+          conversion_rate?: number | null
           created_at?: string
           created_by?: string | null
           gsm?: string | null
           id?: string
           material_type: string
+          purchase_price?: number | null
           quantity: number
           reorder_level?: number | null
+          selling_price?: number | null
           supplier_id?: string | null
+          track_cost?: boolean | null
           unit: string
           updated_at?: string
         }
         Update: {
+          alternate_unit?: string | null
           color?: string | null
+          conversion_rate?: number | null
           created_at?: string
           created_by?: string | null
           gsm?: string | null
           id?: string
           material_type?: string
+          purchase_price?: number | null
           quantity?: number
           reorder_level?: number | null
+          selling_price?: number | null
           supplier_id?: string | null
+          track_cost?: boolean | null
           unit?: string
           updated_at?: string
         }
@@ -427,37 +479,53 @@ export type Database = {
         Row: {
           color: string | null
           component_type: string
+          consumption: number | null
           created_at: string | null
           custom_name: string | null
           gsm: number | null
           id: string
+          material_id: string | null
           order_id: string | null
+          roll_width: number | null
           size: string | null
           updated_at: string | null
         }
         Insert: {
           color?: string | null
           component_type: string
+          consumption?: number | null
           created_at?: string | null
           custom_name?: string | null
           gsm?: number | null
           id?: string
+          material_id?: string | null
           order_id?: string | null
+          roll_width?: number | null
           size?: string | null
           updated_at?: string | null
         }
         Update: {
           color?: string | null
           component_type?: string
+          consumption?: number | null
           created_at?: string | null
           custom_name?: string | null
           gsm?: number | null
           id?: string
+          material_id?: string | null
           order_id?: string | null
+          roll_width?: number | null
           size?: string | null
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "order_components_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_components_order_id_fkey"
             columns: ["order_id"]
@@ -914,6 +982,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_consumption: {
+        Args: {
+          p_length: number
+          p_width: number
+          p_roll_width: number
+          p_quantity?: number
+        }
+        Returns: number
+      }
       delete_catalog_product: {
         Args: { input_catalog_id: string }
         Returns: boolean

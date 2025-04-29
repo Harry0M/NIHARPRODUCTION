@@ -73,10 +73,11 @@ const CatalogList = () => {
 
   return (
     <Card>
-      <div className="p-4 flex justify-end">
+      <div className="p-4 flex justify-between">
+        <h2 className="text-lg font-medium">Bill of Materials (BOM)</h2>
         <Button onClick={() => navigate('/inventory/catalog/new')}>
           <Plus size={16} className="mr-2" />
-          Add Product
+          Add BOM
         </Button>
       </div>
 
@@ -96,6 +97,8 @@ const CatalogList = () => {
               <TableHead>Size (L×W)</TableHead>
               <TableHead>Default Quantity</TableHead>
               <TableHead>Default Rate</TableHead>
+              <TableHead>Material Cost</TableHead>
+              <TableHead>Total Cost</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -109,6 +112,8 @@ const CatalogList = () => {
                 <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{`${product.bag_length}×${product.bag_width}`}</TableCell>
                 <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{product.default_quantity || 'N/A'}</TableCell>
                 <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{product.default_rate ? `₹${product.default_rate}` : 'N/A'}</TableCell>
+                <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{product.total_cost ? `₹${product.total_cost - (product.cutting_charge + product.printing_charge + product.stitching_charge + product.transport_charge).toFixed(2)}` : 'N/A'}</TableCell>
+                <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{product.total_cost ? `₹${product.total_cost}` : 'N/A'}</TableCell>
                 <TableCell className="text-right space-x-2">
                   <Button
                     variant="ghost"
