@@ -1,9 +1,10 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { ComponentForm } from "@/components/orders/ComponentForm";
+import { ComponentData } from "@/types/order";
 
 interface StandardComponentsProps {
-  components: Record<string, any>;
+  components: Record<string, ComponentData>;
   componentOptions: {
     color: string[];
     gsm: string[];
@@ -23,7 +24,16 @@ export function StandardComponents({ components, componentOptions, onChange }: S
             <ComponentForm
               key={type}
               title={type.charAt(0).toUpperCase() + type.slice(1)}
-              component={components[type] || { type, width: "", length: "", color: "", gsm: "" }}
+              component={components[type] || { 
+                type, 
+                width: "", 
+                length: "", 
+                color: "", 
+                gsm: "",
+                material_id: "",
+                roll_width: "",
+                consumption: 0
+              }}
               index={index}
               componentOptions={componentOptions}
               onChange={(field, value) => onChange(type, field, value)}

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +14,7 @@ export interface ComponentData {
   material_id?: string;
   roll_width?: string;
   consumption?: number;
+  gsm?: string;
 }
 
 export const useOrderForm = (initialOrder?: OrderFormData) => {
@@ -244,20 +244,18 @@ export const useOrderForm = (initialOrder?: OrderFormData) => {
       // Insert order
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
-        .insert([
-          {
-            company_name: orderDetails.company_name.trim(),
-            company_id: orderDetails.company_id,
-            sales_account_id: orderDetails.sales_account_id === 'none' ? null : orderDetails.sales_account_id,
-            quantity: parseInt(orderDetails.quantity),
-            bag_length: parseFloat(orderDetails.bag_length),
-            bag_width: parseFloat(orderDetails.bag_width),
-            rate: orderDetails.rate ? parseFloat(orderDetails.rate) : null,
-            order_date: orderDetails.order_date,
-            special_instructions: orderDetails.special_instructions || null,
-            status: orderDetails.status || 'pending'
-          }
-        ])
+        .insert({
+          company_name: orderDetails.company_name.trim(),
+          company_id: orderDetails.company_id,
+          sales_account_id: orderDetails.sales_account_id === 'none' ? null : orderDetails.sales_account_id,
+          quantity: parseInt(orderDetails.quantity),
+          bag_length: parseFloat(orderDetails.bag_length),
+          bag_width: parseFloat(orderDetails.bag_width),
+          rate: orderDetails.rate ? parseFloat(orderDetails.rate) : null,
+          order_date: orderDetails.order_date,
+          special_instructions: orderDetails.special_instructions || null,
+          status: orderDetails.status || 'pending'
+        })
         .select('id')
         .single();
       

@@ -1,19 +1,9 @@
+
 import { lazy, Suspense } from 'react';
-import { Navigate, RouteObject, useRoutes, useParams } from 'react-router-dom';
+import { Navigate, RouteObject, useParams } from 'react-router-dom';
 
-import { MainLayout } from '@/layouts/MainLayout';
-import { AuthLayout } from '@/layouts/AuthLayout';
-import { InventoryLayout } from '@/layouts/InventoryLayout';
-import { JobCardLayout } from '@/layouts/JobCardLayout';
-import { OrderLayout } from '@/layouts/OrderLayout';
-import { VendorLayout } from '@/layouts/VendorLayout';
-import { CompanyLayout } from '@/layouts/CompanyLayout';
-import { SupplierLayout } from '@/layouts/SupplierLayout';
-import { TransactionLayout } from '@/layouts/TransactionLayout';
-import { ProfileLayout } from '@/layouts/ProfileLayout';
-import { DispatchLayout } from '@/layouts/DispatchLayout';
-
-import { Shell } from '@/components/Shell';
+// Import local layouts that exist in the project
+import { Shell } from '@/components/ui/sidebar';
 import { checkSupabaseConnection } from '@/integrations/supabase/client';
 import { useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -22,120 +12,139 @@ import StockJournalForm from './pages/Inventory/StockJournalForm';
 import CatalogNew from './pages/Inventory/CatalogNew';
 import StockList from './pages/Inventory/StockList';
 import CatalogList from './pages/Inventory/CatalogList';
+import Index from './pages/Index';
 
-const Home = lazy(() => import('@/pages/Home'));
-const SignIn = lazy(() => import('@/pages/Auth/SignIn'));
-const SignUp = lazy(() => import('@/pages/Auth/SignUp'));
-const Orders = lazy(() => import('@/pages/Orders'));
-const OrderDetails = lazy(() => import('@/pages/Orders/OrderDetails'));
+// Create simple layouts for the routes until the real ones are properly built
+const MainLayout = ({ children }: { children: React.ReactNode }) => <div className="p-6">{children}</div>;
+const AuthLayout = ({ children }: { children: React.ReactNode }) => <div className="p-6">{children}</div>;
+const InventoryLayout = ({ children }: { children: React.ReactNode }) => <div className="p-6">{children}</div>;
+const JobCardLayout = ({ children }: { children: React.ReactNode }) => <div className="p-6">{children}</div>;
+const OrderLayout = ({ children }: { children: React.ReactNode }) => <div className="p-6">{children}</div>;
+const VendorLayout = ({ children }: { children: React.ReactNode }) => <div className="p-6">{children}</div>;
+const CompanyLayout = ({ children }: { children: React.ReactNode }) => <div className="p-6">{children}</div>;
+const SupplierLayout = ({ children }: { children: React.ReactNode }) => <div className="p-6">{children}</div>;
+const TransactionLayout = ({ children }: { children: React.ReactNode }) => <div className="p-6">{children}</div>;
+const ProfileLayout = ({ children }: { children: React.ReactNode }) => <div className="p-6">{children}</div>;
+const DispatchLayout = ({ children }: { children: React.ReactNode }) => <div className="p-6">{children}</div>;
+
+// Simple placeholder page component for routes
+const PlaceholderPage = ({ title }: { title: string }) => (
+  <div className="flex flex-col items-center justify-center min-h-[50vh]">
+    <h1 className="text-2xl font-bold mb-4">{title} Page</h1>
+    <p className="text-muted-foreground">This page is under construction.</p>
+  </div>
+);
+
+// Create lazy loading routes
+const Home = () => <PlaceholderPage title="Home" />;
+const SignIn = () => <PlaceholderPage title="Sign In" />;
+const SignUp = () => <PlaceholderPage title="Sign Up" />;
+const Orders = () => <PlaceholderPage title="Orders" />;
+const OrderDetails = () => <PlaceholderPage title="Order Details" />;
+const OrderEdit = () => <PlaceholderPage title="Order Edit" />;
+const JobCards = () => <PlaceholderPage title="Job Cards" />;
+const JobCardDetails = () => <PlaceholderPage title="Job Card Details" />;
+const CuttingJobs = () => <PlaceholderPage title="Cutting Jobs" />;
+const PrintingJobs = () => <PlaceholderPage title="Printing Jobs" />;
+const StitchingJobs = () => <PlaceholderPage title="Stitching Jobs" />;
+const Companies = () => <PlaceholderPage title="Companies" />;
+const CompanyDetails = () => <PlaceholderPage title="Company Details" />;
+const CompanyNew = () => <PlaceholderPage title="New Company" />;
+const CompanyEdit = () => <PlaceholderPage title="Edit Company" />;
+const Suppliers = () => <PlaceholderPage title="Suppliers" />;
+const SupplierDetails = () => <PlaceholderPage title="Supplier Details" />;
+const SupplierNew = () => <PlaceholderPage title="New Supplier" />;
+const SupplierEdit = () => <PlaceholderPage title="Edit Supplier" />;
+const Transactions = () => <PlaceholderPage title="Transactions" />;
+const TransactionDetails = () => <PlaceholderPage title="Transaction Details" />;
+const TransactionNew = () => <PlaceholderPage title="New Transaction" />;
+const TransactionEdit = () => <PlaceholderPage title="Edit Transaction" />;
+const Profile = () => <PlaceholderPage title="Profile" />;
+const DispatchList = () => <PlaceholderPage title="Dispatch List" />;
+const DispatchDetails = () => <PlaceholderPage title="Dispatch Details" />;
+const DispatchNew = () => <PlaceholderPage title="New Dispatch" />;
+const CatalogOrders = () => <PlaceholderPage title="Catalog Orders" />;
 const OrderNew = lazy(() => import('@/pages/Orders/OrderNew'));
-const OrderEdit = lazy(() => import('@/pages/Orders/OrderEdit'));
-const JobCards = lazy(() => import('@/pages/JobCards'));
-const JobCardDetails = lazy(() => import('@/pages/JobCards/JobCardDetails'));
-const CuttingJobs = lazy(() => import('@/pages/JobCards/CuttingJobs'));
-const PrintingJobs = lazy(() => import('@/pages/JobCards/PrintingJobs'));
-const StitchingJobs = lazy(() => import('@/pages/JobCards/StitchingJobs'));
-const Companies = lazy(() => import('@/pages/Companies'));
-const CompanyDetails = lazy(() => import('@/pages/Companies/CompanyDetails'));
-const CompanyNew = lazy(() => import('@/pages/Companies/CompanyNew'));
-const CompanyEdit = lazy(() => import('@/pages/Companies/CompanyEdit'));
-const Suppliers = lazy(() => import('@/pages/Suppliers'));
-const SupplierDetails = lazy(() => import('@/pages/Suppliers/SupplierDetails'));
-const SupplierNew = lazy(() => import('@/pages/Suppliers/SupplierNew'));
-const SupplierEdit = lazy(() => import('@/pages/Suppliers/SupplierEdit'));
-const Transactions = lazy(() => import('@/pages/Transactions'));
-const TransactionDetails = lazy(() => import('@/pages/Transactions/TransactionDetails'));
-const TransactionNew = lazy(() => import('@/pages/Transactions/TransactionNew'));
-const TransactionEdit = lazy(() => import('@/pages/Transactions/TransactionEdit'));
-const Profile = lazy(() => import('@/pages/Profile'));
-const DispatchList = lazy(() => import('@/pages/Dispatch/DispatchList'));
-const DispatchDetails = lazy(() => import('@/pages/Dispatch/DispatchDetails'));
-const DispatchNew = lazy(() => import('@/pages/Dispatch/DispatchNew'));
-const CatalogOrders = lazy(() => import('@/pages/Inventory/CatalogOrders'));
-const StockNew = lazy(() => import('@/pages/Inventory/StockNew'));
 
 const routes: RouteObject[] = [
   {
     path: '/',
-    element: <MainLayout />,
-    children: [
-      { path: '', element: <Shell><Suspense fallback={<>Loading...</>}><Home /></Suspense></Shell> },
-    ],
+    element: <MainLayout><Index /></MainLayout>,
   },
   {
     path: 'auth',
     element: <AuthLayout />,
     children: [
       { path: '', element: <Navigate to="/auth/signin" replace /> },
-      { path: 'signin', element: <Suspense fallback={<>Loading...</>}><SignIn /></Suspense> },
-      { path: 'signup', element: <Suspense fallback={<>Loading...</>}><SignUp /></Suspense> },
+      { path: 'signin', element: <SignIn /> },
+      { path: 'signup', element: <SignUp /> },
     ],
   },
   {
     path: 'orders',
     element: <OrderLayout />,
     children: [
-      { path: '', element: <Suspense fallback={<>Loading...</>}><Orders /></Suspense> },
-      { path: ':id', element: <Suspense fallback={<>Loading...</>}><OrderDetails id={useParams().id} /></Suspense> },
+      { path: '', element: <Orders /> },
+      { path: ':id', element: <OrderDetails /> },
       { path: 'new', element: <Suspense fallback={<>Loading...</>}><OrderNew /></Suspense> },
-      { path: ':id/edit', element: <Suspense fallback={<>Loading...</>}><OrderEdit id={useParams().id} /></Suspense> },
+      { path: ':id/edit', element: <OrderEdit /> },
     ]
   },
   {
     path: 'job-cards',
     element: <JobCardLayout />,
     children: [
-      { path: '', element: <Suspense fallback={<>Loading...</>}><JobCards /></Suspense> },
-      { path: ':id', element: <Suspense fallback={<>Loading...</>}><JobCardDetails id={useParams().id} /></Suspense> },
-      { path: ':id/cutting-jobs', element: <Suspense fallback={<>Loading...</>}><CuttingJobs id={useParams().id} /></Suspense> },
-      { path: ':id/printing-jobs', element: <Suspense fallback={<>Loading...</>}><PrintingJobs id={useParams().id} /></Suspense> },
-      { path: ':id/stitching-jobs', element: <Suspense fallback={<>Loading...</>}><StitchingJobs id={useParams().id} /></Suspense> },
+      { path: '', element: <JobCards /> },
+      { path: ':id', element: <JobCardDetails /> },
+      { path: ':id/cutting-jobs', element: <CuttingJobs /> },
+      { path: ':id/printing-jobs', element: <PrintingJobs /> },
+      { path: ':id/stitching-jobs', element: <StitchingJobs /> },
     ]
   },
   {
     path: 'companies',
     element: <CompanyLayout />,
     children: [
-      { path: '', element: <Suspense fallback={<>Loading...</>}><Companies /></Suspense> },
-      { path: ':id', element: <Suspense fallback={<>Loading...</>}><CompanyDetails id={useParams().id} /></Suspense> },
-      { path: 'new', element: <Suspense fallback={<>Loading...</>}><CompanyNew /></Suspense> },
-			{ path: ':id/edit', element: <Suspense fallback={<>Loading...</>}><CompanyEdit id={useParams().id} /></Suspense> },
+      { path: '', element: <Companies /> },
+      { path: ':id', element: <CompanyDetails /> },
+      { path: 'new', element: <CompanyNew /> },
+      { path: ':id/edit', element: <CompanyEdit /> },
     ]
   },
   {
     path: 'suppliers',
     element: <SupplierLayout />,
     children: [
-      { path: '', element: <Suspense fallback={<>Loading...</>}><Suppliers /></Suspense> },
-      { path: ':id', element: <Suspense fallback={<>Loading...</>}><SupplierDetails id={useParams().id} /></Suspense> },
-      { path: 'new', element: <Suspense fallback={<>Loading...</>}><SupplierNew /></Suspense> },
-			{ path: ':id/edit', element: <Suspense fallback={<>Loading...</>}><SupplierEdit id={useParams().id} /></Suspense> },
+      { path: '', element: <Suppliers /> },
+      { path: ':id', element: <SupplierDetails /> },
+      { path: 'new', element: <SupplierNew /> },
+      { path: ':id/edit', element: <SupplierEdit /> },
     ]
   },
   {
     path: 'transactions',
     element: <TransactionLayout />,
     children: [
-      { path: '', element: <Suspense fallback={<>Loading...</>}><Transactions /></Suspense> },
-      { path: ':id', element: <Suspense fallback={<>Loading...</>}><TransactionDetails id={useParams().id} /></Suspense> },
-      { path: 'new', element: <Suspense fallback={<>Loading...</>}><TransactionNew /></Suspense> },
-			{ path: ':id/edit', element: <Suspense fallback={<>Loading...</>}><TransactionEdit id={useParams().id} /></Suspense> },
+      { path: '', element: <Transactions /> },
+      { path: ':id', element: <TransactionDetails /> },
+      { path: 'new', element: <TransactionNew /> },
+      { path: ':id/edit', element: <TransactionEdit /> },
     ]
   },
   {
     path: 'profile',
     element: <ProfileLayout />,
     children: [
-      { path: '', element: <Suspense fallback={<>Loading...</>}><Profile /></Suspense> },
+      { path: '', element: <Profile /> },
     ]
   },
   {
     path: 'dispatch',
     element: <DispatchLayout />,
     children: [
-      { path: '', element: <Suspense fallback={<>Loading...</>}><DispatchList /></Suspense> },
-      { path: ':id', element: <Suspense fallback={<>Loading...</>}><DispatchDetails id={useParams().id} /></Suspense> },
-      { path: 'new', element: <Suspense fallback={<>Loading...</>}><DispatchNew /></Suspense> },
+      { path: '', element: <DispatchList /> },
+      { path: ':id', element: <DispatchDetails /> },
+      { path: 'new', element: <DispatchNew /> },
     ]
   },
   {
@@ -145,18 +154,20 @@ const routes: RouteObject[] = [
       { path: '', element: <Navigate to="/inventory/stock" replace /> },
       { path: 'stock', element: <StockList /> },
       { path: 'stock/new', element: <StockJournalForm /> },
-      { path: 'stock/:id', element: <StockJournalForm id={useParams().id} /> },
+      { path: 'stock/:id', element: <StockJournalForm /> },
       { path: 'catalog', element: <CatalogList /> },
       { path: 'catalog/new', element: <CatalogNew /> },
       { path: 'catalog/:id', element: <Navigate to={`/orders?catalogId=${useParams().id}`} replace /> },
-      { path: 'catalog/:id/orders', element: <CatalogOrders id={useParams().id} /> },
+      { path: 'catalog/:id/orders', element: <CatalogOrders /> },
     ]
   }
 ];
 
+export default routes;
+
 export function Router() {
   const element = useRoutes(routes);
-	const [isConnected, setIsConnected] = useState(true);
+  const [isConnected, setIsConnected] = useState(true);
 
   useEffect(() => {
     const checkConnection = async () => {

@@ -28,6 +28,7 @@ export interface OrderFormData {
   rate: string;
   special_instructions: string;
   order_date: string;
+  status?: string;
   sales_account_id?: string | null;
 }
 
@@ -41,4 +42,32 @@ export interface Component {
   order_id?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+}
+
+export interface CustomComponent {
+  id: string;
+  type: string;
+  customName?: string;
+  size?: string;
+  color?: string;
+  gsm?: string;
+  width?: string;
+  length?: string;
+  details?: string;
+  material_id?: string;
+  roll_width?: string;
+  consumption?: number;
+}
+
+export interface ComponentData {
+  id?: string;
+  type: string;
+  length?: string;
+  width?: string;
+  color?: string;
+  customName?: string;
+  material_id?: string;
+  roll_width?: string;
+  consumption?: number;
+  gsm?: string;
 }

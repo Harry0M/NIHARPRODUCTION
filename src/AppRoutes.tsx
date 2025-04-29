@@ -2,7 +2,7 @@
 import { useRoutes, Navigate, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
-import routes from "./routes";
+import routes, { Router } from "./routes";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 
@@ -73,7 +73,7 @@ const AppRoutes = () => {
   // we can safely use AuthProvider here
   return (
     <AuthProvider initialUser={initialUser}>
-      {useRoutes(routes) || <Navigate to="/auth" replace />}
+      <Router />
     </AuthProvider>
   );
 };
