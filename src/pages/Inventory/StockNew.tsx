@@ -1,5 +1,5 @@
 
-import StockJournalForm from "./StockJournalForm";
+import StockJournalForm from "@/components/inventory/stock/StockJournalForm";
 
 const StockNew = () => {
   return <StockJournalForm />;
