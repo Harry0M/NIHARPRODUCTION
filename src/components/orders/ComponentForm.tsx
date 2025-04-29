@@ -1,5 +1,5 @@
 
 import { ComponentForm as ComponentFormImpl } from "./component-form";
 
-export const ComponentForm = ComponentFormImpl;
+export { ComponentFormImpl as ComponentForm };
 export type { ComponentProps } from "./component-form/types";
