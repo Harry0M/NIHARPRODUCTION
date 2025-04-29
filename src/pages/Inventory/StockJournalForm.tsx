@@ -237,7 +237,7 @@ const StockJournalForm = ({ id }: { id?: string }) => {
                     <SelectValue placeholder="Select a supplier" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {suppliers?.map(supplier => (
                       <SelectItem key={supplier.id} value={supplier.id}>{supplier.name}</SelectItem>
                     ))}
@@ -348,7 +348,7 @@ const StockJournalForm = ({ id }: { id?: string }) => {
                     <SelectValue placeholder="Select alternate unit" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {unitOptions.map(unit => (
                       <SelectItem key={unit} value={unit}>{unit}</SelectItem>
                     ))}
@@ -377,9 +377,9 @@ const StockJournalForm = ({ id }: { id?: string }) => {
                   value={formData.conversion_rate}
                   onChange={handleChange}
                   placeholder="1 main unit = ? alternate units"
-                  disabled={!formData.alternate_unit}
+                  disabled={!formData.alternate_unit || formData.alternate_unit === 'none'}
                 />
-                {formData.unit && formData.alternate_unit && formData.conversion_rate && (
+                {formData.unit && formData.alternate_unit && formData.alternate_unit !== 'none' && formData.conversion_rate && (
                   <p className="text-xs text-muted-foreground mt-1">
                     1 {formData.unit} = {formData.conversion_rate} {formData.alternate_unit}
                   </p>
@@ -466,3 +466,4 @@ const StockJournalForm = ({ id }: { id?: string }) => {
 };
 
 export default StockJournalForm;
+
