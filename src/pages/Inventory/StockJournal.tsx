@@ -30,23 +30,26 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
+// Define schema with proper type transformations
 const inventoryFormSchema = z.object({
   material_type: z.string().min(2, {
     message: "Material type must be at least 2 characters.",
   }),
   color: z.string().optional(),
   gsm: z.string().optional(),
-  quantity: z.string().transform(val => Number(val)),
+  quantity: z.coerce.number().min(0, {
+    message: "Quantity must be a positive number.",
+  }),
   unit: z.string().min(1, {
     message: "Please select a unit.",
   }),
   alternate_unit: z.string().optional(),
-  conversion_rate: z.string().optional().transform(val => val ? Number(val) : null),
+  conversion_rate: z.coerce.number().optional().default(1),
   track_cost: z.boolean().default(false),
-  purchase_price: z.string().optional().transform(val => val ? Number(val) : null),
-  selling_price: z.string().optional().transform(val => val ? Number(val) : null),
+  purchase_price: z.coerce.number().optional(),
+  selling_price: z.coerce.number().optional(),
   supplier_id: z.string().optional(),
-  reorder_level: z.string().optional().transform(val => val ? Number(val) : null),
+  reorder_level: z.coerce.number().optional(),
 });
 
 type InventoryFormValues = z.infer<typeof inventoryFormSchema>;
@@ -64,15 +67,15 @@ const StockJournal = () => {
       material_type: "",
       color: "",
       gsm: "",
-      quantity: "0",
+      quantity: 0,
       unit: "",
       alternate_unit: "",
-      conversion_rate: "1",
+      conversion_rate: 1,
       track_cost: false,
-      purchase_price: "",
-      selling_price: "",
+      purchase_price: undefined,
+      selling_price: undefined,
       supplier_id: "",
-      reorder_level: "0",
+      reorder_level: 0,
     },
   });
 
@@ -80,7 +83,7 @@ const StockJournal = () => {
     mutationFn: async (formData: InventoryFormValues) => {
       const { data, error } = await supabase
         .from('inventory')
-        .insert([formData])
+        .insert(formData)
         .select();
 
       if (error) throw error;
@@ -119,7 +122,7 @@ const StockJournal = () => {
     } else {
       setShowConversionRate(false);
       form.setValue("alternate_unit", "");
-      form.setValue("conversion_rate", "1");
+      form.setValue("conversion_rate", 1);
     }
   };
 
@@ -159,7 +162,7 @@ const StockJournal = () => {
                   <FormItem>
                     <FormLabel>Initial Quantity</FormLabel>
                     <FormControl>
-                      <Input type="number" {...field} />
+                      <Input type="number" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value))} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -231,7 +234,12 @@ const StockJournal = () => {
                       <FormLabel>Conversion Rate</FormLabel>
                       <div className="flex items-center space-x-2">
                         <FormControl>
-                          <Input type="number" step="0.01" {...field} />
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            {...field} 
+                            onChange={(e) => field.onChange(parseFloat(e.target.value))} 
+                          />
                         </FormControl>
                         <ArrowLeftRight className="h-4 w-4" />
                       </div>
@@ -308,7 +316,12 @@ const StockJournal = () => {
                       <FormItem>
                         <FormLabel>Purchase Price</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.01" {...field} />
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            {...field} 
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -322,7 +335,12 @@ const StockJournal = () => {
                       <FormItem>
                         <FormLabel>Selling Price</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.01" {...field} />
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            {...field} 
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -338,7 +356,11 @@ const StockJournal = () => {
                   <FormItem>
                     <FormLabel>Reorder Level (Optional)</FormLabel>
                     <FormControl>
-                      <Input type="number" {...field} />
+                      <Input 
+                        type="number" 
+                        {...field} 
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)} 
+                      />
                     </FormControl>
                     <FormDescription>
                       Set minimum stock level before reordering
@@ -353,8 +375,8 @@ const StockJournal = () => {
               <Button variant="outline" type="button" onClick={() => navigate('/inventory/stock')}>
                 Cancel
               </Button>
-              <Button type="submit" isLoading={createInventoryMutation.isPending}>
-                Create Stock Entry
+              <Button type="submit" disabled={createInventoryMutation.isPending}>
+                {createInventoryMutation.isPending ? "Creating..." : "Create Stock Entry"}
               </Button>
             </div>
           </form>
