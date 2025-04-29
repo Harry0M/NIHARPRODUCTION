@@ -1,6 +1,5 @@
-import { RouteObject, Navigate, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+
+import { RouteObject, Navigate } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import OrderList from "./pages/Orders/OrderList";
@@ -31,6 +30,8 @@ import StockList from "./pages/Inventory/StockList";
 import CatalogList from "./pages/Inventory/CatalogList";
 import CatalogNew from "./pages/Inventory/CatalogNew";
 import CatalogOrders from "./pages/Inventory/CatalogOrders";
+import StockJournal from "./pages/Inventory/StockJournal";
+import StockJournalList from "./pages/Inventory/StockJournalList";
 
 // Placeholder for future development
 const InventoryNew = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">New Inventory</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
@@ -151,6 +152,14 @@ const routes: RouteObject[] = [
               {
                 path: "stock/new",
                 element: <InventoryNew />
+              },
+              {
+                path: "stock/journal",
+                element: <StockJournal />
+              },
+              {
+                path: "stock/journal/list",
+                element: <StockJournalList />
               },
               {
                 path: "catalog",

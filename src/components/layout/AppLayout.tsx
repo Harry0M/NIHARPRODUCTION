@@ -5,9 +5,23 @@ import Header from "./Header";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileNavigation from "./MobileNavigation";
 import { BreadcrumbTrail } from "@/components/navigation/BreadcrumbTrail";
+import { useQueryClient } from "@tanstack/react-query";
 
 const AppLayout = () => {
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
+
+  // Prefetch common data to improve user experience
+  const prefetchData = async () => {
+    try {
+      await queryClient.prefetchQuery({
+        queryKey: ['inventory'],
+        queryFn: () => Promise.resolve([])
+      });
+    } catch (error) {
+      console.error("Error prefetching data:", error);
+    }
+  };
 
   return (
     <div className="flex min-h-screen max-h-screen overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100/50">
