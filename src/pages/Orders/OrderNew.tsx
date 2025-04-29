@@ -2,9 +2,23 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { OrderDetailsForm } from "@/components/orders/OrderDetailsForm";
+import { StandardComponents } from "@/components/orders/StandardComponents";
+import { CustomComponentSection } from "@/components/orders/CustomComponentSection";
 import { useOrderForm } from "@/hooks/use-order-form";
-import { OrderFormContent } from "./components/OrderFormContent";
-import { PageHeader } from "./components/PageHeader";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+
+const componentOptions = {
+  color: ["Red", "Blue", "Green", "Black", "White", "Yellow", "Brown", "Orange", "Purple", "Gray", "Custom"],
+  gsm: ["70", "80", "90", "100", "120", "140", "160", "180", "200", "250", "300", "Custom"]
+};
 
 const OrderNew = () => {
   const navigate = useNavigate();
@@ -37,23 +51,83 @@ const OrderNew = () => {
   
   return (
     <div className="space-y-6">
-      <PageHeader navigate={navigate} />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/orders")}
+            className="gap-1"
+          >
+            <ArrowLeft size={16} />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">New Order</h1>
+            <p className="text-muted-foreground">Create a new order for production</p>
+          </div>
+        </div>
+      </div>
       
       <form onSubmit={onSubmit} className="space-y-6">
-        <OrderFormContent 
-          orderDetails={orderDetails}
-          components={components}
-          customComponents={customComponents}
-          submitting={submitting}
-          formErrors={formErrors}
+        <OrderDetailsForm 
+          formData={orderDetails}
           handleOrderChange={handleOrderChange}
-          handleComponentChange={handleComponentChange}
-          handleCustomComponentChange={handleCustomComponentChange}
-          addCustomComponent={addCustomComponent}
-          removeCustomComponent={removeCustomComponent}
-          handleProductSelect={handleProductSelect}
-          navigate={navigate}
+          onProductSelect={handleProductSelect}
+          formErrors={formErrors}
         />
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Bag Components</CardTitle>
+            <CardDescription>Specify the details for each component of the bag</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-8">
+              <StandardComponents 
+                components={components}
+                componentOptions={componentOptions}
+                onChange={handleComponentChange}
+              />
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-medium">Custom Components</h2>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-1"
+                    onClick={addCustomComponent}
+                  >
+                    + Add Custom Component
+                  </Button>
+                </div>
+                
+                <CustomComponentSection
+                  customComponents={customComponents}
+                  componentOptions={componentOptions}
+                  handleCustomComponentChange={handleCustomComponentChange}
+                  removeCustomComponent={removeCustomComponent}
+                />
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate("/orders")}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? "Creating..." : "Create Order"}
+              </Button>
+            </div>
+          </CardFooter>
+        </Card>
       </form>
     </div>
   );

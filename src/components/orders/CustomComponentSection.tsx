@@ -1,8 +1,19 @@
 
 import { Button } from "@/components/ui/button";
 import { Trash } from "lucide-react";
-import { ComponentForm } from "./component-form";
-import { ComponentData, CustomComponent } from "@/types/order";
+import { ComponentForm } from "./ComponentForm";
+
+export interface CustomComponent {
+  id: string;
+  type: string;
+  customName?: string;
+  size?: string;
+  color?: string;
+  gsm?: string;
+  width?: string;
+  length?: string;
+  details?: string;
+}
 
 export interface CustomComponentSectionProps {
   // Standard props approach
@@ -11,15 +22,12 @@ export interface CustomComponentSectionProps {
   onRemove?: (index: number) => void;
   
   // Alternative props for OrderEdit.tsx compatibility
-  customComponents?: (CustomComponent | ComponentData)[];
+  customComponents?: CustomComponent[];
   componentOptions?: { color: string[]; gsm: string[] };
   handleCustomComponentChange?: (index: number, field: string, value: string) => void;
   removeCustomComponent?: (index: number) => void;
   addCustomComponent?: () => void;
 }
-
-// Use export type when re-exporting with isolatedModules enabled
-export type { CustomComponent };
 
 export const CustomComponentSection = ({
   // Use either provided props pattern
@@ -68,7 +76,7 @@ export const CustomComponentSection = ({
               length: component.length || "",
               color: component.color || "",
               gsm: component.gsm || "",
-              name: component.customName || (component as any).details
+              name: component.customName || component.details
             }}
             index={index}
             isCustom={true}

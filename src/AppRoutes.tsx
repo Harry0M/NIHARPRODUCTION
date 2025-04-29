@@ -2,9 +2,9 @@
 import { useRoutes, Navigate, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
-import routes, { Router } from "./routes";
+import routes from "./routes";
 import { supabase } from "@/integrations/supabase/client";
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 
 const AppRoutes = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -53,7 +53,7 @@ const AppRoutes = () => {
     // Add a small delay to ensure Supabase client is fully initialized
     const timer = setTimeout(() => {
       checkSession();
-    }, 200);
+    }, 100);
     
     return () => clearTimeout(timer);
   }, []);
@@ -73,7 +73,7 @@ const AppRoutes = () => {
   // we can safely use AuthProvider here
   return (
     <AuthProvider initialUser={initialUser}>
-      <Router />
+      {useRoutes(routes) || <Navigate to="/auth" replace />}
     </AuthProvider>
   );
 };

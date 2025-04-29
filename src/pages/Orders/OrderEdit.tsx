@@ -1,52 +1,422 @@
 
-import { OrderEditForm, OrderEditHeader, LoadingSpinner, useOrderEdit } from "./components/OrderEdit";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { 
+  Card, 
+  CardContent, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription 
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Plus } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
+import { OrderDetailsForm } from "@/components/orders/OrderDetailsForm";
+import { ComponentForm, ComponentProps } from "@/components/orders/ComponentForm";
+import { CustomComponent, CustomComponentSection } from "@/components/orders/CustomComponentSection";
+import { v4 as uuidv4 } from "uuid";
 
 const componentOptions = {
   color: ["Red", "Blue", "Green", "Black", "White", "Yellow", "Brown", "Orange", "Purple", "Gray", "Custom"],
   gsm: ["70", "80", "90", "100", "120", "140", "160", "180", "200", "250", "300", "Custom"]
 };
 
+interface ComponentData extends ComponentProps {
+  id?: string;
+}
+
+type ComponentType = Database["public"]["Enums"]["component_type"];
+
 const OrderEdit = () => {
-  const {
-    id,
-    navigate,
-    formData,
-    formErrors,
-    components,
-    customComponents,
-    loading,
-    submitting,
-    handleOrderChange,
-    handleComponentChange,
-    handleCustomComponentChange,
-    addCustomComponent,
-    removeCustomComponent,
-    handleSubmit
-  } = useOrderEdit();
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  
+  const [formData, setFormData] = useState({
+    company_name: "",
+    company_id: null as string | null,  // Add the missing company_id property
+    quantity: "",
+    bag_length: "",
+    bag_width: "",
+    rate: "",
+    special_instructions: "",
+    order_date: ""
+  });
+  
+  // Add formErrors state
+  const [formErrors, setFormErrors] = useState({
+    company: undefined,
+    quantity: undefined,
+    bag_length: undefined,
+    bag_width: undefined,
+    order_date: undefined
+  });
+  
+  const [components, setComponents] = useState<ComponentData[]>([
+    { type: "part", width: "", length: "", color: "", gsm: "" },
+    { type: "border", width: "", length: "", color: "", gsm: "" },
+    { type: "handle", width: "", length: "", color: "", gsm: "" },
+    { type: "chain", width: "", length: "", color: "", gsm: "" },
+    { type: "runner", width: "", length: "", color: "", gsm: "" }
+  ]);
+  
+  const [customComponents, setCustomComponents] = useState<CustomComponent[]>([]);
+  
+  useEffect(() => {
+    const fetchOrderData = async () => {
+      setLoading(true);
+      try {
+        // Fetch order details
+        const { data: orderData, error: orderError } = await supabase
+          .from("orders")
+          .select("*")
+          .eq("id", id)
+          .single();
+          
+        if (orderError) throw orderError;
+        
+        // Format order data for the form
+        setFormData({
+          company_name: orderData.company_name,
+          company_id: orderData.company_id,  // Include company_id in the form data
+          quantity: orderData.quantity.toString(),
+          bag_length: orderData.bag_length.toString(),
+          bag_width: orderData.bag_width.toString(),
+          rate: orderData.rate ? orderData.rate.toString() : "",
+          special_instructions: orderData.special_instructions || "",
+          order_date: new Date(orderData.order_date).toISOString().split('T')[0]
+        });
+        
+        // Fetch order components
+        const { data: componentsData, error: componentsError } = await supabase
+          .from("components")
+          .select("*")
+          .eq("order_id", id);
+          
+        if (componentsError) throw componentsError;
+        
+        // Process components
+        const standardComponents = ["part", "border", "handle", "chain", "runner"];
+        const fetchedCustomComponents: CustomComponent[] = [];
+        
+        // Initialize components with fetched data
+        const updatedComponents = [...components];
+        
+        componentsData?.forEach(comp => {
+          // Extract size information
+          let width = "", length = "";
+          if (comp.size) {
+            const [l, w] = comp.size.split('x');
+            length = l || "";
+            width = w || "";
+          }
+          
+          const componentData: ComponentData = {
+            id: comp.id,
+            type: comp.type,
+            color: comp.color || "",
+            gsm: comp.gsm || "",
+            length,
+            width,
+            details: comp.details || ""
+          };
+          
+          // Check if it's a standard component or custom
+          if (standardComponents.includes(comp.type)) {
+            const index = standardComponents.indexOf(comp.type);
+            updatedComponents[index] = componentData;
+          } else {
+            // Make sure id field is not optional for CustomComponent
+            fetchedCustomComponents.push({
+              id: comp.id || uuidv4(),
+              ...componentData,
+              customName: comp.type !== "custom" ? comp.type : comp.details || "",
+            });
+          }
+        });
+        
+        setComponents(updatedComponents);
+        setCustomComponents(fetchedCustomComponents);
+        
+      } catch (error: any) {
+        toast({
+          title: "Error fetching order details",
+          description: error.message,
+          variant: "destructive"
+        });
+        navigate("/orders");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchOrderData();
+  }, [id, navigate]);
+
+  const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear validation error when field is changed
+    if (formErrors[name as keyof typeof formErrors]) {
+      setFormErrors(prev => ({ ...prev, [name]: undefined }));
+    }
+  };
+
+  const handleComponentChange = (index: number, field: string, value: string) => {
+    setComponents(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const handleCustomComponentChange = (index: number, field: string, value: string) => {
+    setCustomComponents(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const addCustomComponent = () => {
+    setCustomComponents(prev => [...prev, { 
+      id: uuidv4(),
+      type: "custom",
+      customName: "",
+      width: "",
+      length: "",
+      color: "",
+      gsm: "",
+    }]);
+  };
+
+  const removeCustomComponent = (index: number) => {
+    setCustomComponents(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const validateForm = () => {
+    const errors = {
+      company: undefined,
+      quantity: undefined,
+      bag_length: undefined,
+      bag_width: undefined,
+      order_date: undefined
+    };
+    
+    let isValid = true;
+    
+    if (!formData.company_name) {
+      errors.company = "Company name is required";
+      isValid = false;
+    }
+    
+    if (!formData.quantity || parseInt(formData.quantity) <= 0) {
+      errors.quantity = "Valid quantity is required";
+      isValid = false;
+    }
+    
+    if (!formData.bag_length || parseFloat(formData.bag_length) <= 0) {
+      errors.bag_length = "Valid bag length is required";
+      isValid = false;
+    }
+    
+    if (!formData.bag_width || parseFloat(formData.bag_width) <= 0) {
+      errors.bag_width = "Valid bag width is required";
+      isValid = false;
+    }
+    
+    if (!formData.order_date) {
+      errors.order_date = "Order date is required";
+      isValid = false;
+    }
+    
+    setFormErrors(errors);
+    return isValid;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      toast({
+        title: "Validation Error",
+        description: "Please correct the highlighted fields",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setSubmitting(true);
+    
+    try {
+      // Update order
+      const { error: orderError } = await supabase
+        .from("orders")
+        .update({
+          company_name: formData.company_name,
+          company_id: formData.company_id,  // Include company_id in the update
+          quantity: parseInt(formData.quantity),
+          bag_length: parseFloat(formData.bag_length),
+          bag_width: parseFloat(formData.bag_width),
+          rate: formData.rate ? parseFloat(formData.rate) : null,
+          special_instructions: formData.special_instructions || null,
+          order_date: formData.order_date
+        })
+        .eq("id", id);
+      
+      if (orderError) throw orderError;
+      
+      // Delete existing components and recreate them
+      const { error: deleteError } = await supabase
+        .from("components")
+        .delete()
+        .eq("order_id", id);
+      
+      if (deleteError) throw deleteError;
+      
+      // Process and insert updated components
+      const allComponents = [
+        ...components.filter(comp => comp.length || comp.width || comp.color || comp.gsm),
+        ...customComponents.filter(comp => comp.length || comp.width || comp.color || comp.gsm)
+      ];
+
+      if (allComponents.length > 0) {
+        for (const comp of allComponents) {
+          // Define allowable component type values that match the database enum
+          const componentType = comp.type === 'custom' ? 'custom' : 
+            (['part', 'border', 'handle', 'chain', 'runner'].includes(comp.type) ? 
+              comp.type as any : 'custom');
+
+          const { error: componentError } = await supabase
+            .from("components")
+            .insert({
+              order_id: id,
+              type: componentType,
+              size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
+              color: comp.color || null,
+              gsm: comp.gsm || null,
+              details: comp.customName || comp.details || null
+            } as any); // Type assertion to bypass TypeScript strict checking
+            
+          if (componentError) throw componentError;
+        }
+      }
+
+      toast({
+        title: "Order Updated",
+        description: "The order has been updated successfully",
+      });
+      
+      navigate(`/orders/${id}`);
+      
+    } catch (error: any) {
+      toast({
+        title: "Error updating order",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (loading) {
-    return <LoadingSpinner />;
+    return (
+      <div className="flex justify-center items-center min-h-[50vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
-      <OrderEditHeader onBack={() => navigate(`/orders/${id}`)} />
-      
-      <OrderEditForm
-        formData={formData}
-        formErrors={formErrors}
-        components={components}
-        customComponents={customComponents}
-        componentOptions={componentOptions}
-        submitting={submitting}
-        handleOrderChange={handleOrderChange}
-        handleComponentChange={handleComponentChange}
-        handleCustomComponentChange={handleCustomComponentChange}
-        addCustomComponent={addCustomComponent}
-        removeCustomComponent={removeCustomComponent}
-        handleSubmit={handleSubmit}
-        onCancel={() => navigate(`/orders/${id}`)}
-      />
+      <div className="flex items-center gap-2">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="gap-1"
+          onClick={() => navigate(`/orders/${id}`)}
+        >
+          <ArrowLeft size={16} />
+          Back
+        </Button>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Edit Order</h1>
+          <p className="text-muted-foreground">Update order details</p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <OrderDetailsForm 
+          formData={formData}
+          handleOrderChange={handleOrderChange}
+          formErrors={formErrors}
+        />
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Bag Components</CardTitle>
+            <CardDescription>Specify the details for each bag component</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {components.map((component, index) => (
+                <div key={index} className="p-4 border rounded-md space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium capitalize">{component.type}</h3>
+                  </div>
+                  <ComponentForm
+                    component={component}
+                    index={index}
+                    componentOptions={componentOptions}
+                    handleChange={handleComponentChange}
+                  />
+                </div>
+              ))}
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-medium">Custom Components</h2>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-1"
+                    onClick={addCustomComponent}
+                  >
+                    <Plus size={16} />
+                    Add Custom Component
+                  </Button>
+                </div>
+
+                <CustomComponentSection
+                  components={customComponents}
+                  onChange={handleCustomComponentChange}
+                  onRemove={removeCustomComponent}
+                  componentOptions={componentOptions}
+                />
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-end gap-3 pt-6">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={() => navigate(`/orders/${id}`)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? "Updating..." : "Update Order"}
+            </Button>
+          </CardFooter>
+        </Card>
+      </form>
     </div>
   );
 };

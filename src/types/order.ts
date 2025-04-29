@@ -28,9 +28,7 @@ export interface OrderFormData {
   rate: string;
   special_instructions: string;
   order_date: string;
-  status?: OrderStatus;
   sales_account_id?: string | null;
-  order_number?: string; // Adding this to match the database schema
 }
 
 export interface Component {
@@ -43,34 +41,4 @@ export interface Component {
   order_id?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
-}
-
-export interface CustomComponent {
-  id: string;
-  type: string;
-  customName?: string;
-  size?: string;
-  color?: string;
-  gsm?: string;
-  width?: string;
-  length?: string;
-  details?: string;
-  material_id?: string;
-  roll_width?: string;
-  consumption?: number;
-}
-
-export interface ComponentData {
-  id?: string;
-  type: string;
-  length?: string;
-  width?: string;
-  color?: string;
-  customName?: string;
-  material_id?: string;
-  roll_width?: string;
-  consumption?: number;
-  gsm?: string;
-  name?: string;  // Added to support both patterns
-  details?: string;  // Added to support both patterns
 }
