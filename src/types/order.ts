@@ -71,4 +71,6 @@ export interface ComponentData {
   roll_width?: string;
   consumption?: number;
   gsm?: string;
+  name?: string;  // Added to support both patterns
+  details?: string;  // Added to support both patterns
 }

@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Trash } from "lucide-react";
-import { ComponentForm } from "./ComponentForm";
+import { ComponentForm } from "./component-form";
 import { ComponentData, CustomComponent } from "@/types/order";
 
 export interface CustomComponentSectionProps {

@@ -1,6 +1,6 @@
 
 import { Card, CardContent } from "@/components/ui/card";
-import { ComponentForm } from "@/components/orders/ComponentForm";
+import { ComponentForm } from "@/components/orders/component-form";
 import { ComponentData } from "@/types/order";
 
 interface StandardComponentsProps {
