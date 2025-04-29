@@ -90,12 +90,27 @@ const CatalogNew = () => {
         id: uuidv4(),
         type 
       };
+      
+      let updatedComponent = {
+        ...component,
+        [field]: value
+      };
+      
+      // If quantity changes, recalculate consumption
+      if (field === 'length' || field === 'width' || field === 'roll_width') {
+        const length = parseFloat(field === 'length' ? value : component.length || '0');
+        const width = parseFloat(field === 'width' ? value : component.width || '0');
+        const roll_width = parseFloat(field === 'roll_width' ? value : component.roll_width || '0');
+        
+        if (length && width && roll_width && type !== 'chain' && type !== 'runner') {
+          const orderQuantity = parseInt(productDetails.default_quantity) || 1;
+          updatedComponent.consumption = ((length * width) / (roll_width * 39.39)) * orderQuantity;
+        }
+      }
+      
       return {
         ...prev,
-        [type]: {
-          ...component,
-          [field]: value
-        }
+        [type]: updatedComponent
       };
     });
   };
@@ -103,11 +118,30 @@ const CatalogNew = () => {
   const handleCustomComponentChange = (index: number, field: string, value: string) => {
     setCustomComponents(prev => {
       const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
+      
+      let updatedComponent = {
+        ...updated[index],
+        [field]: value
+      };
+      
+      // If dimensions or roll width changes, recalculate consumption
+      if (field === 'length' || field === 'width' || field === 'roll_width') {
+        const length = parseFloat(field === 'length' ? value : updated[index].length || '0');
+        const width = parseFloat(field === 'width' ? value : updated[index].width || '0');
+        const roll_width = parseFloat(field === 'roll_width' ? value : updated[index].roll_width || '0');
+        
+        if (length && width && roll_width) {
+          const orderQuantity = parseInt(productDetails.default_quantity) || 1;
+          updatedComponent.consumption = ((length * width) / (roll_width * 39.39)) * orderQuantity;
+        }
+      }
+      
+      updated[index] = updatedComponent;
       return updated;
     });
   };
   
+  // Add a new custom component
   const addCustomComponent = () => {
     setCustomComponents([
       ...customComponents, 
@@ -119,6 +153,7 @@ const CatalogNew = () => {
     ]);
   };
   
+  // Remove a custom component
   const removeCustomComponent = (index: number) => {
     setCustomComponents(prev => prev.filter((_, i) => i !== index));
   };

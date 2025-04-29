@@ -1,8 +1,7 @@
 
-import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useMaterials } from "@/hooks/use-materials";
+import { useEffect, useState } from "react";
 
 interface MaterialUsage {
   material_id: string;
@@ -18,93 +17,136 @@ interface MaterialCostSummaryProps {
   onTotalCostCalculated?: (cost: number) => void;
 }
 
-export const MaterialCostSummary = ({
-  materialUsages,
+export const MaterialCostSummary = ({ 
+  materialUsages, 
   cuttingCharge,
   printingCharge,
   stitchingCharge,
   transportCharge,
-  onTotalCostCalculated
+  onTotalCostCalculated 
 }: MaterialCostSummaryProps) => {
+  const { data: materials, isLoading } = useMaterials();
   const [totalMaterialCost, setTotalMaterialCost] = useState(0);
   
-  // Fetch material details for cost calculation
-  const { data: materials } = useQuery({
-    queryKey: ['materials'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('inventory')
-        .select('id, material_type, purchase_price, selling_price');
-      
-      if (error) throw error;
-      return data;
-    },
-  });
-  
-  // Calculate material costs whenever usages or materials change
   useEffect(() => {
-    if (!materials || materialUsages.length === 0) {
+    if (!materials || !materialUsages?.length) {
       setTotalMaterialCost(0);
       return;
     }
     
-    let totalCost = 0;
+    // Calculate total material cost
+    let cost = 0;
     
     materialUsages.forEach(usage => {
       const material = materials.find(m => m.id === usage.material_id);
       if (material && material.purchase_price) {
-        // Use purchase price for cost calculation
-        const cost = material.purchase_price * usage.consumption;
-        totalCost += cost;
+        cost += usage.consumption * material.purchase_price;
       }
     });
     
-    setTotalMaterialCost(totalCost);
-  }, [materials, materialUsages]);
-  
-  // Calculate total cost and report back to parent
-  useEffect(() => {
-    const totalCost = totalMaterialCost + cuttingCharge + printingCharge + stitchingCharge + transportCharge;
+    setTotalMaterialCost(cost);
     
+    // Calculate and report total cost
+    const totalCost = cost + cuttingCharge + printingCharge + stitchingCharge + transportCharge;
     if (onTotalCostCalculated) {
       onTotalCostCalculated(totalCost);
     }
-  }, [totalMaterialCost, cuttingCharge, printingCharge, stitchingCharge, transportCharge, onTotalCostCalculated]);
+  }, [materials, materialUsages, cuttingCharge, printingCharge, stitchingCharge, transportCharge, onTotalCostCalculated]);
   
-  // Calculate the sum of all production charges
-  const totalProductionCharges = cuttingCharge + printingCharge + stitchingCharge + transportCharge;
-  const grandTotal = totalMaterialCost + totalProductionCharges;
-
+  const productionCharges = cuttingCharge + printingCharge + stitchingCharge + transportCharge;
+  const grandTotal = totalMaterialCost + productionCharges;
+  
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Cost Summary</CardTitle>
+          <CardDescription>Loading cost data...</CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-40">
+          <div className="w-8 h-8 border-4 border-t-primary animate-spin rounded-full"></div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
   return (
     <Card>
       <CardHeader>
         <CardTitle>Cost Summary</CardTitle>
-        <CardDescription>
-          Estimated costs for production
-        </CardDescription>
+        <CardDescription>Breakdown of material and production costs</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Material Costs</h3>
-              <p className="text-lg font-semibold">₹{totalMaterialCost.toFixed(2)}</p>
-            </div>
-            
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Production Charges</h3>
-              <p className="text-lg font-semibold">₹{totalProductionCharges.toFixed(2)}</p>
-            </div>
-            
-            <div className="col-span-2">
-              <div className="flex items-center justify-between border-t pt-4 mt-4">
-                <h3 className="text-base font-medium">Total Cost</h3>
-                <p className="text-xl font-bold">₹{grandTotal.toFixed(2)}</p>
+          <div>
+            <h3 className="text-lg font-medium mb-2">Materials</h3>
+            {materialUsages.length > 0 ? (
+              <div className="space-y-2">
+                {materialUsages.map((usage, index) => {
+                  const material = materials?.find(m => m.id === usage.material_id);
+                  if (!material) return null;
+                  
+                  const cost = material.purchase_price ? material.purchase_price * usage.consumption : 0;
+                  
+                  return (
+                    <div key={index} className="flex items-center justify-between text-sm">
+                      <div className="flex-1">
+                        <span className="font-medium">{material.material_type}</span>
+                        {material.color && <span className="text-muted-foreground ml-1">({material.color})</span>}
+                      </div>
+                      <div className="flex-1 text-center">
+                        <span>{usage.consumption.toFixed(2)} {material.unit}</span>
+                      </div>
+                      <div className="flex-1 text-right">
+                        {material.purchase_price ? (
+                          <span>₹{cost.toFixed(2)}</span>
+                        ) : (
+                          <span className="text-muted-foreground">No price set</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="flex items-center justify-between pt-2 border-t text-sm font-medium">
+                  <span>Total Material Cost</span>
+                  <span>₹{totalMaterialCost.toFixed(2)}</span>
+                </div>
               </div>
-              
-              <div className="mt-2 text-xs text-muted-foreground">
-                <p>* Costs are estimates and may vary based on actual materials used and production time</p>
+            ) : (
+              <div className="text-muted-foreground text-sm">No materials selected</div>
+            )}
+          </div>
+          
+          <div>
+            <h3 className="text-lg font-medium mb-2">Production Charges</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span>Cutting Charge</span>
+                <span>₹{cuttingCharge.toFixed(2)}</span>
               </div>
+              <div className="flex items-center justify-between">
+                <span>Printing Charge</span>
+                <span>₹{printingCharge.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Stitching Charge</span>
+                <span>₹{stitchingCharge.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Transport Charge</span>
+                <span>₹{transportCharge.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t font-medium">
+                <span>Total Production Charges</span>
+                <span>₹{productionCharges.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="pt-4 border-t">
+            <div className="flex items-center justify-between text-lg font-bold">
+              <span>Grand Total</span>
+              <span>₹{grandTotal.toFixed(2)}</span>
             </div>
           </div>
         </div>

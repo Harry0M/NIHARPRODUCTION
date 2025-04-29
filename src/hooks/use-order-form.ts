@@ -240,7 +240,7 @@ export const useOrderForm = (initialOrder?: OrderFormData) => {
     setSubmitting(true);
     
     try {
-      // Insert order - Fix: Modify the insert data structure to match what Supabase expects
+      // Insert order
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -280,7 +280,7 @@ export const useOrderForm = (initialOrder?: OrderFormData) => {
             component_type: comp.type,
             color: comp.color || null,
             size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
-            details: comp.customName || null,
+            custom_name: comp.customName || null,
             material_id: comp.material_id && comp.material_id !== 'not_applicable' ? comp.material_id : null,
             roll_width: comp.roll_width ? parseFloat(comp.roll_width) : null,
             consumption: consumption

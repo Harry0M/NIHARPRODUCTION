@@ -43,4 +43,12 @@ export interface Component {
   order_id?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+  material_id?: string | null;
+  roll_width?: number | null;
+  consumption?: number | null;
+}
+
+export interface MaterialUsage {
+  material_id: string;
+  consumption: number;
 }
