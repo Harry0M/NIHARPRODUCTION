@@ -190,7 +190,7 @@ const CatalogNew = () => {
           custom_name: comp.type === 'custom' ? comp.customName : null,
           material_id: comp.material_id !== 'not_applicable' ? comp.material_id : null,
           roll_width: comp.roll_width ? parseFloat(comp.roll_width) : null,
-          consumption: comp.consumption ? parseFloat(comp.consumption) : null
+          consumption: comp.consumption ? parseFloat(comp.consumption.toString()) : null
         }));
 
         const { error: componentsError } = await supabase

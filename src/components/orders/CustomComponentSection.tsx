@@ -13,6 +13,9 @@ export interface CustomComponent {
   width?: string;
   length?: string;
   details?: string;
+  material_id?: string;
+  consumption?: number;
+  roll_width?: string;
 }
 
 export interface CustomComponentSectionProps {

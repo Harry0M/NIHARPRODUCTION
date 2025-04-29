@@ -1,7 +1,8 @@
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useMaterials } from "@/hooks/use-materials";
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MaterialUsage {
   material_id: string;
@@ -17,130 +18,93 @@ interface MaterialCostSummaryProps {
   onTotalCostCalculated?: (cost: number) => void;
 }
 
-export const MaterialCostSummary = ({ 
+export const MaterialCostSummary = ({
   materialUsages,
-  cuttingCharge = 0,
-  printingCharge = 0,
-  stitchingCharge = 0,
-  transportCharge = 0,
+  cuttingCharge,
+  printingCharge,
+  stitchingCharge,
+  transportCharge,
   onTotalCostCalculated
 }: MaterialCostSummaryProps) => {
-  const { data: materials } = useMaterials();
+  const [totalMaterialCost, setTotalMaterialCost] = useState(0);
   
-  // Calculate total material cost
-  let totalMaterialCost = 0;
-  const materialCosts = materialUsages
-    .filter(item => item.material_id && item.material_id !== 'not_applicable' && item.consumption)
-    .map(item => {
-      const material = materials?.find(m => m.id === item.material_id);
-      if (!material || !material.purchase_price) {
-        return {
-          id: item.material_id,
-          name: material?.material_type || 'Unknown Material',
-          unit: material?.unit || '-',
-          consumption: item.consumption,
-          price: 0,
-          cost: 0
-        };
+  // Fetch material details for cost calculation
+  const { data: materials } = useQuery({
+    queryKey: ['materials'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('inventory')
+        .select('id, material_type, purchase_price, selling_price');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+  
+  // Calculate material costs whenever usages or materials change
+  useEffect(() => {
+    if (!materials || materialUsages.length === 0) {
+      setTotalMaterialCost(0);
+      return;
+    }
+    
+    let totalCost = 0;
+    
+    materialUsages.forEach(usage => {
+      const material = materials.find(m => m.id === usage.material_id);
+      if (material && material.purchase_price) {
+        // Use purchase price for cost calculation
+        const cost = material.purchase_price * usage.consumption;
+        totalCost += cost;
       }
-      
-      const cost = item.consumption * material.purchase_price;
-      totalMaterialCost += cost;
-      
-      return {
-        id: item.material_id,
-        name: material.material_type,
-        unit: material.unit,
-        consumption: item.consumption,
-        price: material.purchase_price,
-        cost
-      };
     });
+    
+    setTotalMaterialCost(totalCost);
+  }, [materials, materialUsages]);
   
-  // Calculate total cost including all charges
+  // Calculate total cost and report back to parent
+  useEffect(() => {
+    const totalCost = totalMaterialCost + cuttingCharge + printingCharge + stitchingCharge + transportCharge;
+    
+    if (onTotalCostCalculated) {
+      onTotalCostCalculated(totalCost);
+    }
+  }, [totalMaterialCost, cuttingCharge, printingCharge, stitchingCharge, transportCharge, onTotalCostCalculated]);
+  
+  // Calculate the sum of all production charges
   const totalProductionCharges = cuttingCharge + printingCharge + stitchingCharge + transportCharge;
   const grandTotal = totalMaterialCost + totalProductionCharges;
-  
-  // Call the onTotalCostCalculated callback if provided
-  React.useEffect(() => {
-    if (onTotalCostCalculated) {
-      onTotalCostCalculated(grandTotal);
-    }
-  }, [grandTotal, onTotalCostCalculated]);
-  
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Cost Summary</CardTitle>
+        <CardDescription>
+          Estimated costs for production
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-6">
-          <div>
-            <h3 className="font-medium mb-2">Material Costs</h3>
-            {materialCosts.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Material</TableHead>
-                    <TableHead>Consumption</TableHead>
-                    <TableHead>Unit</TableHead>
-                    <TableHead>Price/Unit</TableHead>
-                    <TableHead className="text-right">Cost</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {materialCosts.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>{item.name}</TableCell>
-                      <TableCell>{item.consumption.toFixed(4)}</TableCell>
-                      <TableCell>{item.unit}</TableCell>
-                      <TableCell>₹{item.price.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">₹{item.cost.toFixed(2)}</TableCell>
-                    </TableRow>
-                  ))}
-                  <TableRow>
-                    <TableCell colSpan={4} className="font-medium">Total Material Cost</TableCell>
-                    <TableCell className="text-right font-medium">₹{totalMaterialCost.toFixed(2)}</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            ) : (
-              <p className="text-sm text-muted-foreground">No material costs to display.</p>
-            )}
-          </div>
-          
-          <div>
-            <h3 className="font-medium mb-2">Production Charges</h3>
-            <Table>
-              <TableBody>
-                <TableRow>
-                  <TableCell>Cutting Charge</TableCell>
-                  <TableCell className="text-right">₹{cuttingCharge.toFixed(2)}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Printing Charge</TableCell>
-                  <TableCell className="text-right">₹{printingCharge.toFixed(2)}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Stitching Charge</TableCell>
-                  <TableCell className="text-right">₹{stitchingCharge.toFixed(2)}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Transport Charge</TableCell>
-                  <TableCell className="text-right">₹{transportCharge.toFixed(2)}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-medium">Total Production Charges</TableCell>
-                  <TableCell className="text-right font-medium">₹{totalProductionCharges.toFixed(2)}</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-          
-          <div className="border-t pt-4">
-            <div className="flex justify-between items-center text-lg font-medium">
-              <span>Grand Total</span>
-              <span>₹{grandTotal.toFixed(2)}</span>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Material Costs</h3>
+              <p className="text-lg font-semibold">₹{totalMaterialCost.toFixed(2)}</p>
+            </div>
+            
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Production Charges</h3>
+              <p className="text-lg font-semibold">₹{totalProductionCharges.toFixed(2)}</p>
+            </div>
+            
+            <div className="col-span-2">
+              <div className="flex items-center justify-between border-t pt-4 mt-4">
+                <h3 className="text-base font-medium">Total Cost</h3>
+                <p className="text-xl font-bold">₹{grandTotal.toFixed(2)}</p>
+              </div>
+              
+              <div className="mt-2 text-xs text-muted-foreground">
+                <p>* Costs are estimates and may vary based on actual materials used and production time</p>
+              </div>
             </div>
           </div>
         </div>

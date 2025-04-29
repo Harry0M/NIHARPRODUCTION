@@ -49,6 +49,12 @@ const OrderNew = () => {
     }
   };
   
+  // Convert ComponentData[] to CustomComponent[]
+  const customComponentsWithRequiredId = customComponents.map(comp => ({
+    ...comp,
+    id: comp.id || ''
+  }));
+  
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -105,7 +111,7 @@ const OrderNew = () => {
                 </div>
                 
                 <CustomComponentSection
-                  customComponents={customComponents}
+                  customComponents={customComponentsWithRequiredId}
                   componentOptions={componentOptions}
                   handleCustomComponentChange={handleCustomComponentChange}
                   removeCustomComponent={removeCustomComponent}

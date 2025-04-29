@@ -244,20 +244,18 @@ export const useOrderForm = (initialOrder?: OrderFormData) => {
       // Insert order
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
-        .insert([
-          {
-            company_name: orderDetails.company_name.trim(),
-            company_id: orderDetails.company_id,
-            sales_account_id: orderDetails.sales_account_id === 'none' ? null : orderDetails.sales_account_id,
-            quantity: parseInt(orderDetails.quantity),
-            bag_length: parseFloat(orderDetails.bag_length),
-            bag_width: parseFloat(orderDetails.bag_width),
-            rate: orderDetails.rate ? parseFloat(orderDetails.rate) : null,
-            order_date: orderDetails.order_date,
-            special_instructions: orderDetails.special_instructions || null,
-            status: orderDetails.status || 'pending'
-          }
-        ])
+        .insert({
+          company_name: orderDetails.company_name.trim(),
+          company_id: orderDetails.company_id,
+          sales_account_id: orderDetails.sales_account_id === 'none' ? null : orderDetails.sales_account_id,
+          quantity: parseInt(orderDetails.quantity),
+          bag_length: parseFloat(orderDetails.bag_length),
+          bag_width: parseFloat(orderDetails.bag_width),
+          rate: orderDetails.rate ? parseFloat(orderDetails.rate) : null,
+          order_date: orderDetails.order_date,
+          special_instructions: orderDetails.special_instructions || null,
+          status: orderDetails.status || 'pending'
+        })
         .select('id')
         .single();
       

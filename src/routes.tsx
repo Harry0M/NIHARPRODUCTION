@@ -33,6 +33,12 @@ const Home = lazy(() => import('./pages/Home'));
 const SignIn = lazy(() => import('./pages/Auth/SignIn'));
 const SignUp = lazy(() => import('./pages/Auth/SignUp'));
 
+// Helper function for getting ID from useParams
+const getParamsId = () => {
+  const params = useParams();
+  return params.id;
+};
+
 // Placeholder components for missing pages
 const PlaceholderPage = ({ title = "Page Coming Soon" }) => (
   <div className="flex flex-col items-center justify-center min-h-[60vh] p-6">
@@ -45,34 +51,34 @@ const PlaceholderPage = ({ title = "Page Coming Soon" }) => (
 
 // Create placeholders for missing pages
 const Orders = () => <PlaceholderPage title="Orders" />;
-const OrderDetails = ({ id }: { id?: string }) => <PlaceholderPage title={`Order Details: ${id}`} />;
-const OrderNew = () => <PlaceholderPage title="New Order" />;
-const OrderEdit = ({ id }: { id?: string }) => <PlaceholderPage title={`Edit Order: ${id}`} />;
+const OrderDetails = () => <PlaceholderPage title={`Order Details: ${getParamsId()}`} />;
+const OrderNew = lazy(() => import('./pages/Orders/OrderNew'));
+const OrderEdit = () => <PlaceholderPage title={`Edit Order: ${getParamsId()}`} />;
 
 const JobCards = () => <PlaceholderPage title="Job Cards" />;
-const JobCardDetails = ({ id }: { id?: string }) => <PlaceholderPage title={`Job Card Details: ${id}`} />;
-const CuttingJobs = ({ id }: { id?: string }) => <PlaceholderPage title={`Cutting Jobs: ${id}`} />;
-const PrintingJobs = ({ id }: { id?: string }) => <PlaceholderPage title={`Printing Jobs: ${id}`} />;
-const StitchingJobs = ({ id }: { id?: string }) => <PlaceholderPage title={`Stitching Jobs: ${id}`} />;
+const JobCardDetails = () => <PlaceholderPage title={`Job Card Details: ${getParamsId()}`} />;
+const CuttingJobs = () => <PlaceholderPage title={`Cutting Jobs: ${getParamsId()}`} />;
+const PrintingJobs = () => <PlaceholderPage title={`Printing Jobs: ${getParamsId()}`} />;
+const StitchingJobs = () => <PlaceholderPage title={`Stitching Jobs: ${getParamsId()}`} />;
 
 const Companies = () => <PlaceholderPage title="Companies" />;
-const CompanyDetails = ({ id }: { id?: string }) => <PlaceholderPage title={`Company Details: ${id}`} />;
+const CompanyDetails = () => <PlaceholderPage title={`Company Details: ${getParamsId()}`} />;
 const CompanyNew = () => <PlaceholderPage title="New Company" />;
-const CompanyEdit = ({ id }: { id?: string }) => <PlaceholderPage title={`Edit Company: ${id}`} />;
+const CompanyEdit = () => <PlaceholderPage title={`Edit Company: ${getParamsId()}`} />;
 
 const Suppliers = () => <PlaceholderPage title="Suppliers" />;
-const SupplierDetails = ({ id }: { id?: string }) => <PlaceholderPage title={`Supplier Details: ${id}`} />;
+const SupplierDetails = () => <PlaceholderPage title={`Supplier Details: ${getParamsId()}`} />;
 const SupplierNew = () => <PlaceholderPage title="New Supplier" />;
-const SupplierEdit = ({ id }: { id?: string }) => <PlaceholderPage title={`Edit Supplier: ${id}`} />;
+const SupplierEdit = () => <PlaceholderPage title={`Edit Supplier: ${getParamsId()}`} />;
 
 const Transactions = () => <PlaceholderPage title="Transactions" />;
-const TransactionDetails = ({ id }: { id?: string }) => <PlaceholderPage title={`Transaction Details: ${id}`} />;
+const TransactionDetails = () => <PlaceholderPage title={`Transaction Details: ${getParamsId()}`} />;
 const TransactionNew = () => <PlaceholderPage title="New Transaction" />;
-const TransactionEdit = ({ id }: { id?: string }) => <PlaceholderPage title={`Edit Transaction: ${id}`} />;
+const TransactionEdit = () => <PlaceholderPage title={`Edit Transaction: ${getParamsId()}`} />;
 
 const Profile = () => <PlaceholderPage title="User Profile" />;
 const DispatchList = () => <PlaceholderPage title="Dispatch List" />;
-const DispatchDetails = ({ id }: { id?: string }) => <PlaceholderPage title={`Dispatch Details: ${id}`} />;
+const DispatchDetails = () => <PlaceholderPage title={`Dispatch Details: ${getParamsId()}`} />;
 const DispatchNew = () => <PlaceholderPage title="New Dispatch" />;
 
 const routes: RouteObject[] = [
@@ -97,9 +103,9 @@ const routes: RouteObject[] = [
     element: <OrderLayout />,
     children: [
       { path: '', element: <Orders /> },
-      { path: ':id', element: <OrderDetails id={useParams().id} /> },
-      { path: 'new', element: <OrderNew /> },
-      { path: ':id/edit', element: <OrderEdit id={useParams().id} /> },
+      { path: ':id', element: <OrderDetails /> },
+      { path: 'new', element: <Suspense fallback={<>Loading...</>}><OrderNew /></Suspense> },
+      { path: ':id/edit', element: <OrderEdit /> },
     ]
   },
   {
@@ -107,10 +113,10 @@ const routes: RouteObject[] = [
     element: <JobCardLayout />,
     children: [
       { path: '', element: <JobCards /> },
-      { path: ':id', element: <JobCardDetails id={useParams().id} /> },
-      { path: ':id/cutting-jobs', element: <CuttingJobs id={useParams().id} /> },
-      { path: ':id/printing-jobs', element: <PrintingJobs id={useParams().id} /> },
-      { path: ':id/stitching-jobs', element: <StitchingJobs id={useParams().id} /> },
+      { path: ':id', element: <JobCardDetails /> },
+      { path: ':id/cutting-jobs', element: <CuttingJobs /> },
+      { path: ':id/printing-jobs', element: <PrintingJobs /> },
+      { path: ':id/stitching-jobs', element: <StitchingJobs /> },
     ]
   },
   {
@@ -118,9 +124,9 @@ const routes: RouteObject[] = [
     element: <CompanyLayout />,
     children: [
       { path: '', element: <Companies /> },
-      { path: ':id', element: <CompanyDetails id={useParams().id} /> },
+      { path: ':id', element: <CompanyDetails /> },
       { path: 'new', element: <CompanyNew /> },
-      { path: ':id/edit', element: <CompanyEdit id={useParams().id} /> },
+      { path: ':id/edit', element: <CompanyEdit /> },
     ]
   },
   {
@@ -128,9 +134,9 @@ const routes: RouteObject[] = [
     element: <SupplierLayout />,
     children: [
       { path: '', element: <Suppliers /> },
-      { path: ':id', element: <SupplierDetails id={useParams().id} /> },
+      { path: ':id', element: <SupplierDetails /> },
       { path: 'new', element: <SupplierNew /> },
-      { path: ':id/edit', element: <SupplierEdit id={useParams().id} /> },
+      { path: ':id/edit', element: <SupplierEdit /> },
     ]
   },
   {
@@ -138,9 +144,9 @@ const routes: RouteObject[] = [
     element: <TransactionLayout />,
     children: [
       { path: '', element: <Transactions /> },
-      { path: ':id', element: <TransactionDetails id={useParams().id} /> },
+      { path: ':id', element: <TransactionDetails /> },
       { path: 'new', element: <TransactionNew /> },
-      { path: ':id/edit', element: <TransactionEdit id={useParams().id} /> },
+      { path: ':id/edit', element: <TransactionEdit /> },
     ]
   },
   {
@@ -155,7 +161,7 @@ const routes: RouteObject[] = [
     element: <DispatchLayout />,
     children: [
       { path: '', element: <DispatchList /> },
-      { path: ':id', element: <DispatchDetails id={useParams().id} /> },
+      { path: ':id', element: <DispatchDetails /> },
       { path: 'new', element: <DispatchNew /> },
     ]
   },
@@ -166,11 +172,11 @@ const routes: RouteObject[] = [
       { path: '', element: <Navigate to="/inventory/stock" replace /> },
       { path: 'stock', element: <StockList /> },
       { path: 'stock/new', element: <StockJournalForm /> },
-      { path: 'stock/:id', element: <StockJournalForm id={useParams().id} /> },
+      { path: 'stock/:id', element: <StockJournalForm /> },
       { path: 'catalog', element: <CatalogList /> },
       { path: 'catalog/new', element: <CatalogNew /> },
-      { path: 'catalog/:id', element: <Navigate to={`/orders?catalogId=${useParams().id}`} replace /> },
-      { path: 'catalog/:id/orders', element: <CatalogOrders id={useParams().id} /> },
+      { path: 'catalog/:id', element: <Navigate to={`/orders?catalogId=${getParamsId()}`} replace /> },
+      { path: 'catalog/:id/orders', element: <CatalogOrders /> },
     ]
   }
 ];
