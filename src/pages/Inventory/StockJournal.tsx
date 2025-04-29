@@ -81,9 +81,25 @@ const StockJournal = () => {
 
   const createInventoryMutation = useMutation({
     mutationFn: async (formData: InventoryFormValues) => {
+      // Ensure all required fields are present and properly typed
+      const inventoryItem = {
+        material_type: formData.material_type,
+        color: formData.color || null,
+        gsm: formData.gsm || null,
+        quantity: formData.quantity,
+        unit: formData.unit,
+        alternate_unit: formData.alternate_unit || null,
+        conversion_rate: formData.conversion_rate,
+        track_cost: formData.track_cost,
+        purchase_price: formData.purchase_price || null,
+        selling_price: formData.selling_price || null,
+        supplier_id: formData.supplier_id || null,
+        reorder_level: formData.reorder_level || null,
+      };
+      
       const { data, error } = await supabase
         .from('inventory')
-        .insert(formData)
+        .insert(inventoryItem)
         .select();
 
       if (error) throw error;
@@ -162,7 +178,11 @@ const StockJournal = () => {
                   <FormItem>
                     <FormLabel>Initial Quantity</FormLabel>
                     <FormControl>
-                      <Input type="number" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value))} />
+                      <Input 
+                        type="number" 
+                        {...field} 
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -238,7 +258,7 @@ const StockJournal = () => {
                             type="number" 
                             step="0.01" 
                             {...field} 
-                            onChange={(e) => field.onChange(parseFloat(e.target.value))} 
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 1)} 
                           />
                         </FormControl>
                         <ArrowLeftRight className="h-4 w-4" />
