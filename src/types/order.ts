@@ -28,9 +28,7 @@ export interface OrderFormData {
   rate: string;
   special_instructions: string;
   order_date: string;
-  status?: OrderStatus;
   sales_account_id?: string | null;
-  order_number?: string; // Make order_number optional in form data since it's auto-generated
 }
 
 export interface Component {
@@ -43,12 +41,4 @@ export interface Component {
   order_id?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
-  material_id?: string | null;
-  roll_width?: number | null;
-  consumption?: number | null;
-}
-
-export interface MaterialUsage {
-  material_id: string;
-  consumption: number;
 }

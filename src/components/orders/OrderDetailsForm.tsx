@@ -68,32 +68,22 @@ export const OrderDetailsForm = ({
     fetchCompanies();
   }, []);
 
-  const handleProductSelect = async (productId: string) => {
+  const handleProductSelect = (productId: string) => {
     const selectedProduct = catalogProducts?.find(p => p.id === productId);
     if (selectedProduct) {
-      // Update all product-related fields
+      // Only update bag dimensions, quantity and rate, not the company info
       handleOrderChange({ target: { name: 'bag_length', value: selectedProduct.bag_length.toString() } });
       handleOrderChange({ target: { name: 'bag_width', value: selectedProduct.bag_width.toString() } });
-      
-      // Set quantity if default quantity is available
       if (selectedProduct.default_quantity) {
         handleOrderChange({ target: { name: 'quantity', value: selectedProduct.default_quantity.toString() } });
       }
-      
-      // Set rate if default rate is available
       if (selectedProduct.default_rate) {
         handleOrderChange({ target: { name: 'rate', value: selectedProduct.default_rate.toString() } });
       }
       
-      // Fetch components of the selected product with material_id
-      const { data: components, error } = await supabase
-        .from('catalog_components')
-        .select('*')
-        .eq('catalog_id', productId);
-      
-      if (!error && components && onProductSelect) {
-        // Pass components to parent component
-        onProductSelect(components);
+      // Pass components to parent component if they exist
+      if (onProductSelect && selectedProduct.catalog_components) {
+        onProductSelect(selectedProduct.catalog_components);
       }
     }
   };
@@ -120,12 +110,12 @@ export const OrderDetailsForm = ({
         <CardDescription>Enter the basic information for this order</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Product (BOM) selection dropdown */}
+        {/* Product selection dropdown */}
         <div className="space-y-2">
-          <Label>Select BOM Template (Optional)</Label>
+          <Label>Select Product (Optional)</Label>
           <Select onValueChange={handleProductSelect}>
             <SelectTrigger>
-              <SelectValue placeholder="Choose a BOM template" />
+              <SelectValue placeholder="Choose a product template" />
             </SelectTrigger>
             <SelectContent>
               {catalogProducts?.map((product) => (

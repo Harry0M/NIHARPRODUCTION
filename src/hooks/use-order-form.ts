@@ -1,133 +1,114 @@
-
 import { useState } from "react";
-import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
+import { v4 as uuidv4 } from "uuid";
 import { OrderFormData } from "@/types/order";
 
-export interface ComponentData {
-  id?: string;
+interface Component {
+  id: string;
   type: string;
+  customName?: string;
+  color?: string;
+  gsm?: string;
   length?: string;
   width?: string;
-  color?: string;
-  customName?: string;
-  material_id?: string;
-  roll_width?: string;
-  consumption?: number;
 }
 
-export const useOrderForm = (initialOrder?: OrderFormData) => {
-  // Order details state
-  const [orderDetails, setOrderDetails] = useState<OrderFormData>(initialOrder || {
+interface FormErrors {
+  company?: string;
+  quantity?: string;
+  bag_length?: string;
+  bag_width?: string;
+  order_date?: string;
+}
+
+interface UseOrderFormReturn {
+  orderDetails: OrderFormData;
+  components: Record<string, any>;
+  customComponents: Component[];
+  submitting: boolean;
+  formErrors: FormErrors;
+  handleOrderChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 
+    target: { name: string; value: string | null } 
+  }) => void;
+  handleComponentChange: (type: string, field: string, value: string) => void;
+  handleCustomComponentChange: (index: number, field: string, value: string) => void;
+  addCustomComponent: () => void;
+  removeCustomComponent: (index: number) => void;
+  handleProductSelect: (components: any[]) => void;
+  handleSubmit: (e: React.FormEvent) => Promise<string | undefined>;
+  validateForm: () => boolean;
+}
+
+export function useOrderForm(): UseOrderFormReturn {
+  const [submitting, setSubmitting] = useState(false);
+  const [orderDetails, setOrderDetails] = useState<OrderFormData>({
     company_name: "",
     company_id: null,
-    sales_account_id: null,
     quantity: "",
     bag_length: "",
     bag_width: "",
     rate: "",
-    order_date: new Date().toISOString().split('T')[0],
     special_instructions: "",
-    status: "pending",
+    sales_account_id: null,
+    order_date: new Date().toISOString().split('T')[0]
   });
   
-  // Form validation errors
-  const [formErrors, setFormErrors] = useState<{
-    company?: string;
-    quantity?: string;
-    bag_length?: string;
-    bag_width?: string;
-    order_date?: string;
-  }>({});
-  
-  // Components state
-  const [components, setComponents] = useState<Record<string, ComponentData>>({});
-  
-  // Custom components state
-  const [customComponents, setCustomComponents] = useState<ComponentData[]>([]);
-  
-  // Loading/submitting state
-  const [submitting, setSubmitting] = useState(false);
-  
-  // Handle changes to order details
-  const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { target: { name: string; value: string | null } }) => {
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [components, setComponents] = useState<Record<string, any>>({});
+  const [customComponents, setCustomComponents] = useState<Component[]>([]);
+
+  const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 
+    target: { name: string; value: string | null } 
+  }) => {
     const { name, value } = e.target;
     
-    setOrderDetails(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    // Handle special case for sales_account_id
+    if (name === 'sales_account_id') {
+      setOrderDetails(prev => ({
+        ...prev,
+        [name]: value === 'none' ? null : value
+      }));
+    } else {
+      setOrderDetails(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
     
-    // Clear validation error when field is updated
-    if (formErrors[name as keyof typeof formErrors]) {
+    // Clear validation error when field is changed
+    if (formErrors[name as keyof FormErrors]) {
       setFormErrors(prev => ({
         ...prev,
         [name]: undefined
       }));
     }
   };
-  
-  // Handle changes to standard components
+
   const handleComponentChange = (type: string, field: string, value: string) => {
     setComponents(prev => {
       const component = prev[type] || { 
         id: uuidv4(),
         type 
       };
-      
-      let updatedComponent = {
-        ...component,
-        [field]: value
-      };
-      
-      // If quantity changes, recalculate consumption
-      if (field === 'length' || field === 'width' || field === 'roll_width') {
-        const length = parseFloat(field === 'length' ? value : component.length || '0');
-        const width = parseFloat(field === 'width' ? value : component.width || '0');
-        const roll_width = parseFloat(field === 'roll_width' ? value : component.roll_width || '0');
-        
-        if (length && width && roll_width && type !== 'chain' && type !== 'runner') {
-          const orderQuantity = parseInt(orderDetails.quantity) || 1;
-          updatedComponent.consumption = ((length * width) / (roll_width * 39.39)) * orderQuantity;
-        }
-      }
-      
       return {
         ...prev,
-        [type]: updatedComponent
+        [type]: {
+          ...component,
+          [field]: value
+        }
       };
     });
   };
-  
-  // Handle changes to custom components
+
   const handleCustomComponentChange = (index: number, field: string, value: string) => {
     setCustomComponents(prev => {
       const updated = [...prev];
-      
-      let updatedComponent = {
-        ...updated[index],
-        [field]: value
-      };
-      
-      // If dimensions or roll width changes, recalculate consumption
-      if (field === 'length' || field === 'width' || field === 'roll_width') {
-        const length = parseFloat(field === 'length' ? value : updated[index].length || '0');
-        const width = parseFloat(field === 'width' ? value : updated[index].width || '0');
-        const roll_width = parseFloat(field === 'roll_width' ? value : updated[index].roll_width || '0');
-        
-        if (length && width && roll_width) {
-          const orderQuantity = parseInt(orderDetails.quantity) || 1;
-          updatedComponent.consumption = ((length * width) / (roll_width * 39.39)) * orderQuantity;
-        }
-      }
-      
-      updated[index] = updatedComponent;
+      updated[index] = { ...updated[index], [field]: value };
       return updated;
     });
   };
-  
-  // Add a new custom component
+
   const addCustomComponent = () => {
     setCustomComponents([
       ...customComponents, 
@@ -138,217 +119,205 @@ export const useOrderForm = (initialOrder?: OrderFormData) => {
       }
     ]);
   };
-  
-  // Remove a custom component
+
   const removeCustomComponent = (index: number) => {
     setCustomComponents(prev => prev.filter((_, i) => i !== index));
   };
-  
-  // Handle product selection from catalog
-  const handleProductSelect = (catalogComponents: any[]) => {
-    // Parse catalog components to update both standard and custom components
-    const stdComponents: Record<string, ComponentData> = {};
-    const customItems: ComponentData[] = [];
+
+  const handleProductSelect = (components: any[]) => {
+    console.log("Selected product components:", components);
     
-    catalogComponents.forEach(comp => {
-      // Determine if this is a standard or custom component
-      const standardTypes = ["part", "border", "handle", "chain", "runner"];
-      const isStandard = standardTypes.includes(comp.component_type);
+    if (!components || components.length === 0) {
+      console.log("No components to process");
+      return;
+    }
+    
+    // Clear existing components first
+    const standardTypes = ['part', 'border', 'handle', 'chain', 'runner'];
+    const newOrderComponents: Record<string, any> = {};
+    const newCustomComponents: Component[] = [];
+
+    components.forEach(component => {
+      if (!component) return;
       
-      // Calculate consumption based on order quantity
-      const orderQuantity = parseInt(orderDetails.quantity) || 1;
-      let consumption = comp.consumption;
-      if (consumption && orderQuantity > 1) {
-        consumption = consumption * orderQuantity;
+      // Extract length and width from size format "length x width"
+      let length = '', width = '';
+      if (component.size) {
+        const sizeValues = component.size.split('x').map((s: string) => s.trim());
+        length = sizeValues[0] || '';
+        width = sizeValues[1] || '';
       }
       
-      const componentData: ComponentData = {
-        id: uuidv4(),
-        type: comp.component_type,
-        length: comp.length?.toString() || '',
-        width: comp.width?.toString() || '',
-        color: comp.color || '',
-        customName: comp.custom_name || '',
-        material_id: comp.material_id || null,
-        roll_width: comp.roll_width?.toString() || '',
-        consumption: consumption
-      };
-      
-      if (isStandard) {
-        stdComponents[comp.component_type] = componentData;
-      } else {
-        customItems.push(componentData);
+      if (component.component_type === 'custom') {
+        newCustomComponents.push({
+          id: uuidv4(),
+          type: 'custom',
+          customName: component.custom_name || '',
+          color: component.color || '',
+          gsm: component.gsm?.toString() || '',
+          length,
+          width
+        });
+      } else if (standardTypes.includes(component.component_type)) {
+        newOrderComponents[component.component_type] = {
+          id: uuidv4(),
+          type: component.component_type,
+          color: component.color || '',
+          gsm: component.gsm?.toString() || '',
+          length,
+          width
+        };
       }
     });
-    
-    // Update component states
-    setComponents(stdComponents);
-    setCustomComponents(customItems);
+
+    console.log("Setting standard components:", newOrderComponents);
+    console.log("Setting custom components:", newCustomComponents);
+
+    // Replace all components with the new ones
+    setComponents(newOrderComponents);
+    setCustomComponents(newCustomComponents);
   };
-  
-  // Validate form before submission
-  const validateForm = () => {
-    const errors: {
-      company?: string;
-      quantity?: string;
-      bag_length?: string;
-      bag_width?: string;
-      order_date?: string;
-    } = {};
-    
-    // Validate required fields
-    if (!orderDetails.company_name?.trim()) {
+
+  const validateForm = (): boolean => {
+    const errors: FormErrors = {};
+    let isValid = true;
+
+    // Validate company information
+    if (!orderDetails.company_name) {
       errors.company = "Company name is required";
+      isValid = false;
     }
-    
-    if (!orderDetails.quantity) {
-      errors.quantity = "Quantity is required";
-    } else if (parseInt(orderDetails.quantity) <= 0) {
-      errors.quantity = "Quantity must be greater than 0";
+
+    // Validate quantity
+    if (!orderDetails.quantity || parseFloat(orderDetails.quantity) <= 0) {
+      errors.quantity = "Valid quantity is required";
+      isValid = false;
     }
-    
-    if (!orderDetails.bag_length) {
-      errors.bag_length = "Bag length is required";
-    } else if (parseFloat(orderDetails.bag_length) <= 0) {
-      errors.bag_length = "Length must be greater than 0";
+
+    // Validate bag length
+    if (!orderDetails.bag_length || parseFloat(orderDetails.bag_length) <= 0) {
+      errors.bag_length = "Valid bag length is required";
+      isValid = false;
     }
-    
-    if (!orderDetails.bag_width) {
-      errors.bag_width = "Bag width is required";
-    } else if (parseFloat(orderDetails.bag_width) <= 0) {
-      errors.bag_width = "Width must be greater than 0";
+
+    // Validate bag width
+    if (!orderDetails.bag_width || parseFloat(orderDetails.bag_width) <= 0) {
+      errors.bag_width = "Valid bag width is required";
+      isValid = false;
     }
-    
+
+    // Validate order date
     if (!orderDetails.order_date) {
       errors.order_date = "Order date is required";
+      isValid = false;
     }
-    
-    // Update error state and return validation result
+
     setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+    return isValid;
   };
-  
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
+
+  const handleSubmit = async (e: React.FormEvent): Promise<string | undefined> => {
     e.preventDefault();
     
-    // Validate form
+    // Validate form before submission
     if (!validateForm()) {
-      toast.error("Please correct the errors in the form");
-      return null;
+      toast({
+        title: "Form validation failed",
+        description: "Please correct the highlighted fields",
+        variant: "destructive"
+      });
+      return;
     }
     
     setSubmitting(true);
     
     try {
-      // Insert order - Cast to any to bypass TypeScript error since order_number is generated by a database trigger
-      const orderPayload = {
-        company_name: orderDetails.company_name.trim(),
+      // Prepare data for database insert
+      const orderData = {
+        company_name: orderDetails.company_id ? null : orderDetails.company_name,
         company_id: orderDetails.company_id,
-        sales_account_id: orderDetails.sales_account_id === 'none' ? null : orderDetails.sales_account_id,
         quantity: parseInt(orderDetails.quantity),
         bag_length: parseFloat(orderDetails.bag_length),
         bag_width: parseFloat(orderDetails.bag_width),
         rate: orderDetails.rate ? parseFloat(orderDetails.rate) : null,
         order_date: orderDetails.order_date,
-        special_instructions: orderDetails.special_instructions || null,
-        status: orderDetails.status || 'pending'
-        // Note: order_number is not included as it's generated via a database trigger
+        sales_account_id: orderDetails.sales_account_id || null,
+        special_instructions: orderDetails.special_instructions || null
       };
+
+      console.log("Submitting order data:", orderData);
       
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .insert(orderPayload as any)  // Cast to any to bypass TypeScript error
-        .select('id')
+      // Insert the order - using type assertion to bypass the order_number requirement
+      // since this is auto-generated by the database trigger
+      const { data: orderResult, error: orderError } = await supabase
+        .from("orders")
+        .insert(orderData as any)
+        .select('id, order_number')
         .single();
       
-      if (orderError) throw orderError;
+      if (orderError) {
+        console.error("Order insertion error:", orderError);
+        throw orderError;
+      }
       
-      // Prepare components for insertion
+      console.log("Order created successfully:", orderResult);
+      
+      // Process components if any exist
       const allComponents = [
-        ...Object.values(components),
+        ...Object.values(components).filter(Boolean),
         ...customComponents
       ].filter(Boolean);
       
-      // Insert components if any
+      console.log("Components to be saved:", allComponents);
+      
       if (allComponents.length > 0) {
-        const orderQuantity = parseInt(orderDetails.quantity) || 1;
-        
-        const componentsToInsert = allComponents.map(comp => {
-          // Adjust consumption based on order quantity
-          let consumption = comp.consumption;
-          
-          return {
-            order_id: orderData.id,
-            component_type: comp.type,
-            color: comp.color || null,
-            size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
-            custom_name: comp.customName || null,
-            material_id: comp.material_id && comp.material_id !== 'not_applicable' ? comp.material_id : null,
-            roll_width: comp.roll_width ? parseFloat(comp.roll_width) : null,
-            consumption: consumption
-          };
-        });
-        
+        const componentsToInsert = allComponents.map(comp => ({
+          order_id: orderResult.id,
+          component_type: comp.type === 'custom' ? 'custom' : comp.type,
+          size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
+          color: comp.color || null,
+          gsm: comp.gsm || null,
+          custom_name: comp.type === 'custom' ? comp.customName : null
+        }));
+
+        console.log("Inserting components:", componentsToInsert);
+
+        // Fixed: Using the correct table name "order_components" instead of "components"
         const { error: componentsError } = await supabase
-          .from('order_components')
+          .from("order_components")
           .insert(componentsToInsert);
         
         if (componentsError) {
           console.error("Error saving components:", componentsError);
-          toast.error("Error saving components");
+          toast({
+            title: "Error saving components",
+            description: componentsError.message,
+            variant: "destructive"
+          });
+        } else {
+          console.log("Components saved successfully");
         }
-        
-        // Update inventory quantities based on material usage
-        await updateInventoryQuantities(componentsToInsert);
       }
       
-      toast.success("Order created successfully");
-      return orderData.id;
+      toast({
+        title: "Order created successfully",
+        description: `Order number: ${orderResult.order_number}`
+      });
+
+      return orderResult.id;
       
     } catch (error: any) {
       console.error("Error creating order:", error);
-      toast.error(`Failed to create order: ${error.message}`);
-      return null;
+      toast({
+        title: "Error creating order",
+        description: error.message || "An unexpected error occurred",
+        variant: "destructive"
+      });
     } finally {
       setSubmitting(false);
     }
   };
-  
-  // Update inventory quantities based on material usage
-  const updateInventoryQuantities = async (orderComponents: any[]) => {
-    try {
-      // Filter components with material_id and consumption
-      const componentsWithMaterial = orderComponents.filter(
-        comp => comp.material_id && comp.consumption
-      );
-      
-      // Update inventory quantities for each material used
-      for (const comp of componentsWithMaterial) {
-        // Get current inventory quantity
-        const { data: material } = await supabase
-          .from('inventory')
-          .select('quantity')
-          .eq('id', comp.material_id)
-          .single();
-          
-        if (material) {
-          // Calculate new quantity
-          const newQuantity = Math.max(0, material.quantity - comp.consumption);
-          
-          // Update inventory
-          await supabase
-            .from('inventory')
-            .update({ quantity: newQuantity })
-            .eq('id', comp.material_id);
-        }
-      }
-    } catch (error) {
-      console.error("Error updating inventory quantities:", error);
-      toast.error("Failed to update inventory quantities");
-    }
-  };
-  
+
   return {
     orderDetails,
     components,
@@ -364,4 +333,4 @@ export const useOrderForm = (initialOrder?: OrderFormData) => {
     handleSubmit,
     validateForm
   };
-};
+}

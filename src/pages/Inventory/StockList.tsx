@@ -54,9 +54,7 @@ const StockList = () => {
               <TableHead>Color</TableHead>
               <TableHead>GSM</TableHead>
               <TableHead>Quantity</TableHead>
-              <TableHead>Main Unit</TableHead>
-              <TableHead>Alt. Unit</TableHead>
-              <TableHead>Purchase Price</TableHead>
+              <TableHead>Unit</TableHead>
               <TableHead>Supplier</TableHead>
             </TableRow>
           </TableHeader>
@@ -72,8 +70,6 @@ const StockList = () => {
                 <TableCell>{item.gsm || 'N/A'}</TableCell>
                 <TableCell>{item.quantity}</TableCell>
                 <TableCell>{item.unit}</TableCell>
-                <TableCell>{item.alternate_unit || 'N/A'}</TableCell>
-                <TableCell>{item.purchase_price ? `₹${item.purchase_price}` : 'N/A'}</TableCell>
                 <TableCell>{item.suppliers?.name || 'N/A'}</TableCell>
               </TableRow>
             ))}

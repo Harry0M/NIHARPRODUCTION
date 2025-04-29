@@ -1,5 +1,4 @@
 
-import { ReactNode } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
@@ -7,11 +6,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import MobileNavigation from "./MobileNavigation";
 import { BreadcrumbTrail } from "@/components/navigation/BreadcrumbTrail";
 
-interface AppLayoutProps {
-  children?: ReactNode;
-}
-
-const AppLayout = ({ children }: AppLayoutProps) => {
+const AppLayout = () => {
   const isMobile = useIsMobile();
 
   return (
@@ -22,7 +17,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
           <div className="container mx-auto max-w-7xl p-4 md:p-6">
             <BreadcrumbTrail />
-            {children || <Outlet />}
+            <Outlet />
           </div>
         </main>
         {isMobile && <MobileNavigation />}
