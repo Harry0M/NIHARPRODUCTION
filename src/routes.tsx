@@ -1,3 +1,4 @@
+
 import { lazy, Suspense } from 'react';
 import { Navigate, RouteObject, useRoutes, useParams } from 'react-router-dom';
 
@@ -22,6 +23,10 @@ import StockJournalForm from './pages/Inventory/StockJournalForm';
 import CatalogNew from './pages/Inventory/CatalogNew';
 import StockList from './pages/Inventory/StockList';
 import CatalogList from './pages/Inventory/CatalogList';
+
+interface LayoutProps {
+  children?: React.ReactNode;
+}
 
 const Home = lazy(() => import('@/pages/Home'));
 const SignIn = lazy(() => import('@/pages/Auth/SignIn'));
@@ -99,7 +104,7 @@ const routes: RouteObject[] = [
       { path: '', element: <Suspense fallback={<>Loading...</>}><Companies /></Suspense> },
       { path: ':id', element: <Suspense fallback={<>Loading...</>}><CompanyDetails id={useParams().id} /></Suspense> },
       { path: 'new', element: <Suspense fallback={<>Loading...</>}><CompanyNew /></Suspense> },
-			{ path: ':id/edit', element: <Suspense fallback={<>Loading...</>}><CompanyEdit id={useParams().id} /></Suspense> },
+      { path: ':id/edit', element: <Suspense fallback={<>Loading...</>}><CompanyEdit id={useParams().id} /></Suspense> },
     ]
   },
   {
@@ -109,7 +114,7 @@ const routes: RouteObject[] = [
       { path: '', element: <Suspense fallback={<>Loading...</>}><Suppliers /></Suspense> },
       { path: ':id', element: <Suspense fallback={<>Loading...</>}><SupplierDetails id={useParams().id} /></Suspense> },
       { path: 'new', element: <Suspense fallback={<>Loading...</>}><SupplierNew /></Suspense> },
-			{ path: ':id/edit', element: <Suspense fallback={<>Loading...</>}><SupplierEdit id={useParams().id} /></Suspense> },
+      { path: ':id/edit', element: <Suspense fallback={<>Loading...</>}><SupplierEdit id={useParams().id} /></Suspense> },
     ]
   },
   {
@@ -119,7 +124,7 @@ const routes: RouteObject[] = [
       { path: '', element: <Suspense fallback={<>Loading...</>}><Transactions /></Suspense> },
       { path: ':id', element: <Suspense fallback={<>Loading...</>}><TransactionDetails id={useParams().id} /></Suspense> },
       { path: 'new', element: <Suspense fallback={<>Loading...</>}><TransactionNew /></Suspense> },
-			{ path: ':id/edit', element: <Suspense fallback={<>Loading...</>}><TransactionEdit id={useParams().id} /></Suspense> },
+      { path: ':id/edit', element: <Suspense fallback={<>Loading...</>}><TransactionEdit id={useParams().id} /></Suspense> },
     ]
   },
   {
@@ -156,7 +161,7 @@ const routes: RouteObject[] = [
 
 export function Router() {
   const element = useRoutes(routes);
-	const [isConnected, setIsConnected] = useState(true);
+  const [isConnected, setIsConnected] = useState(true);
 
   useEffect(() => {
     const checkConnection = async () => {
@@ -182,3 +187,5 @@ export function Router() {
     </>
   );
 }
+
+export default routes;
