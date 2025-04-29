@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/integrations/supabase/client";
@@ -241,7 +240,7 @@ export const useOrderForm = (initialOrder?: OrderFormData) => {
     setSubmitting(true);
     
     try {
-      // Insert order
+      // Insert order - Fix: Modify the insert data structure to match what Supabase expects
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -255,6 +254,7 @@ export const useOrderForm = (initialOrder?: OrderFormData) => {
           order_date: orderDetails.order_date,
           special_instructions: orderDetails.special_instructions || null,
           status: orderDetails.status || 'pending'
+          // Note: order_number is not included as it's automatically generated via a database trigger
         })
         .select('id')
         .single();

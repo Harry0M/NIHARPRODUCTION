@@ -30,6 +30,7 @@ export interface OrderFormData {
   order_date: string;
   status?: OrderStatus;
   sales_account_id?: string | null;
+  order_number?: string; // Make order_number optional in form data since it's auto-generated
 }
 
 export interface Component {
