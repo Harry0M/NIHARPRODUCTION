@@ -231,7 +231,7 @@ const StockJournal = () => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value="none">None</SelectItem>
                         {commonUnits.map(unit => (
                           <SelectItem key={unit} value={unit}>{unit}</SelectItem>
                         ))}
