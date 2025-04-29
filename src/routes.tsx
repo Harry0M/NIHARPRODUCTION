@@ -18,15 +18,20 @@ import AppLayout from './components/layout/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Create simple layouts for the routes until the real ones are properly built
-const MainLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
-const JobCardLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
-const OrderLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
-const VendorLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
-const CompanyLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
-const SupplierLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
-const TransactionLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
-const ProfileLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
-const DispatchLayout = ({ children }: { children: ReactNode }) => <div className="p-6">{children}</div>;
+// Fix: Add proper type definition for children prop
+interface LayoutProps {
+  children: ReactNode;
+}
+
+const MainLayout = ({ children }: LayoutProps) => <div className="p-6">{children}</div>;
+const JobCardLayout = ({ children }: LayoutProps) => <div className="p-6">{children}</div>;
+const OrderLayout = ({ children }: LayoutProps) => <div className="p-6">{children}</div>;
+const VendorLayout = ({ children }: LayoutProps) => <div className="p-6">{children}</div>;
+const CompanyLayout = ({ children }: LayoutProps) => <div className="p-6">{children}</div>;
+const SupplierLayout = ({ children }: LayoutProps) => <div className="p-6">{children}</div>;
+const TransactionLayout = ({ children }: LayoutProps) => <div className="p-6">{children}</div>;
+const ProfileLayout = ({ children }: LayoutProps) => <div className="p-6">{children}</div>;
+const DispatchLayout = ({ children }: LayoutProps) => <div className="p-6">{children}</div>;
 
 // Simple placeholder page component for routes
 const PlaceholderPage = ({ title }: { title: string }) => (

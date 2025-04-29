@@ -98,5 +98,3 @@ export const ComponentForm = ({
     </div>
   );
 };
-
-export default ComponentForm;
