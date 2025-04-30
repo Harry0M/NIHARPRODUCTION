@@ -133,7 +133,7 @@ const StockJournal = () => {
 
   // Handle alternate unit selection
   const handleAlternateUnitChange = (value: string) => {
-    if (value && value !== form.getValues("unit")) {
+    if (value && value !== "none" && value !== form.getValues("unit")) {
       setShowConversionRate(true);
     } else {
       setShowConversionRate(false);
@@ -220,7 +220,7 @@ const StockJournal = () => {
                     <FormLabel>Alternate Unit (Optional)</FormLabel>
                     <Select 
                       onValueChange={(value) => {
-                        field.onChange(value);
+                        field.onChange(value === "none" ? "" : value);
                         handleAlternateUnitChange(value);
                       }} 
                       defaultValue={field.value}
@@ -256,9 +256,12 @@ const StockJournal = () => {
                         <FormControl>
                           <Input 
                             type="number" 
-                            step="0.01" 
-                            {...field} 
-                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 1)} 
+                            step="0.01"
+                            value={field.value === undefined ? "1" : field.value}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              field.onChange(value === "" ? 1 : parseFloat(value));
+                            }}
                           />
                         </FormControl>
                         <ArrowLeftRight className="h-4 w-4" />
