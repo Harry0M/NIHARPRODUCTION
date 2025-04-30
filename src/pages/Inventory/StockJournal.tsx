@@ -111,7 +111,7 @@ const StockJournal = () => {
         title: "Stock added",
         description: "The inventory item has been created successfully.",
       });
-      navigate('/inventory/stock');
+      navigate('/inventory/stock/journal/list');
     },
     onError: (error) => {
       toast({
@@ -135,10 +135,14 @@ const StockJournal = () => {
   const handleAlternateUnitChange = (value: string) => {
     if (value && value !== "none" && value !== form.getValues("unit")) {
       setShowConversionRate(true);
+      // Set default conversion rate without overriding user input
+      if (!form.getValues("conversion_rate")) {
+        form.setValue("conversion_rate", 1);
+      }
     } else {
       setShowConversionRate(false);
       form.setValue("alternate_unit", "");
-      form.setValue("conversion_rate", 1);
+      form.setValue("conversion_rate", undefined);
     }
   };
 
@@ -195,7 +199,17 @@ const StockJournal = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Main Unit</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select 
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        // If alternate unit is set and same as new main unit, reset it
+                        if (form.getValues("alternate_unit") === value) {
+                          form.setValue("alternate_unit", "");
+                          setShowConversionRate(false);
+                        }
+                      }} 
+                      defaultValue={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select unit" />
@@ -223,7 +237,7 @@ const StockJournal = () => {
                         field.onChange(value === "none" ? "" : value);
                         handleAlternateUnitChange(value);
                       }} 
-                      defaultValue={field.value}
+                      defaultValue={field.value || "none"}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -232,7 +246,7 @@ const StockJournal = () => {
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
-                        {commonUnits.map(unit => (
+                        {commonUnits.filter(unit => unit !== form.getValues("unit")).map(unit => (
                           <SelectItem key={unit} value={unit}>{unit}</SelectItem>
                         ))}
                       </SelectContent>
@@ -257,10 +271,11 @@ const StockJournal = () => {
                           <Input 
                             type="number" 
                             step="0.01"
-                            value={field.value === undefined ? "1" : field.value}
+                            value={field.value === undefined ? "" : field.value}
                             onChange={(e) => {
+                              // Allow user to clear the field or enter new values
                               const value = e.target.value;
-                              field.onChange(value === "" ? 1 : parseFloat(value));
+                              field.onChange(value === "" ? undefined : parseFloat(value));
                             }}
                           />
                         </FormControl>
@@ -395,7 +410,7 @@ const StockJournal = () => {
             </div>
 
             <div className="flex justify-end space-x-2 pt-4">
-              <Button variant="outline" type="button" onClick={() => navigate('/inventory/stock')}>
+              <Button variant="outline" type="button" onClick={() => navigate('/inventory/stock/journal/list')}>
                 Cancel
               </Button>
               <Button type="submit" disabled={createInventoryMutation.isPending}>
