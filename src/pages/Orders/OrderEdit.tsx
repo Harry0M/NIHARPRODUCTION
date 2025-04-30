@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { 
@@ -265,7 +264,8 @@ const OrderEdit = () => {
           bag_width: parseFloat(formData.bag_width),
           rate: formData.rate ? parseFloat(formData.rate) : null,
           special_instructions: formData.special_instructions || null,
-          order_date: formData.order_date
+          order_date: formData.order_date,
+          sales_account_id: formData.sales_account_id || null  // Added missing field
         })
         .eq("id", id);
       
