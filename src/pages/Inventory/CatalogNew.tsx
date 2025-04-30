@@ -22,6 +22,7 @@ const componentOptions = {
 const CatalogNew = () => {
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   
   // Product details state
   const [productDetails, setProductDetails] = useState({
@@ -185,15 +186,87 @@ const CatalogNew = () => {
     setCustomComponents(prev => prev.filter((_, i) => i !== index));
   };
   
+  // Server-side validation function
+  const validateProductData = () => {
+    const errors: string[] = [];
+    
+    // Required product details
+    if (!productDetails.name.trim()) {
+      errors.push("Product name is required");
+    }
+    
+    if (!productDetails.bag_length) {
+      errors.push("Bag length is required");
+    } else if (isNaN(parseFloat(productDetails.bag_length)) || parseFloat(productDetails.bag_length) <= 0) {
+      errors.push("Bag length must be a positive number");
+    }
+    
+    if (!productDetails.bag_width) {
+      errors.push("Bag width is required");
+    } else if (isNaN(parseFloat(productDetails.bag_width)) || parseFloat(productDetails.bag_width) <= 0) {
+      errors.push("Bag width must be a positive number");
+    }
+    
+    // Validate numeric fields
+    if (productDetails.default_quantity && (isNaN(parseInt(productDetails.default_quantity)) || parseInt(productDetails.default_quantity) < 1)) {
+      errors.push("Default quantity must be a positive integer");
+    }
+    
+    if (productDetails.default_rate && (isNaN(parseFloat(productDetails.default_rate)) || parseFloat(productDetails.default_rate) < 0)) {
+      errors.push("Default rate must be a non-negative number");
+    }
+    
+    // Validate components
+    const allComponents = [
+      ...Object.values(components).filter(Boolean),
+      ...customComponents
+    ].filter(Boolean);
+    
+    // Check for custom components without names
+    customComponents.forEach((comp, index) => {
+      if (!comp.customName || comp.customName.trim() === '') {
+        errors.push(`Custom component #${index + 1} requires a name`);
+      }
+    });
+    
+    // Check for components with invalid measurements
+    allComponents.forEach(comp => {
+      const componentName = comp.type === 'custom' ? comp.customName || 'Custom component' : comp.type;
+      
+      if (comp.length && (isNaN(parseFloat(comp.length)) || parseFloat(comp.length) <= 0)) {
+        errors.push(`${componentName}: Length must be a positive number`);
+      }
+      
+      if (comp.width && (isNaN(parseFloat(comp.width)) || parseFloat(comp.width) <= 0)) {
+        errors.push(`${componentName}: Width must be a positive number`);
+      }
+      
+      if (comp.roll_width && (isNaN(parseFloat(comp.roll_width)) || parseFloat(comp.roll_width) <= 0)) {
+        errors.push(`${componentName}: Roll width must be a positive number`);
+      }
+    });
+    
+    return errors;
+  };
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate required fields
-    const { name, bag_length, bag_width } = productDetails;
-    if (!name || !bag_length || !bag_width) {
+    // Perform server-side validation
+    const errors = validateProductData();
+    setValidationErrors(errors);
+    
+    if (errors.length > 0) {
+      // Display validation errors
       toast({
-        title: "Missing required fields",
-        description: "Please fill in all required product details",
+        title: "Validation errors",
+        description: (
+          <ul className="list-disc pl-4 mt-2 space-y-1">
+            {errors.map((error, index) => (
+              <li key={index} className="text-sm">{error}</li>
+            ))}
+          </ul>
+        ),
         variant: "destructive"
       });
       return;
@@ -211,10 +284,10 @@ const CatalogNew = () => {
       const { data: catalogData, error: catalogError } = await supabase
         .from("catalog")
         .insert({
-          name,
+          name: productDetails.name,
           description: productDetails.description,
-          bag_length: parseFloat(bag_length),
-          bag_width: parseFloat(bag_width),
+          bag_length: parseFloat(productDetails.bag_length),
+          bag_width: parseFloat(productDetails.bag_width),
           default_quantity: productDetails.default_quantity ? parseInt(productDetails.default_quantity) : 1,
           default_rate: productDetails.default_rate ? parseFloat(productDetails.default_rate) : null,
           cutting_charge: productDetails.cutting_charge ? parseFloat(productDetails.cutting_charge) : 0,
@@ -227,7 +300,18 @@ const CatalogNew = () => {
         .select('id')
         .single();
       
-      if (catalogError) throw catalogError;
+      if (catalogError) {
+        if (catalogError.code === '23505') { // Unique constraint violation
+          toast({
+            title: "Product already exists",
+            description: "A product with this name already exists. Please choose a different name.",
+            variant: "destructive"
+          });
+          setSubmitting(false);
+          return;
+        }
+        throw catalogError;
+      }
       
       // Prepare component data for insertion
       const allComponents = [
@@ -266,7 +350,7 @@ const CatalogNew = () => {
       
       toast({
         title: "Product created successfully",
-        description: `Product "${name}" has been added to catalog`
+        description: `Product "${productDetails.name}" has been added to catalog`
       });
       
       // Navigate to the catalog list
@@ -274,11 +358,27 @@ const CatalogNew = () => {
       
     } catch (error: any) {
       console.error("Error creating product:", error);
-      toast({
-        title: "Error creating product",
-        description: error.message,
-        variant: "destructive"
-      });
+      
+      // Handle specific server-side validation errors from Supabase
+      if (error.code === '23514') { // Check constraint violation
+        toast({
+          title: "Validation error",
+          description: "One or more values failed server-side validation. Please check your input and try again.",
+          variant: "destructive"
+        });
+      } else if (error.code === '23502') { // Not null violation
+        toast({
+          title: "Missing required field",
+          description: "A required field is missing. Please check your input and try again.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Error creating product",
+          description: error.message,
+          variant: "destructive"
+        });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -360,6 +460,19 @@ const CatalogNew = () => {
           </div>
         </div>
       </div>
+      
+      {validationErrors.length > 0 && (
+        <Card className="bg-destructive/10 border-destructive">
+          <div className="p-4">
+            <h2 className="font-semibold text-destructive">Please fix the following errors:</h2>
+            <ul className="list-disc pl-5 mt-2 space-y-1">
+              {validationErrors.map((error, index) => (
+                <li key={index} className="text-sm text-destructive">{error}</li>
+              ))}
+            </ul>
+          </div>
+        </Card>
+      )}
       
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card>
