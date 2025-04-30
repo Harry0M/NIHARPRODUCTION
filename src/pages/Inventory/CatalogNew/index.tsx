@@ -43,7 +43,7 @@ const CatalogNew = () => {
     addCustomComponent,
     removeCustomComponent,
     usedMaterials
-  } = useCatalogForm(materials);
+  } = useCatalogForm(materials || []);
   
   // Server-side validation function
   const validateProductData = () => {
@@ -143,7 +143,7 @@ const CatalogNew = () => {
       const { data: catalogData, error: catalogError } = await supabase
         .from("catalog")
         .insert({
-          name,
+          name: productDetails.name,
           description: productDetails.description,
           bag_length: parseFloat(productDetails.bag_length),
           bag_width: parseFloat(productDetails.bag_width),

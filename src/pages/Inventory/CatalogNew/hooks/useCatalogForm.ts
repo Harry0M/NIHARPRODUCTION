@@ -1,9 +1,9 @@
 
-import { useState, useEffect } from "react";
-import { v4 as uuidv4 } from "uuid";
-import { ProductDetails, Component, CustomComponent, Material, MaterialUsage } from "../types";
+import { useState, useEffect } from 'react';
+import { v4 as uuidv4 } from 'uuid';
+import { ProductDetails, Component, CustomComponent, Material, MaterialUsage } from '../types';
 
-export const useCatalogForm = (materials: any[] | undefined) => {
+export const useCatalogForm = (materials: Material[]) => {
   // Product details state
   const [productDetails, setProductDetails] = useState<ProductDetails>({
     name: "",
@@ -103,7 +103,7 @@ export const useCatalogForm = (materials: any[] | undefined) => {
         if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && rollWidth > 0) {
           // Formula: (length * width) / (roll_width * 39.39)
           // Convert result to string since the component expects a string value
-          updatedComponent.consumption = ((length * width) / (rollWidth * 39.39)).toFixed(4).toString();
+          updatedComponent.consumption = ((length * width) / (rollWidth * 39.39)).toFixed(4);
         }
       }
       
@@ -129,7 +129,7 @@ export const useCatalogForm = (materials: any[] | undefined) => {
         if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && rollWidth > 0) {
           // Formula: (length * width) / (roll_width * 39.39)
           // Convert result to string since the component expects a string value
-          component.consumption = ((length * width) / (rollWidth * 39.39)).toFixed(4).toString();
+          component.consumption = ((length * width) / (rollWidth * 39.39)).toFixed(4);
         }
       }
       
@@ -154,7 +154,7 @@ export const useCatalogForm = (materials: any[] | undefined) => {
   };
   
   // Used materials list
-  const usedMaterials = (): MaterialUsage[] => {
+  const usedMaterials = () => {
     if (!materials) return [];
     
     const materialUsage: Record<string, MaterialUsage> = {};
@@ -203,7 +203,7 @@ export const useCatalogForm = (materials: any[] | undefined) => {
     
     return Object.values(materialUsage);
   };
-
+  
   return {
     productDetails,
     components,

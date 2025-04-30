@@ -33,9 +33,19 @@ export interface Material {
   id: string;
   material_type: string;
   color?: string;
-  gsm?: string; // Changed from number to string to match actual data
+  gsm?: string;
   unit: string;
   purchase_price: string;
+  quantity: number;
+  alternate_unit?: string;
+  conversion_rate?: number;
+  created_at?: string;
+  created_by?: string;
+  updated_at?: string;
+  selling_price?: string;
+  reorder_level?: number;
+  track_cost?: boolean;
+  supplier_id?: string;
 }
 
 export interface MaterialUsage {
