@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus } from "lucide-react";
@@ -61,7 +60,9 @@ const CatalogNew = () => {
   const [totalCost, setTotalCost] = useState(0);
   
   useEffect(() => {
-    calculateMaterialCost();
+    if (materials) {
+      calculateMaterialCost();
+    }
   }, [components, customComponents, materials]);
 
   useEffect(() => {
@@ -76,26 +77,26 @@ const CatalogNew = () => {
       productDetails.stitching_charge, productDetails.transport_charge]);
   
   const calculateMaterialCost = () => {
-    if (!materials) return;
+    if (!materials || materials.length === 0) return;
     
     let cost = 0;
     
     // Calculate cost for standard components
     Object.values(components).forEach(comp => {
-      if (comp.material_id && comp.consumption) {
+      if (comp.material_id && comp.material_id !== 'not_applicable' && comp.consumption) {
         const material = materials.find(m => m.id === comp.material_id);
         if (material && material.purchase_price) {
-          cost += parseFloat(comp.consumption) * material.purchase_price;
+          cost += parseFloat(comp.consumption) * parseFloat(material.purchase_price);
         }
       }
     });
     
     // Calculate cost for custom components
     customComponents.forEach(comp => {
-      if (comp.material_id && comp.consumption) {
+      if (comp.material_id && comp.material_id !== 'not_applicable' && comp.consumption) {
         const material = materials.find(m => m.id === comp.material_id);
         if (material && material.purchase_price) {
-          cost += parseFloat(comp.consumption) * material.purchase_price;
+          cost += parseFloat(comp.consumption) * parseFloat(material.purchase_price);
         }
       }
     });
@@ -117,12 +118,28 @@ const CatalogNew = () => {
         id: uuidv4(),
         type 
       };
+      
+      const updatedComponent = {
+        ...component,
+        [field]: value
+      };
+      
+      // Recalculate consumption if material_id, roll_width, length or width changes
+      if (['material_id', 'roll_width', 'length', 'width'].includes(field) && 
+          updatedComponent.roll_width && updatedComponent.length && updatedComponent.width) {
+        const length = parseFloat(updatedComponent.length);
+        const width = parseFloat(updatedComponent.width);
+        const rollWidth = parseFloat(updatedComponent.roll_width);
+        
+        if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && rollWidth > 0) {
+          // Formula: (length * width) / (roll_width * 39.39)
+          updatedComponent.consumption = ((length * width) / (rollWidth * 39.39)).toFixed(4);
+        }
+      }
+      
       return {
         ...prev,
-        [type]: {
-          ...component,
-          [field]: value
-        }
+        [type]: updatedComponent
       };
     });
   };
@@ -130,7 +147,22 @@ const CatalogNew = () => {
   const handleCustomComponentChange = (index: number, field: string, value: string) => {
     setCustomComponents(prev => {
       const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
+      const component = { ...updated[index], [field]: value };
+      
+      // Recalculate consumption if material_id, roll_width, length or width changes
+      if (['material_id', 'roll_width', 'length', 'width'].includes(field) && 
+          component.roll_width && component.length && component.width) {
+        const length = parseFloat(component.length);
+        const width = parseFloat(component.width);
+        const rollWidth = parseFloat(component.roll_width);
+        
+        if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && rollWidth > 0) {
+          // Formula: (length * width) / (roll_width * 39.39)
+          component.consumption = ((length * width) / (rollWidth * 39.39)).toFixed(4);
+        }
+      }
+      
+      updated[index] = component;
       return updated;
     });
   };
@@ -272,11 +304,11 @@ const CatalogNew = () => {
               name: material.material_type + (material.color ? ` (${material.color})` : '') + (material.gsm ? ` ${material.gsm} GSM` : ''),
               quantity: parseFloat(comp.consumption),
               unit: material.unit,
-              cost: material.purchase_price ? parseFloat(comp.consumption) * material.purchase_price : 0
+              cost: material.purchase_price ? parseFloat(comp.consumption) * parseFloat(material.purchase_price) : 0
             };
           } else {
             materialUsage[comp.material_id].quantity += parseFloat(comp.consumption);
-            materialUsage[comp.material_id].cost += material.purchase_price ? parseFloat(comp.consumption) * material.purchase_price : 0;
+            materialUsage[comp.material_id].cost += material.purchase_price ? parseFloat(comp.consumption) * parseFloat(material.purchase_price) : 0;
           }
         }
       }
@@ -293,11 +325,11 @@ const CatalogNew = () => {
               name: material.material_type + (material.color ? ` (${material.color})` : '') + (material.gsm ? ` ${material.gsm} GSM` : ''),
               quantity: parseFloat(comp.consumption),
               unit: material.unit,
-              cost: material.purchase_price ? parseFloat(comp.consumption) * material.purchase_price : 0
+              cost: material.purchase_price ? parseFloat(comp.consumption) * parseFloat(material.purchase_price) : 0
             };
           } else {
             materialUsage[comp.material_id].quantity += parseFloat(comp.consumption);
-            materialUsage[comp.material_id].cost += material.purchase_price ? parseFloat(comp.consumption) * material.purchase_price : 0;
+            materialUsage[comp.material_id].cost += material.purchase_price ? parseFloat(comp.consumption) * parseFloat(material.purchase_price) : 0;
           }
         }
       }
