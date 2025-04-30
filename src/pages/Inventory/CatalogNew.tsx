@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus } from "lucide-react";
@@ -133,7 +134,8 @@ const CatalogNew = () => {
         
         if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && rollWidth > 0) {
           // Formula: (length * width) / (roll_width * 39.39)
-          updatedComponent.consumption = ((length * width) / (rollWidth * 39.39)).toFixed(4);
+          // Convert result to string since the component expects a string value
+          updatedComponent.consumption = ((length * width) / (rollWidth * 39.39)).toFixed(4).toString();
         }
       }
       
@@ -158,7 +160,8 @@ const CatalogNew = () => {
         
         if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && rollWidth > 0) {
           // Formula: (length * width) / (roll_width * 39.39)
-          component.consumption = ((length * width) / (rollWidth * 39.39)).toFixed(4);
+          // Convert result to string since the component expects a string value
+          component.consumption = ((length * width) / (rollWidth * 39.39)).toFixed(4).toString();
         }
       }
       
