@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
@@ -11,6 +10,7 @@ import { ProductDetailsForm } from "./ProductDetailsForm";
 import { ComponentsSection } from "./ComponentsSection";
 import { CostCalculationSection } from "./CostCalculationSection";
 import { useCatalogForm } from "./hooks/useCatalogForm";
+import { Component } from "./types";
 
 const CatalogNew = () => {
   const navigate = useNavigate();
@@ -106,6 +106,7 @@ const CatalogNew = () => {
       productData.components.forEach((comp: any) => {
         const componentData = {
           id: comp.id,
+          component_type: comp.component_type,
           type: comp.component_type,
           length: comp.length ? comp.length.toString() : "",
           width: comp.width ? comp.width.toString() : "",
@@ -120,6 +121,7 @@ const CatalogNew = () => {
         if (comp.custom_name) {
           customComponentsList.push({
             ...componentData,
+            custom_name: comp.custom_name,
             customName: comp.custom_name
           });
         } else {
@@ -187,7 +189,7 @@ const CatalogNew = () => {
         errors.push(`${componentName}: Width must be a positive number`);
       }
       
-      if (comp.roll_width && (isNaN(parseFloat(comp.roll_width)) || parseFloat(comp.roll_width) <= 0)) {
+      if (comp.roll_width && (isNaN(parseFloat(String(comp.roll_width))) || parseFloat(String(comp.roll_width)) <= 0)) {
         errors.push(`${componentName}: Roll width must be a positive number`);
       }
     });
@@ -301,16 +303,16 @@ const CatalogNew = () => {
       if (allComponents.length > 0 && catalogId) {
         const componentsToInsert = allComponents.map(comp => ({
           catalog_id: catalogId,
-          component_type: comp.type === 'custom' ? comp.customName : comp.type,
+          component_type: comp.type === 'custom' ? comp.custom_name : comp.type,
           size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
-          length: comp.length ? parseFloat(comp.length) : null,
-          width: comp.width ? parseFloat(comp.width) : null,
+          length: comp.length ? parseFloat(String(comp.length)) : null,
+          width: comp.width ? parseFloat(String(comp.width)) : null,
           color: comp.color || null,
-          gsm: comp.gsm ? parseFloat(comp.gsm) : null,
-          custom_name: comp.type === 'custom' ? comp.customName : null,
+          gsm: comp.gsm ? parseFloat(String(comp.gsm)) : null,
+          custom_name: comp.type === 'custom' ? comp.custom_name : null,
           material_id: comp.material_id && comp.material_id !== 'not_applicable' ? comp.material_id : null,
-          roll_width: comp.roll_width ? parseFloat(comp.roll_width) : null,
-          consumption: comp.consumption ? parseFloat(comp.consumption) : null
+          roll_width: comp.roll_width ? parseFloat(String(comp.roll_width)) : null,
+          consumption: comp.consumption ? parseFloat(String(comp.consumption)) : null
         }));
 
         const { error: componentsError } = await supabase
@@ -362,7 +364,7 @@ const CatalogNew = () => {
       setSubmitting(false);
     }
   };
-  
+
   if ((isEditMode && productLoading) || materialsLoading) {
     return (
       <div className="flex justify-center items-center p-8 h-64">

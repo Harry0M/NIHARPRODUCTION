@@ -25,20 +25,21 @@ export interface Component {
   gsm: string;
   size: string;
   quantity?: number;
-  consumption?: number | string;
+  consumption?: string;  // Changed to string only
   material_id?: string;
   material_name?: string;
-  roll_width?: number | string;
+  roll_width?: string;   // Changed to string only
   custom_name?: string;
   length?: string;
   width?: string;
-  type?: string; // Added for compatibility
+  type?: string;
 }
 
 export interface CustomComponent extends Component {
   id: string;
   type: string;
-  customName?: string;
+  custom_name?: string;
+  customName?: string;  // For backward compatibility
 }
 
 export interface ComponentOptions {

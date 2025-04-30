@@ -28,6 +28,20 @@ export const ComponentsSection = ({
   addCustomComponent,
   removeCustomComponent
 }: ComponentsSectionProps) => {
+  // Helper function to convert component types for compatibility
+  const convertToComponentProps = (component: any) => {
+    return {
+      id: component.id || "",
+      type: component.type || component.component_type || "",
+      width: component.width || "",
+      length: component.length || "",
+      color: component.color || "",
+      material_id: component.material_id || "",
+      roll_width: String(component.roll_width || ""),
+      consumption: String(component.consumption || "")
+    };
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -41,7 +55,7 @@ export const ComponentsSection = ({
             <div className="divide-y divide-border">
               <ComponentForm
                 title="Part"
-                component={(components.part as any) || { type: "part", width: "", length: "", color: "", material_id: "", roll_width: "", consumption: "" }}
+                component={convertToComponentProps(components.part || { type: "part", width: "", length: "", color: "", material_id: "", roll_width: "", consumption: "" })}
                 index={0}
                 componentOptions={componentOptions}
                 onChange={(field, value) => handleComponentChange("part", field, value)}
@@ -50,7 +64,7 @@ export const ComponentsSection = ({
               
               <ComponentForm
                 title="Border"
-                component={(components.border as any) || { type: "border", width: "", length: "", color: "", material_id: "", roll_width: "", consumption: "" }}
+                component={convertToComponentProps(components.border || { type: "border", width: "", length: "", color: "", material_id: "", roll_width: "", consumption: "" })}
                 index={1}
                 componentOptions={componentOptions}
                 onChange={(field, value) => handleComponentChange("border", field, value)}
@@ -59,7 +73,7 @@ export const ComponentsSection = ({
               
               <ComponentForm
                 title="Handle"
-                component={(components.handle as any) || { type: "handle", width: "", length: "", color: "", material_id: "", roll_width: "", consumption: "" }}
+                component={convertToComponentProps(components.handle || { type: "handle", width: "", length: "", color: "", material_id: "", roll_width: "", consumption: "" })}
                 index={2}
                 componentOptions={componentOptions}
                 onChange={(field, value) => handleComponentChange("handle", field, value)}
@@ -68,7 +82,7 @@ export const ComponentsSection = ({
               
               <ComponentForm
                 title="Chain"
-                component={(components.chain as any) || { type: "chain", width: "", length: "", color: "", material_id: "" }}
+                component={convertToComponentProps(components.chain || { type: "chain", width: "", length: "", color: "", material_id: "" })}
                 index={3}
                 componentOptions={componentOptions}
                 onChange={(field, value) => handleComponentChange("chain", field, value)}
@@ -77,7 +91,7 @@ export const ComponentsSection = ({
               
               <ComponentForm
                 title="Runner"
-                component={(components.runner as any) || { type: "runner", width: "", length: "", color: "", material_id: "" }}
+                component={convertToComponentProps(components.runner || { type: "runner", width: "", length: "", color: "", material_id: "" })}
                 index={4}
                 componentOptions={componentOptions}
                 onChange={(field, value) => handleComponentChange("runner", field, value)}
@@ -102,10 +116,14 @@ export const ComponentsSection = ({
             </div>
             
             <CustomComponentSection
-              customComponents={customComponents}
-              componentOptions={componentOptions}
-              handleCustomComponentChange={handleCustomComponentChange}
-              removeCustomComponent={removeCustomComponent}
+              components={customComponents.map(c => ({
+                ...c,
+                customName: c.custom_name || c.customName || "",
+                roll_width: String(c.roll_width || ""),
+                consumption: String(c.consumption || "")
+              }))}
+              onChange={handleCustomComponentChange}
+              onRemove={removeCustomComponent}
             />
           </div>
         </div>

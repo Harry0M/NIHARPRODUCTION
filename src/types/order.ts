@@ -49,8 +49,8 @@ export interface Component {
   customName?: string;
   details?: string | null;
   material_id?: string | null;
-  roll_width?: string | number | null;
-  consumption?: string | number | null;
+  roll_width?: string | null;
+  consumption?: string | null;
   order_id?: string | null;
   created_at?: string | null;
   updated_at?: string | null;

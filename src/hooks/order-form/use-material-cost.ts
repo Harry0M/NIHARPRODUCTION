@@ -41,7 +41,7 @@ export function useMaterialCost(
         const material = inventoryItems.find(item => item.id === component.material_id);
         if (material && material.purchase_price) {
           const consumption = parseFloat(String(component.consumption)) || 0;
-          totalCost += consumption * parseFloat(material.purchase_price);
+          totalCost += consumption * parseFloat(String(material.purchase_price));
           
           // Track material usage
           if (!materialUsage[material.id]) {
@@ -67,7 +67,7 @@ export function useMaterialCost(
         const material = inventoryItems.find(item => item.id === component.material_id);
         if (material && material.purchase_price) {
           const consumption = parseFloat(String(component.consumption)) || 0;
-          totalCost += consumption * parseFloat(material.purchase_price);
+          totalCost += consumption * parseFloat(String(material.purchase_price));
           
           // Track material usage
           if (!materialUsage[material.id]) {
