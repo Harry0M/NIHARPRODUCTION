@@ -1,24 +1,22 @@
 
 import { useState, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { Component, CustomComponent, Material, MaterialUsage, ProductDetails } from "../types";
+import { ProductDetails, Component, CustomComponent, Material, MaterialUsage } from "../types";
 
-const initialProductDetails: ProductDetails = {
-  name: "",
-  description: "",
-  bag_length: "",
-  bag_width: "",
-  default_quantity: "1", // Default to 1
-  default_rate: "",
-  cutting_charge: "0",
-  printing_charge: "0",
-  stitching_charge: "0",
-  transport_charge: "0"
-};
-
-export const useCatalogForm = (materials: Material[] | undefined) => {
+export const useCatalogForm = (materials: any[] | undefined) => {
   // Product details state
-  const [productDetails, setProductDetails] = useState<ProductDetails>(initialProductDetails);
+  const [productDetails, setProductDetails] = useState<ProductDetails>({
+    name: "",
+    description: "",
+    bag_length: "",
+    bag_width: "",
+    default_quantity: "1", // Default to 1
+    default_rate: "",
+    cutting_charge: "0",
+    printing_charge: "0",
+    stitching_charge: "0",
+    transport_charge: "0"
+  });
   
   // Standard components state
   const [components, setComponents] = useState<Record<string, Component>>({});
@@ -155,6 +153,7 @@ export const useCatalogForm = (materials: Material[] | undefined) => {
     setCustomComponents(prev => prev.filter((_, i) => i !== index));
   };
   
+  // Used materials list
   const usedMaterials = (): MaterialUsage[] => {
     if (!materials) return [];
     
@@ -204,7 +203,7 @@ export const useCatalogForm = (materials: Material[] | undefined) => {
     
     return Object.values(materialUsage);
   };
-  
+
   return {
     productDetails,
     components,

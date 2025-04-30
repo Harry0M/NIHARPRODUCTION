@@ -33,7 +33,7 @@ export interface Material {
   id: string;
   material_type: string;
   color?: string;
-  gsm?: number;
+  gsm?: string; // Changed from number to string to match actual data
   unit: string;
   purchase_price: string;
 }
