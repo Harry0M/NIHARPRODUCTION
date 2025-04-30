@@ -103,7 +103,7 @@ const OrderDetail = () => {
         if (orderError) throw orderError;
         setOrder(orderData);
         
-        // Fixed: Fetch order components from the correct table "order_components"
+        // Fetch order components from the correct table "order_components"
         const { data: componentsData, error: componentsError } = await supabase
           .from("order_components")
           .select("*")
@@ -111,10 +111,20 @@ const OrderDetail = () => {
           
         if (componentsError) throw componentsError;
         
-        // Convert gsm from number to string if needed
+        // Convert types for compatibility with Component interface
         const typeSafeComponents: Component[] = componentsData?.map(comp => ({
-          ...comp,
-          gsm: comp.gsm !== null ? String(comp.gsm) : null
+          id: comp.id,
+          component_type: comp.component_type,
+          color: comp.color,
+          size: comp.size,
+          gsm: comp.gsm !== null ? String(comp.gsm) : null,
+          custom_name: comp.custom_name,
+          material_id: comp.material_id,
+          roll_width: comp.roll_width, // This is now compatible with both string and number
+          consumption: comp.consumption, // This is now compatible with both string and number
+          order_id: comp.order_id,
+          created_at: comp.created_at,
+          updated_at: comp.updated_at
         })) || [];
         
         setComponents(typeSafeComponents);

@@ -43,13 +43,16 @@ export interface Component {
   component_type?: string;
   type?: string;
   size?: string;
-  color?: string;
-  gsm?: string;
-  custom_name?: string;
-  details?: string;
-  material_id?: string;
-  roll_width?: string;
-  consumption?: string;
+  color?: string | null;
+  gsm?: string | null;
+  custom_name?: string | null;
+  details?: string | null;
+  material_id?: string | null;
+  roll_width?: string | number | null;
+  consumption?: string | number | null;
+  order_id?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface ComponentData {
