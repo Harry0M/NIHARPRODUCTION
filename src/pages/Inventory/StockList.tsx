@@ -31,10 +31,10 @@ const StockList = () => {
 
   return (
     <Card className="shadow-md">
-      <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+      <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between pb-2 space-y-0">
         <CardTitle className="text-xl font-bold">Inventory Stock</CardTitle>
         <div className="flex space-x-2">
-          <Button onClick={() => navigate('/inventory/stock/journal')}>
+          <Button onClick={() => navigate('/inventory/stock/journal/list')}>
             Stock Journal
           </Button>
           <Button onClick={() => navigate('/inventory/stock/new')}>
@@ -72,7 +72,9 @@ const StockList = () => {
                   className="cursor-pointer hover:bg-muted"
                   onClick={() => navigate(`/inventory/stock/${item.id}`)}
                 >
-                  <TableCell className="font-medium">{item.material_type}</TableCell>
+                  <TableCell className="font-medium text-primary hover:underline">
+                    {item.material_type}
+                  </TableCell>
                   <TableCell>{item.color || 'N/A'}</TableCell>
                   <TableCell>{item.gsm || 'N/A'}</TableCell>
                   <TableCell>

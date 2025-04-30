@@ -34,6 +34,7 @@ import StockJournal from "./pages/Inventory/StockJournal";
 import StockJournalList from "./pages/Inventory/StockJournalList";
 import StockJournalDetail from "./pages/Inventory/StockJournalDetail";
 import StockNew from "./pages/Inventory/StockNew";
+import StockDetail from "./pages/Inventory/StockDetail";
 
 // Placeholder for future development
 const Settings = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Settings</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
@@ -149,6 +150,10 @@ const routes: RouteObject[] = [
               {
                 path: "stock",
                 element: <StockList />
+              },
+              {
+                path: "stock/:id",
+                element: <StockDetail />
               },
               {
                 path: "stock/new",
