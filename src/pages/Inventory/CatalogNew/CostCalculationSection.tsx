@@ -1,8 +1,11 @@
 
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MaterialUsage, ProductDetails } from "./types";
+import { MaterialUsage, ProductDetails, Material } from "./types";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface CostCalculationSectionProps {
   usedMaterials: MaterialUsage[];
@@ -10,6 +13,7 @@ interface CostCalculationSectionProps {
   totalCost: number;
   productDetails: ProductDetails;
   handleProductChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  allMaterials: Material[];
 }
 
 export const CostCalculationSection = ({
@@ -17,8 +21,18 @@ export const CostCalculationSection = ({
   materialCost,
   totalCost,
   productDetails,
-  handleProductChange
+  handleProductChange,
+  allMaterials
 }: CostCalculationSectionProps) => {
+  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
+  
+  const handleMaterialClick = (materialId: string) => {
+    const material = allMaterials.find(m => m.id === materialId);
+    if (material) {
+      setSelectedMaterial(material);
+    }
+  };
+  
   return (
     <Card>
       <CardHeader>
@@ -43,7 +57,14 @@ export const CostCalculationSection = ({
                   <tbody>
                     {usedMaterials.map((material, index) => (
                       <tr key={material.id} className={index % 2 === 0 ? 'bg-card' : 'bg-muted/20'}>
-                        <td className="px-4 py-2">{material.name}</td>
+                        <td className="px-4 py-2">
+                          <button 
+                            className="text-left text-blue-600 hover:underline focus:outline-none"
+                            onClick={() => handleMaterialClick(material.id)}
+                          >
+                            {material.name}
+                          </button>
+                        </td>
                         <td className="px-4 py-2">{material.quantity.toFixed(2)} {material.unit}</td>
                         <td className="px-4 py-2 text-right">
                           ₹{material.cost.toFixed(2)}
@@ -148,6 +169,81 @@ export const CostCalculationSection = ({
             </div>
           </div>
         </div>
+
+        {/* Material Detail Dialog */}
+        <Dialog open={!!selectedMaterial} onOpenChange={(open) => !open && setSelectedMaterial(null)}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Material Details</DialogTitle>
+              <DialogDescription>
+                Information about selected inventory material
+              </DialogDescription>
+            </DialogHeader>
+            
+            <ScrollArea className="max-h-[60vh]">
+              {selectedMaterial && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-muted-foreground">Material Type</label>
+                      <p className="font-medium">{selectedMaterial.material_type}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-muted-foreground">Color</label>
+                      <p className="font-medium">{selectedMaterial.color || "N/A"}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-muted-foreground">GSM</label>
+                      <p className="font-medium">{selectedMaterial.gsm || "N/A"}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-muted-foreground">Unit</label>
+                      <p className="font-medium">{selectedMaterial.unit}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-muted-foreground">Purchase Price</label>
+                      <p className="font-medium">₹{selectedMaterial.purchase_price}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-muted-foreground">Selling Price</label>
+                      <p className="font-medium">{selectedMaterial.selling_price ? `₹${selectedMaterial.selling_price}` : "N/A"}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-muted-foreground">Current Quantity</label>
+                      <p className="font-medium">{selectedMaterial.quantity} {selectedMaterial.unit}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-muted-foreground">Reorder Level</label>
+                      <p className="font-medium">{selectedMaterial.reorder_level || "N/A"}</p>
+                    </div>
+                  </div>
+                  
+                  {selectedMaterial.alternate_unit && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm text-muted-foreground">Alternate Unit</label>
+                        <p className="font-medium">{selectedMaterial.alternate_unit}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm text-muted-foreground">Conversion Rate</label>
+                        <p className="font-medium">{selectedMaterial.conversion_rate}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );

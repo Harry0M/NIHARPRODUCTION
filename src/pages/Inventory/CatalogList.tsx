@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { Plus, Package, Trash2 } from "lucide-react";
+import { Plus, Package, Trash2, Edit } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 
 const CatalogList = () => {
   const navigate = useNavigate();
@@ -60,11 +60,18 @@ const CatalogList = () => {
       }
       
       // Success!
-      toast.success("Product deleted successfully");
+      toast({
+        title: "Product deleted successfully",
+        description: "The product and its components have been removed from the catalog."
+      });
       await refetch();
     } catch (error: any) {
       console.error('Error in handleDeleteProduct:', error);
-      toast.error(`Failed to delete product: ${error.message}`);
+      toast({
+        title: "Failed to delete product",
+        description: `Error: ${error.message}`,
+        variant: "destructive"
+      });
     } finally {
       setProductToDelete(null);
       setIsDeleting(false);
@@ -73,7 +80,8 @@ const CatalogList = () => {
 
   return (
     <Card>
-      <div className="p-4 flex justify-end">
+      <div className="p-4 flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Product Catalog (BOM)</h1>
         <Button onClick={() => navigate('/inventory/catalog/new')}>
           <Plus size={16} className="mr-2" />
           Add Product
@@ -103,20 +111,25 @@ const CatalogList = () => {
             {products?.map((product) => (
               <TableRow 
                 key={product.id}
-                className="cursor-pointer hover:bg-muted"
+                className="hover:bg-muted"
               >
-                <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{product.name}</TableCell>
-                <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{`${product.bag_length}×${product.bag_width}`}</TableCell>
-                <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{product.default_quantity || 'N/A'}</TableCell>
-                <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{product.default_rate ? `₹${product.default_rate}` : 'N/A'}</TableCell>
+                <TableCell>{product.name}</TableCell>
+                <TableCell>{`${product.bag_length}×${product.bag_width}`}</TableCell>
+                <TableCell>{product.default_quantity || 'N/A'}</TableCell>
+                <TableCell>{product.default_rate ? `₹${product.default_rate}` : 'N/A'}</TableCell>
                 <TableCell className="text-right space-x-2">
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/inventory/catalog/${product.id}/orders`);
-                    }}
+                    onClick={() => navigate(`/inventory/catalog/${product.id}/edit`)}
+                  >
+                    <Edit size={16} className="mr-2" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate(`/inventory/catalog/${product.id}/orders`)}
                   >
                     <Package size={16} className="mr-2" />
                     Orders
@@ -124,10 +137,7 @@ const CatalogList = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setProductToDelete(product.id);
-                    }}
+                    onClick={() => setProductToDelete(product.id)}
                   >
                     <Trash2 size={16} className="mr-2" />
                     Delete
@@ -152,6 +162,7 @@ const CatalogList = () => {
             <AlertDialogAction
               onClick={handleDeleteProduct}
               disabled={isDeleting}
+              className="bg-destructive hover:bg-destructive/90"
             >
               {isDeleting ? (
                 <div className="flex items-center gap-2">

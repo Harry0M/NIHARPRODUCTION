@@ -102,7 +102,6 @@ export const useCatalogForm = (materials: Material[]) => {
         
         if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && rollWidth > 0) {
           // Formula: (length * width) / (roll_width * 39.39)
-          // Convert result to string since the component expects a string value
           updatedComponent.consumption = ((length * width) / (rollWidth * 39.39)).toFixed(4);
         }
       }
@@ -128,7 +127,6 @@ export const useCatalogForm = (materials: Material[]) => {
         
         if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && rollWidth > 0) {
           // Formula: (length * width) / (roll_width * 39.39)
-          // Convert result to string since the component expects a string value
           component.consumption = ((length * width) / (rollWidth * 39.39)).toFixed(4);
         }
       }
@@ -206,8 +204,11 @@ export const useCatalogForm = (materials: Material[]) => {
   
   return {
     productDetails,
+    setProductDetails,
     components,
+    setComponents,
     customComponents,
+    setCustomComponents,
     materialCost,
     totalCost,
     handleProductChange,

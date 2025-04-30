@@ -1,6 +1,6 @@
 
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardFooter } from "@/components/ui/card";
@@ -14,11 +14,14 @@ import { useCatalogForm } from "./hooks/useCatalogForm";
 
 const CatalogNew = () => {
   const navigate = useNavigate();
+  const { id } = useParams<{ id?: string }>();
+  const isEditMode = !!id;
+  
   const [submitting, setSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   
   // Fetch inventory materials
-  const { data: materials } = useQuery({
+  const { data: materials, isLoading: materialsLoading } = useQuery({
     queryKey: ['inventory-materials'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -30,11 +33,45 @@ const CatalogNew = () => {
     },
   });
   
+  // Fetch product data if in edit mode
+  const { data: productData, isLoading: productLoading } = useQuery({
+    queryKey: ['catalog-product', id],
+    queryFn: async () => {
+      if (!id) return null;
+      
+      // Fetch product details
+      const { data: productDetails, error: productError } = await supabase
+        .from('catalog')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (productError) throw productError;
+      
+      // Fetch product components
+      const { data: componentDetails, error: componentError } = await supabase
+        .from('catalog_components')
+        .select('*')
+        .eq('catalog_id', id);
+      
+      if (componentError) throw componentError;
+      
+      return {
+        product: productDetails,
+        components: componentDetails
+      };
+    },
+    enabled: isEditMode
+  });
+  
   // Use our custom hook to manage form state and calculations
   const {
     productDetails,
+    setProductDetails,
     components,
+    setComponents,
     customComponents,
+    setCustomComponents,
     materialCost,
     totalCost,
     handleProductChange,
@@ -44,6 +81,56 @@ const CatalogNew = () => {
     removeCustomComponent,
     usedMaterials
   } = useCatalogForm(materials || []);
+  
+  // Populate form with existing data when in edit mode
+  useEffect(() => {
+    if (isEditMode && productData && !productLoading) {
+      // Set product details
+      setProductDetails({
+        name: productData.product.name,
+        description: productData.product.description || "",
+        bag_length: productData.product.bag_length.toString(),
+        bag_width: productData.product.bag_width.toString(),
+        default_quantity: productData.product.default_quantity ? productData.product.default_quantity.toString() : "1",
+        default_rate: productData.product.default_rate ? productData.product.default_rate.toString() : "",
+        cutting_charge: productData.product.cutting_charge ? productData.product.cutting_charge.toString() : "0",
+        printing_charge: productData.product.printing_charge ? productData.product.printing_charge.toString() : "0",
+        stitching_charge: productData.product.stitching_charge ? productData.product.stitching_charge.toString() : "0",
+        transport_charge: productData.product.transport_charge ? productData.product.transport_charge.toString() : "0"
+      });
+      
+      // Set components
+      const standardComponents: Record<string, any> = {};
+      const customComponentsList: any[] = [];
+      
+      productData.components.forEach((comp: any) => {
+        const componentData = {
+          id: comp.id,
+          type: comp.component_type,
+          length: comp.length ? comp.length.toString() : "",
+          width: comp.width ? comp.width.toString() : "",
+          color: comp.color || "",
+          gsm: comp.gsm ? comp.gsm.toString() : "",
+          material_id: comp.material_id || "",
+          roll_width: comp.roll_width ? comp.roll_width.toString() : "",
+          consumption: comp.consumption ? comp.consumption.toString() : ""
+        };
+        
+        // Categorize as standard or custom component
+        if (comp.custom_name) {
+          customComponentsList.push({
+            ...componentData,
+            customName: comp.custom_name
+          });
+        } else {
+          standardComponents[comp.component_type] = componentData;
+        }
+      });
+      
+      setComponents(standardComponents);
+      setCustomComponents(customComponentsList);
+    }
+  }, [isEditMode, productData, productLoading, setProductDetails, setComponents, setCustomComponents]);
   
   // Server-side validation function
   const validateProductData = () => {
@@ -139,37 +226,70 @@ const CatalogNew = () => {
       
       if (userError) throw userError;
       
-      // Insert product into catalog table
-      const { data: catalogData, error: catalogError } = await supabase
-        .from("catalog")
-        .insert({
-          name: productDetails.name,
-          description: productDetails.description,
-          bag_length: parseFloat(productDetails.bag_length),
-          bag_width: parseFloat(productDetails.bag_width),
-          default_quantity: productDetails.default_quantity ? parseInt(productDetails.default_quantity) : 1,
-          default_rate: productDetails.default_rate ? parseFloat(productDetails.default_rate) : null,
-          cutting_charge: productDetails.cutting_charge ? parseFloat(productDetails.cutting_charge) : 0,
-          printing_charge: productDetails.printing_charge ? parseFloat(productDetails.printing_charge) : 0,
-          stitching_charge: productDetails.stitching_charge ? parseFloat(productDetails.stitching_charge) : 0,
-          transport_charge: productDetails.transport_charge ? parseFloat(productDetails.transport_charge) : 0,
-          total_cost: totalCost > 0 ? totalCost : null,
-          created_by: userData.user?.id
-        })
-        .select('id')
-        .single();
+      const productPayload = {
+        name: productDetails.name,
+        description: productDetails.description,
+        bag_length: parseFloat(productDetails.bag_length),
+        bag_width: parseFloat(productDetails.bag_width),
+        default_quantity: productDetails.default_quantity ? parseInt(productDetails.default_quantity) : 1,
+        default_rate: productDetails.default_rate ? parseFloat(productDetails.default_rate) : null,
+        cutting_charge: productDetails.cutting_charge ? parseFloat(productDetails.cutting_charge) : 0,
+        printing_charge: productDetails.printing_charge ? parseFloat(productDetails.printing_charge) : 0,
+        stitching_charge: productDetails.stitching_charge ? parseFloat(productDetails.stitching_charge) : 0,
+        transport_charge: productDetails.transport_charge ? parseFloat(productDetails.transport_charge) : 0,
+        total_cost: totalCost > 0 ? totalCost : null,
+      };
       
-      if (catalogError) {
-        if (catalogError.code === '23505') { // Unique constraint violation
-          toast({
-            title: "Product already exists",
-            description: "A product with this name already exists. Please choose a different name.",
-            variant: "destructive"
-          });
-          setSubmitting(false);
-          return;
+      let catalogId = id;
+      
+      if (isEditMode) {
+        // Update existing product
+        const { error: catalogError } = await supabase
+          .from("catalog")
+          .update({
+            ...productPayload,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', id);
+        
+        if (catalogError) {
+          throw catalogError;
         }
-        throw catalogError;
+        
+        // Delete existing components to replace with new ones
+        const { error: deleteComponentsError } = await supabase
+          .from("catalog_components")
+          .delete()
+          .eq('catalog_id', id);
+        
+        if (deleteComponentsError) {
+          throw deleteComponentsError;
+        }
+      } else {
+        // Insert new product
+        const { data: catalogData, error: catalogError } = await supabase
+          .from("catalog")
+          .insert({
+            ...productPayload,
+            created_by: userData.user?.id
+          })
+          .select('id')
+          .single();
+        
+        if (catalogError) {
+          if (catalogError.code === '23505') { // Unique constraint violation
+            toast({
+              title: "Product already exists",
+              description: "A product with this name already exists. Please choose a different name.",
+              variant: "destructive"
+            });
+            setSubmitting(false);
+            return;
+          }
+          throw catalogError;
+        }
+        
+        catalogId = catalogData.id;
       }
       
       // Prepare component data for insertion
@@ -178,9 +298,9 @@ const CatalogNew = () => {
         ...customComponents
       ].filter(Boolean);
       
-      if (allComponents.length > 0) {
+      if (allComponents.length > 0 && catalogId) {
         const componentsToInsert = allComponents.map(comp => ({
-          catalog_id: catalogData.id,
+          catalog_id: catalogId,
           component_type: comp.type === 'custom' ? comp.customName : comp.type,
           size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
           length: comp.length ? parseFloat(comp.length) : null,
@@ -208,15 +328,15 @@ const CatalogNew = () => {
       }
       
       toast({
-        title: "Product created successfully",
-        description: `Product "${productDetails.name}" has been added to catalog`
+        title: isEditMode ? "Product updated successfully" : "Product created successfully",
+        description: `Product "${productDetails.name}" has been ${isEditMode ? 'updated in' : 'added to'} catalog`
       });
       
       // Navigate to the catalog list
       navigate("/inventory/catalog");
       
     } catch (error: any) {
-      console.error("Error creating product:", error);
+      console.error(isEditMode ? "Error updating product:" : "Error creating product:", error);
       
       // Handle specific server-side validation errors from Supabase
       if (error.code === '23514') { // Check constraint violation
@@ -233,7 +353,7 @@ const CatalogNew = () => {
         });
       } else {
         toast({
-          title: "Error creating product",
+          title: isEditMode ? "Error updating product" : "Error creating product",
           description: error.message,
           variant: "destructive"
         });
@@ -242,6 +362,14 @@ const CatalogNew = () => {
       setSubmitting(false);
     }
   };
+  
+  if ((isEditMode && productLoading) || materialsLoading) {
+    return (
+      <div className="flex justify-center items-center p-8 h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
   
   return (
     <div className="space-y-6">
@@ -257,8 +385,12 @@ const CatalogNew = () => {
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">New Product (BOM)</h1>
-            <p className="text-muted-foreground">Add a new product to your catalog with bill of materials</p>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {isEditMode ? 'Edit Product (BOM)' : 'New Product (BOM)'}
+            </h1>
+            <p className="text-muted-foreground">
+              {isEditMode ? 'Modify existing product details and bill of materials' : 'Add a new product to your catalog with bill of materials'}
+            </p>
           </div>
         </div>
       </div>
@@ -297,6 +429,7 @@ const CatalogNew = () => {
           totalCost={totalCost}
           productDetails={productDetails}
           handleProductChange={handleProductChange}
+          allMaterials={materials || []}
         />
         
         <Card>
@@ -310,7 +443,7 @@ const CatalogNew = () => {
                 Cancel
               </Button>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Saving..." : "Save Product (BOM)"}
+                {submitting ? (isEditMode ? "Updating..." : "Saving...") : (isEditMode ? "Update Product" : "Save Product (BOM)")}
               </Button>
             </div>
           </CardFooter>
