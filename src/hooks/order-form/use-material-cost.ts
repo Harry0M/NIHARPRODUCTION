@@ -2,17 +2,7 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Component } from "@/types/order";
-
-interface MaterialComponentUsage {
-  material_id: string;
-  material_name: string;
-  material_color: string;
-  material_gsm: string;
-  consumption: number;
-  available_quantity: number;
-  unit: string;
-}
+import { Component, MaterialUsage } from "@/types/order";
 
 export function useMaterialCost(
   components: Record<string, any>,
@@ -43,14 +33,14 @@ export function useMaterialCost(
     
     let totalCost = 0;
     const orderQuantity = parseInt(quantity) || 0;
-    const materialUsage: Record<string, MaterialComponentUsage> = {};
+    const materialUsage: Record<string, MaterialUsage> = {};
     
     // Calculate cost from standard components
     Object.values(components).forEach(component => {
       if (component.material_id && component.consumption) {
         const material = inventoryItems.find(item => item.id === component.material_id);
         if (material && material.purchase_price) {
-          const consumption = parseFloat(component.consumption.toString()) || 0;
+          const consumption = parseFloat(String(component.consumption)) || 0;
           totalCost += consumption * parseFloat(material.purchase_price);
           
           // Track material usage
@@ -76,7 +66,7 @@ export function useMaterialCost(
       if (component.material_id && component.consumption) {
         const material = inventoryItems.find(item => item.id === component.material_id);
         if (material && material.purchase_price) {
-          const consumption = parseFloat(component.consumption.toString()) || 0;
+          const consumption = parseFloat(String(component.consumption)) || 0;
           totalCost += consumption * parseFloat(material.purchase_price);
           
           // Track material usage
@@ -107,14 +97,14 @@ export function useMaterialCost(
     calculateMaterialUsage: () => {
       if (!inventoryItems) return [];
       
-      const materialUsage: Record<string, MaterialComponentUsage> = {};
+      const materialUsage: Record<string, MaterialUsage> = {};
       
       // Process standard components
       Object.values(components).forEach(component => {
         if (component.material_id && component.consumption) {
           const material = inventoryItems.find(item => item.id === component.material_id);
           if (material) {
-            const consumption = parseFloat(component.consumption.toString()) || 0;
+            const consumption = parseFloat(String(component.consumption)) || 0;
             if (!materialUsage[material.id]) {
               materialUsage[material.id] = {
                 material_id: material.id,
@@ -137,7 +127,7 @@ export function useMaterialCost(
         if (component.material_id && component.consumption) {
           const material = inventoryItems.find(item => item.id === component.material_id);
           if (material) {
-            const consumption = parseFloat(component.consumption.toString()) || 0;
+            const consumption = parseFloat(String(component.consumption)) || 0;
             if (!materialUsage[material.id]) {
               materialUsage[material.id] = {
                 material_id: material.id,

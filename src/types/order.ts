@@ -70,3 +70,22 @@ export interface ComponentData {
   roll_width?: string;
   consumption?: string;
 }
+
+export interface FormErrors {
+  company?: string;
+  quantity?: string;
+  bag_length?: string;
+  bag_width?: string;
+  order_date?: string;
+  [key: string]: string | undefined;
+}
+
+export interface MaterialUsage {
+  material_id: string;
+  material_name: string;
+  material_color: string;
+  material_gsm: string;
+  consumption: number;
+  available_quantity: number;
+  unit: string;
+}

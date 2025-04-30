@@ -10,7 +10,7 @@ export function useOrderSubmission(
   setSubmitting: (submitting: boolean) => void,
   inventoryItems: any[] | undefined
 ) {
-  const updateInventoryStock = async () => {
+  const updateInventoryStock = async (orderId: string) => {
     // Skip if no inventory items are loaded
     if (!inventoryItems) return;
     
@@ -21,7 +21,7 @@ export function useOrderSubmission(
     Object.values(components).forEach(comp => {
       if (comp.material_id && comp.consumption) {
         const materialId = comp.material_id;
-        const consumption = parseFloat(comp.consumption.toString());
+        const consumption = parseFloat(String(comp.consumption));
         
         if (!isNaN(consumption)) {
           if (!materialUsage[materialId]) {
@@ -37,7 +37,7 @@ export function useOrderSubmission(
     customComponents.forEach(comp => {
       if (comp.material_id && comp.consumption) {
         const materialId = comp.material_id;
-        const consumption = parseFloat(comp.consumption.toString());
+        const consumption = parseFloat(String(comp.consumption));
         
         if (!isNaN(consumption)) {
           if (!materialUsage[materialId]) {
@@ -93,8 +93,8 @@ export function useOrderSubmission(
               material_id: materialId,
               quantity: usage,
               transaction_type: 'order_consumption',
-              reference_id: null, // Will be updated after order creation
-              notes: `Material consumed for order preparation`
+              reference_id: orderId,
+              notes: `Material consumed for order ${orderDetails.company_name}`
             });
             
           if (transactionError) {
@@ -160,8 +160,8 @@ export function useOrderSubmission(
           gsm: comp.gsm || null,
           custom_name: comp.type === 'custom' ? comp.customName : null,
           material_id: comp.material_id || null,
-          roll_width: comp.roll_width ? parseFloat(comp.roll_width.toString()) : null,
-          consumption: comp.consumption ? parseFloat(comp.consumption.toString()) : null
+          roll_width: comp.roll_width ? parseFloat(String(comp.roll_width)) : null,
+          consumption: comp.consumption ? parseFloat(String(comp.consumption)) : null
         }));
 
         console.log("Inserting components:", componentsToInsert);
@@ -181,23 +181,7 @@ export function useOrderSubmission(
           console.log("Components saved successfully");
           
           // Update inventory stock levels
-          await updateInventoryStock();
-          
-          // Update transaction records with order ID
-          if (orderResult.id) {
-            const { error: updateTransactionError } = await supabase
-              .from('inventory_transactions')
-              .update({ 
-                reference_id: orderResult.id,
-                notes: `Material consumed for order ${orderResult.order_number}`
-              })
-              .is('reference_id', null)
-              .eq('transaction_type', 'order_consumption');
-              
-            if (updateTransactionError) {
-              console.error("Error updating transaction records with order ID:", updateTransactionError);
-            }
-          }
+          await updateInventoryStock(orderResult.id);
         }
       }
       

@@ -6,6 +6,7 @@ import { useProductSelection } from "./order-form/use-product-selection";
 import { useMaterialCost } from "./order-form/use-material-cost";
 import { useOrderSubmission } from "./order-form/use-order-submission";
 import { useOrderChanges } from "./order-form/use-order-changes";
+import { FormErrors } from "@/types/order";
 
 export function useOrderForm() {
   // State management
@@ -67,7 +68,7 @@ export function useOrderForm() {
     orderDetails,
     setOrderDetails,
     formErrors,
-    setFormErrors,
+    setFormErrors: setFormErrors as React.Dispatch<React.SetStateAction<Record<string, string>>>,
     updateComponentConsumptions,
     selectedProductId
   });

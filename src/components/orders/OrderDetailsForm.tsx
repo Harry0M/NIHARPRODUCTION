@@ -21,9 +21,9 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCatalogProducts } from "@/hooks/use-catalog-products";
 import { AlertCircle } from "lucide-react";
-import { OrderFormData } from "@/types/order";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { InfoCircledIcon } from "@radix-ui/react-icons";
+import { OrderFormData, MaterialUsage } from "@/types/order";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 interface Company {
@@ -45,15 +45,7 @@ interface OrderDetailsFormProps {
     order_date?: string;
   };
   totalMaterialCost?: number;
-  materialUsage?: Array<{
-    material_id: string;
-    material_name: string;
-    material_color: string;
-    material_gsm: string;
-    consumption: number;
-    available_quantity: number;
-    unit: string;
-  }>;
+  materialUsage?: MaterialUsage[];
 }
 
 export const OrderDetailsForm = ({ 
@@ -68,7 +60,7 @@ export const OrderDetailsForm = ({
   const { data: catalogProducts, isLoading } = useCatalogProducts();
 
   // Get material usage from local storage if available
-  const [localMaterialUsage, setLocalMaterialUsage] = useState<any[]>([]);
+  const [localMaterialUsage, setLocalMaterialUsage] = useState<MaterialUsage[]>([]);
   
   useEffect(() => {
     const storedUsage = localStorage.getItem('orderMaterialUsage');
@@ -102,21 +94,6 @@ export const OrderDetailsForm = ({
     // Call parent handler if provided
     if (onProductSelect) {
       onProductSelect(productId);
-    }
-  };
-
-  const handleCompanySelect = (companyId: string | null) => {
-    if (companyId && companyId !== "no_selection") {
-      // Only set company_id, don't set company_name
-      handleOrderChange({
-        target: {
-          name: 'company_id',
-          value: companyId
-        }
-      });
-    } else {
-      // Clear company_id when no company is selected
-      handleOrderChange({ target: { name: 'company_id', value: null } });
     }
   };
 

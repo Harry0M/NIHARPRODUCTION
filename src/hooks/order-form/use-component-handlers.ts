@@ -27,7 +27,7 @@ export function useComponentHandlers(
           updatedComponent.length && updatedComponent.width && updatedComponent.roll_width) {
         const length = parseFloat(updatedComponent.length);
         const width = parseFloat(updatedComponent.width);
-        const rollWidth = parseFloat(updatedComponent.roll_width.toString());
+        const rollWidth = parseFloat(String(updatedComponent.roll_width));
         
         if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && rollWidth > 0) {
           const orderQuantity = parseInt(orderDetails.quantity) || 1;
@@ -57,7 +57,7 @@ export function useComponentHandlers(
           updated[index].length && updated[index].width && updated[index].roll_width) {
         const length = parseFloat(updated[index].length as string);
         const width = parseFloat(updated[index].width as string);
-        const rollWidth = parseFloat(updated[index].roll_width as string);
+        const rollWidth = parseFloat(String(updated[index].roll_width));
         
         if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && rollWidth > 0) {
           const orderQuantity = parseInt(orderDetails.quantity) || 1;

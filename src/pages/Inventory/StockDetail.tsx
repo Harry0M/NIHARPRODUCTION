@@ -1,210 +1,100 @@
 
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useNavigate, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import StockBasicInfo from "@/components/inventory/StockBasicInfo";
-import StockInventoryManagement from "@/components/inventory/StockInventoryManagement";
-import StockCostTracking from "@/components/inventory/StockCostTracking";
-import StockSupplierInfo from "@/components/inventory/StockSupplierInfo";
-import { useToast } from "@/hooks/use-toast";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, PencilLine } from "lucide-react";
+import { StockBasicInfo } from "@/components/inventory/StockBasicInfo";
+import { StockInventoryManagement } from "@/components/inventory/StockInventoryManagement";
+import { StockSupplierInfo } from "@/components/inventory/StockSupplierInfo";
+import { StockCostTracking } from "@/components/inventory/StockCostTracking";
+import { Separator } from "@/components/ui/separator";
+import { MaterialUsageTable } from "@/components/inventory/MaterialUsageTable";
 
-export default function StockDetail() {
+const StockDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const [material, setMaterial] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [supplierInfo, setSupplierInfo] = useState<any>(null);
-  const [usageData, setUsageData] = useState<any[]>([]);
 
-  useEffect(() => {
-    const fetchMaterialDetails = async () => {
-      try {
-        if (!id) return;
-        
-        const { data: materialData, error } = await supabase
-          .from('inventory')
-          .select('*, suppliers(name, contact_person)')
-          .eq('id', id)
-          .single();
-          
-        if (error) throw error;
-        
-        setMaterial(materialData);
-        if (materialData.supplier_id) {
-          setSupplierInfo(materialData.suppliers);
-        }
-        
-        // Fetch orders that use this material
-        const { data: transactions, error: txError } = await supabase
-          .from('inventory_transactions')
-          .select(`
-            id,
-            quantity,
-            transaction_type,
-            created_at,
-            notes,
-            reference_id,
-            orders:reference_id(order_number, company_name, quantity)
-          `)
-          .eq('material_id', id)
-          .eq('transaction_type', 'order_consumption')
-          .order('created_at', { ascending: false });
-          
-        if (txError) throw txError;
-        
-        setUsageData(transactions || []);
-        
-      } catch (error: any) {
-        toast({
-          title: "Error fetching material",
-          description: error.message,
-          variant: "destructive"
-        });
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchMaterialDetails();
-  }, [id]);
+  const { data: material, isLoading } = useQuery({
+    queryKey: ['inventory-detail', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('inventory')
+        .select(`
+          *,
+          supplier:supplier_id (
+            id, name, contact_person, phone, email
+          )
+        `)
+        .eq('id', id!)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id
+  });
 
-  if (loading) {
-    return <div>Loading...</div>;
+  if (isLoading) {
+    return <div className="p-8 text-center">Loading inventory details...</div>;
   }
 
   if (!material) {
     return (
-      <div className="container mx-auto py-8">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold">Material not found</h2>
-          <p className="mt-2">The material you're looking for doesn't exist or has been removed.</p>
-          <Button
-            onClick={() => navigate("/inventory/stock")}
-            className="mt-4"
-          >
-            Back to Inventory
-          </Button>
-        </div>
+      <div className="p-8 text-center">
+        <h2 className="text-xl font-bold mb-2">Material not found</h2>
+        <Button variant="outline" onClick={() => navigate("/inventory/stock")}>
+          Back to Inventory
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-6 max-w-6xl">
-      <div className="flex items-center gap-2 mb-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1"
-          onClick={() => navigate("/inventory/stock")}
-        >
-          <ArrowLeft size={16} />
-          Back
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Material Details</h1>
-          <p className="text-muted-foreground">
-            View and update information for this inventory item
-          </p>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center space-x-4">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate("/inventory/stock")}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {material.material_type} {material.color && `- ${material.color}`}
+          </h1>
         </div>
-        <div className="flex-grow"></div>
-        <Button onClick={() => navigate(`/inventory/stock/${id}/edit`)}>
-          Edit Material
+        
+        <Button 
+          onClick={() => navigate(`/inventory/stock/${id}/edit`)}
+          variant="outline"
+        >
+          <PencilLine className="mr-2 h-4 w-4" />
+          Edit
         </Button>
       </div>
-
-      <div className="space-y-6">
-        <Card>
-          <CardContent className="p-6">
-            <StockBasicInfo material={material} />
-          </CardContent>
-        </Card>
-
-        <Tabs defaultValue="inventory">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="inventory">Inventory</TabsTrigger>
-            <TabsTrigger value="cost">Cost Tracking</TabsTrigger>
-            <TabsTrigger value="orders">Orders Usage</TabsTrigger>
-            <TabsTrigger value="supplier">Supplier</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="inventory" className="mt-4">
-            <Card>
-              <CardContent className="p-6">
-                <StockInventoryManagement material={material} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="cost" className="mt-4">
-            <Card>
-              <CardContent className="p-6">
-                <StockCostTracking material={material} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="orders" className="mt-4">
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <h2 className="text-lg font-semibold">Orders Using This Material</h2>
-                  
-                  {usageData.length > 0 ? (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Order</TableHead>
-                          <TableHead>Company</TableHead>
-                          <TableHead>Quantity Used</TableHead>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Notes</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {usageData.map(item => (
-                          <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50" 
-                              onClick={() => item.orders?.order_number && navigate(`/orders/${item.reference_id}`)}>
-                            <TableCell>
-                              {item.orders?.order_number || 'Unknown Order'}
-                            </TableCell>
-                            <TableCell>{item.orders?.company_name || 'N/A'}</TableCell>
-                            <TableCell>{item.quantity} {material.unit}</TableCell>
-                            <TableCell>{new Date(item.created_at).toLocaleDateString()}</TableCell>
-                            <TableCell>{item.notes || 'No notes'}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  ) : (
-                    <div className="text-center p-8 bg-muted/20 rounded-md">
-                      <p>No orders have used this material yet.</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="supplier" className="mt-4">
-            <Card>
-              <CardContent className="p-6">
-                <StockSupplierInfo 
-                  material={material} 
-                  supplierInfo={supplierInfo} 
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Main info cards */}
+        <StockBasicInfo material={material} />
+        <StockInventoryManagement material={material} />
+        <StockSupplierInfo supplier={material.supplier} />
       </div>
+
+      {/* Only show cost tracking if it's enabled */}
+      {material.track_cost && (
+        <>
+          <Separator />
+          <StockCostTracking material={material} />
+        </>
+      )}
+      
+      {/* Material usage history */}
+      <Separator />
+      <MaterialUsageTable materialId={material.id} />
     </div>
   );
-}
+};
+
+export default StockDetail;
