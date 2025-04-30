@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus } from "lucide-react";
@@ -9,12 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ComponentForm } from "@/components/orders/ComponentForm";
-import { CustomComponent, CustomComponentSection } from "@/components/orders/CustomComponentSection";
+import { CustomComponentSection } from "@/components/orders/CustomComponentSection";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
+import { CustomComponent, ComponentOptions } from "./CatalogNew/types";
 
-const componentOptions = {
+const componentOptions: ComponentOptions = {
   color: ["Red", "Blue", "Green", "Black", "White", "Yellow", "Brown", "Orange", "Purple", "Gray", "Custom"],
   gsm: ["70", "80", "90", "100", "120", "140", "160", "180", "200", "250", "300", "Custom"]
 };
@@ -88,7 +88,7 @@ const CatalogNew = () => {
       if (comp.material_id && comp.material_id !== 'not_applicable' && comp.consumption) {
         const material = materials.find(m => m.id === comp.material_id);
         if (material && material.purchase_price) {
-          cost += parseFloat(comp.consumption) * parseFloat(material.purchase_price);
+          cost += parseFloat(String(comp.consumption)) * parseFloat(material.purchase_price);
         }
       }
     });
@@ -98,7 +98,7 @@ const CatalogNew = () => {
       if (comp.material_id && comp.material_id !== 'not_applicable' && comp.consumption) {
         const material = materials.find(m => m.id === comp.material_id);
         if (material && material.purchase_price) {
-          cost += parseFloat(comp.consumption) * parseFloat(material.purchase_price);
+          cost += parseFloat(String(comp.consumption)) * parseFloat(material.purchase_price);
         }
       }
     });
@@ -131,12 +131,12 @@ const CatalogNew = () => {
           updatedComponent.roll_width && updatedComponent.length && updatedComponent.width) {
         const length = parseFloat(updatedComponent.length);
         const width = parseFloat(updatedComponent.width);
-        const rollWidth = parseFloat(updatedComponent.roll_width);
+        const rollWidth = parseFloat(String(updatedComponent.roll_width));
         
         if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && rollWidth > 0) {
           // Formula: (length * width) / (roll_width * 39.39)
           // Convert result to string since the component expects a string value
-          updatedComponent.consumption = ((length * width) / (rollWidth * 39.39)).toFixed(4).toString();
+          updatedComponent.consumption = ((length * width) / (rollWidth * 39.39)).toFixed(4);
         }
       }
       
@@ -155,14 +155,14 @@ const CatalogNew = () => {
       // Recalculate consumption if material_id, roll_width, length or width changes
       if (['material_id', 'roll_width', 'length', 'width'].includes(field) && 
           component.roll_width && component.length && component.width) {
-        const length = parseFloat(component.length);
-        const width = parseFloat(component.width);
-        const rollWidth = parseFloat(component.roll_width);
+        const length = parseFloat(String(component.length));
+        const width = parseFloat(String(component.width));
+        const rollWidth = parseFloat(String(component.roll_width));
         
         if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && rollWidth > 0) {
           // Formula: (length * width) / (roll_width * 39.39)
           // Convert result to string since the component expects a string value
-          component.consumption = ((length * width) / (rollWidth * 39.39)).toFixed(4).toString();
+          component.consumption = ((length * width) / (rollWidth * 39.39)).toFixed(4);
         }
       }
       
@@ -177,7 +177,11 @@ const CatalogNew = () => {
       { 
         id: uuidv4(),
         type: "custom",
-        customName: "" 
+        component_type: "custom",
+        customName: "",
+        color: "",
+        gsm: "",
+        size: ""
       }
     ]);
   };
@@ -241,7 +245,7 @@ const CatalogNew = () => {
         errors.push(`${componentName}: Width must be a positive number`);
       }
       
-      if (comp.roll_width && (isNaN(parseFloat(comp.roll_width)) || parseFloat(comp.roll_width) <= 0)) {
+      if (comp.roll_width && (isNaN(parseFloat(String(comp.roll_width))) || parseFloat(String(comp.roll_width)) <= 0)) {
         errors.push(`${componentName}: Roll width must be a positive number`);
       }
     });
@@ -330,8 +334,8 @@ const CatalogNew = () => {
           gsm: comp.gsm ? parseFloat(comp.gsm) : null,
           custom_name: comp.type === 'custom' ? comp.customName : null,
           material_id: comp.material_id && comp.material_id !== 'not_applicable' ? comp.material_id : null,
-          roll_width: comp.roll_width ? parseFloat(comp.roll_width) : null,
-          consumption: comp.consumption ? parseFloat(comp.consumption) : null
+          roll_width: comp.roll_width ? parseFloat(String(comp.roll_width)) : null,
+          consumption: comp.consumption ? parseFloat(String(comp.consumption)) : null
         }));
 
         const { error: componentsError } = await supabase
@@ -405,13 +409,13 @@ const CatalogNew = () => {
             materialUsage[comp.material_id] = {
               id: comp.material_id,
               name: material.material_type + (material.color ? ` (${material.color})` : '') + (material.gsm ? ` ${material.gsm} GSM` : ''),
-              quantity: parseFloat(comp.consumption),
+              quantity: parseFloat(String(comp.consumption)),
               unit: material.unit,
-              cost: material.purchase_price ? parseFloat(comp.consumption) * parseFloat(material.purchase_price) : 0
+              cost: material.purchase_price ? parseFloat(String(comp.consumption)) * parseFloat(material.purchase_price) : 0
             };
           } else {
-            materialUsage[comp.material_id].quantity += parseFloat(comp.consumption);
-            materialUsage[comp.material_id].cost += material.purchase_price ? parseFloat(comp.consumption) * parseFloat(material.purchase_price) : 0;
+            materialUsage[comp.material_id].quantity += parseFloat(String(comp.consumption));
+            materialUsage[comp.material_id].cost += material.purchase_price ? parseFloat(String(comp.consumption)) * parseFloat(material.purchase_price) : 0;
           }
         }
       }
@@ -426,13 +430,13 @@ const CatalogNew = () => {
             materialUsage[comp.material_id] = {
               id: comp.material_id,
               name: material.material_type + (material.color ? ` (${material.color})` : '') + (material.gsm ? ` ${material.gsm} GSM` : ''),
-              quantity: parseFloat(comp.consumption),
+              quantity: parseFloat(String(comp.consumption)),
               unit: material.unit,
-              cost: material.purchase_price ? parseFloat(comp.consumption) * parseFloat(material.purchase_price) : 0
+              cost: material.purchase_price ? parseFloat(String(comp.consumption)) * parseFloat(material.purchase_price) : 0
             };
           } else {
-            materialUsage[comp.material_id].quantity += parseFloat(comp.consumption);
-            materialUsage[comp.material_id].cost += material.purchase_price ? parseFloat(comp.consumption) * parseFloat(material.purchase_price) : 0;
+            materialUsage[comp.material_id].quantity += parseFloat(String(comp.consumption));
+            materialUsage[comp.material_id].cost += material.purchase_price ? parseFloat(String(comp.consumption)) * parseFloat(material.purchase_price) : 0;
           }
         }
       }

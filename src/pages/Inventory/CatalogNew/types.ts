@@ -4,7 +4,7 @@ export interface Material {
   material_type: string;
   color: string;
   gsm: string;
-  purchase_price: string; // Changed to string to match the interface usage
+  purchase_price: string; 
   quantity: number;
   unit: string;
   created_at: string;
@@ -14,6 +14,8 @@ export interface Material {
   alternate_unit: string;
   conversion_rate: number;
   supplier_id: string;
+  selling_price?: string;
+  reorder_level?: number;
 }
 
 export interface Component {
@@ -30,9 +32,21 @@ export interface Component {
   custom_name?: string;
   length?: string;
   width?: string;
+  type?: string; // Added for compatibility
 }
 
-export interface ProductFormData {
+export interface CustomComponent extends Component {
+  id: string;
+  type: string;
+  customName?: string;
+}
+
+export interface ComponentOptions {
+  color: string[];
+  gsm: string[];
+}
+
+export interface ProductDetails {
   name: string;
   description: string;
   bag_length: string;
@@ -42,4 +56,24 @@ export interface ProductFormData {
   cutting_charge: string;
   printing_charge: string;
   stitching_charge: string;
+  transport_charge: string;
+}
+
+export interface MaterialUsage {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  cost: number;
+}
+
+export interface ComponentProps {
+  id?: string;
+  type: string;
+  width?: string;
+  length?: string;
+  color?: string;
+  material_id?: string;
+  roll_width?: string;
+  consumption?: string;
 }

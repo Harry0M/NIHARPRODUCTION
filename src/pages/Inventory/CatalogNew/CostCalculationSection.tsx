@@ -3,9 +3,9 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MaterialUsage, ProductDetails, Material } from "./types";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { MaterialUsage, ProductDetails, Material } from "./types";
 
 interface CostCalculationSectionProps {
   usedMaterials: MaterialUsage[];

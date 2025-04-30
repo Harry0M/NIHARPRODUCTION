@@ -88,4 +88,8 @@ export interface MaterialUsage {
   consumption: number;
   available_quantity: number;
   unit: string;
+  name?: string;
+  id?: string;
+  quantity?: number;
+  cost?: number;
 }

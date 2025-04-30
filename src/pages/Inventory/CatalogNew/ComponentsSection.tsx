@@ -41,7 +41,7 @@ export const ComponentsSection = ({
             <div className="divide-y divide-border">
               <ComponentForm
                 title="Part"
-                component={components.part || { type: "part", width: "", length: "", color: "", material_id: "", roll_width: "", consumption: "" }}
+                component={(components.part as any) || { type: "part", width: "", length: "", color: "", material_id: "", roll_width: "", consumption: "" }}
                 index={0}
                 componentOptions={componentOptions}
                 onChange={(field, value) => handleComponentChange("part", field, value)}
@@ -50,7 +50,7 @@ export const ComponentsSection = ({
               
               <ComponentForm
                 title="Border"
-                component={components.border || { type: "border", width: "", length: "", color: "", material_id: "", roll_width: "", consumption: "" }}
+                component={(components.border as any) || { type: "border", width: "", length: "", color: "", material_id: "", roll_width: "", consumption: "" }}
                 index={1}
                 componentOptions={componentOptions}
                 onChange={(field, value) => handleComponentChange("border", field, value)}
@@ -59,7 +59,7 @@ export const ComponentsSection = ({
               
               <ComponentForm
                 title="Handle"
-                component={components.handle || { type: "handle", width: "", length: "", color: "", material_id: "", roll_width: "", consumption: "" }}
+                component={(components.handle as any) || { type: "handle", width: "", length: "", color: "", material_id: "", roll_width: "", consumption: "" }}
                 index={2}
                 componentOptions={componentOptions}
                 onChange={(field, value) => handleComponentChange("handle", field, value)}
@@ -68,7 +68,7 @@ export const ComponentsSection = ({
               
               <ComponentForm
                 title="Chain"
-                component={components.chain || { type: "chain", width: "", length: "", color: "", material_id: "" }}
+                component={(components.chain as any) || { type: "chain", width: "", length: "", color: "", material_id: "" }}
                 index={3}
                 componentOptions={componentOptions}
                 onChange={(field, value) => handleComponentChange("chain", field, value)}
@@ -77,7 +77,7 @@ export const ComponentsSection = ({
               
               <ComponentForm
                 title="Runner"
-                component={components.runner || { type: "runner", width: "", length: "", color: "", material_id: "" }}
+                component={(components.runner as any) || { type: "runner", width: "", length: "", color: "", material_id: "" }}
                 index={4}
                 componentOptions={componentOptions}
                 onChange={(field, value) => handleComponentChange("runner", field, value)}
