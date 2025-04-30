@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Edit } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -63,16 +63,16 @@ const StockList = () => {
                 <TableHead>Unit</TableHead>
                 <TableHead>Alt. Unit</TableHead>
                 <TableHead>Cost Tracking</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {stock?.map((item) => (
-                <TableRow 
-                  key={item.id}
-                  className="cursor-pointer hover:bg-muted"
-                  onClick={() => navigate(`/inventory/stock/${item.id}`)}
-                >
-                  <TableCell className="font-medium text-primary hover:underline">
+                <TableRow key={item.id}>
+                  <TableCell 
+                    className="font-medium text-primary hover:underline cursor-pointer"
+                    onClick={() => navigate(`/inventory/stock/${item.id}`)}
+                  >
                     {item.material_type}
                   </TableCell>
                   <TableCell>{item.color || 'N/A'}</TableCell>
@@ -97,6 +97,20 @@ const StockList = () => {
                         Disabled
                       </span>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/inventory/stock/edit/${item.id}`);
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
