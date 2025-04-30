@@ -44,7 +44,7 @@ const inventoryFormSchema = z.object({
     message: "Please select a unit.",
   }),
   alternate_unit: z.string().optional(),
-  conversion_rate: z.coerce.number().optional().default(1),
+  conversion_rate: z.coerce.number().optional(),
   track_cost: z.boolean().default(false),
   purchase_price: z.coerce.number().optional(),
   selling_price: z.coerce.number().optional(),
@@ -70,7 +70,7 @@ const StockJournal = () => {
       quantity: 0,
       unit: "",
       alternate_unit: "",
-      conversion_rate: 1,
+      conversion_rate: undefined, // Changed from 1 to undefined
       track_cost: false,
       purchase_price: undefined,
       selling_price: undefined,
@@ -89,7 +89,7 @@ const StockJournal = () => {
         quantity: formData.quantity,
         unit: formData.unit,
         alternate_unit: formData.alternate_unit || null,
-        conversion_rate: formData.conversion_rate,
+        conversion_rate: formData.conversion_rate || 1, // Default to 1 if not provided
         track_cost: formData.track_cost,
         purchase_price: formData.purchase_price || null,
         selling_price: formData.selling_price || null,
@@ -108,10 +108,10 @@ const StockJournal = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
       toast({
-        title: "Stock added",
+        title: "Stock entry created",
         description: "The inventory item has been created successfully.",
       });
-      navigate('/inventory/stock');
+      navigate('/inventory/stock/journal/list');
     },
     onError: (error) => {
       toast({
@@ -133,12 +133,16 @@ const StockJournal = () => {
 
   // Handle alternate unit selection
   const handleAlternateUnitChange = (value: string) => {
-    if (value && value !== form.getValues("unit")) {
+    if (value && value !== form.getValues("unit") && value !== "none") {
       setShowConversionRate(true);
+      // Only set default value if conversion_rate is undefined
+      if (form.getValues("conversion_rate") === undefined) {
+        form.setValue("conversion_rate", 1);
+      }
     } else {
       setShowConversionRate(false);
       form.setValue("alternate_unit", "");
-      form.setValue("conversion_rate", 1);
+      form.setValue("conversion_rate", undefined);
     }
   };
 
@@ -181,7 +185,10 @@ const StockJournal = () => {
                       <Input 
                         type="number" 
                         {...field} 
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
+                        onChange={(e) => {
+                          const value = e.target.value === "" ? undefined : parseFloat(e.target.value);
+                          field.onChange(value);
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -220,10 +227,10 @@ const StockJournal = () => {
                     <FormLabel>Alternate Unit (Optional)</FormLabel>
                     <Select 
                       onValueChange={(value) => {
-                        field.onChange(value);
+                        field.onChange(value === "none" ? "" : value);
                         handleAlternateUnitChange(value);
                       }} 
-                      defaultValue={field.value}
+                      defaultValue={field.value || "none"}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -257,8 +264,13 @@ const StockJournal = () => {
                           <Input 
                             type="number" 
                             step="0.01" 
-                            {...field} 
-                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 1)} 
+                            placeholder="Enter conversion rate"
+                            value={field.value === undefined ? "" : field.value}
+                            onChange={(e) => {
+                              // Allow clearing the input
+                              const value = e.target.value === "" ? undefined : parseFloat(e.target.value);
+                              field.onChange(value);
+                            }}
                           />
                         </FormControl>
                         <ArrowLeftRight className="h-4 w-4" />
@@ -339,8 +351,12 @@ const StockJournal = () => {
                           <Input 
                             type="number" 
                             step="0.01" 
-                            {...field} 
-                            onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)} 
+                            placeholder="Enter purchase price"
+                            value={field.value === undefined ? "" : field.value}
+                            onChange={(e) => {
+                              const value = e.target.value === "" ? undefined : parseFloat(e.target.value);
+                              field.onChange(value);
+                            }}
                           />
                         </FormControl>
                         <FormMessage />
@@ -358,8 +374,12 @@ const StockJournal = () => {
                           <Input 
                             type="number" 
                             step="0.01" 
-                            {...field} 
-                            onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)} 
+                            placeholder="Enter selling price"
+                            value={field.value === undefined ? "" : field.value}
+                            onChange={(e) => {
+                              const value = e.target.value === "" ? undefined : parseFloat(e.target.value);
+                              field.onChange(value);
+                            }}
                           />
                         </FormControl>
                         <FormMessage />
@@ -377,9 +397,13 @@ const StockJournal = () => {
                     <FormLabel>Reorder Level (Optional)</FormLabel>
                     <FormControl>
                       <Input 
-                        type="number" 
-                        {...field} 
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)} 
+                        type="number"
+                        placeholder="Enter reorder level"
+                        value={field.value === undefined ? "" : field.value}
+                        onChange={(e) => {
+                          const value = e.target.value === "" ? undefined : parseFloat(e.target.value);
+                          field.onChange(value);
+                        }}
                       />
                     </FormControl>
                     <FormDescription>
@@ -392,7 +416,7 @@ const StockJournal = () => {
             </div>
 
             <div className="flex justify-end space-x-2 pt-4">
-              <Button variant="outline" type="button" onClick={() => navigate('/inventory/stock')}>
+              <Button variant="outline" type="button" onClick={() => navigate('/inventory/stock/journal/list')}>
                 Cancel
               </Button>
               <Button type="submit" disabled={createInventoryMutation.isPending}>

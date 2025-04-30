@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Card,
@@ -25,11 +26,12 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Package, Search } from "lucide-react";
+import { Package, Search, ArrowLeft } from "lucide-react";
 
 const StockJournalList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
+  const navigate = useNavigate();
 
   const { data: inventory, isLoading } = useQuery({
     queryKey: ['inventory'],
@@ -63,32 +65,38 @@ const StockJournalList = () => {
     <Card className="shadow-md">
       <CardHeader className="pb-3">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <CardTitle className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2">
             <Package className="h-6 w-6 text-primary" />
-            <span>Stock Journal</span>
-          </CardTitle>
-          <div className="flex flex-col md:flex-row gap-2">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search inventory..."
-                className="pl-8 w-full md:w-[250px]"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="Filter by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Materials</SelectItem>
-                <SelectItem value="tracked">Cost Tracked</SelectItem>
-                <SelectItem value="untracked">Not Tracked</SelectItem>
-                <SelectItem value="low">Low Stock</SelectItem>
-              </SelectContent>
-            </Select>
+            <CardTitle>Stock Journal</CardTitle>
           </div>
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" onClick={() => navigate('/inventory/stock')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Stock
+            </Button>
+          </div>
+        </div>
+        <div className="flex flex-col md:flex-row gap-2 mt-4">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search inventory..."
+              className="pl-8 w-full md:w-[250px]"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Select value={filterType} onValueChange={setFilterType}>
+            <SelectTrigger className="w-full md:w-[180px]">
+              <SelectValue placeholder="Filter by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Materials</SelectItem>
+              <SelectItem value="tracked">Cost Tracked</SelectItem>
+              <SelectItem value="untracked">Not Tracked</SelectItem>
+              <SelectItem value="low">Low Stock</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </CardHeader>
       <CardContent>
@@ -117,8 +125,14 @@ const StockJournalList = () => {
               </TableHeader>
               <TableBody>
                 {filteredInventory?.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.material_type}</TableCell>
+                  <TableRow 
+                    key={item.id} 
+                    className="cursor-pointer hover:bg-muted"
+                    onClick={() => navigate(`/inventory/stock/journal/${item.id}`)}
+                  >
+                    <TableCell className="font-medium text-primary hover:underline">
+                      {item.material_type}
+                    </TableCell>
                     <TableCell>{item.color || '—'}</TableCell>
                     <TableCell>{item.gsm || '—'}</TableCell>
                     <TableCell>
