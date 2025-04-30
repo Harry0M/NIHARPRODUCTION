@@ -41,13 +41,15 @@ interface OrderDetailsFormProps {
     bag_width?: string;
     order_date?: string;
   };
+  totalMaterialCost?: number;
 }
 
 export const OrderDetailsForm = ({ 
   formData, 
   handleOrderChange, 
   onProductSelect,
-  formErrors 
+  formErrors,
+  totalMaterialCost = 0
 }: OrderDetailsFormProps) => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const { data: catalogProducts, isLoading } = useCatalogProducts();
@@ -274,6 +276,22 @@ export const OrderDetailsForm = ({
               placeholder="Price per bag"
               min="0"
             />
+          </div>
+        </div>
+
+        {/* Material cost calculation section */}
+        <div className="bg-muted p-4 rounded-md">
+          <div className="flex justify-between items-center">
+            <span className="font-medium">Total Material Cost:</span>
+            <span className="font-bold">₹{totalMaterialCost.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between items-center mt-2">
+            <span className="font-medium">Cost Per Unit:</span>
+            <span className="font-medium">
+              {formData.quantity && parseInt(formData.quantity) > 0 
+                ? `₹${(totalMaterialCost / parseInt(formData.quantity)).toFixed(2)}`
+                : '₹0.00'}
+            </span>
           </div>
         </div>
 

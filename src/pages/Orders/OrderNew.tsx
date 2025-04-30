@@ -28,6 +28,7 @@ const OrderNew = () => {
     customComponents,
     submitting,
     formErrors,
+    totalMaterialCost,
     handleOrderChange,
     handleComponentChange,
     handleCustomComponentChange,
@@ -75,6 +76,7 @@ const OrderNew = () => {
           handleOrderChange={handleOrderChange}
           onProductSelect={handleProductSelect}
           formErrors={formErrors}
+          totalMaterialCost={totalMaterialCost}
         />
         
         <Card>

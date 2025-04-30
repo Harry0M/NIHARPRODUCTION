@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -33,6 +32,7 @@ interface UseOrderFormReturn {
   customComponents: Component[];
   submitting: boolean;
   formErrors: FormErrors;
+  totalMaterialCost: number;
   handleOrderChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 
     target: { name: string; value: string | null } 
   }) => void;
@@ -63,7 +63,8 @@ export function useOrderForm(): UseOrderFormReturn {
   const [components, setComponents] = useState<Record<string, any>>({});
   const [customComponents, setCustomComponents] = useState<Component[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
-
+  const [totalMaterialCost, setTotalMaterialCost] = useState<number>(0);
+  
   // Fetch inventory data for calculations
   const { data: inventoryItems } = useQuery({
     queryKey: ['inventory'],
@@ -102,8 +103,52 @@ export function useOrderForm(): UseOrderFormReturn {
   useEffect(() => {
     if (selectedProduct && selectedProduct.catalog_components) {
       processCatalogComponents(selectedProduct.catalog_components);
+      
+      // Auto-fill the bag dimensions and rate
+      setOrderDetails(prev => ({
+        ...prev,
+        bag_length: selectedProduct.bag_length?.toString() || prev.bag_length,
+        bag_width: selectedProduct.bag_width?.toString() || prev.bag_width,
+        rate: selectedProduct.default_rate?.toString() || prev.rate,
+      }));
     }
   }, [selectedProduct]);
+
+  // Calculate total material cost whenever components or quantity changes
+  useEffect(() => {
+    calculateTotalMaterialCost();
+  }, [components, customComponents, orderDetails.quantity, inventoryItems]);
+
+  const calculateTotalMaterialCost = () => {
+    if (!inventoryItems) return;
+    
+    let totalCost = 0;
+    const orderQuantity = parseInt(orderDetails.quantity) || 0;
+    
+    // Calculate cost from standard components
+    Object.values(components).forEach(component => {
+      if (component.material_id && component.consumption) {
+        const material = inventoryItems.find(item => item.id === component.material_id);
+        if (material && material.purchase_price) {
+          const consumption = parseFloat(component.consumption) || 0;
+          totalCost += consumption * parseFloat(material.purchase_price);
+        }
+      }
+    });
+    
+    // Calculate cost from custom components
+    customComponents.forEach(component => {
+      if (component.material_id && component.consumption) {
+        const material = inventoryItems.find(item => item.id === component.material_id);
+        if (material && material.purchase_price) {
+          const consumption = parseFloat(component.consumption) || 0;
+          totalCost += consumption * parseFloat(material.purchase_price);
+        }
+      }
+    });
+    
+    setTotalMaterialCost(totalCost);
+  };
 
   const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 
     target: { name: string; value: string | null } 
@@ -334,15 +379,6 @@ export function useOrderForm(): UseOrderFormReturn {
     setSelectedProductId(productId);
     
     // The rest will be handled by the useEffect that watches selectedProduct
-    if (selectedProduct) {
-      // Update order details from the selected product
-      setOrderDetails(prev => ({
-        ...prev,
-        bag_length: selectedProduct.bag_length?.toString() || prev.bag_length,
-        bag_width: selectedProduct.bag_width?.toString() || prev.bag_width,
-        rate: selectedProduct.default_rate?.toString() || prev.rate,
-      }));
-    }
   };
 
   const validateForm = (): boolean => {
@@ -571,6 +607,7 @@ export function useOrderForm(): UseOrderFormReturn {
     customComponents,
     submitting,
     formErrors,
+    totalMaterialCost,
     handleOrderChange,
     handleComponentChange,
     handleCustomComponentChange,
