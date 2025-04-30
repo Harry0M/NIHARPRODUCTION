@@ -111,7 +111,7 @@ const StockJournal = () => {
         title: "Stock added",
         description: "The inventory item has been created successfully.",
       });
-      navigate('/inventory/stock/journal/list');
+      navigate('/inventory/stock');
     },
     onError: (error) => {
       toast({
@@ -133,16 +133,12 @@ const StockJournal = () => {
 
   // Handle alternate unit selection
   const handleAlternateUnitChange = (value: string) => {
-    if (value && value !== "none" && value !== form.getValues("unit")) {
+    if (value && value !== form.getValues("unit")) {
       setShowConversionRate(true);
-      // Set default conversion rate without overriding user input
-      if (!form.getValues("conversion_rate")) {
-        form.setValue("conversion_rate", 1);
-      }
     } else {
       setShowConversionRate(false);
       form.setValue("alternate_unit", "");
-      form.setValue("conversion_rate", undefined);
+      form.setValue("conversion_rate", 1);
     }
   };
 
@@ -199,17 +195,7 @@ const StockJournal = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Main Unit</FormLabel>
-                    <Select 
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                        // If alternate unit is set and same as new main unit, reset it
-                        if (form.getValues("alternate_unit") === value) {
-                          form.setValue("alternate_unit", "");
-                          setShowConversionRate(false);
-                        }
-                      }} 
-                      defaultValue={field.value}
-                    >
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select unit" />
@@ -234,10 +220,10 @@ const StockJournal = () => {
                     <FormLabel>Alternate Unit (Optional)</FormLabel>
                     <Select 
                       onValueChange={(value) => {
-                        field.onChange(value === "none" ? "" : value);
+                        field.onChange(value);
                         handleAlternateUnitChange(value);
                       }} 
-                      defaultValue={field.value || "none"}
+                      defaultValue={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -246,7 +232,7 @@ const StockJournal = () => {
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
-                        {commonUnits.filter(unit => unit !== form.getValues("unit")).map(unit => (
+                        {commonUnits.map(unit => (
                           <SelectItem key={unit} value={unit}>{unit}</SelectItem>
                         ))}
                       </SelectContent>
@@ -270,13 +256,9 @@ const StockJournal = () => {
                         <FormControl>
                           <Input 
                             type="number" 
-                            step="0.01"
-                            value={field.value === undefined ? "" : field.value}
-                            onChange={(e) => {
-                              // Allow user to clear the field or enter new values
-                              const value = e.target.value;
-                              field.onChange(value === "" ? undefined : parseFloat(value));
-                            }}
+                            step="0.01" 
+                            {...field} 
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 1)} 
                           />
                         </FormControl>
                         <ArrowLeftRight className="h-4 w-4" />
@@ -410,7 +392,7 @@ const StockJournal = () => {
             </div>
 
             <div className="flex justify-end space-x-2 pt-4">
-              <Button variant="outline" type="button" onClick={() => navigate('/inventory/stock/journal/list')}>
+              <Button variant="outline" type="button" onClick={() => navigate('/inventory/stock')}>
                 Cancel
               </Button>
               <Button type="submit" disabled={createInventoryMutation.isPending}>

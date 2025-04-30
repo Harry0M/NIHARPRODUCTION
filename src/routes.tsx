@@ -32,9 +32,9 @@ import CatalogNew from "./pages/Inventory/CatalogNew";
 import CatalogOrders from "./pages/Inventory/CatalogOrders";
 import StockJournal from "./pages/Inventory/StockJournal";
 import StockJournalList from "./pages/Inventory/StockJournalList";
-import StockNew from "./pages/Inventory/StockNew";
 
 // Placeholder for future development
+const InventoryNew = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">New Inventory</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 const Settings = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Settings</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
 
 const routes: RouteObject[] = [
@@ -151,7 +151,7 @@ const routes: RouteObject[] = [
               },
               {
                 path: "stock/new",
-                element: <StockNew />
+                element: <InventoryNew />
               },
               {
                 path: "stock/journal",
