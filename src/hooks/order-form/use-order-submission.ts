@@ -21,7 +21,7 @@ export function useOrderSubmission(
     Object.values(components).forEach(comp => {
       if (comp.material_id && comp.consumption) {
         const materialId = comp.material_id;
-        const consumption = parseFloat(comp.consumption);
+        const consumption = parseFloat(comp.consumption.toString());
         
         if (!isNaN(consumption)) {
           if (!materialUsage[materialId]) {
@@ -37,7 +37,7 @@ export function useOrderSubmission(
     customComponents.forEach(comp => {
       if (comp.material_id && comp.consumption) {
         const materialId = comp.material_id;
-        const consumption = parseFloat(comp.consumption);
+        const consumption = parseFloat(comp.consumption.toString());
         
         if (!isNaN(consumption)) {
           if (!materialUsage[materialId]) {
@@ -48,6 +48,8 @@ export function useOrderSubmission(
         }
       }
     });
+    
+    console.log("Material usage for inventory update:", materialUsage);
     
     // Update inventory for each used material
     for (const [materialId, usage] of Object.entries(materialUsage)) {
@@ -76,8 +78,28 @@ export function useOrderSubmission(
         
         if (updateError) {
           console.error(`Error updating inventory for material ${materialId}:`, updateError);
+          toast({
+            title: "Warning",
+            description: `Could not update inventory for material ID: ${materialId}`,
+            variant: "destructive"
+          });
         } else {
           console.log(`Updated inventory for material ${materialId}: ${currentQuantity} - ${usage} = ${newQuantity}`);
+          
+          // Create transaction record for material usage
+          const { error: transactionError } = await supabase
+            .from('inventory_transactions')
+            .insert({
+              material_id: materialId,
+              quantity: usage,
+              transaction_type: 'order_consumption',
+              reference_id: null, // Will be updated after order creation
+              notes: `Material consumed for order preparation`
+            });
+            
+          if (transactionError) {
+            console.error(`Error creating inventory transaction record:`, transactionError);
+          }
         }
       } catch (error) {
         console.error(`Error processing material ${materialId}:`, error);
@@ -138,8 +160,8 @@ export function useOrderSubmission(
           gsm: comp.gsm || null,
           custom_name: comp.type === 'custom' ? comp.customName : null,
           material_id: comp.material_id || null,
-          roll_width: comp.roll_width ? parseFloat(comp.roll_width) : null,
-          consumption: comp.consumption ? parseFloat(comp.consumption) : null
+          roll_width: comp.roll_width ? parseFloat(comp.roll_width.toString()) : null,
+          consumption: comp.consumption ? parseFloat(comp.consumption.toString()) : null
         }));
 
         console.log("Inserting components:", componentsToInsert);
@@ -160,6 +182,22 @@ export function useOrderSubmission(
           
           // Update inventory stock levels
           await updateInventoryStock();
+          
+          // Update transaction records with order ID
+          if (orderResult.id) {
+            const { error: updateTransactionError } = await supabase
+              .from('inventory_transactions')
+              .update({ 
+                reference_id: orderResult.id,
+                notes: `Material consumed for order ${orderResult.order_number}`
+              })
+              .is('reference_id', null)
+              .eq('transaction_type', 'order_consumption');
+              
+            if (updateTransactionError) {
+              console.error("Error updating transaction records with order ID:", updateTransactionError);
+            }
+          }
         }
       }
       

@@ -27,7 +27,7 @@ export function useComponentHandlers(
           updatedComponent.length && updatedComponent.width && updatedComponent.roll_width) {
         const length = parseFloat(updatedComponent.length);
         const width = parseFloat(updatedComponent.width);
-        const rollWidth = parseFloat(updatedComponent.roll_width);
+        const rollWidth = parseFloat(updatedComponent.roll_width.toString());
         
         if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && rollWidth > 0) {
           const orderQuantity = parseInt(orderDetails.quantity) || 1;
@@ -55,9 +55,9 @@ export function useComponentHandlers(
       // Recalculate consumption if needed
       if ((field === 'length' || field === 'width' || field === 'roll_width') && 
           updated[index].length && updated[index].width && updated[index].roll_width) {
-        const length = parseFloat(updated[index].length);
-        const width = parseFloat(updated[index].width);
-        const rollWidth = parseFloat(updated[index].roll_width);
+        const length = parseFloat(updated[index].length as string);
+        const width = parseFloat(updated[index].width as string);
+        const rollWidth = parseFloat(updated[index].roll_width as string);
         
         if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && rollWidth > 0) {
           const orderQuantity = parseInt(orderDetails.quantity) || 1;

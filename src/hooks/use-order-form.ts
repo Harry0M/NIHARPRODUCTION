@@ -55,7 +55,7 @@ export function useOrderForm() {
   );
 
   // Material cost calculation
-  const { inventoryItems } = useMaterialCost(
+  const { inventoryItems, calculateMaterialUsage } = useMaterialCost(
     components,
     customComponents,
     orderDetails.quantity,
@@ -81,6 +81,9 @@ export function useOrderForm() {
     inventoryItems
   );
 
+  // Perform material usage calculation
+  const materialUsage = calculateMaterialUsage();
+
   return {
     // State
     orderDetails,
@@ -89,6 +92,7 @@ export function useOrderForm() {
     submitting,
     formErrors,
     totalMaterialCost,
+    materialUsage,
     
     // Event handlers
     handleOrderChange,

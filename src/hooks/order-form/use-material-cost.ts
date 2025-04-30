@@ -2,10 +2,21 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Component } from "@/types/order";
+
+interface MaterialComponentUsage {
+  material_id: string;
+  material_name: string;
+  material_color: string;
+  material_gsm: string;
+  consumption: number;
+  available_quantity: number;
+  unit: string;
+}
 
 export function useMaterialCost(
   components: Record<string, any>,
-  customComponents: any[],
+  customComponents: Component[],
   quantity: string,
   setTotalMaterialCost: (cost: number) => void
 ) {
@@ -22,7 +33,7 @@ export function useMaterialCost(
     },
   });
 
-  // Calculate total material cost whenever components or quantity changes
+  // Calculate total material cost and material usage whenever components or quantity changes
   useEffect(() => {
     calculateTotalMaterialCost();
   }, [components, customComponents, quantity, inventoryItems]);
@@ -32,14 +43,30 @@ export function useMaterialCost(
     
     let totalCost = 0;
     const orderQuantity = parseInt(quantity) || 0;
+    const materialUsage: Record<string, MaterialComponentUsage> = {};
     
     // Calculate cost from standard components
     Object.values(components).forEach(component => {
       if (component.material_id && component.consumption) {
         const material = inventoryItems.find(item => item.id === component.material_id);
         if (material && material.purchase_price) {
-          const consumption = parseFloat(component.consumption) || 0;
+          const consumption = parseFloat(component.consumption.toString()) || 0;
           totalCost += consumption * parseFloat(material.purchase_price);
+          
+          // Track material usage
+          if (!materialUsage[material.id]) {
+            materialUsage[material.id] = {
+              material_id: material.id,
+              material_name: material.material_type || '',
+              material_color: material.color || '',
+              material_gsm: material.gsm || '',
+              consumption: consumption,
+              available_quantity: material.quantity || 0,
+              unit: material.unit || ''
+            };
+          } else {
+            materialUsage[material.id].consumption += consumption;
+          }
         }
       }
     });
@@ -49,14 +76,86 @@ export function useMaterialCost(
       if (component.material_id && component.consumption) {
         const material = inventoryItems.find(item => item.id === component.material_id);
         if (material && material.purchase_price) {
-          const consumption = parseFloat(component.consumption) || 0;
+          const consumption = parseFloat(component.consumption.toString()) || 0;
           totalCost += consumption * parseFloat(material.purchase_price);
+          
+          // Track material usage
+          if (!materialUsage[material.id]) {
+            materialUsage[material.id] = {
+              material_id: material.id,
+              material_name: material.material_type || '',
+              material_color: material.color || '',
+              material_gsm: material.gsm || '',
+              consumption: consumption,
+              available_quantity: material.quantity || 0,
+              unit: material.unit || ''
+            };
+          } else {
+            materialUsage[material.id].consumption += consumption;
+          }
         }
       }
     });
     
     setTotalMaterialCost(totalCost);
+    // Save material usage data to localStorage for use in other components
+    localStorage.setItem('orderMaterialUsage', JSON.stringify(Object.values(materialUsage)));
   };
 
-  return { inventoryItems };
+  return { 
+    inventoryItems,
+    calculateMaterialUsage: () => {
+      if (!inventoryItems) return [];
+      
+      const materialUsage: Record<string, MaterialComponentUsage> = {};
+      
+      // Process standard components
+      Object.values(components).forEach(component => {
+        if (component.material_id && component.consumption) {
+          const material = inventoryItems.find(item => item.id === component.material_id);
+          if (material) {
+            const consumption = parseFloat(component.consumption.toString()) || 0;
+            if (!materialUsage[material.id]) {
+              materialUsage[material.id] = {
+                material_id: material.id,
+                material_name: material.material_type || '',
+                material_color: material.color || '',
+                material_gsm: material.gsm || '',
+                consumption: consumption,
+                available_quantity: material.quantity || 0,
+                unit: material.unit || ''
+              };
+            } else {
+              materialUsage[material.id].consumption += consumption;
+            }
+          }
+        }
+      });
+      
+      // Process custom components
+      customComponents.forEach(component => {
+        if (component.material_id && component.consumption) {
+          const material = inventoryItems.find(item => item.id === component.material_id);
+          if (material) {
+            const consumption = parseFloat(component.consumption.toString()) || 0;
+            if (!materialUsage[material.id]) {
+              materialUsage[material.id] = {
+                material_id: material.id,
+                material_name: material.material_type || '',
+                material_color: material.color || '',
+                material_gsm: material.gsm || '',
+                consumption: consumption,
+                available_quantity: material.quantity || 0,
+                unit: material.unit || ''
+              };
+            } else {
+              materialUsage[material.id].consumption += consumption;
+            }
+          }
+        }
+      });
+      
+      return Object.values(materialUsage);
+    }
+  };
 }

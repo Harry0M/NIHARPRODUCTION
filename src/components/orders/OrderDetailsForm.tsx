@@ -22,6 +22,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCatalogProducts } from "@/hooks/use-catalog-products";
 import { AlertCircle } from "lucide-react";
 import { OrderFormData } from "@/types/order";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { InfoCircledIcon } from "@radix-ui/react-icons";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 interface Company {
   id: string;
@@ -42,6 +45,15 @@ interface OrderDetailsFormProps {
     order_date?: string;
   };
   totalMaterialCost?: number;
+  materialUsage?: Array<{
+    material_id: string;
+    material_name: string;
+    material_color: string;
+    material_gsm: string;
+    consumption: number;
+    available_quantity: number;
+    unit: string;
+  }>;
 }
 
 export const OrderDetailsForm = ({ 
@@ -49,10 +61,26 @@ export const OrderDetailsForm = ({
   handleOrderChange, 
   onProductSelect,
   formErrors,
-  totalMaterialCost = 0
+  totalMaterialCost = 0,
+  materialUsage = []
 }: OrderDetailsFormProps) => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const { data: catalogProducts, isLoading } = useCatalogProducts();
+
+  // Get material usage from local storage if available
+  const [localMaterialUsage, setLocalMaterialUsage] = useState<any[]>([]);
+  
+  useEffect(() => {
+    const storedUsage = localStorage.getItem('orderMaterialUsage');
+    if (storedUsage) {
+      try {
+        const parsedUsage = JSON.parse(storedUsage);
+        setLocalMaterialUsage(parsedUsage);
+      } catch (e) {
+        console.error("Error parsing material usage from localStorage:", e);
+      }
+    }
+  }, [totalMaterialCost]); // Refresh when the material cost changes
 
   // Fetch companies on component mount
   useEffect(() => {
@@ -91,6 +119,10 @@ export const OrderDetailsForm = ({
       handleOrderChange({ target: { name: 'company_id', value: null } });
     }
   };
+
+  // Merge provided material usage with local storage if needed
+  const displayMaterialUsage = materialUsage && materialUsage.length > 0 ? 
+    materialUsage : localMaterialUsage;
 
   return (
     <Card>
@@ -279,21 +311,84 @@ export const OrderDetailsForm = ({
           </div>
         </div>
 
-        {/* Material cost calculation section */}
-        <div className="bg-muted p-4 rounded-md">
-          <div className="flex justify-between items-center">
-            <span className="font-medium">Total Material Cost:</span>
-            <span className="font-bold">₹{totalMaterialCost.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between items-center mt-2">
-            <span className="font-medium">Cost Per Unit:</span>
-            <span className="font-medium">
-              {formData.quantity && parseInt(formData.quantity) > 0 
-                ? `₹${(totalMaterialCost / parseInt(formData.quantity)).toFixed(2)}`
-                : '₹0.00'}
-            </span>
-          </div>
-        </div>
+        {/* Material consumption and cost calculation section */}
+        <Card className="border-muted">
+          <CardHeader className="py-4 px-5">
+            <CardTitle className="text-lg">Material Requirements</CardTitle>
+          </CardHeader>
+          <CardContent className="px-5 py-0">
+            {displayMaterialUsage && displayMaterialUsage.length > 0 ? (
+              <div className="mb-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Material</TableHead>
+                      <TableHead>Usage</TableHead>
+                      <TableHead>Available</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {displayMaterialUsage.map((material, index) => (
+                      <TableRow key={material.material_id || index}>
+                        <TableCell>
+                          <div className="font-medium">{material.material_name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {material.material_color} {material.material_gsm && `(${material.material_gsm} GSM)`}
+                          </div>
+                        </TableCell>
+                        <TableCell>{material.consumption.toFixed(2)} {material.unit}</TableCell>
+                        <TableCell>{material.available_quantity.toFixed(2)} {material.unit}</TableCell>
+                        <TableCell>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <span className={`inline-flex items-center ${
+                                  material.consumption > material.available_quantity 
+                                    ? 'text-destructive' 
+                                    : 'text-green-500'
+                                }`}>
+                                  {material.consumption > material.available_quantity 
+                                    ? 'Insufficient' 
+                                    : 'Available'}
+                                  <InfoCircledIcon className="h-4 w-4 ml-1" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {material.consumption > material.available_quantity 
+                                  ? `Need ${(material.consumption - material.available_quantity).toFixed(2)} ${material.unit} more` 
+                                  : `${(material.available_quantity - material.consumption).toFixed(2)} ${material.unit} remaining after order`}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="text-center py-4 text-sm text-muted-foreground">
+                No materials selected or BOM not defined with materials
+              </div>
+            )}
+
+            <div className="bg-muted/50 p-4 rounded-md mb-4">
+              <div className="flex justify-between items-center">
+                <span className="font-medium">Total Material Cost:</span>
+                <span className="font-bold">₹{totalMaterialCost.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center mt-2">
+                <span className="font-medium">Cost Per Unit:</span>
+                <span className="font-medium">
+                  {formData.quantity && parseInt(formData.quantity) > 0 
+                    ? `₹${(totalMaterialCost / parseInt(formData.quantity)).toFixed(2)}`
+                    : '₹0.00'}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="space-y-2">
           <Label htmlFor="special_instructions">Special Instructions (optional)</Label>

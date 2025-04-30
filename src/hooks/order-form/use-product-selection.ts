@@ -2,8 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
-import { OrderFormData } from "@/types/order";
-import { Component } from "@/types/order";
+import { OrderFormData, Component } from "@/types/order";
 
 export function useProductSelection(
   selectedProductId: string | null,
@@ -82,7 +81,7 @@ export function useProductSelection(
       // Calculate consumption based on order quantity
       let consumption = '';
       if (component.consumption) {
-        consumption = (parseFloat(component.consumption) * orderQuantity).toFixed(2);
+        consumption = (parseFloat(component.consumption.toString()) * orderQuantity).toFixed(2);
       }
       
       if (component.component_type === 'custom' || !standardTypes.includes(component.component_type)) {
@@ -144,7 +143,7 @@ export function useProductSelection(
         );
         
         if (catalogComponent && component) {
-          const baseConsumption = parseFloat(catalogComponent.consumption) || 0;
+          const baseConsumption = parseFloat(catalogComponent.consumption.toString()) || 0;
           const newConsumption = (baseConsumption * quantity).toFixed(2);
           updatedComponents[type] = {
             ...component,
@@ -164,7 +163,7 @@ export function useProductSelection(
         );
         
         if (catalogComponent) {
-          const baseConsumption = parseFloat(catalogComponent.consumption) || 0;
+          const baseConsumption = parseFloat(catalogComponent.consumption.toString()) || 0;
           const newConsumption = (baseConsumption * quantity).toFixed(2);
           return {
             ...component,
