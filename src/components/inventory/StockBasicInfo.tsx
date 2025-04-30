@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 
 interface StockBasicInfoProps {
   inventory: {
-    material_type: string;
+    material_type?: string;
     color?: string;
     gsm?: string;
     quantity: number;
@@ -25,6 +25,17 @@ interface StockBasicInfoProps {
 }
 
 export const StockBasicInfo = ({ inventory }: StockBasicInfoProps) => {
+  // Make sure inventory exists before accessing its properties
+  if (!inventory) {
+    return (
+      <div>
+        <h3 className="text-lg font-medium">Basic Information</h3>
+        <Separator className="my-2" />
+        <div className="text-muted-foreground italic">Loading inventory information...</div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <h3 className="text-lg font-medium">Basic Information</h3>
@@ -33,7 +44,7 @@ export const StockBasicInfo = ({ inventory }: StockBasicInfoProps) => {
         <div className="flex items-center">
           <Tag className="h-4 w-4 mr-2 text-muted-foreground" />
           <span className="font-medium mr-2">Material Type:</span>
-          <span>{inventory.material_type}</span>
+          <span>{inventory.material_type || 'N/A'}</span>
         </div>
         {inventory.color && (
           <div className="flex items-center">
@@ -57,7 +68,7 @@ export const StockBasicInfo = ({ inventory }: StockBasicInfoProps) => {
             <Badge variant="destructive" className="ml-2">Low Stock</Badge>
           )}
         </div>
-        {inventory.alternate_unit && (
+        {inventory.alternate_unit && inventory.conversion_rate && (
           <div className="flex items-center">
             <ArrowLeft className="h-4 w-4 mr-2 text-muted-foreground" />
             <span className="font-medium mr-2">Alternate Unit:</span>

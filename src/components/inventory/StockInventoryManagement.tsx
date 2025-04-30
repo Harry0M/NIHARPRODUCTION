@@ -12,7 +12,8 @@ interface StockInventoryManagementProps {
 }
 
 export const StockInventoryManagement = ({ inventory }: StockInventoryManagementProps) => {
-  if (!inventory.reorder_level) {
+  // Check if inventory and reorder_level exist
+  if (!inventory || !inventory.reorder_level) {
     return null;
   }
   

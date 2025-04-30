@@ -15,9 +15,11 @@ const StockDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { data: material, isLoading } = useQuery({
+  const { data: material, isLoading, error } = useQuery({
     queryKey: ['inventory-detail', id],
     queryFn: async () => {
+      if (!id) throw new Error("No inventory ID provided");
+      
       const { data, error } = await supabase
         .from('inventory')
         .select(`
@@ -26,26 +28,57 @@ const StockDetail = () => {
             id, name, contact_person, phone, email
           )
         `)
-        .eq('id', id!)
+        .eq('id', id)
         .single();
       
       if (error) throw error;
+      if (!data) throw new Error("Inventory item not found");
+      
       return data;
     },
-    enabled: !!id
+    enabled: !!id,
+    retry: 1 // Limit retries to prevent excessive requests if item doesn't exist
   });
 
   if (isLoading) {
-    return <div className="p-8 text-center">Loading inventory details...</div>;
+    return (
+      <div className="p-8">
+        <div className="flex justify-between items-center mb-6">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate("/inventory/stock")}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+        </div>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <span className="ml-2">Loading inventory details...</span>
+        </div>
+      </div>
+    );
   }
 
-  if (!material) {
+  if (error || !material) {
     return (
-      <div className="p-8 text-center">
-        <h2 className="text-xl font-bold mb-2">Material not found</h2>
-        <Button variant="outline" onClick={() => navigate("/inventory/stock")}>
-          Back to Inventory
-        </Button>
+      <div className="p-8">
+        <div className="flex justify-between items-center mb-6">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate("/inventory/stock")}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+        </div>
+        <div className="text-center space-y-4">
+          <h2 className="text-xl font-bold">Material not found</h2>
+          <p className="text-muted-foreground">The inventory item you're looking for doesn't exist or you don't have permission to view it.</p>
+          <Button variant="outline" onClick={() => navigate("/inventory/stock")}>
+            Back to Inventory
+          </Button>
+        </div>
       </div>
     );
   }
@@ -77,8 +110,8 @@ const StockDetail = () => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Main info cards */}
-        <StockBasicInfo material={material} />
-        <StockInventoryManagement material={material} />
+        <StockBasicInfo inventory={material} />
+        <StockInventoryManagement inventory={material} />
         <StockSupplierInfo supplier={material.supplier} />
       </div>
 
@@ -86,7 +119,7 @@ const StockDetail = () => {
       {material.track_cost && (
         <>
           <Separator />
-          <StockCostTracking material={material} />
+          <StockCostTracking inventory={material} />
         </>
       )}
       
