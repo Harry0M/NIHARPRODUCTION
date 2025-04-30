@@ -1,4 +1,3 @@
-
 export interface OrderFormData {
   company_name: string;
   company_id: string | null;
@@ -46,6 +45,7 @@ export interface Component {
   color?: string | null;
   gsm?: string | null;
   custom_name?: string | null;
+  customName?: string;
   details?: string | null;
   material_id?: string | null;
   roll_width?: string | number | null;
@@ -53,6 +53,8 @@ export interface Component {
   order_id?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+  length?: string;
+  width?: string;
 }
 
 export interface ComponentData {
