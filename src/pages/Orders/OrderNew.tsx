@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { OrderFormData, Component, CustomComponent, OrderStatus } from "@/types/order";
+import { OrderFormData, Component, CustomComponent, OrderStatus, ComponentProps } from "@/types/order";
 import { ComponentForm } from "@/components/orders/ComponentForm";
 
 type ComponentType = "part" | "border" | "handle" | "chain" | "runner" | "custom";
@@ -21,7 +21,7 @@ const OrderNew = () => {
   const { id, catalogId } = useParams<{ id?: string; catalogId?: string }>();
   const isEditMode = !!id;
   const [orderDetails, setOrderDetails] = useState<OrderFormData>({
-    company_name: '', // Add required property
+    company_name: '', // Required property
     catalog_id: catalogId || '',
     quantity: '',
     rate: '',
@@ -34,7 +34,7 @@ const OrderNew = () => {
     bag_width: '',
     description: '',
   });
-  const [components, setComponents] = useState<Component[]>([]);
+  const [components, setComponents] = useState<ComponentProps[]>([]);
   const [customComponents, setCustomComponents] = useState<CustomComponent[]>([]);
   const [componentOptions, setComponentOptions] = useState({
     color: ['Red', 'Blue', 'Green', 'Yellow', 'Black', 'White'],
@@ -96,7 +96,7 @@ const OrderNew = () => {
       }));
 
       // Process catalog components
-      const newComponents: Component[] = [];
+      const newComponents: ComponentProps[] = [];
       const newCustomComponents: CustomComponent[] = [];
 
       catalogProduct.catalog_components.forEach(component => {
@@ -135,7 +135,7 @@ const OrderNew = () => {
   useEffect(() => {
     if (orderData) {
       setOrderDetails({
-        company_name: orderData.company_name || '', // Add required field
+        company_name: orderData.company_name || '', // Ensure required field
         catalog_id: orderData.catalog_id || '',
         quantity: orderData.quantity?.toString() || '',
         rate: orderData.rate?.toString() || '',
@@ -160,7 +160,10 @@ const OrderNew = () => {
         const standardComps = orderData.components.filter(
           (comp: any) => !comp.custom_name && comp.component_type !== 'custom'
         );
-        setComponents(standardComps);
+        setComponents(standardComps.map((comp: any) => ({
+          ...comp,
+          type: comp.type || comp.component_type,
+        })));
       }
     }
   }, [orderData]);
@@ -242,10 +245,13 @@ const OrderNew = () => {
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError) throw userError;
 
+      // Convert string values to proper types for database insertion
       const orderPayload = {
         ...orderDetails,
         quantity: Number(orderDetails.quantity),
         rate: Number(orderDetails.rate),
+        bag_length: Number(orderDetails.bag_length),
+        bag_width: Number(orderDetails.bag_width),
         user_id: userData.user?.id,
         status: orderDetails.status as OrderStatus
       };
@@ -256,7 +262,7 @@ const OrderNew = () => {
         // Update existing order
         const { error: orderError } = await supabase
           .from("orders")
-          .update(orderPayload)
+          .update(orderPayload as any)
           .eq('id', id);
 
         if (orderError) throw orderError;
@@ -272,7 +278,7 @@ const OrderNew = () => {
         // Insert new order
         const { data: orderData, error: orderError } = await supabase
           .from("orders")
-          .insert(orderPayload)
+          .insert(orderPayload as any)
           .select('id')
           .single();
 
@@ -285,6 +291,7 @@ const OrderNew = () => {
       const componentsToInsert = allComponents.map(comp => ({
         order_id: orderId,
         component_type: comp.component_type,
+        type: comp.type, // Make sure type is included
         color: comp.color || null,
         gsm: comp.gsm ? Number(comp.gsm) : null,
         size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
@@ -300,7 +307,7 @@ const OrderNew = () => {
       // Insert components
       const { error: componentsError } = await supabase
         .from("components")
-        .insert(componentsToInsert);
+        .insert(componentsToInsert as any);
 
       if (componentsError) {
         console.error("Error saving components:", componentsError);

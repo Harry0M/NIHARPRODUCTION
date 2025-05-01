@@ -41,7 +41,7 @@ const OrderDetail = () => {
   const navigate = useNavigate();
   const [orderData, setOrderData] = useState<any>(null);
   const [orderDetails, setOrderDetails] = useState<OrderFormData>({
-    company_name: '', // Add required property
+    company_name: '', // Required property
     order_number: '',
     customer_name: '',
     customer_phone: '',
@@ -104,7 +104,7 @@ const OrderDetail = () => {
     return orderComponents.map(component => ({
       id: component.id,
       component_type: component.component_type,
-      type: component.component_type,
+      type: component.type || component.component_type,
       color: component.color || '',
       gsm: component.gsm?.toString() || '',
       size: component.size || '',
@@ -122,7 +122,7 @@ const OrderDetail = () => {
   useEffect(() => {
     if (orderData) {
       setOrderDetails({
-        company_name: orderData.company_name || '', // Add required field
+        company_name: orderData.company_name || '', // Required field
         order_number: orderData.order_number || '',
         customer_name: orderData.customer_name || '',
         customer_phone: orderData.customer_phone || '',
@@ -171,7 +171,6 @@ const OrderDetail = () => {
         rate: parseFloat(orderDetails.rate as string),
         bag_length: parseFloat(orderDetails.bag_length as string),
         bag_width: parseFloat(orderDetails.bag_width as string),
-        // Convert status to proper format for database
         status: orderDetails.status
       };
 
@@ -188,7 +187,7 @@ const OrderDetail = () => {
       const componentsPayload = components.map(component => ({
         ...component,
         order_id: id,
-        type: component.component_type as "part" | "border" | "handle" | "chain" | "runner" | "custom"
+        type: component.type || component.component_type
       }));
 
       const { error: deleteError } = await supabase
@@ -206,10 +205,12 @@ const OrderDetail = () => {
           .insert({
             order_id: component.order_id,
             type: component.type,
+            component_type: component.component_type,
             color: component.color,
             gsm: component.gsm,
             size: component.size,
-            details: component.details
+            details: component.details,
+            custom_name: component.custom_name
           });
 
         if (insertError) {

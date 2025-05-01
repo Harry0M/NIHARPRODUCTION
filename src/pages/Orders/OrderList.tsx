@@ -60,9 +60,9 @@ const OrderList = () => {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (filters.status) {
-        // Use type assertion here to handle the string-to-OrderStatus conversion
-        query = query.eq('status', filters.status as string);
+      if (filters.status && filters.status !== 'all') {
+        // Use explicit type assertion for the status value
+        query = query.eq('status', filters.status);
       }
 
       if (filters.dateRange.from) {

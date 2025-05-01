@@ -1,4 +1,3 @@
-
 import { Component as CatalogComponent } from "../pages/Inventory/CatalogNew/types";
 
 // Interface for form errors
@@ -118,14 +117,33 @@ export interface Component {
   order_id?: string;
   created_at?: string;
   updated_at?: string;
-  details?: string; // Added missing property
+  details?: string;
 }
 
 // Custom component definition
 export interface CustomComponent extends Component {
   type: "part" | "border" | "handle" | "chain" | "runner" | "custom"; // Required for CustomComponent
+  component_type: string; // Make sure this is required
   customName?: string; // For backward compatibility
   custom_name?: string;
+  size?: string; // Add size property explicitly
+}
+
+// Defining a component prop type for the form components
+export interface ComponentProps {
+  id: string;
+  type: "part" | "border" | "handle" | "chain" | "runner" | "custom";
+  component_type: string;
+  color?: string;
+  gsm?: string;
+  size?: string;
+  custom_name?: string;
+  length?: string;
+  width?: string;
+  material_id?: string;
+  roll_width?: string;
+  consumption?: string;
+  details?: string;
 }
 
 // Material usage tracking
