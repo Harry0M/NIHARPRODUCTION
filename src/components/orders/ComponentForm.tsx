@@ -34,7 +34,7 @@ interface ComponentFormProps {
   component: ComponentProps;
   index: number;
   isCustom?: boolean;
-  componentOptions: {
+  componentOptions?: {
     color: string[];
     gsm: string[];
   };
@@ -48,7 +48,7 @@ export const ComponentForm = ({
   component, 
   index, 
   isCustom = false, 
-  componentOptions,
+  componentOptions = { color: [], gsm: [] }, // Provide default empty arrays
   title,
   handleChange,
   onChange,
@@ -73,7 +73,7 @@ export const ComponentForm = ({
 
   // Calculate consumption whenever length, width, or roll_width changes
   useEffect(() => {
-    if (component.length && component.width && component.roll_width && 
+    if (component?.length && component?.width && component?.roll_width && 
         component.length !== '' && component.width !== '' && component.roll_width !== '') {
       const length = parseFloat(component.length);
       const width = parseFloat(component.width);
@@ -84,7 +84,7 @@ export const ComponentForm = ({
         onFieldChange('consumption', consumption);
       }
     }
-  }, [component.length, component.width, component.roll_width]);
+  }, [component?.length, component?.width, component?.roll_width]);
 
   const onFieldChange = (field: string, value: string) => {
     if (onChange) {
@@ -93,6 +93,12 @@ export const ComponentForm = ({
       handleChange(index, field, value);
     }
   };
+
+  // Ensure component is not undefined and has valid properties
+  if (!component) {
+    console.error("Component is undefined in ComponentForm");
+    return null;
+  }
 
   // Don't show roll width and consumption for chain and runner
   const showRollWidthAndConsumption = 
@@ -159,7 +165,7 @@ export const ComponentForm = ({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="not_applicable">Not Applicable</SelectItem>
-              {componentOptions.color.map(option => (
+              {componentOptions?.color?.map(option => (
                 <SelectItem key={option} value={option}>{option}</SelectItem>
               ))}
             </SelectContent>

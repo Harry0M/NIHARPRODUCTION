@@ -31,7 +31,7 @@ export function useOrderSubmission(
         : 'pending';
 
       // Convert string values to proper types for the database
-      const orderPayload = {
+      const orderPayload: any = {
         company_name: orderDetails.company_name,
         company_id: orderDetails.company_id || null,
         catalog_id: orderDetails.catalog_id || null,
@@ -49,6 +49,9 @@ export function useOrderSubmission(
         description: orderDetails.description || null,
         created_by: userData.user?.id || null
       };
+
+      // When creating a new order, don't include order_number as it's auto-generated
+      // When updating, we don't need to modify it
       
       let responseOrderId = orderId;
       

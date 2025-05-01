@@ -40,18 +40,16 @@ export const CustomComponentSection = ({
   
   // Support for OrderEdit.tsx props
   customComponents,
-  componentOptions: propComponentOptions,
+  componentOptions = {
+    color: ["White", "Black", "Red", "Blue", "Green", "Yellow"],
+    gsm: ["80", "100", "120", "150", "180", "200", "250"]
+  },
   handleCustomComponentChange,
-  removeCustomComponent
+  removeCustomComponent,
+  addCustomComponent
 }: CustomComponentSectionProps) => {
   // Use the provided components or fallback to customComponents for compatibility
   const itemsToRender = components || customComponents || [];
-  
-  // Default component options if not provided
-  const componentOptions = propComponentOptions || {
-    color: ["White", "Black", "Red", "Blue", "Green", "Yellow"],
-    gsm: ["80", "100", "120", "150", "180", "200", "250"]
-  };
   
   // Use the provided handlers or fallbacks for compatibility
   const handleChange = onChange || handleCustomComponentChange;
@@ -97,6 +95,16 @@ export const CustomComponentSection = ({
           No custom components added yet
         </div>
       )}
+
+      <div className="flex justify-center mt-4">
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={addCustomComponent}
+        >
+          + Add Custom Component
+        </Button>
+      </div>
     </>
   );
 };

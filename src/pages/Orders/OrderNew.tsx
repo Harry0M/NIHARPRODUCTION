@@ -37,6 +37,12 @@ const OrderNew = () => {
     validateForm
   } = useOrderForm();
 
+  // Define component options
+  const componentOptions = {
+    color: ["White", "Black", "Red", "Blue", "Green", "Yellow"],
+    gsm: ["80", "100", "120", "150", "180", "200", "250"]
+  };
+
   // Fetch order data if in edit mode
   const { data: orderData, isLoading } = useQuery({
     queryKey: ['order', id],
@@ -107,54 +113,70 @@ const OrderNew = () => {
           value: orderData.order_date 
         } 
       });
-      handleOrderChange({ 
-        target: { 
-          name: 'delivery_date', 
-          value: orderData.delivery_date || '' 
-        } 
-      });
-      handleOrderChange({ 
-        target: { 
-          name: 'special_instructions', 
-          value: orderData.special_instructions || '' 
-        } 
-      });
+      // Only set these if they exist in orderData
+      if ('delivery_date' in orderData) {
+        handleOrderChange({ 
+          target: { 
+            name: 'delivery_date', 
+            value: orderData.delivery_date || '' 
+          } 
+        });
+      }
+      if ('special_instructions' in orderData) {
+        handleOrderChange({ 
+          target: { 
+            name: 'special_instructions', 
+            value: orderData.special_instructions || '' 
+          } 
+        });
+      }
       handleOrderChange({ 
         target: { 
           name: 'status', 
           value: frontendStatus 
         } 
       });
-      handleOrderChange({ 
-        target: { 
-          name: 'catalog_id', 
-          value: orderData.catalog_id || '' 
-        } 
-      });
-      handleOrderChange({ 
-        target: { 
-          name: 'customer_name', 
-          value: orderData.customer_name || '' 
-        } 
-      });
-      handleOrderChange({ 
-        target: { 
-          name: 'customer_phone', 
-          value: orderData.customer_phone || '' 
-        } 
-      });
-      handleOrderChange({ 
-        target: { 
-          name: 'customer_address', 
-          value: orderData.customer_address || '' 
-        } 
-      });
-      handleOrderChange({ 
-        target: { 
-          name: 'description', 
-          value: orderData.description || '' 
-        } 
-      });
+      // Only set these if they exist in orderData
+      if ('catalog_id' in orderData) {
+        handleOrderChange({ 
+          target: { 
+            name: 'catalog_id', 
+            value: orderData.catalog_id || '' 
+          } 
+        });
+      }
+      if ('customer_name' in orderData) {
+        handleOrderChange({ 
+          target: { 
+            name: 'customer_name', 
+            value: orderData.customer_name || '' 
+          } 
+        });
+      }
+      if ('customer_phone' in orderData) {
+        handleOrderChange({ 
+          target: { 
+            name: 'customer_phone', 
+            value: orderData.customer_phone || '' 
+          } 
+        });
+      }
+      if ('customer_address' in orderData) {
+        handleOrderChange({ 
+          target: { 
+            name: 'customer_address', 
+            value: orderData.customer_address || '' 
+          } 
+        });
+      }
+      if ('description' in orderData) {
+        handleOrderChange({ 
+          target: { 
+            name: 'description', 
+            value: orderData.description || '' 
+          } 
+        });
+      }
 
       // If there are components, set them
       if (orderData.components && Array.isArray(orderData.components)) {
@@ -287,14 +309,16 @@ const OrderNew = () => {
         <StandardComponents
           components={components}
           handleComponentChange={handleComponentChange}
+          componentOptions={componentOptions}
         />
 
         {/* Custom components section */}
         <CustomComponentSection
           components={customComponents}
-          handleComponentChange={handleCustomComponentChange}
-          addComponent={addCustomComponent}
-          removeComponent={removeCustomComponent}
+          handleCustomComponentChange={handleCustomComponentChange}
+          addCustomComponent={addCustomComponent}
+          removeCustomComponent={removeCustomComponent}
+          componentOptions={componentOptions}
         />
 
         {/* Form actions */}
