@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -123,7 +122,8 @@ export const StockForm = ({ stockId }: StockFormProps) => {
 
   const createStockMutation = useMutation({
     mutationFn: async (values: StockFormValues) => {
-      const { data, error } = await supabase.from("inventory").insert([values]).select();
+      // Fix: Pass a single object instead of an array to insert
+      const { data, error } = await supabase.from("inventory").insert(values).select();
       if (error) throw error;
       return data;
     },
@@ -186,6 +186,11 @@ export const StockForm = ({ stockId }: StockFormProps) => {
     if (!trackCost) {
       values.purchase_price = undefined;
       values.selling_price = undefined;
+    }
+
+    // Handle "none" value for supplier_id
+    if (values.supplier_id === "none") {
+      values.supplier_id = undefined;
     }
 
     if (stockId) {
