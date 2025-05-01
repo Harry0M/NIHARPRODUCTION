@@ -4,6 +4,7 @@ import AppLayout from "../components/layout/AppLayout";
 import InventoryLayout from "../pages/Inventory/InventoryLayout";
 import CatalogList from "../pages/Inventory/CatalogList";
 import CatalogNew from "../pages/Inventory/CatalogNew";
+import CatalogDetail from "../pages/Inventory/CatalogDetail";
 import CatalogOrders from "../pages/Inventory/CatalogOrders";
 import StockJournalList from "../pages/Inventory/StockJournalList";
 import StockJournalDetail from "../pages/Inventory/StockJournalDetail";
@@ -54,6 +55,10 @@ const inventoryRoutes: RouteObject[] = [
               {
                 path: "catalog",
                 element: <CatalogList />
+              },
+              {
+                path: "catalog/detail/:id",
+                element: <CatalogDetail />
               },
               {
                 path: "catalog/new",

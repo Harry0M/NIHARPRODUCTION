@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { Plus, Package, Trash2, Edit } from "lucide-react";
+import { Plus, Package, Trash2, Edit, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -78,6 +78,10 @@ const CatalogList = () => {
     }
   };
 
+  const handleRowClick = (productId: string) => {
+    navigate(`/inventory/catalog/detail/${productId}`);
+  };
+
   return (
     <Card>
       <div className="p-4 flex justify-between items-center">
@@ -111,7 +115,8 @@ const CatalogList = () => {
             {products?.map((product) => (
               <TableRow 
                 key={product.id}
-                className="hover:bg-muted"
+                className="hover:bg-muted cursor-pointer"
+                onClick={() => handleRowClick(product.id)}
               >
                 <TableCell>{product.name}</TableCell>
                 <TableCell>{`${product.bag_length}×${product.bag_width}`}</TableCell>
@@ -121,7 +126,21 @@ const CatalogList = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => navigate(`/inventory/catalog/edit/${product.id}`)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/inventory/catalog/detail/${product.id}`);
+                    }}
+                  >
+                    <Eye size={16} className="mr-2" />
+                    View
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/inventory/catalog/edit/${product.id}`);
+                    }}
                   >
                     <Edit size={16} className="mr-2" />
                     Edit
@@ -129,7 +148,10 @@ const CatalogList = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => navigate(`/inventory/catalog/${product.id}/orders`)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/inventory/catalog/${product.id}/orders`);
+                    }}
                   >
                     <Package size={16} className="mr-2" />
                     Orders
@@ -137,7 +159,10 @@ const CatalogList = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setProductToDelete(product.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setProductToDelete(product.id);
+                    }}
                   >
                     <Trash2 size={16} className="mr-2" />
                     Delete
