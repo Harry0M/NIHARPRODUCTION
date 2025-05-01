@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Package, Search, ArrowLeft } from "lucide-react";
+import { Package, Search, Plus } from "lucide-react";
 
 const StockJournalList = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -38,7 +38,7 @@ const StockJournalList = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('inventory')
-        .select('*, suppliers(name)')
+        .select('*, supplier:supplier_id (name)')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -67,12 +67,12 @@ const StockJournalList = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center space-x-2">
             <Package className="h-6 w-6 text-primary" />
-            <CardTitle>Stock Journal</CardTitle>
+            <CardTitle>Inventory Stock</CardTitle>
           </div>
           <div className="flex items-center space-x-2">
-            <Button variant="outline" onClick={() => navigate('/inventory/stock')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Stock
+            <Button onClick={() => navigate('/inventory/stock/new')}>
+              <Plus size={16} className="mr-2" />
+              Add Raw Material
             </Button>
           </div>
         </div>

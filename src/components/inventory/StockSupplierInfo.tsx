@@ -1,7 +1,7 @@
 
 import { Separator } from "@/components/ui/separator";
 
-interface StockSupplierInfoProps {
+export interface StockSupplierInfoProps {
   supplier?: {
     name?: string;
     contact_person?: string;

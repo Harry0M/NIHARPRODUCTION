@@ -2,7 +2,6 @@
 import { RouteObject, Navigate } from "react-router-dom";
 import AppLayout from "../components/layout/AppLayout";
 import InventoryLayout from "../pages/Inventory/InventoryLayout";
-import StockList from "../pages/Inventory/StockList";
 import CatalogList from "../pages/Inventory/CatalogList";
 import CatalogNew from "../pages/Inventory/CatalogNew";
 import CatalogOrders from "../pages/Inventory/CatalogOrders";
@@ -27,11 +26,11 @@ const inventoryRoutes: RouteObject[] = [
             children: [
               {
                 path: "",
-                element: <Navigate to="/inventory/stock" replace />
+                element: <Navigate to="/inventory/stock/journal/list" replace />
               },
               {
                 path: "stock",
-                element: <StockList />
+                element: <Navigate to="/inventory/stock/journal/list" replace />
               },
               {
                 path: "stock/:id",
