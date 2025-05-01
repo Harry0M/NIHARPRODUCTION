@@ -21,7 +21,7 @@ export const StatusFields = ({ form }: StatusFieldsProps) => {
             <FormControl>
               <Select
                 onValueChange={field.onChange}
-                value={field.value}
+                value={field.value || "pending"}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select status" />

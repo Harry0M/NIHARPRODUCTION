@@ -96,7 +96,7 @@ export function OrderFilter({ onFilterChange }: OrderFilterProps) {
           name="status"
           render={({ field }) => (
             <FormItem>
-              <Select onValueChange={field.onChange} value={field.value || undefined}>
+              <Select onValueChange={field.onChange} value={field.value || ''}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Filter by status" />

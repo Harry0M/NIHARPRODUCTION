@@ -87,7 +87,7 @@ export const OrderInfoCard = ({
       <div>
         <h3 className="text-md font-medium mb-2">Components</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {order.components?.length > 0 ? (
+          {order.components && order.components.length > 0 ? (
             order.components.map((component) => (
               <div key={component.id} className="border rounded-md p-3">
                 <p className="text-sm font-medium capitalize">
