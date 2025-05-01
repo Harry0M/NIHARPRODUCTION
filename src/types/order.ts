@@ -16,6 +16,11 @@ export type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled' |
                           'in_production' | 'cutting' | 'printing' | 'stitching' |
                           'ready_for_dispatch' | 'dispatched';
 
+// Database order statuses - matching exactly what's in the database
+export type DBOrderStatus = 'pending' | 'completed' | 'cancelled' | 'in_production' | 
+                            'cutting' | 'printing' | 'stitching' |
+                            'ready_for_dispatch' | 'dispatched';
+
 // Base interface for order form data
 export interface OrderFormData {
   // Customer information

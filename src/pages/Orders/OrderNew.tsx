@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Plus } from "lucide-react";
@@ -11,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { OrderFormData, Component, CustomComponent, OrderStatus, ComponentProps, ComponentType } from "@/types/order";
+import { OrderFormData, Component, CustomComponent, OrderStatus, ComponentProps, ComponentType, DBOrderStatus } from "@/types/order";
 import { ComponentForm } from "@/components/orders/ComponentForm";
 
 const OrderNew = () => {
@@ -129,11 +128,17 @@ const OrderNew = () => {
     }
   }, [catalogProduct]);
 
+  // Helper function to map frontend status to DB status
+  const mapStatusToDb = (status: OrderStatus): DBOrderStatus => {
+    if (status === 'processing') return 'in_production';
+    return status as DBOrderStatus;
+  };
+
   // Populate form with existing data when in edit mode
   useEffect(() => {
     if (orderData) {
       // Extended interface to include the fields we need from the database
-      interface ExtendedOrderData {
+      interface ExtendedOrderData extends Record<string, any> {
         company_name: string;
         catalog_id?: string;
         quantity: number;
@@ -149,8 +154,8 @@ const OrderNew = () => {
         components?: any[];
       }
 
-      // Cast the orderData to our extended interface
-      const extendedData = orderData as unknown as ExtendedOrderData;
+      // Cast the orderData to our extended interface to access all fields
+      const extendedData = orderData as ExtendedOrderData;
 
       setOrderDetails({
         company_name: extendedData.company_name || '',
@@ -270,14 +275,19 @@ const OrderNew = () => {
       if (userError) throw userError;
 
       // Convert string values to proper types for database insertion
+      // Map frontend status to database status if needed
+      const dbStatus: DBOrderStatus = orderDetails.status 
+        ? mapStatusToDb(orderDetails.status as OrderStatus) 
+        : 'pending';
+
       const orderPayload = {
-        ...orderDetails,
+        company_name: orderDetails.company_name,
         quantity: Number(orderDetails.quantity),
         rate: Number(orderDetails.rate),
         bag_length: Number(orderDetails.bag_length),
         bag_width: Number(orderDetails.bag_width),
         user_id: userData.user?.id,
-        status: (orderDetails.status || 'pending') as OrderStatus
+        status: dbStatus
       };
 
       let orderId = id;
@@ -287,18 +297,18 @@ const OrderNew = () => {
         const { error: orderError } = await supabase
           .from("orders")
           .update({
-            company_name: orderPayload.company_name,
-            quantity: orderPayload.quantity,
-            rate: orderPayload.rate,
-            bag_length: orderPayload.bag_length,
-            bag_width: orderPayload.bag_width,
-            status: orderPayload.status,
-            order_date: orderPayload.order_date,
-            delivery_date: orderPayload.delivery_date,
-            customer_name: orderPayload.customer_name,
-            customer_phone: orderPayload.customer_phone,
-            customer_address: orderPayload.customer_address,
-            description: orderPayload.description
+            company_name: orderDetails.company_name,
+            quantity: Number(orderDetails.quantity),
+            rate: Number(orderDetails.rate),
+            bag_length: Number(orderDetails.bag_length),
+            bag_width: Number(orderDetails.bag_width),
+            status: dbStatus,
+            order_date: orderDetails.order_date,
+            delivery_date: orderDetails.delivery_date,
+            customer_name: orderDetails.customer_name,
+            customer_phone: orderDetails.customer_phone,
+            customer_address: orderDetails.customer_address,
+            description: orderDetails.description
           })
           .eq('id', id);
 
@@ -316,18 +326,18 @@ const OrderNew = () => {
         const { data: orderData, error: orderError } = await supabase
           .from("orders")
           .insert({
-            company_name: orderPayload.company_name,
-            quantity: orderPayload.quantity,
-            rate: orderPayload.rate,
-            bag_length: orderPayload.bag_length,
-            bag_width: orderPayload.bag_width,
-            status: orderPayload.status,
-            order_date: orderPayload.order_date,
-            delivery_date: orderPayload.delivery_date,
-            customer_name: orderPayload.customer_name,
-            customer_phone: orderPayload.customer_phone,
-            customer_address: orderPayload.customer_address,
-            description: orderPayload.description
+            company_name: orderDetails.company_name,
+            quantity: Number(orderDetails.quantity),
+            rate: Number(orderDetails.rate),
+            bag_length: Number(orderDetails.bag_length),
+            bag_width: Number(orderDetails.bag_width),
+            status: dbStatus,
+            order_date: orderDetails.order_date,
+            delivery_date: orderDetails.delivery_date,
+            customer_name: orderDetails.customer_name,
+            customer_phone: orderDetails.customer_phone,
+            customer_address: orderDetails.customer_address,
+            description: orderDetails.description
           })
           .select('id')
           .single();

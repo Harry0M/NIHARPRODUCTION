@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, CheckCircle, AlertTriangle } from "lucide-react";
-import { OrderFormData, OrderStatus, ComponentType } from "@/types/order";
+import { OrderFormData, OrderStatus, ComponentType, DBOrderStatus } from "@/types/order";
 import { ComponentForm } from "@/components/orders/ComponentForm";
 import {
   Select,
@@ -65,6 +64,18 @@ const OrderDetail = () => {
   const componentOptions = {
     color: ['Red', 'Green', 'Blue', 'Yellow', 'Black', 'White'],
     gsm: ['80', '120', '150', '200']
+  };
+
+  // Helper function to map frontend status to DB status
+  const mapStatusToDb = (status: OrderStatus): DBOrderStatus => {
+    if (status === 'processing') return 'in_production';
+    return status as DBOrderStatus;
+  };
+
+  // Helper function to map DB status to frontend status
+  const mapDbStatusToFrontend = (status: DBOrderStatus): OrderStatus => {
+    if (status === 'in_production') return 'processing';
+    return status as OrderStatus;
   };
 
   useEffect(() => {
@@ -134,6 +145,12 @@ const OrderDetail = () => {
 
   useEffect(() => {
     if (orderData) {
+      // Convert database status to frontend status if needed
+      let frontendStatus: OrderStatus = 'pending';
+      if (orderData.status) {
+        frontendStatus = mapDbStatusToFrontend(orderData.status as DBOrderStatus);
+      }
+
       setOrderDetails({
         company_name: orderData.company_name || '', // Required field
         order_number: orderData.order_number || '',
@@ -147,7 +164,7 @@ const OrderDetail = () => {
         delivery_date: orderData.delivery_date || '',
         delivery_address: orderData.delivery_address || '',
         special_instructions: orderData.special_instructions || '',
-        status: orderData.status || 'pending',
+        status: frontendStatus,
         bag_length: orderData.bag_length?.toString() || '',
         bag_width: orderData.bag_width?.toString() || ''
       });
@@ -178,13 +195,16 @@ const OrderDetail = () => {
     setError(null);
 
     try {
+      // Map frontend status to database status
+      const dbStatus: DBOrderStatus = mapStatusToDb(orderDetails.status as OrderStatus);
+      
       const orderPayload = {
         ...orderDetails,
         quantity: parseInt(orderDetails.quantity as string),
         rate: parseFloat(orderDetails.rate as string),
         bag_length: parseFloat(orderDetails.bag_length as string),
         bag_width: parseFloat(orderDetails.bag_width as string),
-        status: orderDetails.status as OrderStatus
+        status: dbStatus
       };
 
       // Type assertion to bypass TypeScript constraints for the database operation

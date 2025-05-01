@@ -1,34 +1,17 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { MoreVertical, Edit, Trash, ArrowLeft, CheckCircle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { OrderContent } from "@/components/orders/list/OrderContent";
-import { OrderListFilters } from "@/types/order";
+import { OrderListFilters, DBOrderStatus, OrderStatus } from "@/types/order";
 import { supabase } from "@/integrations/supabase/client";
-import { Order, OrderStatus } from "@/types/order";
+import { Order } from "@/types/order";
 import OrderFilter from "@/components/orders/OrderFilter";
 
 interface OrderFilters extends OrderListFilters {
@@ -61,8 +44,14 @@ const OrderList = () => {
         .order('created_at', { ascending: false });
 
       if (filters.status && filters.status !== '') {
-        // Use explicit type assertion for the status value
-        query = query.eq('status', filters.status);
+        // Map frontend status to database status if needed
+        const dbStatus: DBOrderStatus | '' = 
+          filters.status === 'processing' ? 'in_production' : filters.status as DBOrderStatus | '';
+          
+        // Only apply filter if status is not empty
+        if (dbStatus !== '') {
+          query = query.eq('status', dbStatus);
+        }
       }
 
       if (filters.dateRange.from) {
@@ -96,7 +85,7 @@ const OrderList = () => {
         rate: item.rate,
         order_date: item.order_date,
         delivery_date: item.delivery_date,
-        status: item.status as OrderStatus, // Ensure proper type casting
+        status: mapDbStatusToFrontend(item.status), // Map DB status to frontend status
         created_at: item.created_at
       }));
       
@@ -112,6 +101,12 @@ const OrderList = () => {
       setLoading(false);
     }
   }, [filters]);
+
+  // Helper function to map DB status to frontend status
+  const mapDbStatusToFrontend = (status: DBOrderStatus): OrderStatus => {
+    if (status === 'in_production') return 'processing';
+    return status as OrderStatus;
+  };
 
   useEffect(() => {
     fetchOrders();
