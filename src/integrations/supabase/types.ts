@@ -19,6 +19,7 @@ export type Database = {
           default_quantity: number | null
           default_rate: number | null
           description: string | null
+          height: number | null
           id: string
           name: string
           printing_charge: number | null
@@ -36,6 +37,7 @@ export type Database = {
           default_quantity?: number | null
           default_rate?: number | null
           description?: string | null
+          height?: number | null
           id?: string
           name: string
           printing_charge?: number | null
@@ -53,6 +55,7 @@ export type Database = {
           default_quantity?: number | null
           default_rate?: number | null
           description?: string | null
+          height?: number | null
           id?: string
           name?: string
           printing_charge?: number | null

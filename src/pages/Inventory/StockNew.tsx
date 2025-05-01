@@ -64,7 +64,7 @@ const StockNew = () => {
       quantity: 0,
       unit: "",
       alternate_unit: "",
-      conversion_rate: 0,
+      conversion_rate: 0, // Changed from 1 to 0
       reorder_level: 0,
     },
   });
@@ -125,7 +125,7 @@ const StockNew = () => {
     } else {
       setShowConversionRate(false);
       form.setValue("alternate_unit", "");
-      form.setValue("conversion_rate", 0);
+      form.setValue("conversion_rate", 0); // Changed from 1 to 0
     }
   };
 

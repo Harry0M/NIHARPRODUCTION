@@ -1,11 +1,8 @@
 
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { MaterialUsage, ProductDetails, Material } from "./types";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ProductDetails, Material, MaterialUsage } from "./types";
 
 interface CostCalculationSectionProps {
   usedMaterials: MaterialUsage[];
@@ -16,23 +13,13 @@ interface CostCalculationSectionProps {
   allMaterials: Material[];
 }
 
-export const CostCalculationSection = ({
-  usedMaterials,
-  materialCost,
+export function CostCalculationSection({ 
+  usedMaterials, 
+  materialCost, 
   totalCost,
   productDetails,
-  handleProductChange,
-  allMaterials
-}: CostCalculationSectionProps) => {
-  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
-  
-  const handleMaterialClick = (materialId: string) => {
-    const material = allMaterials.find(m => m.id === materialId);
-    if (material) {
-      setSelectedMaterial(material);
-    }
-  };
-  
+  handleProductChange
+}: CostCalculationSectionProps) {
   return (
     <Card>
       <CardHeader>
@@ -57,14 +44,7 @@ export const CostCalculationSection = ({
                   <tbody>
                     {usedMaterials.map((material, index) => (
                       <tr key={material.id} className={index % 2 === 0 ? 'bg-card' : 'bg-muted/20'}>
-                        <td className="px-4 py-2">
-                          <button 
-                            className="text-left text-blue-600 hover:underline focus:outline-none"
-                            onClick={() => handleMaterialClick(material.id)}
-                          >
-                            {material.name}
-                          </button>
-                        </td>
+                        <td className="px-4 py-2">{material.name}</td>
                         <td className="px-4 py-2">{material.quantity.toFixed(2)} {material.unit}</td>
                         <td className="px-4 py-2 text-right">
                           ₹{material.cost.toFixed(2)}
@@ -97,7 +77,7 @@ export const CostCalculationSection = ({
                     name="cutting_charge"
                     type="number"
                     step="0.01"
-                    value={productDetails.cutting_charge}
+                    value={Number(productDetails.cutting_charge || 0).toString()}
                     onChange={handleProductChange}
                   />
                 </div>
@@ -108,7 +88,7 @@ export const CostCalculationSection = ({
                     name="printing_charge"
                     type="number"
                     step="0.01"
-                    value={productDetails.printing_charge}
+                    value={Number(productDetails.printing_charge || 0).toString()}
                     onChange={handleProductChange}
                   />
                 </div>
@@ -119,7 +99,7 @@ export const CostCalculationSection = ({
                     name="stitching_charge"
                     type="number"
                     step="0.01"
-                    value={productDetails.stitching_charge}
+                    value={Number(productDetails.stitching_charge || 0).toString()}
                     onChange={handleProductChange}
                   />
                 </div>
@@ -130,7 +110,7 @@ export const CostCalculationSection = ({
                     name="transport_charge"
                     type="number"
                     step="0.01"
-                    value={productDetails.transport_charge}
+                    value={Number(productDetails.transport_charge || 0).toString()}
                     onChange={handleProductChange}
                   />
                 </div>
@@ -147,19 +127,19 @@ export const CostCalculationSection = ({
                 </div>
                 <div className="flex justify-between">
                   <span>Cutting Charge:</span>
-                  <span>₹{parseFloat(productDetails.cutting_charge || '0').toFixed(2)}</span>
+                  <span>₹{Number(productDetails.cutting_charge || 0).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Printing Charge:</span>
-                  <span>₹{parseFloat(productDetails.printing_charge || '0').toFixed(2)}</span>
+                  <span>₹{Number(productDetails.printing_charge || 0).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Stitching Charge:</span>
-                  <span>₹{parseFloat(productDetails.stitching_charge || '0').toFixed(2)}</span>
+                  <span>₹{Number(productDetails.stitching_charge || 0).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Transport Charge:</span>
-                  <span>₹{parseFloat(productDetails.transport_charge || '0').toFixed(2)}</span>
+                  <span>₹{Number(productDetails.transport_charge || 0).toFixed(2)}</span>
                 </div>
                 <div className="border-t pt-2 flex justify-between font-bold">
                   <span>TOTAL PRODUCT COST:</span>
@@ -169,82 +149,7 @@ export const CostCalculationSection = ({
             </div>
           </div>
         </div>
-
-        {/* Material Detail Dialog */}
-        <Dialog open={!!selectedMaterial} onOpenChange={(open) => !open && setSelectedMaterial(null)}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Material Details</DialogTitle>
-              <DialogDescription>
-                Information about selected inventory material
-              </DialogDescription>
-            </DialogHeader>
-            
-            <ScrollArea className="max-h-[60vh]">
-              {selectedMaterial && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm text-muted-foreground">Material Type</label>
-                      <p className="font-medium">{selectedMaterial.material_type}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm text-muted-foreground">Color</label>
-                      <p className="font-medium">{selectedMaterial.color || "N/A"}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm text-muted-foreground">GSM</label>
-                      <p className="font-medium">{selectedMaterial.gsm || "N/A"}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm text-muted-foreground">Unit</label>
-                      <p className="font-medium">{selectedMaterial.unit}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm text-muted-foreground">Purchase Price</label>
-                      <p className="font-medium">₹{selectedMaterial.purchase_price}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm text-muted-foreground">Selling Price</label>
-                      <p className="font-medium">{selectedMaterial.selling_price ? `₹${selectedMaterial.selling_price}` : "N/A"}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm text-muted-foreground">Current Quantity</label>
-                      <p className="font-medium">{selectedMaterial.quantity} {selectedMaterial.unit}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm text-muted-foreground">Reorder Level</label>
-                      <p className="font-medium">{selectedMaterial.reorder_level || "N/A"}</p>
-                    </div>
-                  </div>
-                  
-                  {selectedMaterial.alternate_unit && (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm text-muted-foreground">Alternate Unit</label>
-                        <p className="font-medium">{selectedMaterial.alternate_unit}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm text-muted-foreground">Conversion Rate</label>
-                        <p className="font-medium">{selectedMaterial.conversion_rate}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </ScrollArea>
-          </DialogContent>
-        </Dialog>
       </CardContent>
     </Card>
   );
-};
+}

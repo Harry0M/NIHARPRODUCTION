@@ -8,7 +8,6 @@ import CatalogOrders from "../pages/Inventory/CatalogOrders";
 import StockJournalList from "../pages/Inventory/StockJournalList";
 import StockJournalDetail from "../pages/Inventory/StockJournalDetail";
 import StockNew from "../pages/Inventory/StockNew";
-import StockDetail from "../pages/Inventory/StockDetail";
 import StockEdit from "../pages/Inventory/StockEdit";
 import ProtectedRoute from "../components/ProtectedRoute";
 

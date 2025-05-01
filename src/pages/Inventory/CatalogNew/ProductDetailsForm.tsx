@@ -44,7 +44,7 @@ export const ProductDetailsForm = ({ productDetails, handleProductChange }: Prod
             />
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="bag_length">Bag Length (inches) *</Label>
               <Input
@@ -67,6 +67,19 @@ export const ProductDetailsForm = ({ productDetails, handleProductChange }: Prod
                 step="0.01"
                 placeholder="Enter width"
                 value={productDetails.bag_width}
+                onChange={handleProductChange}
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="height">Border Height (inches) *</Label>
+              <Input
+                id="height"
+                name="height"
+                type="number"
+                step="0.01"
+                placeholder="Enter border height"
+                value={productDetails.height}
                 onChange={handleProductChange}
               />
             </div>

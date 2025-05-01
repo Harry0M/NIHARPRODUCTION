@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
@@ -89,14 +90,15 @@ const CatalogNew = () => {
       setProductDetails({
         name: productData.product.name,
         description: productData.product.description || "",
-        bag_length: productData.product.bag_length.toString(),
-        bag_width: productData.product.bag_width.toString(),
-        default_quantity: productData.product.default_quantity ? productData.product.default_quantity.toString() : "1",
-        default_rate: productData.product.default_rate ? productData.product.default_rate.toString() : "",
-        cutting_charge: productData.product.cutting_charge ? productData.product.cutting_charge.toString() : "0",
-        printing_charge: productData.product.printing_charge ? productData.product.printing_charge.toString() : "0",
-        stitching_charge: productData.product.stitching_charge ? productData.product.stitching_charge.toString() : "0",
-        transport_charge: productData.product.transport_charge ? productData.product.transport_charge.toString() : "0"
+        bag_length: Number(productData.product.bag_length),
+        bag_width: Number(productData.product.bag_width),
+        height: Number(productData.product.height) || 0,
+        default_quantity: Number(productData.product.default_quantity) || 1,
+        default_rate: Number(productData.product.default_rate) || 0,
+        cutting_charge: Number(productData.product.cutting_charge) || 0,
+        printing_charge: Number(productData.product.printing_charge) || 0,
+        stitching_charge: Number(productData.product.stitching_charge) || 0,
+        transport_charge: Number(productData.product.transport_charge) || 0
       });
       
       // Set components
@@ -121,8 +123,7 @@ const CatalogNew = () => {
         if (comp.custom_name) {
           customComponentsList.push({
             ...componentData,
-            custom_name: comp.custom_name,
-            customName: comp.custom_name
+            custom_name: comp.custom_name
           });
         } else {
           standardComponents[comp.component_type] = componentData;
@@ -145,22 +146,28 @@ const CatalogNew = () => {
     
     if (!productDetails.bag_length) {
       errors.push("Bag length is required");
-    } else if (isNaN(parseFloat(productDetails.bag_length)) || parseFloat(productDetails.bag_length) <= 0) {
+    } else if (isNaN(Number(productDetails.bag_length)) || Number(productDetails.bag_length) <= 0) {
       errors.push("Bag length must be a positive number");
     }
     
     if (!productDetails.bag_width) {
       errors.push("Bag width is required");
-    } else if (isNaN(parseFloat(productDetails.bag_width)) || parseFloat(productDetails.bag_width) <= 0) {
+    } else if (isNaN(Number(productDetails.bag_width)) || Number(productDetails.bag_width) <= 0) {
       errors.push("Bag width must be a positive number");
     }
     
+    if (!productDetails.height && productDetails.height !== 0) {
+      errors.push("Border height is required");
+    } else if (isNaN(Number(productDetails.height)) || Number(productDetails.height) < 0) {
+      errors.push("Border height must be a non-negative number");
+    }
+    
     // Validate numeric fields
-    if (productDetails.default_quantity && (isNaN(parseInt(productDetails.default_quantity)) || parseInt(productDetails.default_quantity) < 1)) {
+    if (productDetails.default_quantity && (isNaN(Number(productDetails.default_quantity)) || Number(productDetails.default_quantity) < 1)) {
       errors.push("Default quantity must be a positive integer");
     }
     
-    if (productDetails.default_rate && (isNaN(parseFloat(productDetails.default_rate)) || parseFloat(productDetails.default_rate) < 0)) {
+    if (productDetails.default_rate && (isNaN(Number(productDetails.default_rate)) || Number(productDetails.default_rate) < 0)) {
       errors.push("Default rate must be a non-negative number");
     }
     
@@ -172,20 +179,20 @@ const CatalogNew = () => {
     
     // Check for custom components without names
     customComponents.forEach((comp, index) => {
-      if (!comp.customName || comp.customName.trim() === '') {
+      if (!comp.custom_name || comp.custom_name.trim() === '') {
         errors.push(`Custom component #${index + 1} requires a name`);
       }
     });
     
     // Check for components with invalid measurements
     allComponents.forEach(comp => {
-      const componentName = comp.type === 'custom' ? comp.customName || 'Custom component' : comp.type;
+      const componentName = comp.type === 'custom' ? comp.custom_name || 'Custom component' : comp.type;
       
-      if (comp.length && (isNaN(parseFloat(comp.length)) || parseFloat(comp.length) <= 0)) {
+      if (comp.length && (isNaN(parseFloat(comp.length as string)) || parseFloat(comp.length as string) <= 0)) {
         errors.push(`${componentName}: Length must be a positive number`);
       }
       
-      if (comp.width && (isNaN(parseFloat(comp.width)) || parseFloat(comp.width) <= 0)) {
+      if (comp.width && (isNaN(parseFloat(String(comp.width))) || parseFloat(String(comp.width)) <= 0)) {
         errors.push(`${componentName}: Width must be a positive number`);
       }
       
@@ -231,14 +238,15 @@ const CatalogNew = () => {
       const productPayload = {
         name: productDetails.name,
         description: productDetails.description,
-        bag_length: parseFloat(productDetails.bag_length),
-        bag_width: parseFloat(productDetails.bag_width),
-        default_quantity: productDetails.default_quantity ? parseInt(productDetails.default_quantity) : 1,
-        default_rate: productDetails.default_rate ? parseFloat(productDetails.default_rate) : null,
-        cutting_charge: productDetails.cutting_charge ? parseFloat(productDetails.cutting_charge) : 0,
-        printing_charge: productDetails.printing_charge ? parseFloat(productDetails.printing_charge) : 0,
-        stitching_charge: productDetails.stitching_charge ? parseFloat(productDetails.stitching_charge) : 0,
-        transport_charge: productDetails.transport_charge ? parseFloat(productDetails.transport_charge) : 0,
+        bag_length: Number(productDetails.bag_length),
+        bag_width: Number(productDetails.bag_width),
+        height: Number(productDetails.height),
+        default_quantity: productDetails.default_quantity ? Number(productDetails.default_quantity) : 1,
+        default_rate: productDetails.default_rate ? Number(productDetails.default_rate) : null,
+        cutting_charge: productDetails.cutting_charge ? Number(productDetails.cutting_charge) : 0,
+        printing_charge: productDetails.printing_charge ? Number(productDetails.printing_charge) : 0,
+        stitching_charge: productDetails.stitching_charge ? Number(productDetails.stitching_charge) : 0,
+        transport_charge: productDetails.transport_charge ? Number(productDetails.transport_charge) : 0,
         total_cost: totalCost > 0 ? totalCost : null,
       };
       
@@ -305,14 +313,14 @@ const CatalogNew = () => {
           catalog_id: catalogId,
           component_type: comp.type === 'custom' ? comp.custom_name : comp.type,
           size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
-          length: comp.length ? parseFloat(String(comp.length)) : null,
-          width: comp.width ? parseFloat(String(comp.width)) : null,
+          length: comp.length ? Number(comp.length) : null,
+          width: comp.width ? Number(comp.width) : null,
           color: comp.color || null,
-          gsm: comp.gsm ? parseFloat(String(comp.gsm)) : null,
+          gsm: comp.gsm ? Number(comp.gsm) : null,
           custom_name: comp.type === 'custom' ? comp.custom_name : null,
           material_id: comp.material_id && comp.material_id !== 'not_applicable' ? comp.material_id : null,
-          roll_width: comp.roll_width ? parseFloat(String(comp.roll_width)) : null,
-          consumption: comp.consumption ? parseFloat(String(comp.consumption)) : null
+          roll_width: comp.roll_width ? Number(comp.roll_width) : null,
+          consumption: comp.consumption ? Number(comp.consumption) : null
         }));
 
         const { error: componentsError } = await supabase

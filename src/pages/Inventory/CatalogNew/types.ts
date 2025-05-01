@@ -3,6 +3,7 @@ export interface ProductDetails {
   name: string;
   bag_length: number;
   bag_width: number;
+  height: number;
   default_quantity?: number;
   default_rate?: number;
   description?: string;
