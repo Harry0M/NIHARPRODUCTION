@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -100,7 +100,7 @@ export const StockForm = ({ stockId }: StockFormProps) => {
   });
 
   // Set form values when editing an existing stock item
-  useState(() => {
+  useEffect(() => {
     if (stockItem) {
       form.reset({
         material_type: stockItem.material_type,
@@ -431,7 +431,7 @@ export const StockForm = ({ stockId }: StockFormProps) => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value="none">None</SelectItem>
                         {suppliers?.map((supplier) => (
                           <SelectItem key={supplier.id} value={supplier.id}>
                             {supplier.name}
