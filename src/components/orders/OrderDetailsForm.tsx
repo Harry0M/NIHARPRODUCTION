@@ -138,7 +138,7 @@ export const OrderDetailsForm = ({
             <Input 
               id="company_name" 
               name="company_name"
-              value={formData.company_name}
+              value={formData.company_name || ""}
               onChange={(e) => handleOrderChange(e)}
               placeholder="Enter company name"
               required

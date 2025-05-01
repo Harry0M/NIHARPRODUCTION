@@ -1,3 +1,4 @@
+
 import {
   Card,
   CardContent,
@@ -11,11 +12,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { ComponentForm } from "@/components/orders/ComponentForm";
-import { Component } from "./types";
+import { Component, CustomComponent } from "@/types/order";
 
 interface ComponentsSectionProps {
   components: Record<string, any>;
-  customComponents: Component[];
+  customComponents: CustomComponent[];
   handleComponentChange: (type: string, field: string, value: string) => void;
   handleCustomComponentChange: (index: number, field: string, value: string) => void;
   addCustomComponent: () => void;
@@ -48,7 +49,10 @@ export const ComponentsSection = ({
           {Object.keys(components).map((type) => (
             <ComponentForm
               key={type}
-              component={components[type]}
+              component={{
+                ...components[type],
+                type: components[type].type || type
+              }}
               index={0}
               componentOptions={componentOptions}
               title={type.charAt(0).toUpperCase() + type.slice(1)}

@@ -46,6 +46,7 @@ export function useMaterialCost(
           // Track material usage
           if (!materialUsage[material.id]) {
             materialUsage[material.id] = {
+              id: material.id,
               material_id: material.id,
               material_name: material.material_type || '',
               material_color: material.color || '',
@@ -72,6 +73,7 @@ export function useMaterialCost(
           // Track material usage
           if (!materialUsage[material.id]) {
             materialUsage[material.id] = {
+              id: material.id,
               material_id: material.id,
               material_name: material.material_type || '',
               material_color: material.color || '',
@@ -107,6 +109,7 @@ export function useMaterialCost(
             const consumption = parseFloat(String(component.consumption)) || 0;
             if (!materialUsage[material.id]) {
               materialUsage[material.id] = {
+                id: material.id,
                 material_id: material.id,
                 material_name: material.material_type || '',
                 material_color: material.color || '',
@@ -130,6 +133,7 @@ export function useMaterialCost(
             const consumption = parseFloat(String(component.consumption)) || 0;
             if (!materialUsage[material.id]) {
               materialUsage[material.id] = {
+                id: material.id,
                 material_id: material.id,
                 material_name: material.material_type || '',
                 material_color: material.color || '',

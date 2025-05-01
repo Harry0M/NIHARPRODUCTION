@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { OrderFormData, Component, FormErrors } from "@/types/order";
+import { OrderFormData, Component, FormErrors, CustomComponent } from "@/types/order";
 
 export function useOrderFormState() {
   // Form submission state
@@ -26,7 +26,7 @@ export function useOrderFormState() {
   const [components, setComponents] = useState<Record<string, any>>({});
   
   // Custom components data
-  const [customComponents, setCustomComponents] = useState<Component[]>([]);
+  const [customComponents, setCustomComponents] = useState<CustomComponent[]>([]);
   
   // Selected product from catalog
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
@@ -36,10 +36,11 @@ export function useOrderFormState() {
 
   // Add a new custom component
   const addCustomComponent = () => {
-    const newComponent: Component = {
+    const newComponent: CustomComponent = {
       id: uuidv4(),
       type: 'custom',
-      customName: '',
+      component_type: 'custom',
+      custom_name: '',
       color: '',
       gsm: '',
       length: '',

@@ -94,7 +94,7 @@ export function useOrderSubmission(
               quantity: usage,
               transaction_type: 'order_consumption',
               reference_id: orderId,
-              notes: `Material consumed for order ${orderDetails.company_name}`
+              notes: `Material consumed for order ${orderDetails.company_name || 'Unknown'}`
             });
             
           if (transactionError) {
@@ -158,7 +158,7 @@ export function useOrderSubmission(
           size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
           color: comp.color || null,
           gsm: comp.gsm || null,
-          custom_name: comp.type === 'custom' ? comp.customName : null,
+          custom_name: comp.type === 'custom' ? (comp.custom_name || comp.customName) : null,
           material_id: comp.material_id || null,
           roll_width: comp.roll_width ? parseFloat(String(comp.roll_width)) : null,
           consumption: comp.consumption ? parseFloat(String(comp.consumption)) : null
