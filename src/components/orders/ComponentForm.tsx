@@ -95,7 +95,7 @@ export const ComponentForm = ({
         <div className="space-y-2">
           <Label>Color</Label>
           <Select 
-            value={component.color || undefined} 
+            value={component.color || "not_applicable"} 
             onValueChange={(value) => onFieldChange('color', value)}
           >
             <SelectTrigger>
@@ -131,7 +131,7 @@ export const ComponentForm = ({
           ) : (
             <div className="flex gap-2">
               <Select 
-                value={component.gsm || undefined} 
+                value={component.gsm || "not_applicable"} 
                 onValueChange={(value) => onFieldChange('gsm', value)}
               >
                 <SelectTrigger className="flex-1">

@@ -162,7 +162,7 @@ export const OrderDetailsForm = ({
                   } 
                 })
               }
-              value={formData.sales_account_id || ""}
+              value={formData.sales_account_id || "none"}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select sales account" />

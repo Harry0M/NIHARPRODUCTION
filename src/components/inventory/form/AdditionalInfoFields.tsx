@@ -40,7 +40,7 @@ export const AdditionalInfoFields = ({ suppliers }: AdditionalInfoFieldsProps) =
             <FormLabel>Supplier</FormLabel>
             <Select
               onValueChange={field.onChange}
-              value={field.value || ""}
+              value={field.value || "none"}
             >
               <FormControl>
                 <SelectTrigger>
@@ -48,7 +48,7 @@ export const AdditionalInfoFields = ({ suppliers }: AdditionalInfoFieldsProps) =
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 {suppliers?.map((supplier) => (
                   <SelectItem key={supplier.id} value={supplier.id}>
                     {supplier.name}
