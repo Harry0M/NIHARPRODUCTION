@@ -10,7 +10,7 @@ import { ProductDetailsForm } from "./ProductDetailsForm";
 import { ComponentsSection } from "./ComponentsSection";
 import { CostCalculationSection } from "./CostCalculationSection";
 import { useCatalogForm } from "./hooks/useCatalogForm";
-import { Component } from "./types";
+import { Component, CustomComponent } from "./types";
 
 const CatalogNew = () => {
   const navigate = useNavigate();
@@ -101,31 +101,37 @@ const CatalogNew = () => {
       });
       
       // Set components
-      const standardComponents: Record<string, any> = {};
+      const standardComponents: Record<string, Component> = {};
       const customComponentsList: CustomComponent[] = [];
       
       productData.components.forEach((comp: any) => {
-        const componentData = {
+        const componentData: Component = {
           id: comp.id,
-          component_type: comp.component_type,
-          type: (comp.component_type || 'custom') as "part" | "border" | "handle" | "chain" | "runner" | "custom",
+          type: (comp.component_type === "part" || comp.component_type === "border" || 
+                comp.component_type === "handle" || comp.component_type === "chain" || 
+                comp.component_type === "runner") 
+                ? comp.component_type as "part" | "border" | "handle" | "chain" | "runner" 
+                : "custom",
           length: comp.length ? comp.length.toString() : "",
           width: comp.width ? comp.width.toString() : "",
           color: comp.color || "",
           gsm: comp.gsm ? comp.gsm.toString() : "",
           material_id: comp.material_id || "",
           roll_width: comp.roll_width ? comp.roll_width.toString() : "",
-          consumption: comp.consumption ? comp.consumption.toString() : ""
+          consumption: comp.consumption ? comp.consumption.toString() : "",
+          component_type: comp.component_type
         };
         
         // Categorize as standard or custom component
         if (comp.custom_name) {
           customComponentsList.push({
             ...componentData,
-            custom_name: comp.custom_name
-          });
-        } else {
-          standardComponents[comp.component_type] = componentData;
+            custom_name: comp.custom_name,
+            component_type: comp.component_type,
+            type: "custom"
+          } as CustomComponent);
+        } else if (componentData.type !== "custom") {
+          standardComponents[componentData.type] = componentData;
         }
       });
       
@@ -316,7 +322,7 @@ const CatalogNew = () => {
           width: comp.width ? Number(comp.width) : null,
           color: comp.color || null,
           gsm: comp.gsm ? Number(comp.gsm) : null,
-          custom_name: comp.type === 'custom' ? comp.custom_name : null,
+          custom_name: comp.type === 'custom' ? (comp as CustomComponent).custom_name : null,
           material_id: comp.material_id && comp.material_id !== 'not_applicable' ? comp.material_id : null,
           roll_width: comp.roll_width ? Number(comp.roll_width) : null,
           consumption: comp.consumption ? Number(comp.consumption) : null
