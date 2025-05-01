@@ -8,6 +8,8 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Trash } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +23,7 @@ export interface ComponentProps {
   gsm?: string;
   name?: string;
   customName?: string;
+  custom_name?: string;
   details?: string;
   material_id?: string;
   roll_width?: string;
@@ -36,8 +39,9 @@ interface ComponentFormProps {
     gsm: string[];
   };
   title?: string;
-  handleChange: (index: number, field: string, value: string) => void;
+  handleChange?: (index: number, field: string, value: string) => void;
   onChange?: (field: string, value: string) => void;
+  onRemove?: () => void;
 }
 
 export const ComponentForm = ({ 
@@ -47,7 +51,8 @@ export const ComponentForm = ({
   componentOptions,
   title,
   handleChange,
-  onChange
+  onChange,
+  onRemove
 }: ComponentFormProps) => {
   // State to track if user wants to enter custom GSM
   const [isCustomGsm, setIsCustomGsm] = useState(false);
@@ -84,7 +89,7 @@ export const ComponentForm = ({
   const onFieldChange = (field: string, value: string) => {
     if (onChange) {
       onChange(field, value);
-    } else {
+    } else if (handleChange) {
       handleChange(index, field, value);
     }
   };
@@ -95,17 +100,30 @@ export const ComponentForm = ({
 
   return (
     <div className="py-4 first:pt-0 last:pb-0">
-      {title && !isCustom && (
-        <h3 className="font-medium mb-4">{title}</h3>
-      )}
+      <div className="flex items-center justify-between">
+        {title && (
+          <h3 className="font-medium mb-4">{title}</h3>
+        )}
+        {isCustom && onRemove && (
+          <Button 
+            type="button" 
+            variant="ghost" 
+            size="sm" 
+            onClick={onRemove}
+          >
+            <Trash size={16} className="text-destructive" />
+          </Button>
+        )}
+      </div>
+      
       <div className="grid md:grid-cols-4 gap-4">
         {isCustom && (
           <div className="space-y-2">
             <Label>Component Name</Label>
             <Input
               placeholder="Enter component name"
-              value={component.name || component.customName || ''}
-              onChange={(e) => onFieldChange('customName', e.target.value)}
+              value={component.name || component.custom_name || component.customName || ''}
+              onChange={(e) => onFieldChange(isCustom ? 'custom_name' : 'name', e.target.value)}
               required={isCustom}
             />
           </div>

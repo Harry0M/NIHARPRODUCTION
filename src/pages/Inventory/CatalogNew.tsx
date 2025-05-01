@@ -30,6 +30,7 @@ const CatalogNew = () => {
     description: "",
     bag_length: "",
     bag_width: "",
+    height: "",
     default_quantity: "1", // Default to 1
     default_rate: "",
     cutting_charge: "0",
@@ -65,7 +66,7 @@ const CatalogNew = () => {
     if (materials) {
       calculateMaterialCost();
     }
-  }, [components, customComponents, materials]);
+  }, [components, customComponents, materials, productDetails.default_quantity]);
 
   useEffect(() => {
     // Calculate total cost whenever any cost component changes
@@ -82,13 +83,14 @@ const CatalogNew = () => {
     if (!materials || materials.length === 0) return;
     
     let cost = 0;
+    const defaultQuantity = parseInt(productDetails.default_quantity) || 1;
     
     // Calculate cost for standard components
     Object.values(components).forEach(comp => {
       if (comp.material_id && comp.material_id !== 'not_applicable' && comp.consumption) {
         const material = materials.find(m => m.id === comp.material_id);
         if (material && material.purchase_price) {
-          cost += parseFloat(String(comp.consumption)) * parseFloat(material.purchase_price);
+          cost += parseFloat(String(comp.consumption)) * parseFloat(String(material.purchase_price)) * defaultQuantity;
         }
       }
     });
@@ -98,7 +100,7 @@ const CatalogNew = () => {
       if (comp.material_id && comp.material_id !== 'not_applicable' && comp.consumption) {
         const material = materials.find(m => m.id === comp.material_id);
         if (material && material.purchase_price) {
-          cost += parseFloat(String(comp.consumption)) * parseFloat(material.purchase_price);
+          cost += parseFloat(String(comp.consumption)) * parseFloat(String(material.purchase_price)) * defaultQuantity;
         }
       }
     });
@@ -178,7 +180,7 @@ const CatalogNew = () => {
         id: uuidv4(),
         type: "custom",
         component_type: "custom",
-        customName: "",
+        custom_name: "",
         color: "",
         gsm: "",
         size: ""
@@ -211,6 +213,12 @@ const CatalogNew = () => {
       errors.push("Bag width must be a positive number");
     }
     
+    if (!productDetails.height) {
+      errors.push("Border height is required");
+    } else if (isNaN(parseFloat(productDetails.height)) || parseFloat(productDetails.height) < 0) {
+      errors.push("Border height must be a non-negative number");
+    }
+    
     // Validate numeric fields
     if (productDetails.default_quantity && (isNaN(parseInt(productDetails.default_quantity)) || parseInt(productDetails.default_quantity) < 1)) {
       errors.push("Default quantity must be a positive integer");
@@ -228,20 +236,20 @@ const CatalogNew = () => {
     
     // Check for custom components without names
     customComponents.forEach((comp, index) => {
-      if (!comp.customName || comp.customName.trim() === '') {
+      if (!comp.custom_name || comp.custom_name.trim() === '') {
         errors.push(`Custom component #${index + 1} requires a name`);
       }
     });
     
     // Check for components with invalid measurements
     allComponents.forEach(comp => {
-      const componentName = comp.type === 'custom' ? comp.customName || 'Custom component' : comp.type;
+      const componentName = comp.type === 'custom' ? comp.custom_name || 'Custom component' : comp.type;
       
       if (comp.length && (isNaN(parseFloat(comp.length)) || parseFloat(comp.length) <= 0)) {
         errors.push(`${componentName}: Length must be a positive number`);
       }
       
-      if (comp.width && (isNaN(parseFloat(comp.width)) || parseFloat(comp.width) <= 0)) {
+      if (comp.width && (isNaN(parseFloat(String(comp.width))) || parseFloat(String(comp.width)) <= 0)) {
         errors.push(`${componentName}: Width must be a positive number`);
       }
       
@@ -292,6 +300,7 @@ const CatalogNew = () => {
           description: productDetails.description,
           bag_length: parseFloat(productDetails.bag_length),
           bag_width: parseFloat(productDetails.bag_width),
+          height: parseFloat(productDetails.height),
           default_quantity: productDetails.default_quantity ? parseInt(productDetails.default_quantity) : 1,
           default_rate: productDetails.default_rate ? parseFloat(productDetails.default_rate) : null,
           cutting_charge: productDetails.cutting_charge ? parseFloat(productDetails.cutting_charge) : 0,
@@ -326,13 +335,13 @@ const CatalogNew = () => {
       if (allComponents.length > 0) {
         const componentsToInsert = allComponents.map(comp => ({
           catalog_id: catalogData.id,
-          component_type: comp.type === 'custom' ? comp.customName : comp.type,
+          component_type: comp.type === 'custom' ? comp.custom_name : comp.type,
           size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
           length: comp.length ? parseFloat(comp.length) : null,
           width: comp.width ? parseFloat(comp.width) : null,
           color: comp.color || null,
           gsm: comp.gsm ? parseFloat(comp.gsm) : null,
-          custom_name: comp.type === 'custom' ? comp.customName : null,
+          custom_name: comp.type === 'custom' ? comp.custom_name : null,
           material_id: comp.material_id && comp.material_id !== 'not_applicable' ? comp.material_id : null,
           roll_width: comp.roll_width ? parseFloat(String(comp.roll_width)) : null,
           consumption: comp.consumption ? parseFloat(String(comp.consumption)) : null
@@ -394,28 +403,46 @@ const CatalogNew = () => {
     
     const materialUsage: Record<string, {
       id: string,
+      material_id: string,
       name: string,
       quantity: number,
       unit: string,
-      cost: number
+      cost: number,
+      component_type: string,
+      consumption: number,
+      unit_cost: number,
+      total_cost: number,
+      material_name: string
     }> = {};
+    
+    const defaultQuantity = parseInt(productDetails.default_quantity) || 1;
     
     // Process standard components
     Object.values(components).forEach(comp => {
       if (comp.material_id && comp.material_id !== 'not_applicable' && comp.consumption) {
         const material = materials.find(m => m.id === comp.material_id);
         if (material) {
+          const consumptionValue = parseFloat(String(comp.consumption)) * defaultQuantity;
+          const costValue = material.purchase_price ? consumptionValue * parseFloat(String(material.purchase_price)) : 0;
+          
           if (!materialUsage[comp.material_id]) {
             materialUsage[comp.material_id] = {
               id: comp.material_id,
+              material_id: comp.material_id,
               name: material.material_type + (material.color ? ` (${material.color})` : '') + (material.gsm ? ` ${material.gsm} GSM` : ''),
-              quantity: parseFloat(String(comp.consumption)),
+              quantity: consumptionValue,
               unit: material.unit,
-              cost: material.purchase_price ? parseFloat(String(comp.consumption)) * parseFloat(material.purchase_price) : 0
+              cost: costValue,
+              component_type: comp.type,
+              consumption: consumptionValue,
+              unit_cost: parseFloat(String(material.purchase_price)) || 0,
+              total_cost: costValue,
+              material_name: material.material_type
             };
           } else {
-            materialUsage[comp.material_id].quantity += parseFloat(String(comp.consumption));
-            materialUsage[comp.material_id].cost += material.purchase_price ? parseFloat(String(comp.consumption)) * parseFloat(material.purchase_price) : 0;
+            materialUsage[comp.material_id].quantity += consumptionValue;
+            materialUsage[comp.material_id].cost += costValue;
+            materialUsage[comp.material_id].total_cost += costValue;
           }
         }
       }
@@ -426,17 +453,27 @@ const CatalogNew = () => {
       if (comp.material_id && comp.material_id !== 'not_applicable' && comp.consumption) {
         const material = materials.find(m => m.id === comp.material_id);
         if (material) {
+          const consumptionValue = parseFloat(String(comp.consumption)) * defaultQuantity;
+          const costValue = material.purchase_price ? consumptionValue * parseFloat(String(material.purchase_price)) : 0;
+          
           if (!materialUsage[comp.material_id]) {
             materialUsage[comp.material_id] = {
               id: comp.material_id,
+              material_id: comp.material_id,
               name: material.material_type + (material.color ? ` (${material.color})` : '') + (material.gsm ? ` ${material.gsm} GSM` : ''),
-              quantity: parseFloat(String(comp.consumption)),
+              quantity: consumptionValue,
               unit: material.unit,
-              cost: material.purchase_price ? parseFloat(String(comp.consumption)) * parseFloat(material.purchase_price) : 0
+              cost: costValue,
+              component_type: comp.component_type,
+              consumption: consumptionValue,
+              unit_cost: parseFloat(String(material.purchase_price)) || 0,
+              total_cost: costValue,
+              material_name: material.material_type
             };
           } else {
-            materialUsage[comp.material_id].quantity += parseFloat(String(comp.consumption));
-            materialUsage[comp.material_id].cost += material.purchase_price ? parseFloat(String(comp.consumption)) * parseFloat(material.purchase_price) : 0;
+            materialUsage[comp.material_id].quantity += consumptionValue;
+            materialUsage[comp.material_id].cost += costValue;
+            materialUsage[comp.material_id].total_cost += costValue;
           }
         }
       }
@@ -511,7 +548,7 @@ const CatalogNew = () => {
                 />
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="bag_length">Bag Length (inches) *</Label>
                   <Input
@@ -534,6 +571,19 @@ const CatalogNew = () => {
                     step="0.01"
                     placeholder="Enter width"
                     value={productDetails.bag_width}
+                    onChange={handleProductChange}
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="height">Border Height (inches) *</Label>
+                  <Input
+                    id="height"
+                    name="height"
+                    type="number"
+                    step="0.01"
+                    placeholder="Enter border height"
+                    value={productDetails.height}
                     onChange={handleProductChange}
                   />
                 </div>
