@@ -630,10 +630,16 @@ export type Database = {
         Row: {
           bag_length: number
           bag_width: number
+          catalog_id: string | null
           company_id: string | null
           company_name: string
           created_at: string
           created_by: string | null
+          customer_address: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          delivery_date: string | null
+          description: string | null
           id: string
           order_date: string
           order_number: string
@@ -647,10 +653,16 @@ export type Database = {
         Insert: {
           bag_length: number
           bag_width: number
+          catalog_id?: string | null
           company_id?: string | null
           company_name: string
           created_at?: string
           created_by?: string | null
+          customer_address?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          delivery_date?: string | null
+          description?: string | null
           id?: string
           order_date?: string
           order_number: string
@@ -664,10 +676,16 @@ export type Database = {
         Update: {
           bag_length?: number
           bag_width?: number
+          catalog_id?: string | null
           company_id?: string | null
           company_name?: string
           created_at?: string
           created_by?: string | null
+          customer_address?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          delivery_date?: string | null
+          description?: string | null
           id?: string
           order_date?: string
           order_number?: string

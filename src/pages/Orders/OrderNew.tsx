@@ -86,19 +86,19 @@ const OrderNew = () => {
       handleOrderChange({ 
         target: { 
           name: 'quantity', 
-          value: orderData.quantity?.toString() || ''
+          value: String(orderData.quantity) || ''
         } 
       });
       handleOrderChange({ 
         target: { 
           name: 'bag_length', 
-          value: orderData.bag_length?.toString() || ''
+          value: String(orderData.bag_length) || ''
         } 
       });
       handleOrderChange({ 
         target: { 
           name: 'bag_width', 
-          value: orderData.bag_width?.toString() || ''
+          value: String(orderData.bag_width) || ''
         } 
       });
       handleOrderChange({ 
@@ -114,11 +114,11 @@ const OrderNew = () => {
         } 
       });
       // Only set these if they exist in orderData
-      if ('delivery_date' in orderData) {
+      if ('delivery_date' in orderData && orderData.delivery_date) {
         handleOrderChange({ 
           target: { 
             name: 'delivery_date', 
-            value: orderData.delivery_date || '' 
+            value: orderData.delivery_date
           } 
         });
       }
@@ -137,43 +137,43 @@ const OrderNew = () => {
         } 
       });
       // Only set these if they exist in orderData
-      if ('catalog_id' in orderData) {
+      if ('catalog_id' in orderData && orderData.catalog_id) {
         handleOrderChange({ 
           target: { 
             name: 'catalog_id', 
-            value: orderData.catalog_id as string || '' 
+            value: orderData.catalog_id as string
           } 
         });
       }
-      if ('customer_name' in orderData) {
+      if ('customer_name' in orderData && orderData.customer_name) {
         handleOrderChange({ 
           target: { 
             name: 'customer_name', 
-            value: orderData.customer_name as string || '' 
+            value: orderData.customer_name as string
           } 
         });
       }
-      if ('customer_phone' in orderData) {
+      if ('customer_phone' in orderData && orderData.customer_phone) {
         handleOrderChange({ 
           target: { 
             name: 'customer_phone', 
-            value: orderData.customer_phone as string || '' 
+            value: orderData.customer_phone as string
           } 
         });
       }
-      if ('customer_address' in orderData) {
+      if ('customer_address' in orderData && orderData.customer_address) {
         handleOrderChange({ 
           target: { 
             name: 'customer_address', 
-            value: orderData.customer_address as string || '' 
+            value: orderData.customer_address as string
           } 
         });
       }
-      if ('description' in orderData) {
+      if ('description' in orderData && orderData.description) {
         handleOrderChange({ 
           target: { 
             name: 'description', 
-            value: orderData.description as string || '' 
+            value: orderData.description as string
           } 
         });
       }

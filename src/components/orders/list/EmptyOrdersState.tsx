@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Package2Icon, Plus } from "lucide-react";
 
 interface EmptyOrdersStateProps {
-  isFiltering: boolean;  // Changed from "hasFilters" to "isFiltering" to match usage
+  isFiltering: boolean;  // Using isFiltering prop as expected by OrderContent
 }
 
 export const EmptyOrdersState = ({ isFiltering }: EmptyOrdersStateProps) => {
