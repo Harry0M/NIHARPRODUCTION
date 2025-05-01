@@ -5,6 +5,7 @@ import OrderCard from "./OrderCard";
 import OrderTable from "./OrderTable";
 import { GridIcon, ListIcon } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
+import { EmptyOrdersState } from "./EmptyOrdersState";
 
 interface OrderContentProps {
   orders: Order[];
@@ -12,6 +13,7 @@ interface OrderContentProps {
   setView: (view: "grid" | "list") => void;
   isFiltering: boolean;
   loading?: boolean;
+  onDeleteClick?: (orderId: string) => void;
 }
 
 export function OrderContent({ 
@@ -19,7 +21,8 @@ export function OrderContent({
   view, 
   setView, 
   isFiltering,
-  loading = false
+  loading = false,
+  onDeleteClick
 }: OrderContentProps) {
   return (
     <div className="space-y-4">
@@ -48,24 +51,23 @@ export function OrderContent({
           <p className="text-muted-foreground">Loading orders...</p>
         </div>
       ) : orders.length === 0 ? (
-        <div className="text-center py-10">
-          <div className="text-4xl mb-2">📋</div>
-          <h3 className="text-lg font-semibold">No orders found</h3>
-          <p className="text-muted-foreground">
-            {isFiltering 
-              ? "Try adjusting your filters to see more results." 
-              : "Start by creating a new order."}
-          </p>
-        </div>
+        <EmptyOrdersState isFiltering={isFiltering} />
       ) : (
         view === "grid" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {orders.map((order) => (
-              <OrderCard key={order.id} order={order} />
+              <OrderCard 
+                key={order.id} 
+                order={order} 
+                onDeleteClick={onDeleteClick} 
+              />
             ))}
           </div>
         ) : (
-          <OrderTable orders={orders} />
+          <OrderTable 
+            orders={orders} 
+            onDeleteClick={onDeleteClick} 
+          />
         )
       )}
     </div>

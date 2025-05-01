@@ -1,18 +1,21 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { OrderContent } from "@/components/orders/list/OrderContent";
+import { OrderHeader } from "@/components/orders/list/OrderHeader";
 import { OrderListFilters, DBOrderStatus, OrderStatus } from "@/types/order";
 import { supabase } from "@/integrations/supabase/client";
 import { Order } from "@/types/order";
 import OrderFilter from "@/components/orders/OrderFilter";
+import { useOrderDeletion } from "@/hooks/use-order-deletion";
+import { DeleteOrderDialog } from "@/components/orders/list/DeleteOrderDialog";
+import { downloadTableAsCsv, downloadTableAsPdf } from "@/utils/downloadUtils";
 
 interface OrderFilters extends OrderListFilters {
   searchQuery: string;
@@ -23,15 +26,28 @@ const OrderList = () => {
   const queryClient = useQueryClient();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<"grid" | "list">("grid");
+  const [view, setView] = useState<"grid" | "list">("list"); // Default to list view
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const [filters, setFilters] = useState<OrderFilters>({
-    status: '' as '',
+    status: '' as OrderStatus | '',
     dateRange: {
       from: undefined,
       to: undefined,
     },
     searchQuery: '',
+  });
+
+  // Use the order deletion hook
+  const { 
+    deleteDialogOpen, 
+    deleteLoading, 
+    orderToDelete,
+    setDeleteDialogOpen, 
+    handleDeleteClick, 
+    handleDeleteOrder 
+  } = useOrderDeletion((id) => {
+    // After deletion, remove the order from the local state
+    setOrders(prev => prev.filter(order => order.id !== id));
   });
 
   // Fetch orders with filters
@@ -112,43 +128,12 @@ const OrderList = () => {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Delete order mutation
-  const deleteOrderMutation = useMutation({
-    mutationFn: async (orderId: string) => {
-      const { error } = await supabase
-        .from('orders')
-        .delete()
-        .eq('id', orderId);
-
-      if (error) {
-        throw error;
-      }
-    },
-    onSuccess: () => {
-      // Invalidate and refetch queries
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
-      toast({
-        title: "Order deleted",
-        description: "Order deleted successfully.",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error deleting order",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  });
-
   const handleFilterChange = (newFilters: OrderFilters) => {
     setFilters(newFilters);
   };
 
   const onDeleteClick = (orderId: string) => {
-    if (window.confirm("Are you sure you want to delete this order?")) {
-      deleteOrderMutation.mutate(orderId);
-    }
+    handleDeleteClick(orderId);
   };
 
   const onSelectOrder = (orderId: string, isSelected: boolean) => {
@@ -167,23 +152,44 @@ const OrderList = () => {
     }
   };
 
+  const handleDownloadCsv = () => {
+    downloadTableAsCsv(orders, 'orders', [
+      { header: 'Order #', accessor: 'order_number' },
+      { header: 'Company', accessor: 'company_name' },
+      { header: 'Quantity', accessor: 'quantity' },
+      { header: 'Bag Size', accessor: (row) => `${row.bag_length}" × ${row.bag_width}"` },
+      { header: 'Order Date', accessor: (row) => format(new Date(row.order_date), 'PP') },
+      { header: 'Status', accessor: 'status' }
+    ]);
+  };
+
+  const handleDownloadPdf = () => {
+    downloadTableAsPdf(orders, 'Orders', [
+      { header: 'Order #', accessor: 'order_number' },
+      { header: 'Company', accessor: 'company_name' },
+      { header: 'Quantity', accessor: 'quantity' },
+      { header: 'Bag Size', accessor: (row) => `${row.bag_length}" × ${row.bag_width}"` },
+      { header: 'Order Date', accessor: (row) => format(new Date(row.order_date), 'PP') },
+      { header: 'Status', accessor: 'status' }
+    ]);
+  };
+
   const isFiltering = !!filters.status || !!filters.dateRange.from || !!filters.dateRange.to || !!filters.searchQuery;
 
   return (
     <div className="container mx-auto py-6">
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold">Orders</h1>
-          <Badge variant="secondary">{orders.length} Orders</Badge>
-        </div>
-        <Button onClick={() => navigate("/orders/new")}>
-          Create Order
-        </Button>
+      <OrderHeader 
+        onDownloadCsv={handleDownloadCsv}
+        onDownloadPdf={handleDownloadPdf}
+        loading={loading}
+        ordersCount={orders.length}
+      />
+
+      <div className="mt-6">
+        <OrderFilter onFilterChange={handleFilterChange} />
       </div>
 
-      <OrderFilter onFilterChange={handleFilterChange} />
-
-      <Tabs defaultValue="all" className="space-y-4">
+      <Tabs defaultValue="all" className="space-y-4 mt-6">
         <TabsList className="hidden">
           <TabsTrigger value="all">All Orders</TabsTrigger>
         </TabsList>
@@ -195,9 +201,18 @@ const OrderList = () => {
             setView={setView}
             isFiltering={isFiltering}
             loading={loading}
+            onDeleteClick={onDeleteClick}
           />
         </TabsContent>
       </Tabs>
+
+      {/* Delete order confirmation dialog */}
+      <DeleteOrderDialog 
+        open={deleteDialogOpen}
+        loading={deleteLoading}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDeleteOrder}
+      />
     </div>
   );
 };

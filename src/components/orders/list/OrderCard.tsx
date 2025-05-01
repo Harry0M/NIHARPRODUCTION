@@ -2,16 +2,17 @@
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CalendarIcon, Package2Icon } from "lucide-react";
+import { CalendarIcon, Package2Icon, Trash, Pencil, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { Order, OrderStatus } from "@/types/order";
 import { Link } from "react-router-dom";
 
 interface OrderCardProps {
   order: Order;
+  onDeleteClick?: (orderId: string) => void;
 }
 
-export function OrderCard({ order }: OrderCardProps) {
+export function OrderCard({ order, onDeleteClick }: OrderCardProps) {
   const getStatusColor = (status: OrderStatus): string => {
     switch (status) {
       case "pending":
@@ -74,12 +75,30 @@ export function OrderCard({ order }: OrderCardProps) {
           )}
         </div>
       </CardContent>
-      <CardFooter className="bg-muted/50 p-4">
-        <Button asChild className="w-full" variant="outline">
+      <CardFooter className="bg-muted/50 p-4 flex justify-between">
+        <Button asChild size="sm" variant="outline">
           <Link to={`/orders/${order.id}`}>
-            View Order Details
+            <Eye size={16} className="mr-1" />
+            View
           </Link>
         </Button>
+        <Button asChild size="sm" variant="outline">
+          <Link to={`/orders/${order.id}/edit`}>
+            <Pencil size={16} className="mr-1" />
+            Edit
+          </Link>
+        </Button>
+        {onDeleteClick && (
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+            onClick={() => onDeleteClick(order.id)}
+          >
+            <Trash size={16} className="mr-1" />
+            Delete
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );

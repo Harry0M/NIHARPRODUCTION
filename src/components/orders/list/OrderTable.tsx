@@ -12,13 +12,14 @@ import {
 import { format } from "date-fns";
 import { Order, OrderStatus } from "@/types/order";
 import { Link } from "react-router-dom";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, Eye, Pencil, Trash } from "lucide-react";
 
 interface OrderTableProps {
   orders: Order[];
+  onDeleteClick?: (orderId: string) => void;
 }
 
-export function OrderTable({ orders }: OrderTableProps) {
+export function OrderTable({ orders, onDeleteClick }: OrderTableProps) {
   const getStatusColor = (status: OrderStatus): string => {
     switch (status) {
       case "pending":
@@ -37,7 +38,7 @@ export function OrderTable({ orders }: OrderTableProps) {
   };
 
   return (
-    <div className="border rounded-md">
+    <div className="border rounded-md overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow>
@@ -59,7 +60,7 @@ export function OrderTable({ orders }: OrderTableProps) {
               </Button>
             </TableHead>
             <TableHead>Status</TableHead>
-            <TableHead className="text-right">Action</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -78,11 +79,28 @@ export function OrderTable({ orders }: OrderTableProps) {
                 </Badge>
               </TableCell>
               <TableCell className="text-right">
-                <Button asChild variant="ghost" size="sm">
-                  <Link to={`/orders/${order.id}`}>
-                    View
-                  </Link>
-                </Button>
+                <div className="flex justify-end gap-2">
+                  <Button asChild variant="ghost" size="sm">
+                    <Link to={`/orders/${order.id}`}>
+                      <Eye size={16} />
+                    </Link>
+                  </Button>
+                  <Button asChild variant="ghost" size="sm">
+                    <Link to={`/orders/${order.id}/edit`}>
+                      <Pencil size={16} />
+                    </Link>
+                  </Button>
+                  {onDeleteClick && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => onDeleteClick(order.id)}
+                    >
+                      <Trash size={16} />
+                    </Button>
+                  )}
+                </div>
               </TableCell>
             </TableRow>
           ))}
