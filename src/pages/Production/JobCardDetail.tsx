@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, MoreVertical, Clipboard } from "lucide-react";
@@ -53,7 +54,7 @@ export default function JobCardDetail() {
 
         // Extract components if they exist
         const components = data.order?.components || [];
-        setOrderComponents(components);
+        setOrderComponents(Array.isArray(components) ? components : []);
         
         setJobCard({
           id: data.id,
@@ -100,7 +101,7 @@ export default function JobCardDetail() {
       case "in_production":
         return <Badge variant="secondary">In Progress</Badge>;
       case "completed":
-        return <Badge variant="success">Completed</Badge>;
+        return <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-200">Completed</Badge>;
       case "cancelled":
         return <Badge className="bg-red-500" variant="outline">Cancelled</Badge>;
       default:
@@ -188,7 +189,10 @@ export default function JobCardDetail() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <OrderInfoCard
-          order={jobCard.order}
+          order={{
+            ...jobCard.order,
+            components: orderComponents
+          }}
           formatDate={formatDate}
           getStatusBadge={getStatusBadge}
         />
