@@ -22,16 +22,19 @@ export interface Component {
   gsm?: string;
   length?: string;
   width?: string;
+  size?: string; // Added missing property
   material_id?: string;
   roll_width?: string;
   consumption?: string;
   component_type?: string;
+  details?: string; // Added missing property
 }
 
 export interface CustomComponent extends Component {
   custom_name: string;
   component_type: string;
   type: "custom";
+  size?: string; // Added missing property
 }
 
 export interface ComponentOptions {

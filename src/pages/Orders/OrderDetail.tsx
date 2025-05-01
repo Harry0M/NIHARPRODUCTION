@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, CheckCircle, AlertTriangle } from "lucide-react";
-import { OrderFormData } from "@/types/order";
+import { OrderFormData, OrderStatus } from "@/types/order";
 import { ComponentForm } from "@/components/orders/ComponentForm";
 import {
   Select,
@@ -32,6 +33,7 @@ interface Component {
   order_id: string;
   created_at: string;
   updated_at: string;
+  details?: string;
 }
 
 const OrderDetail = () => {
@@ -39,6 +41,7 @@ const OrderDetail = () => {
   const navigate = useNavigate();
   const [orderData, setOrderData] = useState<any>(null);
   const [orderDetails, setOrderDetails] = useState<OrderFormData>({
+    company_name: '', // Add required property
     order_number: '',
     customer_name: '',
     customer_phone: '',
@@ -111,13 +114,15 @@ const OrderDetail = () => {
       consumption: component.consumption?.toString() || '',
       order_id: component.order_id,
       created_at: component.created_at,
-      updated_at: component.updated_at
+      updated_at: component.updated_at,
+      details: component.details || ''
     }));
   };
 
   useEffect(() => {
     if (orderData) {
       setOrderDetails({
+        company_name: orderData.company_name || '', // Add required field
         order_number: orderData.order_number || '',
         customer_name: orderData.customer_name || '',
         customer_phone: orderData.customer_phone || '',
@@ -143,12 +148,15 @@ const OrderDetail = () => {
   };
 
   const handleStatusChange = (status: string) => {
-    setOrderDetails(prev => ({ ...prev, status }));
+    setOrderDetails(prev => ({ ...prev, status: status as OrderStatus }));
   };
 
   const handleComponentChange = (index: number, field: string, value: string) => {
     const updatedComponents = [...components];
-    updatedComponents[index][field] = value;
+    updatedComponents[index] = {
+      ...updatedComponents[index],
+      [field]: value
+    } as Component;
     setComponents(updatedComponents);
   };
 
@@ -162,7 +170,8 @@ const OrderDetail = () => {
         quantity: parseInt(orderDetails.quantity as string),
         rate: parseFloat(orderDetails.rate as string),
         bag_length: parseFloat(orderDetails.bag_length as string),
-        bag_width: parseFloat(orderDetails.bag_width as string)
+        bag_width: parseFloat(orderDetails.bag_width as string),
+        status: orderDetails.status as OrderStatus
       };
 
       const { error: updateError } = await supabase

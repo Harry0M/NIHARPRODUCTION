@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Plus } from "lucide-react";
@@ -10,14 +11,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { OrderFormData, Component, CustomComponent } from "@/types/order";
+import { OrderFormData, Component, CustomComponent, OrderStatus } from "@/types/order";
 import { ComponentForm } from "@/components/orders/ComponentForm";
+
+type ComponentType = "part" | "border" | "handle" | "chain" | "runner" | "custom";
 
 const OrderNew = () => {
   const navigate = useNavigate();
   const { id, catalogId } = useParams<{ id?: string; catalogId?: string }>();
   const isEditMode = !!id;
   const [orderDetails, setOrderDetails] = useState<OrderFormData>({
+    company_name: '', // Add required property
     catalog_id: catalogId || '',
     quantity: '',
     rate: '',
@@ -100,7 +104,7 @@ const OrderNew = () => {
 
         const baseComponent = {
           id: crypto.randomUUID(),
-          type: component.component_type,
+          type: component.component_type as ComponentType,
           component_type: component.component_type,
           color: component.color || '',
           gsm: component.gsm?.toString() || '',
@@ -114,6 +118,7 @@ const OrderNew = () => {
         if (component.component_type === 'custom') {
           newCustomComponents.push({
             ...baseComponent,
+            type: 'custom',
             custom_name: component.custom_name || 'custom',
           });
         } else {
@@ -130,6 +135,7 @@ const OrderNew = () => {
   useEffect(() => {
     if (orderData) {
       setOrderDetails({
+        company_name: orderData.company_name || '', // Add required field
         catalog_id: orderData.catalog_id || '',
         quantity: orderData.quantity?.toString() || '',
         rate: orderData.rate?.toString() || '',
@@ -146,13 +152,13 @@ const OrderNew = () => {
       // Filter and set custom components
       if (orderData.components) {
         const customComps = orderData.components.filter(
-          comp => comp.custom_name || comp.component_type === 'custom'
+          (comp: any) => comp.custom_name || comp.component_type === 'custom'
         );
         setCustomComponents(convertToCustomComponents(customComps));
 
         // Set standard components
         const standardComps = orderData.components.filter(
-          comp => !comp.custom_name && comp.component_type !== 'custom'
+          (comp: any) => !comp.custom_name && comp.component_type !== 'custom'
         );
         setComponents(standardComps);
       }
@@ -160,10 +166,10 @@ const OrderNew = () => {
   }, [orderData]);
 
   // Fix the custom components type conversion
-  const convertToCustomComponents = (components: Component[]): CustomComponent[] => {
+  const convertToCustomComponents = (components: any[]): CustomComponent[] => {
     return components.map(comp => ({
       id: comp.id || crypto.randomUUID(),
-      type: (comp.type || comp.component_type || 'custom') as "part" | "border" | "handle" | "chain" | "runner" | "custom",
+      type: (comp.type || comp.component_type || 'custom') as ComponentType,
       component_type: comp.component_type || 'custom',
       color: comp.color || '',
       gsm: comp.gsm || '',
@@ -172,7 +178,8 @@ const OrderNew = () => {
       width: comp.width || '',
       material_id: comp.material_id || '',
       roll_width: comp.roll_width || '',
-      consumption: comp.consumption || ''
+      consumption: comp.consumption || '',
+      details: comp.details || ''
     }));
   };
 
@@ -240,6 +247,7 @@ const OrderNew = () => {
         quantity: Number(orderDetails.quantity),
         rate: Number(orderDetails.rate),
         user_id: userData.user?.id,
+        status: orderDetails.status as OrderStatus
       };
 
       let orderId = id;
@@ -285,7 +293,8 @@ const OrderNew = () => {
         width: comp.width ? Number(comp.width) : null,
         material_id: comp.material_id || null,
         roll_width: comp.roll_width ? Number(comp.roll_width) : null,
-        consumption: comp.consumption ? Number(comp.consumption) : null
+        consumption: comp.consumption ? Number(comp.consumption) : null,
+        details: comp.details || null
       }));
 
       // Insert components

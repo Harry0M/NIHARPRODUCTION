@@ -116,7 +116,7 @@ const OrderList = () => {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Delete order mutation - Fixed implementation with proper options
+  // Delete order mutation
   const deleteOrderMutation = useMutation({
     mutationFn: async (orderId: string) => {
       const { error } = await supabase

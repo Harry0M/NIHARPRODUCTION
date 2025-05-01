@@ -45,7 +45,7 @@ export interface OrderFormData {
   delivery_address?: string;
   special_instructions?: string;
   sales_account_id?: string | null;
-  status?: string;
+  status?: OrderStatus | string; // Allow string for form handling, convert to OrderStatus when submitting
   notes?: string;
   description?: string;
 }
@@ -70,6 +70,13 @@ export interface OrderData {
   updated_at: string;
   created_by?: string;
   components?: Component[];
+  customer_name?: string;
+  customer_phone?: string;
+  customer_address?: string;
+  product_name?: string;
+  delivery_address?: string;
+  description?: string;
+  catalog_id?: string;
 }
 
 // Short order info for lists
@@ -111,6 +118,7 @@ export interface Component {
   order_id?: string;
   created_at?: string;
   updated_at?: string;
+  details?: string; // Added missing property
 }
 
 // Custom component definition
@@ -155,7 +163,7 @@ export interface OrderDetailsData {
 }
 
 export interface OrderListFilters {
-  status: string;
+  status: OrderStatus | '';
   dateRange: {
     from: Date | undefined;
     to: Date | undefined;
