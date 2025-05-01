@@ -14,6 +14,7 @@ import StockList from "@/pages/Inventory/StockList";
 import StockNew from "@/pages/Inventory/StockNew";
 import StockDetail from "@/pages/Inventory/StockDetail";
 import CatalogList from "@/pages/Inventory/CatalogList";
+import CatalogNew from "@/pages/Inventory/CatalogNew";
 import ProductionDashboard from "@/pages/Production/ProductionDashboard";
 import JobCardList from "@/pages/Production/JobCardList";
 import JobCardNew from "@/pages/Production/JobCardNew";
@@ -61,6 +62,7 @@ const routes = [
               { path: "stock/new", element: <StockNew /> },
               { path: "stock/:id", element: <StockDetail /> },
               { path: "catalog", element: <CatalogList /> },
+              { path: "catalog/new", element: <CatalogNew /> },  // Added the missing route
             ],
           },
           {
