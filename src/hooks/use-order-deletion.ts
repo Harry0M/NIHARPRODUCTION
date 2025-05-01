@@ -59,8 +59,10 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
         description: "The order and all related records have been removed.",
       });
       
-      // Force a full page reload
-      window.location.reload();
+      // Call the callback with the deleted order ID
+      if (onOrderDeleted) {
+        onOrderDeleted(deletedOrderId);
+      }
       
     } catch (error: any) {
       console.error("Error in deletion process:", error);
@@ -81,6 +83,7 @@ export const useOrderDeletion = (onOrderDeleted: (orderId: string) => void) => {
     orderToDelete,
     deleteDialogOpen,
     deleteLoading,
+    isLoading: deleteLoading,  // Add this alias for consistency
     setDeleteDialogOpen,
     handleDeleteClick,
     handleDeleteOrder,

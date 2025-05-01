@@ -86,19 +86,19 @@ const OrderNew = () => {
       handleOrderChange({ 
         target: { 
           name: 'quantity', 
-          value: orderData.quantity.toString() 
+          value: orderData.quantity?.toString() || ''
         } 
       });
       handleOrderChange({ 
         target: { 
           name: 'bag_length', 
-          value: orderData.bag_length.toString() 
+          value: orderData.bag_length?.toString() || ''
         } 
       });
       handleOrderChange({ 
         target: { 
           name: 'bag_width', 
-          value: orderData.bag_width.toString() 
+          value: orderData.bag_width?.toString() || ''
         } 
       });
       handleOrderChange({ 
@@ -110,7 +110,7 @@ const OrderNew = () => {
       handleOrderChange({ 
         target: { 
           name: 'order_date', 
-          value: orderData.order_date 
+          value: orderData.order_date || ''
         } 
       });
       // Only set these if they exist in orderData
@@ -126,14 +126,14 @@ const OrderNew = () => {
         handleOrderChange({ 
           target: { 
             name: 'special_instructions', 
-            value: orderData.special_instructions || '' 
+            value: orderData.special_instructions as string || '' 
           } 
         });
       }
       handleOrderChange({ 
         target: { 
           name: 'status', 
-          value: frontendStatus 
+          value: frontendStatus || ''
         } 
       });
       // Only set these if they exist in orderData
@@ -141,7 +141,7 @@ const OrderNew = () => {
         handleOrderChange({ 
           target: { 
             name: 'catalog_id', 
-            value: orderData.catalog_id || '' 
+            value: orderData.catalog_id as string || '' 
           } 
         });
       }
@@ -149,7 +149,7 @@ const OrderNew = () => {
         handleOrderChange({ 
           target: { 
             name: 'customer_name', 
-            value: orderData.customer_name || '' 
+            value: orderData.customer_name as string || '' 
           } 
         });
       }
@@ -157,7 +157,7 @@ const OrderNew = () => {
         handleOrderChange({ 
           target: { 
             name: 'customer_phone', 
-            value: orderData.customer_phone || '' 
+            value: orderData.customer_phone as string || '' 
           } 
         });
       }
@@ -165,7 +165,7 @@ const OrderNew = () => {
         handleOrderChange({ 
           target: { 
             name: 'customer_address', 
-            value: orderData.customer_address || '' 
+            value: orderData.customer_address as string || '' 
           } 
         });
       }
@@ -173,7 +173,7 @@ const OrderNew = () => {
         handleOrderChange({ 
           target: { 
             name: 'description', 
-            value: orderData.description || '' 
+            value: orderData.description as string || '' 
           } 
         });
       }
@@ -217,7 +217,7 @@ const OrderNew = () => {
           }
         });
 
-        // Update state with processed components - We'll implement these handlers separately
+        // Update state with processed components
         Object.entries(processedComponents).forEach(([type, comp]) => {
           Object.entries(comp).forEach(([field, value]) => {
             if (field !== 'id' && field !== 'type') {

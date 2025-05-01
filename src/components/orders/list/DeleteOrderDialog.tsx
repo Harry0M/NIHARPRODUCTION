@@ -15,7 +15,7 @@ interface DeleteOrderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
-  isLoading: boolean;
+  isLoading: boolean;  // Changed from "loading" to "isLoading"
 }
 
 export const DeleteOrderDialog = ({

@@ -15,7 +15,7 @@ import { Order } from "@/types/order";
 import OrderFilter from "@/components/orders/OrderFilter";
 import { useOrderDeletion } from "@/hooks/use-order-deletion";
 import { DeleteOrderDialog } from "@/components/orders/list/DeleteOrderDialog";
-import { downloadTableAsCsv, downloadTableAsPdf } from "@/utils/downloadUtils";
+import { downloadAsCSV, downloadAsPDF, formatOrdersForDownload } from "@/utils/downloadUtils";
 
 interface OrderFilters extends OrderListFilters {
   searchQuery: string;
@@ -61,11 +61,11 @@ const OrderList = () => {
 
       if (filters.status && filters.status !== '') {
         // Map frontend status to database status if needed
-        const dbStatus: DBOrderStatus | '' = 
-          filters.status === 'processing' ? 'in_production' : filters.status as DBOrderStatus | '';
+        const dbStatus: DBOrderStatus | undefined = 
+          filters.status === 'processing' ? 'in_production' : filters.status as DBOrderStatus;
           
         // Only apply filter if status is not empty
-        if (dbStatus !== '') {
+        if (dbStatus) {
           query = query.eq('status', dbStatus);
         }
       }
@@ -153,25 +153,13 @@ const OrderList = () => {
   };
 
   const handleDownloadCsv = () => {
-    downloadTableAsCsv(orders, 'orders', [
-      { header: 'Order #', accessor: 'order_number' },
-      { header: 'Company', accessor: 'company_name' },
-      { header: 'Quantity', accessor: 'quantity' },
-      { header: 'Bag Size', accessor: (row) => `${row.bag_length}" × ${row.bag_width}"` },
-      { header: 'Order Date', accessor: (row) => format(new Date(row.order_date), 'PP') },
-      { header: 'Status', accessor: 'status' }
-    ]);
+    const formattedOrders = formatOrdersForDownload(orders);
+    downloadAsCSV(formattedOrders, 'orders');
   };
 
   const handleDownloadPdf = () => {
-    downloadTableAsPdf(orders, 'Orders', [
-      { header: 'Order #', accessor: 'order_number' },
-      { header: 'Company', accessor: 'company_name' },
-      { header: 'Quantity', accessor: 'quantity' },
-      { header: 'Bag Size', accessor: (row) => `${row.bag_length}" × ${row.bag_width}"` },
-      { header: 'Order Date', accessor: (row) => format(new Date(row.order_date), 'PP') },
-      { header: 'Status', accessor: 'status' }
-    ]);
+    const formattedOrders = formatOrdersForDownload(orders);
+    downloadAsPDF(formattedOrders, 'orders', 'Orders List');
   };
 
   const isFiltering = !!filters.status || !!filters.dateRange.from || !!filters.dateRange.to || !!filters.searchQuery;
@@ -209,7 +197,7 @@ const OrderList = () => {
       {/* Delete order confirmation dialog */}
       <DeleteOrderDialog 
         open={deleteDialogOpen}
-        loading={deleteLoading}
+        isLoading={deleteLoading}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={handleDeleteOrder}
       />
