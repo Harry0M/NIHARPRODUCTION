@@ -72,7 +72,28 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
 
   const createStockMutation = useMutation({
     mutationFn: async (values: StockFormValues) => {
-      const { data, error } = await supabase.from("inventory").insert(values).select();
+      // Ensure required fields are present
+      if (!values.material_type || !values.quantity || !values.unit) {
+        throw new Error("Required fields are missing");
+      }
+
+      // Create a properly typed object for insertion
+      const stockData = {
+        material_type: values.material_type,
+        color: values.color || null,
+        gsm: values.gsm || null,
+        quantity: values.quantity,
+        unit: values.unit,
+        alternate_unit: values.alternate_unit || null,
+        conversion_rate: values.conversion_rate || 1,
+        track_cost: values.track_cost || false,
+        purchase_price: values.purchase_price || null,
+        selling_price: values.selling_price || null,
+        supplier_id: values.supplier_id || null,
+        reorder_level: values.reorder_level || null,
+      };
+      
+      const { data, error } = await supabase.from("inventory").insert(stockData).select();
       if (error) throw error;
       return data;
     },
@@ -97,9 +118,31 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
   const updateStockMutation = useMutation({
     mutationFn: async (values: StockFormValues) => {
       if (!stockId) throw new Error("Stock ID is required for updates");
+      
+      // Ensure required fields are present
+      if (!values.material_type || !values.quantity || !values.unit) {
+        throw new Error("Required fields are missing");
+      }
+
+      // Create a properly typed object for update
+      const stockData = {
+        material_type: values.material_type,
+        color: values.color || null,
+        gsm: values.gsm || null,
+        quantity: values.quantity,
+        unit: values.unit,
+        alternate_unit: values.alternate_unit || null,
+        conversion_rate: values.conversion_rate || 1,
+        track_cost: values.track_cost || false,
+        purchase_price: values.purchase_price || null,
+        selling_price: values.selling_price || null,
+        supplier_id: values.supplier_id || null,
+        reorder_level: values.reorder_level || null,
+      };
+      
       const { data, error } = await supabase
         .from("inventory")
-        .update(values)
+        .update(stockData)
         .eq("id", stockId)
         .select();
       if (error) throw error;
