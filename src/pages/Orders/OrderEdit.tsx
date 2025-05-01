@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { 
@@ -395,7 +394,7 @@ const OrderEdit = () => {
                 </div>
 
                 <CustomComponentSection
-                  components={customComponents}
+                  customComponents={customComponents}
                   onChange={handleCustomComponentChange}
                   onRemove={removeCustomComponent}
                   componentOptions={componentOptions}
