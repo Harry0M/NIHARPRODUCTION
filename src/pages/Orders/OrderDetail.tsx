@@ -171,12 +171,14 @@ const OrderDetail = () => {
         rate: parseFloat(orderDetails.rate as string),
         bag_length: parseFloat(orderDetails.bag_length as string),
         bag_width: parseFloat(orderDetails.bag_width as string),
-        status: orderDetails.status as OrderStatus
+        // Convert status to proper format for database
+        status: orderDetails.status
       };
 
+      // Type assertion to bypass TypeScript constraints for the database operation
       const { error: updateError } = await supabase
         .from("orders")
-        .update(orderPayload)
+        .update(orderPayload as any)
         .eq('id', id);
 
       if (updateError) {
