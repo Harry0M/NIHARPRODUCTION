@@ -1,189 +1,114 @@
-import { RouteObject, Navigate, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
-import AppLayout from "./components/layout/AppLayout";
-import Dashboard from "./pages/Dashboard";
-import OrderList from "./pages/Orders/OrderList";
-import OrderNew from "./pages/Orders/OrderNew";
-import OrderDetail from "./pages/Orders/OrderDetail";
-import OrderEdit from "./pages/Orders/OrderEdit";
-import ProductionDashboard from "./pages/Production/ProductionDashboard";
-import CuttingJob from "./pages/Production/CuttingJob";
-import PrintingJob from "./pages/Production/PrintingJob";
-import StitchingJob from "./pages/Production/StitchingJob";
-import JobCardList from "./pages/Production/JobCardList";
-import JobCardNew from "./pages/Production/JobCardNew";
-import JobCardDetail from "./pages/Production/JobCardDetail";
-import Dispatch from "./pages/Production/Dispatch";
-import DispatchDetail from "./pages/Production/DispatchDetail";
-import VendorList from "./pages/VendorList";
-import VendorNew from "./pages/VendorNew";
-import SupplierList from "./pages/SupplierList";
-import SupplierNew from "./pages/SupplierNew";
-import NotFound from "./pages/NotFound";
-import Auth from "./pages/Auth";
-import ProtectedRoute from "./components/ProtectedRoute";
+
+import { Navigate } from "react-router-dom";
+import AppLayout from "@/components/layout/AppLayout";
+import AuthLayout from "@/components/AuthLayout";
+import Auth from "@/pages/Auth";
+import Dashboard from "@/pages/Dashboard";
+import NotFound from "@/pages/NotFound";
+import OrderList from "@/pages/Orders/OrderList";
+import OrderNew from "@/pages/Orders/OrderNew";
+import OrderDetail from "@/pages/Orders/OrderDetail";
+import OrderEdit from "@/pages/Orders/OrderEdit";
+import InventoryLayout from "@/pages/Inventory/InventoryLayout";
+import StockList from "@/pages/Inventory/StockList";
+import StockNew from "@/pages/Inventory/StockNew";
+import StockDetail from "@/pages/Inventory/StockDetail";
+import CatalogList from "@/pages/Inventory/CatalogList";
+import ProductionDashboard from "@/pages/Production/ProductionDashboard";
+import JobCardList from "@/pages/Production/JobCardList";
+import JobCardNew from "@/pages/Production/JobCardNew";
+import JobCardDetail from "@/pages/Production/JobCardDetail";
+import CuttingJob from "@/pages/Production/CuttingJob";
+import PrintingJob from "@/pages/Production/PrintingJob";
+import StitchingJob from "@/pages/Production/StitchingJob";
+import Dispatch from "@/pages/Production/Dispatch";
+import DispatchDetail from "@/pages/Production/DispatchDetail";
 import CompanyList from "@/pages/Companies/CompanyList";
 import CompanyNew from "@/pages/Companies/CompanyNew";
-import CompanyOrders from "./pages/Companies/CompanyOrders";
-import InventoryLayout from "./pages/Inventory/InventoryLayout";
-import StockList from "./pages/Inventory/StockList";
-import StockNew from "./pages/Inventory/StockNew";
-import StockDetail from "./pages/Inventory/StockDetail";
-import CatalogList from "./pages/Inventory/CatalogList";
-import CatalogNew from "./pages/Inventory/CatalogNew";
-import CatalogOrders from "./pages/Inventory/CatalogOrders";
+import CompanyOrders from "@/pages/Companies/CompanyOrders";
+import SupplierList from "@/pages/SupplierList";
+import SupplierNew from "@/pages/SupplierNew";
+import VendorList from "@/pages/VendorList";
+import VendorNew from "@/pages/VendorNew";
+import Index from "@/pages/Index";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
-// Placeholder for future development
-const InventoryNew = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">New Inventory</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
-const Settings = () => <div className="p-8 text-center"><h1 className="text-2xl font-bold mb-4">Settings</h1><p className="text-muted-foreground">This feature is coming soon.</p></div>;
-
-const routes: RouteObject[] = [
+const routes = [
   {
-    path: "/auth",
-    element: <Auth />
-  },
-  {
-    element: <ProtectedRoute />,
+    path: "/",
+    element: <AppLayout />,
     children: [
+      { path: "", element: <Index /> },
       {
-        path: "/",
-        element: <AppLayout />,
+        element: <ProtectedRoute />,
         children: [
-          {
-            path: "",
-            element: <Dashboard />
-          },
-          {
-            path: "dashboard",
-            element: <Dashboard />
-          },
+          { path: "dashboard", element: <Dashboard /> },
           {
             path: "orders",
-            element: <OrderList />
+            children: [
+              { path: "", element: <OrderList /> },
+              { path: "new", element: <OrderNew /> },
+              { path: ":id", element: <OrderDetail /> },
+              { path: ":id/edit", element: <OrderEdit /> },
+            ],
           },
           {
-            path: "orders/new",
-            element: <OrderNew />
-          },
-          {
-            path: "orders/:id",
-            element: <OrderDetail />
-          },
-          {
-            path: "orders/:id/edit",
-            element: <OrderEdit />
+            path: "inventory",
+            element: <InventoryLayout />,
+            children: [
+              { path: "", element: <Navigate to="stock" replace /> },
+              { path: "stock", element: <StockList /> },
+              { path: "stock/new", element: <StockNew /> },
+              { path: "stock/:id", element: <StockDetail /> },
+              { path: "catalog", element: <CatalogList /> },
+            ],
           },
           {
             path: "production",
-            element: <ProductionDashboard />
+            children: [
+              { path: "", element: <ProductionDashboard /> },
+              { path: "job-cards", element: <JobCardList /> },
+              { path: "job-cards/new", element: <JobCardNew /> },
+              { path: "job-cards/:id", element: <JobCardDetail /> },
+              { path: "cutting", element: <CuttingJob /> },
+              { path: "printing", element: <PrintingJob /> },
+              { path: "stitching", element: <StitchingJob /> },
+              { path: "dispatch", element: <Dispatch /> },
+              { path: "dispatch/:id", element: <DispatchDetail /> },
+            ],
           },
           {
-            path: "production/job-cards",
-            element: <JobCardList />
-          },
-          {
-            path: "production/job-cards/new",
-            element: <JobCardNew />
-          },
-          {
-            path: "production/job-cards/:id",
-            element: <JobCardDetail />
-          },
-          {
-            path: "production/cutting/:id",
-            element: <CuttingJob />
-          },
-          {
-            path: "production/printing/:id",
-            element: <PrintingJob />
-          },
-          {
-            path: "production/stitching/:id",
-            element: <StitchingJob />
-          },
-          {
-            path: "dispatch",
-            element: <Dispatch />
-          },
-          {
-            path: "dispatch/:id",
-            element: <DispatchDetail />
-          },
-          {
-            path: "vendors",
-            element: <VendorList />
-          },
-          {
-            path: "vendors/new",
-            element: <VendorNew />
+            path: "companies",
+            children: [
+              { path: "", element: <CompanyList /> },
+              { path: "new", element: <CompanyNew /> },
+              { path: ":id/orders", element: <CompanyOrders /> },
+            ],
           },
           {
             path: "suppliers",
-            element: <SupplierList />
-          },
-          {
-            path: "suppliers/new",
-            element: <SupplierNew />
-          },
-          {
-            path: "/companies",
-            element: <CompanyList />
-          },
-          {
-            path: "/companies/new",
-            element: <CompanyNew />
-          },
-          {
-            path: "/companies/:id/orders",
-            element: <CompanyOrders />
-          },
-          {
-            path: "/inventory",
-            element: <InventoryLayout />,
             children: [
-              {
-                path: "",
-                element: <Navigate to="/inventory/stock" replace />
-              },
-              {
-                path: "stock",
-                element: <StockList />
-              },
-              {
-                path: "stock/new",
-                element: <StockNew />
-              },
-              {
-                path: "stock/:id",
-                element: <StockDetail />
-              },
-              {
-                path: "catalog",
-                element: <CatalogList />
-              },
-              {
-                path: "catalog/new",
-                element: <CatalogNew />
-              },
-              {
-                path: "catalog/:id/orders",
-                element: <CatalogOrders />
-              }
-            ]
+              { path: "", element: <SupplierList /> },
+              { path: "new", element: <SupplierNew /> },
+            ],
           },
           {
-            path: "settings",
-            element: <Settings />
+            path: "vendors",
+            children: [
+              { path: "", element: <VendorList /> },
+              { path: "new", element: <VendorNew /> },
+            ],
           },
-        ]
-      }
-    ]
+        ],
+      },
+    ],
   },
   {
-    path: "*",
-    element: <NotFound />
-  }
+    path: "/auth",
+    element: <AuthLayout />,
+    children: [{ path: "", element: <Auth /> }],
+  },
+  { path: "*", element: <NotFound /> },
 ];
 
 export default routes;
