@@ -11,10 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { OrderFormData, Component, CustomComponent, OrderStatus, ComponentProps } from "@/types/order";
+import { OrderFormData, Component, CustomComponent, OrderStatus, ComponentProps, ComponentType } from "@/types/order";
 import { ComponentForm } from "@/components/orders/ComponentForm";
-
-type ComponentType = "part" | "border" | "handle" | "chain" | "runner" | "custom";
 
 const OrderNew = () => {
   const navigate = useNavigate();
@@ -134,56 +132,82 @@ const OrderNew = () => {
   // Populate form with existing data when in edit mode
   useEffect(() => {
     if (orderData) {
+      // Extended interface to include the fields we need from the database
+      interface ExtendedOrderData {
+        company_name: string;
+        catalog_id?: string;
+        quantity: number;
+        rate?: number;
+        order_date: string;
+        delivery_date?: string;
+        customer_name?: string;
+        customer_phone?: string;
+        customer_address?: string;
+        bag_length: number;
+        bag_width: number;
+        description?: string;
+        components?: any[];
+      }
+
+      // Cast the orderData to our extended interface
+      const extendedData = orderData as unknown as ExtendedOrderData;
+
       setOrderDetails({
-        company_name: orderData.company_name || '', // Ensure required field
-        catalog_id: orderData.catalog_id || '',
-        quantity: orderData.quantity?.toString() || '',
-        rate: orderData.rate?.toString() || '',
-        order_date: orderData.order_date ? orderData.order_date.split('T')[0] : '',
-        delivery_date: orderData.delivery_date || '',
-        customer_name: orderData.customer_name || '',
-        customer_phone: orderData.customer_phone || '',
-        customer_address: orderData.customer_address || '',
-        bag_length: orderData.bag_length?.toString() || '',
-        bag_width: orderData.bag_width?.toString() || '',
-        description: orderData.description || '',
+        company_name: extendedData.company_name || '',
+        catalog_id: extendedData.catalog_id || '',
+        quantity: extendedData.quantity?.toString() || '',
+        rate: extendedData.rate?.toString() || '',
+        order_date: extendedData.order_date ? extendedData.order_date.split('T')[0] : '',
+        delivery_date: extendedData.delivery_date || '',
+        customer_name: extendedData.customer_name || '',
+        customer_phone: extendedData.customer_phone || '',
+        customer_address: extendedData.customer_address || '',
+        bag_length: extendedData.bag_length?.toString() || '',
+        bag_width: extendedData.bag_width?.toString() || '',
+        description: extendedData.description || '',
       });
       
       // Filter and set custom components
-      if (orderData.components) {
-        const customComps = orderData.components.filter(
+      if (extendedData.components) {
+        const customComps = extendedData.components.filter(
           (comp: any) => comp.custom_name || comp.component_type === 'custom'
         );
         setCustomComponents(convertToCustomComponents(customComps));
 
         // Set standard components
-        const standardComps = orderData.components.filter(
+        const standardComps = extendedData.components.filter(
           (comp: any) => !comp.custom_name && comp.component_type !== 'custom'
         );
-        setComponents(standardComps.map((comp: any) => ({
+        const mappedComps = standardComps.map((comp: any) => ({
           ...comp,
-          type: comp.type || comp.component_type,
-        })));
+          type: (comp.type || comp.component_type) as ComponentType,
+        }));
+        setComponents(mappedComps as ComponentProps[]);
       }
     }
   }, [orderData]);
 
   // Fix the custom components type conversion
   const convertToCustomComponents = (components: any[]): CustomComponent[] => {
-    return components.map(comp => ({
-      id: comp.id || crypto.randomUUID(),
-      type: (comp.type || comp.component_type || 'custom') as ComponentType,
-      component_type: comp.component_type || 'custom',
-      color: comp.color || '',
-      gsm: comp.gsm || '',
-      custom_name: comp.custom_name || '',
-      length: comp.length || '',
-      width: comp.width || '',
-      material_id: comp.material_id || '',
-      roll_width: comp.roll_width || '',
-      consumption: comp.consumption || '',
-      details: comp.details || ''
-    }));
+    return components.map(comp => {
+      // Ensure the type is a valid ComponentType
+      const compType = (comp.type || comp.component_type || 'custom') as ComponentType;
+      
+      return {
+        id: comp.id || crypto.randomUUID(),
+        type: compType,
+        component_type: comp.component_type || 'custom',
+        color: comp.color || '',
+        gsm: comp.gsm || '',
+        custom_name: comp.custom_name || '',
+        length: comp.length || '',
+        width: comp.width || '',
+        material_id: comp.material_id || '',
+        roll_width: comp.roll_width || '',
+        consumption: comp.consumption || '',
+        details: comp.details || ''
+      };
+    });
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -253,7 +277,7 @@ const OrderNew = () => {
         bag_length: Number(orderDetails.bag_length),
         bag_width: Number(orderDetails.bag_width),
         user_id: userData.user?.id,
-        status: orderDetails.status as OrderStatus
+        status: (orderDetails.status || 'pending') as OrderStatus
       };
 
       let orderId = id;
@@ -262,7 +286,20 @@ const OrderNew = () => {
         // Update existing order
         const { error: orderError } = await supabase
           .from("orders")
-          .update(orderPayload as any)
+          .update({
+            company_name: orderPayload.company_name,
+            quantity: orderPayload.quantity,
+            rate: orderPayload.rate,
+            bag_length: orderPayload.bag_length,
+            bag_width: orderPayload.bag_width,
+            status: orderPayload.status,
+            order_date: orderPayload.order_date,
+            delivery_date: orderPayload.delivery_date,
+            customer_name: orderPayload.customer_name,
+            customer_phone: orderPayload.customer_phone,
+            customer_address: orderPayload.customer_address,
+            description: orderPayload.description
+          })
           .eq('id', id);
 
         if (orderError) throw orderError;
@@ -278,7 +315,20 @@ const OrderNew = () => {
         // Insert new order
         const { data: orderData, error: orderError } = await supabase
           .from("orders")
-          .insert(orderPayload as any)
+          .insert({
+            company_name: orderPayload.company_name,
+            quantity: orderPayload.quantity,
+            rate: orderPayload.rate,
+            bag_length: orderPayload.bag_length,
+            bag_width: orderPayload.bag_width,
+            status: orderPayload.status,
+            order_date: orderPayload.order_date,
+            delivery_date: orderPayload.delivery_date,
+            customer_name: orderPayload.customer_name,
+            customer_phone: orderPayload.customer_phone,
+            customer_address: orderPayload.customer_address,
+            description: orderPayload.description
+          })
           .select('id')
           .single();
 
@@ -288,34 +338,30 @@ const OrderNew = () => {
 
       // Prepare components for insertion
       const allComponents = [...components, ...customComponents];
-      const componentsToInsert = allComponents.map(comp => ({
-        order_id: orderId,
-        component_type: comp.component_type,
-        type: comp.type, // Make sure type is included
-        color: comp.color || null,
-        gsm: comp.gsm ? Number(comp.gsm) : null,
-        size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
-        custom_name: comp.custom_name || null,
-        length: comp.length ? Number(comp.length) : null,
-        width: comp.width ? Number(comp.width) : null,
-        material_id: comp.material_id || null,
-        roll_width: comp.roll_width ? Number(comp.roll_width) : null,
-        consumption: comp.consumption ? Number(comp.consumption) : null,
-        details: comp.details || null
-      }));
+      
+      // Insert components one by one to ensure proper type handling
+      for (const comp of allComponents) {
+        const { error: componentError } = await supabase
+          .from("components")
+          .insert({
+            order_id: orderId,
+            component_type: comp.component_type,
+            type: comp.type,
+            color: comp.color || null,
+            gsm: comp.gsm || null,
+            size: comp.size || (comp.length && comp.width ? `${comp.length}x${comp.width}` : null),
+            custom_name: comp.custom_name || null,
+            details: comp.details || null
+          });
 
-      // Insert components
-      const { error: componentsError } = await supabase
-        .from("components")
-        .insert(componentsToInsert as any);
-
-      if (componentsError) {
-        console.error("Error saving components:", componentsError);
-        toast({
-          title: "Error saving components",
-          description: componentsError.message,
-          variant: "destructive"
-        });
+        if (componentError) {
+          console.error("Error saving component:", componentError);
+          toast({
+            title: "Error saving component",
+            description: componentError.message,
+            variant: "destructive"
+          });
+        }
       }
 
       toast({

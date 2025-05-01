@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, CheckCircle, AlertTriangle } from "lucide-react";
-import { OrderFormData, OrderStatus } from "@/types/order";
+import { OrderFormData, OrderStatus, ComponentType } from "@/types/order";
 import { ComponentForm } from "@/components/orders/ComponentForm";
 import {
   Select,
@@ -22,7 +22,7 @@ import {
 interface Component {
   id: string;
   component_type: string;
-  type: string;
+  type: ComponentType;
   color?: string;
   gsm?: string;
   size?: string;
@@ -93,7 +93,9 @@ const OrderDetail = () => {
       }
     };
 
-    fetchOrder();
+    if (id) {
+      fetchOrder();
+    }
   }, [id]);
 
   const processComponents = (orderComponents: any[]): Component[] => {
@@ -101,22 +103,33 @@ const OrderDetail = () => {
       return [];
     }
 
-    return orderComponents.map(component => ({
-      id: component.id,
-      component_type: component.component_type,
-      type: component.type || component.component_type,
-      color: component.color || '',
-      gsm: component.gsm?.toString() || '',
-      size: component.size || '',
-      custom_name: component.custom_name || '',
-      material_id: component.material_id || '',
-      roll_width: component.roll_width?.toString() || '',
-      consumption: component.consumption?.toString() || '',
-      order_id: component.order_id,
-      created_at: component.created_at,
-      updated_at: component.updated_at,
-      details: component.details || ''
-    }));
+    return orderComponents.map(component => {
+      // Ensure type is one of the valid ComponentType values
+      const compType = component.type || component.component_type;
+      let validCompType: ComponentType = "custom"; // Default fallback
+
+      // Validate component type
+      if (["part", "border", "handle", "chain", "runner", "custom"].includes(compType)) {
+        validCompType = compType as ComponentType;
+      }
+
+      return {
+        id: component.id,
+        component_type: component.component_type,
+        type: validCompType,
+        color: component.color || '',
+        gsm: component.gsm?.toString() || '',
+        size: component.size || '',
+        custom_name: component.custom_name || '',
+        material_id: component.material_id || '',
+        roll_width: component.roll_width?.toString() || '',
+        consumption: component.consumption?.toString() || '',
+        order_id: component.order_id,
+        created_at: component.created_at,
+        updated_at: component.updated_at,
+        details: component.details || ''
+      };
+    });
   };
 
   useEffect(() => {
@@ -171,7 +184,7 @@ const OrderDetail = () => {
         rate: parseFloat(orderDetails.rate as string),
         bag_length: parseFloat(orderDetails.bag_length as string),
         bag_width: parseFloat(orderDetails.bag_width as string),
-        status: orderDetails.status
+        status: orderDetails.status as OrderStatus
       };
 
       // Type assertion to bypass TypeScript constraints for the database operation
@@ -184,12 +197,7 @@ const OrderDetail = () => {
         throw new Error(updateError.message);
       }
 
-      const componentsPayload = components.map(component => ({
-        ...component,
-        order_id: id,
-        type: component.type || component.component_type
-      }));
-
+      // Delete existing components for this order
       const { error: deleteError } = await supabase
         .from("components")
         .delete()
@@ -199,11 +207,12 @@ const OrderDetail = () => {
         throw new Error(deleteError.message);
       }
 
-      for (const component of componentsPayload) {
+      // Insert each component with the correct type format
+      for (const component of components) {
         const { error: insertError } = await supabase
           .from("components")
           .insert({
-            order_id: component.order_id,
+            order_id: id,
             type: component.type,
             component_type: component.component_type,
             color: component.color,

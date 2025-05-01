@@ -1,3 +1,4 @@
+
 import { Component as CatalogComponent } from "../pages/Inventory/CatalogNew/types";
 
 // Interface for form errors
@@ -103,7 +104,7 @@ export type OrderComponent = CatalogComponent & {
 export interface Component {
   id: string;
   component_type: string;
-  type?: "part" | "border" | "handle" | "chain" | "runner" | "custom"; // Match the required type for supabase
+  type?: ComponentType; // Match the required type for supabase
   color?: string;
   gsm?: string;
   size?: string;
@@ -120,9 +121,12 @@ export interface Component {
   details?: string;
 }
 
+// Define valid component types
+export type ComponentType = "part" | "border" | "handle" | "chain" | "runner" | "custom";
+
 // Custom component definition
 export interface CustomComponent extends Component {
-  type: "part" | "border" | "handle" | "chain" | "runner" | "custom"; // Required for CustomComponent
+  type: ComponentType; // Required for CustomComponent
   component_type: string; // Make sure this is required
   customName?: string; // For backward compatibility
   custom_name?: string;
@@ -132,7 +136,7 @@ export interface CustomComponent extends Component {
 // Defining a component prop type for the form components
 export interface ComponentProps {
   id: string;
-  type: "part" | "border" | "handle" | "chain" | "runner" | "custom";
+  type: ComponentType;
   component_type: string;
   color?: string;
   gsm?: string;

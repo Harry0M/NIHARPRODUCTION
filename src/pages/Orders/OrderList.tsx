@@ -43,7 +43,7 @@ const OrderList = () => {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const [filters, setFilters] = useState<OrderFilters>({
-    status: '' as OrderStatus | '',
+    status: '' as '',
     dateRange: {
       from: undefined,
       to: undefined,
@@ -60,7 +60,7 @@ const OrderList = () => {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (filters.status && filters.status !== 'all') {
+      if (filters.status && filters.status !== '') {
         // Use explicit type assertion for the status value
         query = query.eq('status', filters.status);
       }
