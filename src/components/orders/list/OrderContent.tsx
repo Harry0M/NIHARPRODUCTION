@@ -1,6 +1,5 @@
 
 import React from "react";
-import { TabsContent } from "@/components/ui/tabs";
 import { Order } from "@/types/order";
 import OrderCard from "./OrderCard";
 import OrderTable from "./OrderTable";
@@ -12,7 +11,7 @@ interface OrderContentProps {
   view: "grid" | "list";
   setView: (view: "grid" | "list") => void;
   isFiltering: boolean;
-  loading?: boolean; // Added loading prop
+  loading?: boolean;
 }
 
 export function OrderContent({ 
@@ -20,10 +19,10 @@ export function OrderContent({
   view, 
   setView, 
   isFiltering,
-  loading = false // Default to false
+  loading = false
 }: OrderContentProps) {
   return (
-    <TabsContent value="all" className="mt-0 border-0 p-0">
+    <div className="space-y-4">
       <div className="flex justify-end mb-4">
         <div className="border rounded-md flex">
           <Toggle
@@ -69,7 +68,7 @@ export function OrderContent({
           <OrderTable orders={orders} />
         )
       )}
-    </TabsContent>
+    </div>
   );
 }
 

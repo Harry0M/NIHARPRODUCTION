@@ -23,12 +23,12 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { OrderContent } from "@/components/orders/list/OrderContent";
 import { OrderListFilters } from "@/types/order";
 import { supabase } from "@/integrations/supabase/client";
 import { Order, OrderStatus } from "@/types/order";
-import AppLayout from "@/components/layout/AppLayout";
 import OrderFilter from "@/components/orders/OrderFilter";
 
 interface OrderFilters extends OrderListFilters {
@@ -187,13 +187,21 @@ const OrderList = () => {
 
       <OrderFilter onFilterChange={handleFilterChange} />
 
-      <OrderContent
-        orders={orders}
-        view={view}
-        setView={setView}
-        isFiltering={isFiltering}
-        loading={loading}
-      />
+      <Tabs defaultValue="all" className="space-y-4">
+        <TabsList className="hidden">
+          <TabsTrigger value="all">All Orders</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="all">
+          <OrderContent
+            orders={orders}
+            view={view}
+            setView={setView}
+            isFiltering={isFiltering}
+            loading={loading}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
