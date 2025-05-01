@@ -11,13 +11,15 @@ export interface FormErrors {
   [key: string]: string | undefined;
 }
 
-// Order statuses enum
-export type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled' | 'delivered';
+// Order statuses enum - ensuring compatibility with backend
+export type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled' | 'delivered' |
+                          'in_production' | 'cutting' | 'printing' | 'stitching' |
+                          'ready_for_dispatch' | 'dispatched';
 
 // Base interface for order form data
 export interface OrderFormData {
   // Customer information
-  company_name?: string;
+  company_name: string;
   company_id?: string | null;
   customer_id?: string;
   customer_name?: string;
@@ -28,11 +30,11 @@ export interface OrderFormData {
   // Order details
   order_number?: string;
   catalog_id?: string;
-  bag_length: string;
-  bag_width: string;
+  bag_length: string; // Keep as string for form handling, convert to number when submitting
+  bag_width: string; // Keep as string for form handling, convert to number when submitting
   height?: string;
-  quantity: string;
-  rate: string;
+  quantity: string; // Keep as string for form handling
+  rate: string; // Keep as string for form handling
   
   // Dates
   order_date: string;
@@ -95,7 +97,7 @@ export type OrderComponent = CatalogComponent & {
 export interface Component {
   id: string;
   component_type: string;
-  type?: string;
+  type?: "part" | "border" | "handle" | "chain" | "runner" | "custom"; // Match the required type for supabase
   color?: string;
   gsm?: string;
   size?: string;
@@ -113,7 +115,7 @@ export interface Component {
 
 // Custom component definition
 export interface CustomComponent extends Component {
-  type: string; // Making type required for CustomComponent
+  type: "part" | "border" | "handle" | "chain" | "runner" | "custom"; // Required for CustomComponent
   customName?: string; // For backward compatibility
   custom_name?: string;
 }

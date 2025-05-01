@@ -12,13 +12,15 @@ interface OrderContentProps {
   view: "grid" | "list";
   setView: (view: "grid" | "list") => void;
   isFiltering: boolean;
+  loading?: boolean; // Added loading prop
 }
 
 export function OrderContent({ 
   orders, 
   view, 
   setView, 
-  isFiltering 
+  isFiltering,
+  loading = false // Default to false
 }: OrderContentProps) {
   return (
     <TabsContent value="all" className="mt-0 border-0 p-0">
@@ -41,7 +43,12 @@ export function OrderContent({
         </div>
       </div>
       
-      {orders.length === 0 ? (
+      {loading ? (
+        <div className="text-center py-10">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading orders...</p>
+        </div>
+      ) : orders.length === 0 ? (
         <div className="text-center py-10">
           <div className="text-4xl mb-2">📋</div>
           <h3 className="text-lg font-semibold">No orders found</h3>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -134,7 +134,7 @@ const OrderNew = () => {
         quantity: orderData.quantity?.toString() || '',
         rate: orderData.rate?.toString() || '',
         order_date: orderData.order_date ? orderData.order_date.split('T')[0] : '',
-        delivery_date: orderData.delivery_date ? orderData.delivery_date.split('T')[0] : '',
+        delivery_date: orderData.delivery_date || '',
         customer_name: orderData.customer_name || '',
         customer_phone: orderData.customer_phone || '',
         customer_address: orderData.customer_address || '',
@@ -163,7 +163,7 @@ const OrderNew = () => {
   const convertToCustomComponents = (components: Component[]): CustomComponent[] => {
     return components.map(comp => ({
       id: comp.id || crypto.randomUUID(),
-      type: comp.type || comp.component_type || 'custom',
+      type: (comp.type || comp.component_type || 'custom') as "part" | "border" | "handle" | "chain" | "runner" | "custom",
       component_type: comp.component_type || 'custom',
       color: comp.color || '',
       gsm: comp.gsm || '',

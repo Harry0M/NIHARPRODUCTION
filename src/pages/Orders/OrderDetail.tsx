@@ -157,16 +157,16 @@ const OrderDetail = () => {
     setError(null);
 
     try {
-      // Prepare order payload
       const orderPayload = {
         ...orderDetails,
-        quantity: parseInt(orderDetails.quantity),
-        rate: parseFloat(orderDetails.rate),
+        quantity: parseInt(orderDetails.quantity as string),
+        rate: parseFloat(orderDetails.rate as string),
+        bag_length: parseFloat(orderDetails.bag_length as string),
+        bag_width: parseFloat(orderDetails.bag_width as string)
       };
 
-      // Update order in the database
       const { error: updateError } = await supabase
-        .from('orders')
+        .from("orders")
         .update(orderPayload)
         .eq('id', id);
 
@@ -174,15 +174,14 @@ const OrderDetail = () => {
         throw new Error(updateError.message);
       }
 
-      // Prepare components payload
       const componentsPayload = components.map(component => ({
         ...component,
         order_id: id,
+        type: component.component_type as "part" | "border" | "handle" | "chain" | "runner" | "custom"
       }));
 
-      // Delete existing components
       const { error: deleteError } = await supabase
-        .from('components')
+        .from("components")
         .delete()
         .eq('order_id', id);
 
@@ -190,13 +189,21 @@ const OrderDetail = () => {
         throw new Error(deleteError.message);
       }
 
-      // Insert updated components
-      const { error: insertError } = await supabase
-        .from('components')
-        .insert(componentsPayload);
+      for (const component of componentsPayload) {
+        const { error: insertError } = await supabase
+          .from("components")
+          .insert({
+            order_id: component.order_id,
+            type: component.type,
+            color: component.color,
+            gsm: component.gsm,
+            size: component.size,
+            details: component.details
+          });
 
-      if (insertError) {
-        throw new Error(insertError.message);
+        if (insertError) {
+          throw new Error(insertError.message);
+        }
       }
 
       toast({

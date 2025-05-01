@@ -1,4 +1,5 @@
 
+import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
@@ -11,7 +12,7 @@ import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { OrderStatus } from "@/types/order";
+import { type DateRange } from "react-day-picker";
 
 const formSchema = z.object({
   status: z.string().optional(),
@@ -147,7 +148,7 @@ export function OrderFilter({ onFilterChange }: OrderFilterProps) {
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="range"
-                    selected={field.value}
+                    selected={field.value as DateRange}
                     onSelect={field.onChange}
                     disabled={(date) =>
                       date > new Date() || date < new Date("1900-01-01")

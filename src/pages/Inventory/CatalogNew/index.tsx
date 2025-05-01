@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
@@ -103,13 +102,13 @@ const CatalogNew = () => {
       
       // Set components
       const standardComponents: Record<string, any> = {};
-      const customComponentsList: any[] = [];
+      const customComponentsList: CustomComponent[] = [];
       
       productData.components.forEach((comp: any) => {
         const componentData = {
           id: comp.id,
           component_type: comp.component_type,
-          type: comp.component_type,
+          type: (comp.component_type || 'custom') as "part" | "border" | "handle" | "chain" | "runner" | "custom",
           length: comp.length ? comp.length.toString() : "",
           width: comp.width ? comp.width.toString() : "",
           color: comp.color || "",
