@@ -1,95 +1,109 @@
+import { Component as CatalogComponent } from "../pages/Inventory/CatalogNew/types";
 
 export interface OrderFormData {
-  company_name: string;
-  company_id: string | null;
+  customer_id: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_email: string;
+  customer_address: string;
+  order_date: string;
+  delivery_date: string;
   quantity: string;
   bag_length: string;
   bag_width: string;
   rate: string;
-  special_instructions?: string;
-  sales_account_id: string | null;
-  order_date: string;
+  total_amount: string;
+  advance_amount: string;
+  balance_amount: string;
+  status: string;
+  notes: string;
 }
 
-export type OrderStatus = 
-  | 'pending'
-  | 'in_production'
-  | 'cutting'
-  | 'printing'
-  | 'stitching'
-  | 'ready_for_dispatch'
-  | 'dispatched'
-  | 'completed'
-  | 'cancelled';
-
-export interface Order {
+export interface OrderData {
   id: string;
-  order_number: string;
-  company_name: string;
-  company_id?: string | null;
+  customer_id: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_email: string;
+  customer_address: string;
+  order_date: string;
+  delivery_date: string;
   quantity: number;
   bag_length: number;
   bag_width: number;
-  rate?: number | null;
-  status: OrderStatus;
-  order_date: string;
+  rate: number;
+  total_amount: number;
+  advance_amount: number;
+  balance_amount: number;
+  status: string;
+  notes: string;
   created_at: string;
-  special_instructions?: string | null;
-  sales_account_id?: string | null;
+  updated_at: string;
+  created_by: string;
 }
+
+// Add a type adapter to better handle compatibility between catalog and order components
+export type OrderComponent = CatalogComponent & {
+  roll_width?: string;
+  consumption?: string;
+};
+
+export type CustomComponent = {
+  id: string;
+  type: string;
+  component_type: string;
+  color?: string;
+  gsm?: string;
+  size?: string;
+  custom_name?: string;
+  length?: string;
+  width?: string;
+  material_id?: string;
+  material_name?: string;
+  roll_width?: string;
+  consumption?: string;
+};
 
 export interface Component {
   id: string;
-  component_type?: string;
+  component_type: string;
   type?: string;
-  size?: string;
-  color?: string | null;
-  gsm?: string | null;
-  custom_name?: string | null;
-  customName?: string;
-  details?: string | null;
-  material_id?: string | null;
-  roll_width?: string | null;
-  consumption?: string | null;
-  order_id?: string | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-  length?: string;
-  width?: string;
-}
-
-export interface ComponentData {
-  id?: string;
-  type: string;
-  customName?: string;
   color?: string;
   gsm?: string;
-  width?: string;
+  size?: string;
+  custom_name?: string;
   length?: string;
+  width?: string;
   material_id?: string;
+  material_name?: string;
   roll_width?: string;
   consumption?: string;
+  order_id?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
-export interface FormErrors {
-  company?: string;
-  quantity?: string;
-  bag_length?: string;
-  bag_width?: string;
-  order_date?: string;
-  [key: string]: string | undefined;
+export interface OrderSummary {
+  id: string;
+  customer_name: string;
+  order_date: string;
+  delivery_date: string;
+  quantity: number;
+  total_amount: number;
+  balance_amount: number;
+  status: string;
 }
 
-export interface MaterialUsage {
-  material_id: string;
-  material_name: string;
-  material_color: string;
-  material_gsm: string;
-  consumption: number;
-  available_quantity: number;
-  unit: string;
-  name?: string;
-  id?: string;
-  quantity?: number;
-  cost?: number;
+export interface OrderDetailsData {
+  order: OrderData;
+  components: Component[];
+}
+
+export interface OrderListFilters {
+  status: string;
+  dateRange: {
+    from: Date | undefined;
+    to: Date | undefined;
+  };
+  searchQuery: string;
 }

@@ -60,7 +60,7 @@ const inventoryRoutes: RouteObject[] = [
                 element: <CatalogNew />
               },
               {
-                path: "catalog/:id/edit",
+                path: "catalog/edit/:id",
                 element: <CatalogNew />
               },
               {

@@ -121,7 +121,7 @@ const CatalogList = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => navigate(`/inventory/catalog/${product.id}/edit`)}
+                    onClick={() => navigate(`/inventory/catalog/edit/${product.id}`)}
                   >
                     <Edit size={16} className="mr-2" />
                     Edit
