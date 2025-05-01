@@ -12,15 +12,21 @@ const ColorSchemeContext = createContext<ColorSchemeContextType | undefined>(und
 
 export function ColorSchemeProvider({ children }: { children: React.ReactNode }) {
   const [colorScheme, setColorScheme] = useState<ColorScheme>(() => {
-    const stored = localStorage.getItem('color-scheme');
-    return (stored as ColorScheme) || 'light';
+    // Only access localStorage on the client side
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('color-scheme');
+      return (stored as ColorScheme) || 'light';
+    }
+    return 'light';
   });
 
   useEffect(() => {
-    localStorage.setItem('color-scheme', colorScheme);
-    const root = document.documentElement;
-    root.classList.remove('light', 'dark', 'purple', 'blue', 'green');
-    root.classList.add(colorScheme);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('color-scheme', colorScheme);
+      const root = document.documentElement;
+      root.classList.remove('light', 'dark', 'purple', 'blue', 'green');
+      root.classList.add(colorScheme);
+    }
   }, [colorScheme]);
 
   return (
