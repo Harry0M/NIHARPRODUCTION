@@ -1,8 +1,7 @@
-
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ProductDetails, Material, MaterialUsage } from "./types";
+import { ProductDetails, MaterialUsage } from "./types";
 
 interface CostCalculationSectionProps {
   usedMaterials: MaterialUsage[];
@@ -10,7 +9,7 @@ interface CostCalculationSectionProps {
   totalCost: number;
   productDetails: ProductDetails;
   handleProductChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
-  allMaterials: Material[];
+  allMaterials: any[];
 }
 
 export function CostCalculationSection({ 

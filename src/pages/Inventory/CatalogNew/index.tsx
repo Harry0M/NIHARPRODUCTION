@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
@@ -9,15 +10,17 @@ import { useQuery } from "@tanstack/react-query";
 import { ProductDetailsForm } from "./ProductDetailsForm";
 import { ComponentsSection } from "./ComponentsSection";
 import { CostCalculationSection } from "./CostCalculationSection";
+import { ValidationErrors } from "./components/ValidationErrors";
 import { useCatalogForm } from "./hooks/useCatalogForm";
-import { Component, CustomComponent } from "./types";
+import { useValidation } from "./hooks/useValidation";
+import { useFormSubmission } from "./hooks/useFormSubmission";
+import { ProductData } from "./types";
 
 const CatalogNew = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id?: string }>();
   const isEditMode = !!id;
   
-  const [submitting, setSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   
   // Fetch inventory materials
@@ -59,7 +62,7 @@ const CatalogNew = () => {
       return {
         product: productDetails,
         components: componentDetails
-      };
+      } as ProductData;
     },
     enabled: isEditMode
   });
@@ -82,6 +85,10 @@ const CatalogNew = () => {
     usedMaterials
   } = useCatalogForm(materials || []);
   
+  // Custom hooks for validation and submission
+  const { validateProductData } = useValidation();
+  const { submitting, handleSubmit } = useFormSubmission(id, isEditMode);
+  
   // Populate form with existing data when in edit mode
   useEffect(() => {
     if (isEditMode && productData && !productLoading) {
@@ -101,11 +108,11 @@ const CatalogNew = () => {
       });
       
       // Set components
-      const standardComponents: Record<string, Component> = {};
-      const customComponentsList: CustomComponent[] = [];
+      const standardComponents: Record<string, any> = {};
+      const customComponentsList: any[] = [];
       
       productData.components.forEach((comp: any) => {
-        const componentData: Component = {
+        const componentData = {
           id: comp.id,
           type: (comp.component_type === "part" || comp.component_type === "border" || 
                 comp.component_type === "handle" || comp.component_type === "chain" || 
@@ -129,7 +136,7 @@ const CatalogNew = () => {
             custom_name: comp.custom_name,
             component_type: comp.component_type,
             type: "custom"
-          } as CustomComponent);
+          });
         } else if (componentData.type !== "custom") {
           standardComponents[componentData.type] = componentData;
         }
@@ -140,80 +147,11 @@ const CatalogNew = () => {
     }
   }, [isEditMode, productData, productLoading, setProductDetails, setComponents, setCustomComponents]);
   
-  // Server-side validation function
-  const validateProductData = () => {
-    const errors: string[] = [];
-    
-    // Required product details
-    if (!productDetails.name.trim()) {
-      errors.push("Product name is required");
-    }
-    
-    if (!productDetails.bag_length) {
-      errors.push("Bag length is required");
-    } else if (isNaN(Number(productDetails.bag_length)) || Number(productDetails.bag_length) <= 0) {
-      errors.push("Bag length must be a positive number");
-    }
-    
-    if (!productDetails.bag_width) {
-      errors.push("Bag width is required");
-    } else if (isNaN(Number(productDetails.bag_width)) || Number(productDetails.bag_width) <= 0) {
-      errors.push("Bag width must be a positive number");
-    }
-    
-    if (!productDetails.height && productDetails.height !== 0) {
-      errors.push("Border height is required");
-    } else if (isNaN(Number(productDetails.height)) || Number(productDetails.height) < 0) {
-      errors.push("Border height must be a non-negative number");
-    }
-    
-    // Validate numeric fields
-    if (productDetails.default_quantity && (isNaN(Number(productDetails.default_quantity)) || Number(productDetails.default_quantity) < 1)) {
-      errors.push("Default quantity must be a positive integer");
-    }
-    
-    if (productDetails.default_rate && (isNaN(Number(productDetails.default_rate)) || Number(productDetails.default_rate) < 0)) {
-      errors.push("Default rate must be a non-negative number");
-    }
-    
-    // Validate components
-    const allComponents = [
-      ...Object.values(components).filter(Boolean),
-      ...customComponents
-    ].filter(Boolean);
-    
-    // Check for custom components without names
-    customComponents.forEach((comp, index) => {
-      if (!comp.custom_name || comp.custom_name.trim() === '') {
-        errors.push(`Custom component #${index + 1} requires a name`);
-      }
-    });
-    
-    // Check for components with invalid measurements
-    allComponents.forEach(comp => {
-      const componentName = comp.type === 'custom' ? comp.custom_name || 'Custom component' : comp.type;
-      
-      if (comp.length && (isNaN(parseFloat(comp.length as string)) || parseFloat(comp.length as string) <= 0)) {
-        errors.push(`${componentName}: Length must be a positive number`);
-      }
-      
-      if (comp.width && (isNaN(parseFloat(String(comp.width))) || parseFloat(String(comp.width)) <= 0)) {
-        errors.push(`${componentName}: Width must be a positive number`);
-      }
-      
-      if (comp.roll_width && (isNaN(parseFloat(String(comp.roll_width))) || parseFloat(String(comp.roll_width)) <= 0)) {
-        errors.push(`${componentName}: Roll width must be a positive number`);
-      }
-    });
-    
-    return errors;
-  };
-  
-  const handleSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Perform server-side validation
-    const errors = validateProductData();
+    // Perform validation
+    const errors = validateProductData(productDetails, components, customComponents);
     setValidationErrors(errors);
     
     if (errors.length > 0) {
@@ -232,150 +170,8 @@ const CatalogNew = () => {
       return;
     }
     
-    setSubmitting(true);
-    
-    try {
-      // Get current user
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      
-      if (userError) throw userError;
-      
-      const productPayload = {
-        name: productDetails.name,
-        description: productDetails.description,
-        bag_length: Number(productDetails.bag_length),
-        bag_width: Number(productDetails.bag_width),
-        height: Number(productDetails.height),
-        default_quantity: productDetails.default_quantity ? Number(productDetails.default_quantity) : 1,
-        default_rate: productDetails.default_rate ? Number(productDetails.default_rate) : null,
-        cutting_charge: productDetails.cutting_charge ? Number(productDetails.cutting_charge) : 0,
-        printing_charge: productDetails.printing_charge ? Number(productDetails.printing_charge) : 0,
-        stitching_charge: productDetails.stitching_charge ? Number(productDetails.stitching_charge) : 0,
-        transport_charge: productDetails.transport_charge ? Number(productDetails.transport_charge) : 0,
-        total_cost: totalCost > 0 ? totalCost : null,
-      };
-      
-      let catalogId = id;
-      
-      if (isEditMode) {
-        // Update existing product
-        const { error: catalogError } = await supabase
-          .from("catalog")
-          .update({
-            ...productPayload,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', id);
-        
-        if (catalogError) {
-          throw catalogError;
-        }
-        
-        // Delete existing components to replace with new ones
-        const { error: deleteComponentsError } = await supabase
-          .from("catalog_components")
-          .delete()
-          .eq('catalog_id', id);
-        
-        if (deleteComponentsError) {
-          throw deleteComponentsError;
-        }
-      } else {
-        // Insert new product
-        const { data: catalogData, error: catalogError } = await supabase
-          .from("catalog")
-          .insert({
-            ...productPayload,
-            created_by: userData.user?.id
-          })
-          .select('id')
-          .single();
-        
-        if (catalogError) {
-          if (catalogError.code === '23505') { // Unique constraint violation
-            toast({
-              title: "Product already exists",
-              description: "A product with this name already exists. Please choose a different name.",
-              variant: "destructive"
-            });
-            setSubmitting(false);
-            return;
-          }
-          throw catalogError;
-        }
-        
-        catalogId = catalogData.id;
-      }
-      
-      // Prepare component data for insertion
-      const allComponents = [
-        ...Object.values(components).filter(Boolean),
-        ...customComponents
-      ].filter(Boolean);
-      
-      if (allComponents.length > 0 && catalogId) {
-        const componentsToInsert = allComponents.map(comp => ({
-          catalog_id: catalogId,
-          component_type: comp.type === 'custom' ? comp.custom_name : comp.type,
-          size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
-          length: comp.length ? Number(comp.length) : null,
-          width: comp.width ? Number(comp.width) : null,
-          color: comp.color || null,
-          gsm: comp.gsm ? Number(comp.gsm) : null,
-          custom_name: comp.type === 'custom' ? (comp as CustomComponent).custom_name : null,
-          material_id: comp.material_id && comp.material_id !== 'not_applicable' ? comp.material_id : null,
-          roll_width: comp.roll_width ? Number(comp.roll_width) : null,
-          consumption: comp.consumption ? Number(comp.consumption) : null
-        }));
-
-        const { error: componentsError } = await supabase
-          .from("catalog_components")
-          .insert(componentsToInsert);
-        
-        if (componentsError) {
-          console.error("Error saving components:", componentsError);
-          toast({
-            title: "Error saving components",
-            description: componentsError.message,
-            variant: "destructive"
-          });
-        }
-      }
-      
-      toast({
-        title: isEditMode ? "Product updated successfully" : "Product created successfully",
-        description: `Product "${productDetails.name}" has been ${isEditMode ? 'updated in' : 'added to'} catalog`
-      });
-      
-      // Navigate to the catalog list
-      navigate("/inventory/catalog");
-      
-    } catch (error: any) {
-      console.error(isEditMode ? "Error updating product:" : "Error creating product:", error);
-      
-      // Handle specific server-side validation errors from Supabase
-      if (error.code === '23514') { // Check constraint violation
-        toast({
-          title: "Validation error",
-          description: "One or more values failed server-side validation. Please check your input and try again.",
-          variant: "destructive"
-        });
-      } else if (error.code === '23502') { // Not null violation
-        toast({
-          title: "Missing required field",
-          description: "A required field is missing. Please check your input and try again.",
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: isEditMode ? "Error updating product" : "Error creating product",
-          description: error.message,
-          variant: "destructive"
-        });
-      }
-    } finally {
-      setSubmitting(false);
-    }
+    // Submit the form
+    await handleSubmit(productDetails, components, customComponents, totalCost);
   };
 
   if ((isEditMode && productLoading) || materialsLoading) {
@@ -410,20 +206,9 @@ const CatalogNew = () => {
         </div>
       </div>
       
-      {validationErrors.length > 0 && (
-        <Card className="bg-destructive/10 border-destructive">
-          <div className="p-4">
-            <h2 className="font-semibold text-destructive">Please fix the following errors:</h2>
-            <ul className="list-disc pl-5 mt-2 space-y-1">
-              {validationErrors.map((error, index) => (
-                <li key={index} className="text-sm text-destructive">{error}</li>
-              ))}
-            </ul>
-          </div>
-        </Card>
-      )}
+      <ValidationErrors errors={validationErrors} />
       
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={onSubmit} className="space-y-6">
         <ProductDetailsForm
           productDetails={productDetails}
           handleProductChange={handleProductChange}

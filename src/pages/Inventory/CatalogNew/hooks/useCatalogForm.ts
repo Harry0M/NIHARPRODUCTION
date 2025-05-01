@@ -1,8 +1,10 @@
 
 import { useState, useEffect } from "react";
-import { ProductDetails, Component, CustomComponent } from "../types";
+import { v4 as uuidv4 } from "uuid";
+import { Component, CustomComponent, MaterialUsage, ProductDetails } from "../types";
 
-export function useCatalogForm(materials: any[]) {
+export const useCatalogForm = (materials: any[]) => {
+  // Product details state
   const [productDetails, setProductDetails] = useState<ProductDetails>({
     name: "",
     description: "",
@@ -14,88 +16,41 @@ export function useCatalogForm(materials: any[]) {
     cutting_charge: 0,
     printing_charge: 0,
     stitching_charge: 0,
-    transport_charge: 0
+    transport_charge: 0,
   });
   
+  // Standard components state
   const [components, setComponents] = useState<Record<string, Component>>({});
+  
+  // Custom added components state
   const [customComponents, setCustomComponents] = useState<CustomComponent[]>([]);
   
+  // Cost calculations
   const [materialCost, setMaterialCost] = useState(0);
   const [totalCost, setTotalCost] = useState(0);
-  
+
   // Calculate material cost whenever components, custom components, or default quantity changes
   useEffect(() => {
     calculateMaterialCost();
   }, [components, customComponents, materials, productDetails.default_quantity]);
 
+  // Calculate total cost whenever any cost component changes
   useEffect(() => {
-    // Calculate total cost whenever any cost component changes
-    const cutting = parseFloat(productDetails.cutting_charge.toString()) || 0;
-    const printing = parseFloat(productDetails.printing_charge.toString()) || 0;
-    const stitching = parseFloat(productDetails.stitching_charge.toString()) || 0;
-    const transport = parseFloat(productDetails.transport_charge.toString()) || 0;
+    const cutting = Number(productDetails.cutting_charge) || 0;
+    const printing = Number(productDetails.printing_charge) || 0;
+    const stitching = Number(productDetails.stitching_charge) || 0;
+    const transport = Number(productDetails.transport_charge) || 0;
     
     setTotalCost(materialCost + cutting + printing + stitching + transport);
   }, [materialCost, productDetails.cutting_charge, productDetails.printing_charge, 
       productDetails.stitching_charge, productDetails.transport_charge]);
-  
-  // Update consumption values when default_quantity changes
+
+  // Update all component consumption values when default quantity changes
   useEffect(() => {
-    updateComponentConsumptions();
+    if (productDetails.default_quantity !== 1) {
+      recalculateAllConsumptions();
+    }
   }, [productDetails.default_quantity]);
-  
-  // Function to update consumption based on default quantity
-  const updateComponentConsumptions = () => {
-    const defaultQuantity = Number(productDetails.default_quantity) || 1;
-    
-    // Update standard components consumption
-    setComponents(prevComponents => {
-      const updatedComponents = { ...prevComponents };
-      
-      Object.keys(updatedComponents).forEach(type => {
-        const component = updatedComponents[type];
-        if (component && component.length && component.width && component.roll_width) {
-          const length = parseFloat(String(component.length));
-          const width = parseFloat(String(component.width));
-          const rollWidth = parseFloat(String(component.roll_width));
-          
-          if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && rollWidth > 0) {
-            // Base consumption for a single unit
-            const baseConsumption = (length * width) / (rollWidth * 39.39);
-            // Adjust for quantity
-            updatedComponents[type] = {
-              ...component,
-              consumption: (baseConsumption * defaultQuantity).toFixed(4)
-            };
-          }
-        }
-      });
-      
-      return updatedComponents;
-    });
-    
-    // Update custom components consumption
-    setCustomComponents(prevCustomComponents => {
-      return prevCustomComponents.map(component => {
-        if (component.length && component.width && component.roll_width) {
-          const length = parseFloat(String(component.length));
-          const width = parseFloat(String(component.width));
-          const rollWidth = parseFloat(String(component.roll_width));
-          
-          if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && rollWidth > 0) {
-            // Base consumption for a single unit
-            const baseConsumption = (length * width) / (rollWidth * 39.39);
-            // Adjust for quantity
-            return {
-              ...component,
-              consumption: (baseConsumption * defaultQuantity).toFixed(4)
-            };
-          }
-        }
-        return component;
-      });
-    });
-  };
   
   const calculateMaterialCost = () => {
     if (!materials || materials.length === 0) return;
@@ -108,7 +63,7 @@ export function useCatalogForm(materials: any[]) {
       if (comp.material_id && comp.material_id !== 'not_applicable' && comp.consumption) {
         const material = materials.find(m => m.id === comp.material_id);
         if (material && material.purchase_price) {
-          cost += parseFloat(String(comp.consumption)) * parseFloat(String(material.purchase_price));
+          cost += parseFloat(String(comp.consumption)) * parseFloat(String(material.purchase_price)) * defaultQuantity;
         }
       }
     });
@@ -118,7 +73,7 @@ export function useCatalogForm(materials: any[]) {
       if (comp.material_id && comp.material_id !== 'not_applicable' && comp.consumption) {
         const material = materials.find(m => m.id === comp.material_id);
         if (material && material.purchase_price) {
-          cost += parseFloat(String(comp.consumption)) * parseFloat(String(material.purchase_price));
+          cost += parseFloat(String(comp.consumption)) * parseFloat(String(material.purchase_price)) * defaultQuantity;
         }
       }
     });
@@ -126,6 +81,48 @@ export function useCatalogForm(materials: any[]) {
     setMaterialCost(cost);
   };
   
+  const recalculateAllConsumptions = () => {
+    // Recalculate for standard components
+    const updatedComponents = { ...components };
+    
+    Object.keys(updatedComponents).forEach(type => {
+      const comp = updatedComponents[type];
+      if (comp.length && comp.width && comp.roll_width) {
+        updatedComponents[type] = {
+          ...comp,
+          consumption: calculateConsumption(comp.length, comp.width, comp.roll_width)
+        };
+      }
+    });
+    
+    setComponents(updatedComponents);
+    
+    // Recalculate for custom components
+    const updatedCustomComponents = customComponents.map(comp => {
+      if (comp.length && comp.width && comp.roll_width) {
+        return {
+          ...comp,
+          consumption: calculateConsumption(comp.length, comp.width, comp.roll_width)
+        };
+      }
+      return comp;
+    });
+    
+    setCustomComponents(updatedCustomComponents);
+  };
+  
+  const calculateConsumption = (length: string, width: string, rollWidth: string) => {
+    const lengthVal = parseFloat(length);
+    const widthVal = parseFloat(width);
+    const rollWidthVal = parseFloat(rollWidth);
+    
+    if (!isNaN(lengthVal) && !isNaN(widthVal) && !isNaN(rollWidthVal) && rollWidthVal > 0) {
+      return ((lengthVal * widthVal) / (rollWidthVal * 39.39)).toFixed(4);
+    }
+    
+    return "0";
+  };
+
   const handleProductChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setProductDetails(prev => ({
@@ -137,8 +134,8 @@ export function useCatalogForm(materials: any[]) {
   const handleComponentChange = (type: string, field: string, value: string) => {
     setComponents(prev => {
       const component = prev[type] || { 
-        id: crypto.randomUUID(),
-        type: type as "part" | "border" | "handle" | "chain" | "runner" | "custom"
+        id: uuidv4(),
+        type: type as ComponentType
       };
       
       const updatedComponent = {
@@ -149,15 +146,12 @@ export function useCatalogForm(materials: any[]) {
       // Recalculate consumption if material_id, roll_width, length or width changes
       if (['material_id', 'roll_width', 'length', 'width'].includes(field) && 
           updatedComponent.roll_width && updatedComponent.length && updatedComponent.width) {
-        const length = parseFloat(String(updatedComponent.length));
-        const width = parseFloat(String(updatedComponent.width));
-        const rollWidth = parseFloat(String(updatedComponent.roll_width));
-        const defaultQuantity = Number(productDetails.default_quantity) || 1;
         
-        if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && rollWidth > 0) {
-          // Formula: (length * width) / (roll_width * 39.39) * quantity
-          updatedComponent.consumption = ((length * width) / (rollWidth * 39.39) * defaultQuantity).toFixed(4);
-        }
+        updatedComponent.consumption = calculateConsumption(
+          updatedComponent.length as string, 
+          updatedComponent.width as string, 
+          updatedComponent.roll_width as string
+        );
       }
       
       return {
@@ -175,27 +169,24 @@ export function useCatalogForm(materials: any[]) {
       // Recalculate consumption if material_id, roll_width, length or width changes
       if (['material_id', 'roll_width', 'length', 'width'].includes(field) && 
           component.roll_width && component.length && component.width) {
-        const length = parseFloat(String(component.length));
-        const width = parseFloat(String(component.width));
-        const rollWidth = parseFloat(String(component.roll_width));
-        const defaultQuantity = Number(productDetails.default_quantity) || 1;
         
-        if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && rollWidth > 0) {
-          // Formula: (length * width) / (roll_width * 39.39) * quantity
-          component.consumption = ((length * width) / (rollWidth * 39.39) * defaultQuantity).toFixed(4);
-        }
+        component.consumption = calculateConsumption(
+          component.length as string,
+          component.width as string,
+          component.roll_width as string
+        );
       }
       
-      updated[index] = component;
+      updated[index] = component as CustomComponent;
       return updated;
     });
   };
   
   const addCustomComponent = () => {
-    setCustomComponents(prev => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
+    setCustomComponents([
+      ...customComponents, 
+      { 
+        id: uuidv4(),
         type: "custom",
         component_type: "custom",
         custom_name: "",
@@ -214,22 +205,11 @@ export function useCatalogForm(materials: any[]) {
     setCustomComponents(prev => prev.filter((_, i) => i !== index));
   };
   
-  const usedMaterials = () => {
+  const usedMaterials = (): MaterialUsage[] => {
     if (!materials) return [];
     
-    const materialUsage: Record<string, {
-      id: string,
-      material_id: string,
-      name: string,
-      quantity: number,
-      unit: string,
-      cost: number,
-      component_type: string,
-      consumption: number,
-      unit_cost: number,
-      total_cost: number,
-      material_name: string
-    }> = {};
+    const materialUsage: Record<string, MaterialUsage> = {};
+    const defaultQuantity = Number(productDetails.default_quantity) || 1;
     
     // Process standard components
     Object.values(components).forEach(comp => {
@@ -237,24 +217,24 @@ export function useCatalogForm(materials: any[]) {
         const material = materials.find(m => m.id === comp.material_id);
         if (material) {
           const consumptionValue = parseFloat(String(comp.consumption));
-          const costValue = material.purchase_price ? consumptionValue * parseFloat(String(material.purchase_price)) : 0;
+          const costValue = material.purchase_price ? consumptionValue * parseFloat(String(material.purchase_price)) * defaultQuantity : 0;
           
           if (!materialUsage[comp.material_id]) {
             materialUsage[comp.material_id] = {
               id: comp.material_id,
               material_id: comp.material_id,
               name: material.material_type + (material.color ? ` (${material.color})` : '') + (material.gsm ? ` ${material.gsm} GSM` : ''),
-              quantity: consumptionValue,
+              quantity: consumptionValue * defaultQuantity,
               unit: material.unit,
               cost: costValue,
               component_type: comp.type,
-              consumption: consumptionValue,
+              consumption: consumptionValue * defaultQuantity,
               unit_cost: parseFloat(String(material.purchase_price)) || 0,
               total_cost: costValue,
               material_name: material.material_type
             };
           } else {
-            materialUsage[comp.material_id].quantity += consumptionValue;
+            materialUsage[comp.material_id].quantity += consumptionValue * defaultQuantity;
             materialUsage[comp.material_id].cost += costValue;
             materialUsage[comp.material_id].total_cost += costValue;
           }
@@ -268,24 +248,24 @@ export function useCatalogForm(materials: any[]) {
         const material = materials.find(m => m.id === comp.material_id);
         if (material) {
           const consumptionValue = parseFloat(String(comp.consumption));
-          const costValue = material.purchase_price ? consumptionValue * parseFloat(String(material.purchase_price)) : 0;
+          const costValue = material.purchase_price ? consumptionValue * parseFloat(String(material.purchase_price)) * defaultQuantity : 0;
           
           if (!materialUsage[comp.material_id]) {
             materialUsage[comp.material_id] = {
               id: comp.material_id,
               material_id: comp.material_id,
               name: material.material_type + (material.color ? ` (${material.color})` : '') + (material.gsm ? ` ${material.gsm} GSM` : ''),
-              quantity: consumptionValue,
+              quantity: consumptionValue * defaultQuantity,
               unit: material.unit,
               cost: costValue,
               component_type: comp.component_type,
-              consumption: consumptionValue,
+              consumption: consumptionValue * defaultQuantity,
               unit_cost: parseFloat(String(material.purchase_price)) || 0,
               total_cost: costValue,
               material_name: material.material_type
             };
           } else {
-            materialUsage[comp.material_id].quantity += consumptionValue;
+            materialUsage[comp.material_id].quantity += consumptionValue * defaultQuantity;
             materialUsage[comp.material_id].cost += costValue;
             materialUsage[comp.material_id].total_cost += costValue;
           }
@@ -295,7 +275,7 @@ export function useCatalogForm(materials: any[]) {
     
     return Object.values(materialUsage);
   };
-
+  
   return {
     productDetails,
     setProductDetails,
@@ -312,4 +292,6 @@ export function useCatalogForm(materials: any[]) {
     removeCustomComponent,
     usedMaterials
   };
-}
+};
+
+type ComponentType = "part" | "border" | "handle" | "chain" | "runner" | "custom";
