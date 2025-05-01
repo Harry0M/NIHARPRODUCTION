@@ -1,208 +1,176 @@
 
+import { useState } from 'react';
 import { supabase } from "@/integrations/supabase/client";
+import { OrderFormData, Component, CustomComponent, DBOrderStatus, OrderStatus } from "@/types/order";
+import { MaterialUsage } from "@/types/order";
 import { toast } from "@/hooks/use-toast";
-import { OrderFormData } from "@/types/order";
 
 export function useOrderSubmission(
   orderDetails: OrderFormData,
   components: Record<string, any>,
-  customComponents: any[],
-  setSubmitting: (submitting: boolean) => void,
-  inventoryItems: any[] | undefined
+  customComponents: CustomComponent[],
+  setSubmitting: React.Dispatch<React.SetStateAction<boolean>>,
+  inventoryItems?: any[]
 ) {
-  const updateInventoryStock = async (orderId: string) => {
-    // Skip if no inventory items are loaded
-    if (!inventoryItems) return;
-    
-    // Collect all materials and their consumption
-    const materialUsage: Record<string, number> = {};
-    
-    // Process standard components
-    Object.values(components).forEach(comp => {
-      if (comp.material_id && comp.consumption) {
-        const materialId = comp.material_id;
-        const consumption = parseFloat(String(comp.consumption));
-        
-        if (!isNaN(consumption)) {
-          if (!materialUsage[materialId]) {
-            materialUsage[materialId] = consumption;
-          } else {
-            materialUsage[materialId] += consumption;
-          }
-        }
-      }
-    });
-    
-    // Process custom components
-    customComponents.forEach(comp => {
-      if (comp.material_id && comp.consumption) {
-        const materialId = comp.material_id;
-        const consumption = parseFloat(String(comp.consumption));
-        
-        if (!isNaN(consumption)) {
-          if (!materialUsage[materialId]) {
-            materialUsage[materialId] = consumption;
-          } else {
-            materialUsage[materialId] += consumption;
-          }
-        }
-      }
-    });
-    
-    console.log("Material usage for inventory update:", materialUsage);
-    
-    // Update inventory for each used material
-    for (const [materialId, usage] of Object.entries(materialUsage)) {
-      try {
-        // Get current inventory level
-        const { data: material, error: fetchError } = await supabase
-          .from('inventory')
-          .select('quantity')
-          .eq('id', materialId)
-          .single();
-        
-        if (fetchError) {
-          console.error(`Error fetching inventory for material ${materialId}:`, fetchError);
-          continue;
-        }
-        
-        // Calculate new quantity
-        const currentQuantity = material.quantity || 0;
-        const newQuantity = currentQuantity - usage;
-        
-        // Update inventory
-        const { error: updateError } = await supabase
-          .from('inventory')
-          .update({ quantity: newQuantity >= 0 ? newQuantity : 0 })
-          .eq('id', materialId);
-        
-        if (updateError) {
-          console.error(`Error updating inventory for material ${materialId}:`, updateError);
-          toast({
-            title: "Warning",
-            description: `Could not update inventory for material ID: ${materialId}`,
-            variant: "destructive"
-          });
-        } else {
-          console.log(`Updated inventory for material ${materialId}: ${currentQuantity} - ${usage} = ${newQuantity}`);
-          
-          // Create transaction record for material usage
-          const { error: transactionError } = await supabase
-            .from('inventory_transactions')
-            .insert({
-              material_id: materialId,
-              quantity: usage,
-              transaction_type: 'order_consumption',
-              reference_id: orderId,
-              notes: `Material consumed for order ${orderDetails.company_name || 'Unknown'}`
-            });
-            
-          if (transactionError) {
-            console.error(`Error creating inventory transaction record:`, transactionError);
-          }
-        }
-      } catch (error) {
-        console.error(`Error processing material ${materialId}:`, error);
-      }
-    }
+  // Helper function to map frontend status to DB status
+  const mapStatusToDb = (status: OrderStatus): DBOrderStatus => {
+    if (status === 'processing') return 'in_production';
+    return status as DBOrderStatus;
   };
 
-  const handleSubmit = async (e: React.FormEvent): Promise<string | undefined> => {
-    e.preventDefault();
-    
+  const handleSubmit = async (isEditMode: boolean = false, orderId?: string): Promise<boolean> => {
     setSubmitting(true);
     
     try {
-      // Prepare data for database insert
-      const orderData = {
-        company_name: orderDetails.company_id ? null : orderDetails.company_name,
-        company_id: orderDetails.company_id,
-        quantity: parseInt(orderDetails.quantity),
-        bag_length: parseFloat(orderDetails.bag_length),
-        bag_width: parseFloat(orderDetails.bag_width),
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      
+      // Map frontend status to database status if needed
+      const dbStatus: DBOrderStatus = orderDetails.status 
+        ? mapStatusToDb(orderDetails.status as OrderStatus) 
+        : 'pending';
+
+      // Convert string values to proper types for the database
+      const orderPayload = {
+        company_name: orderDetails.company_name,
+        company_id: orderDetails.company_id || null,
+        catalog_id: orderDetails.catalog_id || null,
+        quantity: parseInt(orderDetails.quantity) || 0,
+        bag_length: parseFloat(orderDetails.bag_length) || 0,
+        bag_width: parseFloat(orderDetails.bag_width) || 0,
         rate: orderDetails.rate ? parseFloat(orderDetails.rate) : null,
         order_date: orderDetails.order_date,
-        sales_account_id: orderDetails.sales_account_id || null,
-        special_instructions: orderDetails.special_instructions || null
+        delivery_date: orderDetails.delivery_date || null,
+        special_instructions: orderDetails.special_instructions || null,
+        status: dbStatus,
+        customer_name: orderDetails.customer_name || null,
+        customer_phone: orderDetails.customer_phone || null,
+        customer_address: orderDetails.customer_address || null,
+        description: orderDetails.description || null,
+        created_by: userData.user?.id || null
       };
-
-      console.log("Submitting order data:", orderData);
       
-      // Insert the order - using type assertion to bypass the order_number requirement
-      // since this is auto-generated by the database trigger
-      const { data: orderResult, error: orderError } = await supabase
-        .from("orders")
-        .insert(orderData as any)
-        .select('id, order_number')
-        .single();
+      let responseOrderId = orderId;
       
-      if (orderError) {
-        console.error("Order insertion error:", orderError);
-        throw orderError;
+      // Insert or update order record
+      if (isEditMode && orderId) {
+        // Update existing order
+        const { error: orderError } = await supabase
+          .from("orders")
+          .update(orderPayload)
+          .eq('id', orderId);
+          
+        if (orderError) throw orderError;
+        
+        // Delete existing components to replace with new ones
+        const { error: deleteComponentsError } = await supabase
+          .from("components")
+          .delete()
+          .eq('order_id', orderId);
+          
+        if (deleteComponentsError) throw deleteComponentsError;
+      } else {
+        // Create new order
+        const { data: newOrder, error: orderError } = await supabase
+          .from("orders")
+          .insert(orderPayload)
+          .select('id')
+          .single();
+        
+        if (orderError) throw orderError;
+        responseOrderId = newOrder.id;
       }
       
-      console.log("Order created successfully:", orderResult);
+      // Prepare all components for insertion
+      const allComponentsToInsert = [];
       
-      // Process components if any exist
-      const allComponents = [
-        ...Object.values(components).filter(Boolean),
-        ...customComponents
-      ].filter(Boolean);
-      
-      console.log("Components to be saved:", allComponents);
-      
-      if (allComponents.length > 0) {
-        const componentsToInsert = allComponents.map(comp => ({
-          order_id: orderResult.id,
-          component_type: comp.type === 'custom' ? 'custom' : comp.type,
-          size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
-          color: comp.color || null,
-          gsm: comp.gsm || null,
-          custom_name: comp.type === 'custom' ? (comp.custom_name || comp.customName) : null,
-          material_id: comp.material_id || null,
-          roll_width: comp.roll_width ? parseFloat(String(comp.roll_width)) : null,
-          consumption: comp.consumption ? parseFloat(String(comp.consumption)) : null
-        }));
-
-        console.log("Inserting components:", componentsToInsert);
-
-        const { error: componentsError } = await supabase
-          .from("order_components")
-          .insert(componentsToInsert);
-        
-        if (componentsError) {
-          console.error("Error saving components:", componentsError);
-          toast({
-            title: "Error saving components",
-            description: componentsError.message,
-            variant: "destructive"
+      // Add standard components
+      for (const [type, component] of Object.entries(components)) {
+        if (component) {
+          allComponentsToInsert.push({
+            order_id: responseOrderId,
+            component_type: type,
+            type: component.type || type,
+            color: component.color || null,
+            gsm: component.gsm || null,
+            size: component.size || (component.length && component.width ? `${component.length}x${component.width}` : null),
+            details: component.details || null
           });
-        } else {
-          console.log("Components saved successfully");
-          
-          // Update inventory stock levels
-          await updateInventoryStock(orderResult.id);
         }
       }
       
-      toast({
-        title: "Order created successfully",
-        description: `Order number: ${orderResult.order_number}`
-      });
-
-      return orderResult.id;
+      // Add custom components
+      for (const component of customComponents) {
+        if (component && component.custom_name) {
+          allComponentsToInsert.push({
+            order_id: responseOrderId,
+            component_type: 'custom',
+            type: 'custom',
+            color: component.color || null,
+            gsm: component.gsm || null,
+            size: component.size || (component.length && component.width ? `${component.length}x${component.width}` : null),
+            custom_name: component.custom_name,
+            details: component.details || null
+          });
+        }
+      }
       
-    } catch (error: any) {
-      console.error("Error creating order:", error);
+      // Insert all components if there are any to insert
+      if (allComponentsToInsert.length > 0) {
+        const { error: componentsError } = await supabase
+          .from("components")
+          .insert(allComponentsToInsert);
+          
+        if (componentsError) {
+          console.error("Error saving components:", componentsError);
+          toast({
+            title: "Warning",
+            description: "Order saved but components could not be saved. Please try again.",
+            variant: "destructive"
+          });
+        }
+      }
+      
+      // If we have material usage data, save it for future reference
+      if (inventoryItems && inventoryItems.length > 0) {
+        const materialUsage = inventoryItems
+          .filter(item => item.consumption > 0)
+          .map(item => ({
+            material_id: item.id,
+            material_name: item.name,
+            material_color: item.color,
+            material_gsm: item.gsm,
+            consumption: item.consumption,
+            available_quantity: item.quantity,
+            unit: item.unit,
+            cost: item.cost || 0,
+            component_type: item.component_type || 'unknown'
+          }));
+          
+        // Store this in localStorage for future reference
+        localStorage.setItem('orderMaterialUsage', JSON.stringify(materialUsage));
+      }
+      
       toast({
-        title: "Error creating order",
-        description: error.message || "An unexpected error occurred",
+        title: isEditMode ? "Order updated" : "Order created",
+        description: `Order has been ${isEditMode ? "updated" : "created"} successfully.`
+      });
+      
+      return true;
+    } catch (error: any) {
+      console.error("Error submitting order:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save order",
         variant: "destructive"
       });
+      return false;
     } finally {
       setSubmitting(false);
     }
   };
-
-  return { handleSubmit };
+  
+  return {
+    handleSubmit
+  };
 }
