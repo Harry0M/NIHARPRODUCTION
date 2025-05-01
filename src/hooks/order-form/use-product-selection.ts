@@ -88,7 +88,8 @@ export function useProductSelection(
         newCustomComponents.push({
           id: crypto.randomUUID(),
           type: 'custom',
-          customName: component.custom_name || component.component_type,
+          component_type: 'custom',
+          custom_name: component.custom_name || component.component_type,
           color: component.color || '',
           gsm: component.gsm?.toString() || '',
           length,
@@ -101,6 +102,7 @@ export function useProductSelection(
         newOrderComponents[component.component_type] = {
           id: crypto.randomUUID(),
           type: component.component_type,
+          component_type: component.component_type,
           color: component.color || '',
           gsm: component.gsm?.toString() || '',
           length,
@@ -143,7 +145,7 @@ export function useProductSelection(
         );
         
         if (catalogComponent && component) {
-          const baseConsumption = parseFloat(catalogComponent.consumption.toString()) || 0;
+          const baseConsumption = parseFloat(catalogComponent.consumption?.toString() || "0") || 0;
           const newConsumption = (baseConsumption * quantity).toFixed(2);
           updatedComponents[type] = {
             ...component,
@@ -159,11 +161,11 @@ export function useProductSelection(
     setCustomComponents(prevCustomComponents => {
       return prevCustomComponents.map(component => {
         const catalogComponent = selectedProduct.catalog_components.find(
-          (c: any) => c.component_type === 'custom' && c.custom_name === component.customName
+          (c: any) => c.component_type === 'custom' && c.custom_name === component.custom_name
         );
         
         if (catalogComponent) {
-          const baseConsumption = parseFloat(catalogComponent.consumption.toString()) || 0;
+          const baseConsumption = parseFloat(catalogComponent.consumption?.toString() || "0") || 0;
           const newConsumption = (baseConsumption * quantity).toFixed(2);
           return {
             ...component,
