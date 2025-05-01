@@ -28,6 +28,8 @@ import CompanyNew from "@/pages/Companies/CompanyNew";
 import CompanyOrders from "./pages/Companies/CompanyOrders";
 import InventoryLayout from "./pages/Inventory/InventoryLayout";
 import StockList from "./pages/Inventory/StockList";
+import StockNew from "./pages/Inventory/StockNew";
+import StockDetail from "./pages/Inventory/StockDetail";
 import CatalogList from "./pages/Inventory/CatalogList";
 import CatalogNew from "./pages/Inventory/CatalogNew";
 import CatalogOrders from "./pages/Inventory/CatalogOrders";
@@ -150,7 +152,11 @@ const routes: RouteObject[] = [
               },
               {
                 path: "stock/new",
-                element: <InventoryNew />
+                element: <StockNew />
+              },
+              {
+                path: "stock/:id",
+                element: <StockDetail />
               },
               {
                 path: "catalog",

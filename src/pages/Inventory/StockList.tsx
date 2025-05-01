@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
+import { EmptyStockState } from "@/components/inventory/EmptyStockState";
 
 const StockList = () => {
   const navigate = useNavigate();
@@ -31,7 +32,8 @@ const StockList = () => {
 
   return (
     <Card>
-      <div className="p-4 flex justify-end">
+      <div className="p-4 flex justify-between items-center">
+        <h2 className="text-xl font-semibold">Inventory Stock</h2>
         <Button onClick={() => navigate('/inventory/stock/new')}>
           <Plus size={16} className="mr-2" />
           Add Stock
@@ -43,38 +45,59 @@ const StockList = () => {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       ) : stock?.length === 0 ? (
-        <div className="text-center p-8">
-          <p className="text-muted-foreground">No inventory stock found.</p>
-        </div>
+        <EmptyStockState />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Material Type</TableHead>
-              <TableHead>Color</TableHead>
-              <TableHead>GSM</TableHead>
-              <TableHead>Quantity</TableHead>
-              <TableHead>Unit</TableHead>
-              <TableHead>Supplier</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {stock?.map((item) => (
-              <TableRow 
-                key={item.id}
-                className="cursor-pointer hover:bg-muted"
-                onClick={() => navigate(`/inventory/stock/${item.id}`)}
-              >
-                <TableCell>{item.material_type}</TableCell>
-                <TableCell>{item.color || 'N/A'}</TableCell>
-                <TableCell>{item.gsm || 'N/A'}</TableCell>
-                <TableCell>{item.quantity}</TableCell>
-                <TableCell>{item.unit}</TableCell>
-                <TableCell>{item.suppliers?.name || 'N/A'}</TableCell>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Material Type</TableHead>
+                <TableHead>Color</TableHead>
+                <TableHead>GSM</TableHead>
+                <TableHead>Quantity</TableHead>
+                <TableHead>Unit</TableHead>
+                {stock?.some(item => item.alternate_unit) && (
+                  <TableHead>Alt. Quantity</TableHead>
+                )}
+                {stock?.some(item => item.track_cost) && (
+                  <>
+                    <TableHead>Purchase Price</TableHead>
+                    <TableHead>Selling Price</TableHead>
+                  </>
+                )}
+                <TableHead>Supplier</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {stock?.map((item) => (
+                <TableRow 
+                  key={item.id}
+                  className="cursor-pointer hover:bg-muted"
+                  onClick={() => navigate(`/inventory/stock/${item.id}`)}
+                >
+                  <TableCell>{item.material_type}</TableCell>
+                  <TableCell>{item.color || 'N/A'}</TableCell>
+                  <TableCell>{item.gsm || 'N/A'}</TableCell>
+                  <TableCell>{item.quantity} {item.unit}</TableCell>
+                  {stock?.some(i => i.alternate_unit) && (
+                    <TableCell>
+                      {item.alternate_unit ? 
+                        `${(item.quantity * (item.conversion_rate || 1)).toFixed(2)} ${item.alternate_unit}` : 
+                        'N/A'}
+                    </TableCell>
+                  )}
+                  {stock?.some(i => i.track_cost) && (
+                    <>
+                      <TableCell>{item.track_cost && item.purchase_price ? `₹${item.purchase_price}` : 'N/A'}</TableCell>
+                      <TableCell>{item.track_cost && item.selling_price ? `₹${item.selling_price}` : 'N/A'}</TableCell>
+                    </>
+                  )}
+                  <TableCell>{item.suppliers?.name || 'N/A'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </Card>
   );
