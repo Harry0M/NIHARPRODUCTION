@@ -21,10 +21,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCatalogProducts } from "@/hooks/use-catalog-products";
 import { AlertCircle } from "lucide-react";
-import { InfoCircledIcon } from "@radix-ui/react-icons";
-import { OrderFormData, MaterialUsage } from "@/types/order";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { OrderFormData } from "@/types/order";
 
 interface Company {
   id: string;
@@ -36,7 +33,7 @@ interface OrderDetailsFormProps {
   handleOrderChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 
     target: { name: string; value: string | null } 
   }) => void;
-  onProductSelect?: (productId: string) => void;
+  onProductSelect?: (components: any[]) => void;
   formErrors: {
     company?: string;
     quantity?: string;
@@ -44,35 +41,16 @@ interface OrderDetailsFormProps {
     bag_width?: string;
     order_date?: string;
   };
-  totalMaterialCost?: number;
-  materialUsage?: MaterialUsage[];
 }
 
 export const OrderDetailsForm = ({ 
   formData, 
   handleOrderChange, 
   onProductSelect,
-  formErrors,
-  totalMaterialCost = 0,
-  materialUsage = []
+  formErrors 
 }: OrderDetailsFormProps) => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const { data: catalogProducts, isLoading } = useCatalogProducts();
-
-  // Get material usage from local storage if available
-  const [localMaterialUsage, setLocalMaterialUsage] = useState<MaterialUsage[]>([]);
-  
-  useEffect(() => {
-    const storedUsage = localStorage.getItem('orderMaterialUsage');
-    if (storedUsage) {
-      try {
-        const parsedUsage = JSON.parse(storedUsage);
-        setLocalMaterialUsage(parsedUsage);
-      } catch (e) {
-        console.error("Error parsing material usage from localStorage:", e);
-      }
-    }
-  }, [totalMaterialCost]); // Refresh when the material cost changes
 
   // Fetch companies on component mount
   useEffect(() => {
@@ -91,15 +69,39 @@ export const OrderDetailsForm = ({
   }, []);
 
   const handleProductSelect = (productId: string) => {
-    // Call parent handler if provided
-    if (onProductSelect) {
-      onProductSelect(productId);
+    const selectedProduct = catalogProducts?.find(p => p.id === productId);
+    if (selectedProduct) {
+      // Only update bag dimensions, quantity and rate, not the company info
+      handleOrderChange({ target: { name: 'bag_length', value: selectedProduct.bag_length.toString() } });
+      handleOrderChange({ target: { name: 'bag_width', value: selectedProduct.bag_width.toString() } });
+      if (selectedProduct.default_quantity) {
+        handleOrderChange({ target: { name: 'quantity', value: selectedProduct.default_quantity.toString() } });
+      }
+      if (selectedProduct.default_rate) {
+        handleOrderChange({ target: { name: 'rate', value: selectedProduct.default_rate.toString() } });
+      }
+      
+      // Pass components to parent component if they exist
+      if (onProductSelect && selectedProduct.catalog_components) {
+        onProductSelect(selectedProduct.catalog_components);
+      }
     }
   };
 
-  // Merge provided material usage with local storage if needed
-  const displayMaterialUsage = materialUsage && materialUsage.length > 0 ? 
-    materialUsage : localMaterialUsage;
+  const handleCompanySelect = (companyId: string | null) => {
+    if (companyId && companyId !== "no_selection") {
+      // Only set company_id, don't set company_name
+      handleOrderChange({
+        target: {
+          name: 'company_id',
+          value: companyId
+        }
+      });
+    } else {
+      // Clear company_id when no company is selected
+      handleOrderChange({ target: { name: 'company_id', value: null } });
+    }
+  };
 
   return (
     <Card>
@@ -110,7 +112,7 @@ export const OrderDetailsForm = ({
       <CardContent className="space-y-4">
         {/* Product selection dropdown */}
         <div className="space-y-2">
-          <Label>Select Product (BOM)</Label>
+          <Label>Select Product (Optional)</Label>
           <Select onValueChange={handleProductSelect}>
             <SelectTrigger>
               <SelectValue placeholder="Choose a product template" />
@@ -118,14 +120,11 @@ export const OrderDetailsForm = ({
             <SelectContent>
               {catalogProducts?.map((product) => (
                 <SelectItem key={product.id} value={product.id}>
-                  {product.name} ({product.bag_length}x{product.bag_width} inches)
+                  {product.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">
-            Selecting a product will auto-fill dimensions, rate and components
-          </p>
         </div>
 
         {/* Company section */}
@@ -138,7 +137,7 @@ export const OrderDetailsForm = ({
             <Input 
               id="company_name" 
               name="company_name"
-              value={formData.company_name || ""}
+              value={formData.company_name}
               onChange={(e) => handleOrderChange(e)}
               placeholder="Enter company name"
               required
@@ -288,91 +287,12 @@ export const OrderDetailsForm = ({
           </div>
         </div>
 
-        {/* Material consumption and cost calculation section */}
-        <Card className="border-muted">
-          <CardHeader className="py-4 px-5">
-            <CardTitle className="text-lg">Material Requirements</CardTitle>
-          </CardHeader>
-          <CardContent className="px-5 py-0">
-            {displayMaterialUsage && displayMaterialUsage.length > 0 ? (
-              <div className="mb-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Material</TableHead>
-                      <TableHead>Usage</TableHead>
-                      <TableHead>Available</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {displayMaterialUsage.map((material, index) => (
-                      <TableRow key={material.material_id || index}>
-                        <TableCell>
-                          <div className="font-medium">{material.material_name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {material.material_color} {material.material_gsm && `(${material.material_gsm} GSM)`}
-                          </div>
-                        </TableCell>
-                        <TableCell>{material.consumption.toFixed(2)} {material.unit}</TableCell>
-                        <TableCell>{material.available_quantity.toFixed(2)} {material.unit}</TableCell>
-                        <TableCell>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <span className={`inline-flex items-center ${
-                                  material.consumption > material.available_quantity 
-                                    ? 'text-destructive' 
-                                    : 'text-green-500'
-                                }`}>
-                                  {material.consumption > material.available_quantity 
-                                    ? 'Insufficient' 
-                                    : 'Available'}
-                                  <InfoCircledIcon className="h-4 w-4 ml-1" />
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {material.consumption > material.available_quantity 
-                                  ? `Need ${(material.consumption - material.available_quantity).toFixed(2)} ${material.unit} more` 
-                                  : `${(material.available_quantity - material.consumption).toFixed(2)} ${material.unit} remaining after order`}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              <div className="text-center py-4 text-sm text-muted-foreground">
-                No materials selected or BOM not defined with materials
-              </div>
-            )}
-
-            <div className="bg-muted/50 p-4 rounded-md mb-4">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Total Material Cost:</span>
-                <span className="font-bold">₹{totalMaterialCost.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center mt-2">
-                <span className="font-medium">Cost Per Unit:</span>
-                <span className="font-medium">
-                  {formData.quantity && parseInt(formData.quantity) > 0 
-                    ? `₹${(totalMaterialCost / parseInt(formData.quantity)).toFixed(2)}`
-                    : '₹0.00'}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         <div className="space-y-2">
           <Label htmlFor="special_instructions">Special Instructions (optional)</Label>
           <Textarea 
             id="special_instructions" 
             name="special_instructions"
-            value={formData.special_instructions || ''}
+            value={formData.special_instructions}
             onChange={handleOrderChange}
             placeholder="Any additional notes or requirements"
             rows={3}

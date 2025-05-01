@@ -13,9 +13,6 @@ export interface CustomComponent {
   width?: string;
   length?: string;
   details?: string;
-  material_id?: string;
-  roll_width?: string;
-  consumption?: string;
 }
 
 export interface CustomComponentSectionProps {
@@ -40,16 +37,18 @@ export const CustomComponentSection = ({
   
   // Support for OrderEdit.tsx props
   customComponents,
-  componentOptions = {
-    color: ["White", "Black", "Red", "Blue", "Green", "Yellow"],
-    gsm: ["80", "100", "120", "150", "180", "200", "250"]
-  },
+  componentOptions: propComponentOptions,
   handleCustomComponentChange,
-  removeCustomComponent,
-  addCustomComponent
+  removeCustomComponent
 }: CustomComponentSectionProps) => {
   // Use the provided components or fallback to customComponents for compatibility
   const itemsToRender = components || customComponents || [];
+  
+  // Default component options if not provided
+  const componentOptions = propComponentOptions || {
+    color: ["White", "Black", "Red", "Blue", "Green", "Yellow"],
+    gsm: ["80", "100", "120", "150", "180", "200", "250"]
+  };
   
   // Use the provided handlers or fallbacks for compatibility
   const handleChange = onChange || handleCustomComponentChange;
@@ -77,10 +76,7 @@ export const CustomComponentSection = ({
               length: component.length || "",
               color: component.color || "",
               gsm: component.gsm || "",
-              name: component.customName || component.details,
-              material_id: component.material_id || "",
-              roll_width: component.roll_width || "",
-              consumption: component.consumption || ""
+              name: component.customName || component.details
             }}
             index={index}
             isCustom={true}
@@ -95,16 +91,6 @@ export const CustomComponentSection = ({
           No custom components added yet
         </div>
       )}
-
-      <div className="flex justify-center mt-4">
-        <Button 
-          type="button" 
-          variant="outline" 
-          onClick={addCustomComponent}
-        >
-          + Add Custom Component
-        </Button>
-      </div>
     </>
   );
 };

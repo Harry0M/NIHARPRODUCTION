@@ -1,199 +1,44 @@
 
-import { Component as CatalogComponent } from "../pages/Inventory/CatalogNew/types";
+import { Database } from "@/integrations/supabase/types";
 
-// Interface for form errors
-export interface FormErrors {
-  company?: string;
-  quantity?: string;
-  bag_length?: string;
-  bag_width?: string;
-  order_date?: string;
-  [key: string]: string | undefined;
-}
+export type OrderStatus = Database["public"]["Enums"]["order_status"];
 
-// Order statuses enum - ensuring compatibility with backend
-export type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled' | 'delivered' |
-                          'in_production' | 'cutting' | 'printing' | 'stitching' |
-                          'ready_for_dispatch' | 'dispatched';
-
-// Database order statuses - matching exactly what's in the database
-export type DBOrderStatus = 'pending' | 'completed' | 'cancelled' | 'in_production' | 
-                            'cutting' | 'printing' | 'stitching' |
-                            'ready_for_dispatch' | 'dispatched';
-
-// Base interface for order form data
-export interface OrderFormData {
-  // Customer information
-  company_name: string;
-  company_id?: string | null;
-  customer_id?: string;
-  customer_name?: string;
-  customer_phone?: string;
-  customer_email?: string;
-  customer_address?: string;
-  
-  // Order details
-  order_number?: string;
-  catalog_id?: string;
-  bag_length: string; // Keep as string for form handling, convert to number when submitting
-  bag_width: string; // Keep as string for form handling, convert to number when submitting
-  height?: string;
-  quantity: string; // Keep as string for form handling
-  rate: string; // Keep as string for form handling
-  
-  // Dates
-  order_date: string;
-  delivery_date?: string;
-  
-  // Additional information
-  product_name?: string;
-  delivery_address?: string;
-  special_instructions?: string;
-  sales_account_id?: string | null;
-  status?: OrderStatus | string; // Allow string for form handling, convert to OrderStatus when submitting
-  notes?: string;
-  description?: string;
-}
-
-// Full order data from the database
-export interface OrderData {
-  id: string;
-  company_id?: string;
-  company_name: string;
-  order_number: string;
-  quantity: number;
-  bag_length: number;
-  bag_width: number;
-  height?: number;
-  rate?: number;
-  order_date: string;
-  delivery_date?: string;
-  special_instructions?: string;
-  sales_account_id?: string;
-  status: OrderStatus;
-  created_at: string;
-  updated_at: string;
-  created_by?: string;
-  components?: Component[];
-  customer_name?: string;
-  customer_phone?: string;
-  customer_address?: string;
-  product_name?: string;
-  delivery_address?: string;
-  description?: string;
-  catalog_id?: string;
-}
-
-// Short order info for lists
 export interface Order {
   id: string;
   order_number: string;
   company_name: string;
+  company_id: string | null;
   quantity: number;
   bag_length: number;
   bag_width: number;
-  rate?: number;
   order_date: string;
-  delivery_date?: string;
   status: OrderStatus;
+  rate: number | null;
   created_at: string;
+  special_instructions?: string | null;
+  sales_account_id?: string | null;
 }
 
-// Add a type adapter to better handle compatibility between catalog and order components
-export type OrderComponent = CatalogComponent & {
-  roll_width?: string;
-  consumption?: string;
-};
+export interface OrderFormData {
+  company_name: string;
+  company_id: string | null;
+  quantity: string;
+  bag_length: string;
+  bag_width: string;
+  rate: string;
+  special_instructions: string;
+  order_date: string;
+  sales_account_id?: string | null;
+}
 
-// Component for orders and catalog products
 export interface Component {
   id: string;
   component_type: string;
-  type?: ComponentType; // Match the required type for supabase
-  color?: string;
-  gsm?: string;
-  size?: string;
-  custom_name?: string;
-  length?: string;
-  width?: string;
-  material_id?: string;
-  material_name?: string;
-  roll_width?: string;
-  consumption?: string;
-  order_id?: string;
-  created_at?: string;
-  updated_at?: string;
-  details?: string;
-}
-
-// Define valid component types
-export type ComponentType = "part" | "border" | "handle" | "chain" | "runner" | "custom";
-
-// Custom component definition
-export interface CustomComponent extends Component {
-  type: ComponentType; // Required for CustomComponent
-  component_type: string; // Make sure this is required
-  customName?: string; // For backward compatibility
-  custom_name?: string;
-  size?: string; // Add size property explicitly
-}
-
-// Defining a component prop type for the form components
-export interface ComponentProps {
-  id: string;
-  type: ComponentType;
-  component_type: string;
-  color?: string;
-  gsm?: string;
-  size?: string;
-  custom_name?: string;
-  length?: string;
-  width?: string;
-  material_id?: string;
-  roll_width?: string;
-  consumption?: string;
-  details?: string;
-}
-
-// Material usage tracking
-export interface MaterialUsage {
-  id?: string;
-  material_id: string;
-  material_name: string;
-  material_color?: string;
-  material_gsm?: string;
-  consumption: number;
-  available_quantity: number;
-  unit: string;
-  cost?: number;
-  unit_cost?: number;
-  total_cost?: number;
-  quantity?: number;
-  name?: string;
-  component_type?: string;
-}
-
-export interface OrderSummary {
-  id: string;
-  company_name: string;
-  order_date: string;
-  delivery_date?: string;
-  quantity: number;
-  total_amount?: number;
-  balance_amount?: number;
-  status: string;
-}
-
-export interface OrderDetailsData {
-  order: OrderData;
-  components: Component[];
-}
-
-export interface OrderListFilters {
-  status: OrderStatus | '';
-  dateRange: {
-    from: Date | undefined;
-    to: Date | undefined;
-  };
-  searchQuery: string;
+  size: string | null;
+  color: string | null;
+  gsm: string | null;
+  custom_name: string | null;
+  order_id?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }

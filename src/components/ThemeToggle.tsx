@@ -1,5 +1,4 @@
 
-import * as React from "react";
 import { Moon, Sun, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {

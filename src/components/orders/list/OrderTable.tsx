@@ -1,106 +1,107 @@
 
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { format } from "date-fns";
-import { Order, OrderStatus } from "@/types/order";
 import { Link } from "react-router-dom";
-import { ArrowUpDown, Eye, Pencil, Trash } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Eye, MoreHorizontal, Plus, Trash } from "lucide-react";
+import { formatDate, getStatusColor, getStatusDisplay } from "@/utils/orderUtils";
+import type { Order } from "@/types/order";
 
 interface OrderTableProps {
   orders: Order[];
-  onDeleteClick?: (orderId: string) => void;
+  onDeleteClick: (orderId: string) => void;
+  selectedOrders?: string[];
+  onSelectOrder?: (orderId: string, isSelected: boolean) => void;
+  onSelectAllOrders?: (isSelected: boolean) => void;
 }
 
-export function OrderTable({ orders, onDeleteClick }: OrderTableProps) {
-  const getStatusColor = (status: OrderStatus): string => {
-    switch (status) {
-      case "pending":
-        return "bg-yellow-100 text-yellow-800 hover:bg-yellow-200";
-      case "processing":
-        return "bg-blue-100 text-blue-800 hover:bg-blue-200";
-      case "completed":
-        return "bg-green-100 text-green-800 hover:bg-green-200";
-      case "cancelled":
-        return "bg-red-100 text-red-800 hover:bg-red-200";
-      case "delivered":
-        return "bg-purple-100 text-purple-800 hover:bg-purple-200";
-      default:
-        return "bg-gray-100 text-gray-800 hover:bg-gray-200";
-    }
-  };
+export const OrderTable = ({ 
+  orders, 
+  onDeleteClick, 
+  selectedOrders = [], 
+  onSelectOrder = () => {}, 
+  onSelectAllOrders = () => {} 
+}: OrderTableProps) => {
+  const allSelected = orders.length > 0 && selectedOrders.length === orders.length;
+  const someSelected = selectedOrders.length > 0 && selectedOrders.length < orders.length;
 
   return (
-    <div className="border rounded-md overflow-hidden">
+    <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>
-              <Button variant="ghost" className="p-0 h-8">
-                Order # <ArrowUpDown className="ml-2 h-4 w-4" />
-              </Button>
+            <TableHead className="w-[50px]">
+              <Checkbox 
+                checked={allSelected}
+                onCheckedChange={(checked) => onSelectAllOrders(!!checked)}
+                aria-label="Select all orders"
+                className={someSelected ? "opacity-50" : ""}
+              />
             </TableHead>
-            <TableHead>
-              <Button variant="ghost" className="p-0 h-8">
-                Customer <ArrowUpDown className="ml-2 h-4 w-4" />
-              </Button>
-            </TableHead>
+            <TableHead className="w-[180px]">Order Number</TableHead>
+            <TableHead>Company</TableHead>
             <TableHead className="text-right">Quantity</TableHead>
-            <TableHead className="text-right">Bag Size</TableHead>
-            <TableHead>
-              <Button variant="ghost" className="p-0 h-8">
-                Order Date <ArrowUpDown className="ml-2 h-4 w-4" />
-              </Button>
-            </TableHead>
+            <TableHead className="text-right">Size (in)</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead className="text-right">Date</TableHead>
+            <TableHead className="w-[80px]"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {orders.map((order) => (
-            <TableRow key={order.id}>
-              <TableCell>{order.order_number}</TableCell>
-              <TableCell className="font-medium">{order.company_name}</TableCell>
-              <TableCell className="text-right">{order.quantity}</TableCell>
-              <TableCell className="text-right">
-                {order.bag_length}" × {order.bag_width}"
-              </TableCell>
-              <TableCell>{format(new Date(order.order_date), "PP")}</TableCell>
+            <TableRow key={order.id} className={selectedOrders.includes(order.id) ? "bg-muted/50" : ""}>
               <TableCell>
-                <Badge className={getStatusColor(order.status as OrderStatus)} variant="outline">
-                  {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                </Badge>
+                <Checkbox 
+                  checked={selectedOrders.includes(order.id)}
+                  onCheckedChange={(checked) => onSelectOrder(order.id, !!checked)}
+                  aria-label={`Select order ${order.order_number}`}
+                />
+              </TableCell>
+              <TableCell className="font-medium">
+                <Link 
+                  to={`/orders/${order.id}`}
+                  className="hover:text-primary hover:underline"
+                >
+                  {order.order_number}
+                </Link>
+              </TableCell>
+              <TableCell>{order.company_name}</TableCell>
+              <TableCell className="text-right">{order.quantity.toLocaleString()}</TableCell>
+              <TableCell className="text-right">
+                {order.bag_length} × {order.bag_width}
+              </TableCell>
+              <TableCell>
+                <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(order.status)}`}>
+                  {getStatusDisplay(order.status)}
+                </span>
               </TableCell>
               <TableCell className="text-right">
-                <div className="flex justify-end gap-2">
-                  <Button asChild variant="ghost" size="sm">
-                    <Link to={`/orders/${order.id}`}>
-                      <Eye size={16} />
-                    </Link>
-                  </Button>
-                  <Button asChild variant="ghost" size="sm">
-                    <Link to={`/orders/${order.id}/edit`}>
-                      <Pencil size={16} />
-                    </Link>
-                  </Button>
-                  {onDeleteClick && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => onDeleteClick(order.id)}
-                    >
-                      <Trash size={16} />
+                {formatDate(order.order_date)}
+              </TableCell>
+              <TableCell>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <MoreHorizontal className="h-4 w-4" />
                     </Button>
-                  )}
-                </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                      <Link to={`/orders/${order.id}`}>
+                        <Eye className="mr-2 h-4 w-4" /> View Details
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to={`/production/job-cards/new?orderId=${order.id}`}>
+                        <Plus className="mr-2 h-4 w-4" /> Create Job Card
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onDeleteClick(order.id)}>
+                      <Trash className="mr-2 h-4 w-4" /> Delete Order
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </TableCell>
             </TableRow>
           ))}
@@ -108,6 +109,4 @@ export function OrderTable({ orders, onDeleteClick }: OrderTableProps) {
       </Table>
     </div>
   );
-}
-
-export default OrderTable;
+};

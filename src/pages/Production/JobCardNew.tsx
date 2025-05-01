@@ -85,7 +85,6 @@ const JobCardNew = () => {
     setSubmitting(true);
     
     try {
-      // First create the job card
       const { data, error } = await supabase
         .from("job_cards")
         .insert({
@@ -97,20 +96,6 @@ const JobCardNew = () => {
         .single();
 
       if (error) throw error;
-      
-      // Fetch components associated with the order
-      const { data: components, error: componentsError } = await supabase
-        .from("components")
-        .select("*")
-        .eq("order_id", selectedOrderId);
-        
-      if (componentsError) {
-        console.error("Error fetching components:", componentsError);
-        // Continue with job card creation even if components fetch fails
-      } else {
-        console.log("Components fetched:", components);
-        // Log the components data for debugging
-      }
       
       toast({
         title: "Job Card created",

@@ -118,7 +118,7 @@ export function CuttingDetailsForm({
           <div className="space-y-2">
             <Label htmlFor="status">Status</Label>
             <Select
-              value={cuttingData.status || "pending"}
+              value={cuttingData.status}
               onValueChange={(value: JobStatus) => onSelectChange("status", value)}
             >
               <SelectTrigger id="status">

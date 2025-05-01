@@ -9,7 +9,7 @@ interface ComponentStatusSelectProps {
 
 export function ComponentStatusSelect({ status, onChange }: ComponentStatusSelectProps) {
   return (
-    <Select value={status || "pending"} onValueChange={onChange}>
+    <Select value={status} onValueChange={onChange}>
       <SelectTrigger>
         <SelectValue placeholder="Select status" />
       </SelectTrigger>

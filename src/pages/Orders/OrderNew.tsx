@@ -1,32 +1,33 @@
 
-import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardFooter } from "@/components/ui/card";
-import { toast } from "@/hooks/use-toast";
-import { useOrderForm } from "@/hooks/use-order-form";
 import { OrderDetailsForm } from "@/components/orders/OrderDetailsForm";
 import { StandardComponents } from "@/components/orders/StandardComponents";
 import { CustomComponentSection } from "@/components/orders/CustomComponentSection";
-import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
-import { DBOrderStatus } from "@/types/order";
+import { useOrderForm } from "@/hooks/use-order-form";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+
+const componentOptions = {
+  color: ["Red", "Blue", "Green", "Black", "White", "Yellow", "Brown", "Orange", "Purple", "Gray", "Custom"],
+  gsm: ["70", "80", "90", "100", "120", "140", "160", "180", "200", "250", "300", "Custom"]
+};
 
 const OrderNew = () => {
   const navigate = useNavigate();
-  const { id } = useParams<{ id?: string }>();
-  const isEditMode = !!id;
-
-  // Use the order form hook to manage state and validation
   const {
     orderDetails,
     components,
     customComponents,
-    formErrors,
     submitting,
-    totalMaterialCost,
-    materialUsage,
+    formErrors,
     handleOrderChange,
     handleComponentChange,
     handleCustomComponentChange,
@@ -36,245 +37,23 @@ const OrderNew = () => {
     handleSubmit,
     validateForm
   } = useOrderForm();
-
-  // Define component options
-  const componentOptions = {
-    color: ["White", "Black", "Red", "Blue", "Green", "Yellow"],
-    gsm: ["80", "100", "120", "150", "180", "200", "250"]
-  };
-
-  // Fetch order data if in edit mode
-  const { data: orderData, isLoading } = useQuery({
-    queryKey: ['order', id],
-    queryFn: async () => {
-      if (!id) return null;
-      
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          components (*)
-        `)
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    enabled: isEditMode,
-  });
-
-  // Populate form with existing data when in edit mode
-  useEffect(() => {
-    if (isEditMode && orderData && !isLoading) {
-      // Convert database status to frontend status if needed
-      const frontendStatus = orderData.status === 'in_production' ? 'processing' : orderData.status;
-
-      // Create payload to update all order details
-      handleOrderChange({ 
-        target: { 
-          name: 'company_name', 
-          value: orderData.company_name 
-        } 
-      });
-      handleOrderChange({ 
-        target: { 
-          name: 'company_id', 
-          value: orderData.company_id 
-        } 
-      });
-      handleOrderChange({ 
-        target: { 
-          name: 'quantity', 
-          value: String(orderData.quantity) || ''
-        } 
-      });
-      handleOrderChange({ 
-        target: { 
-          name: 'bag_length', 
-          value: String(orderData.bag_length) || ''
-        } 
-      });
-      handleOrderChange({ 
-        target: { 
-          name: 'bag_width', 
-          value: String(orderData.bag_width) || ''
-        } 
-      });
-      handleOrderChange({ 
-        target: { 
-          name: 'rate', 
-          value: orderData.rate?.toString() || '' 
-        } 
-      });
-      handleOrderChange({ 
-        target: { 
-          name: 'order_date', 
-          value: orderData.order_date || ''
-        } 
-      });
-      // Only set these if they exist in orderData
-      if ('delivery_date' in orderData && orderData.delivery_date) {
-        handleOrderChange({ 
-          target: { 
-            name: 'delivery_date', 
-            value: orderData.delivery_date
-          } 
-        });
-      }
-      if ('special_instructions' in orderData) {
-        handleOrderChange({ 
-          target: { 
-            name: 'special_instructions', 
-            value: orderData.special_instructions as string || '' 
-          } 
-        });
-      }
-      handleOrderChange({ 
-        target: { 
-          name: 'status', 
-          value: frontendStatus || ''
-        } 
-      });
-      // Only set these if they exist in orderData
-      if ('catalog_id' in orderData && orderData.catalog_id) {
-        handleOrderChange({ 
-          target: { 
-            name: 'catalog_id', 
-            value: orderData.catalog_id as string
-          } 
-        });
-      }
-      if ('customer_name' in orderData && orderData.customer_name) {
-        handleOrderChange({ 
-          target: { 
-            name: 'customer_name', 
-            value: orderData.customer_name as string
-          } 
-        });
-      }
-      if ('customer_phone' in orderData && orderData.customer_phone) {
-        handleOrderChange({ 
-          target: { 
-            name: 'customer_phone', 
-            value: orderData.customer_phone as string
-          } 
-        });
-      }
-      if ('customer_address' in orderData && orderData.customer_address) {
-        handleOrderChange({ 
-          target: { 
-            name: 'customer_address', 
-            value: orderData.customer_address as string
-          } 
-        });
-      }
-      if ('description' in orderData && orderData.description) {
-        handleOrderChange({ 
-          target: { 
-            name: 'description', 
-            value: orderData.description as string
-          } 
-        });
-      }
-
-      // If there are components, set them
-      if (orderData.components && Array.isArray(orderData.components)) {
-        // Process components based on type
-        const processedComponents: Record<string, any> = {};
-        const processedCustomComponents: any[] = [];
-
-        orderData.components.forEach((comp: any) => {
-          const componentData = {
-            id: comp.id,
-            component_type: comp.component_type,
-            type: comp.type || comp.component_type,
-            color: comp.color || '',
-            gsm: comp.gsm || '',
-            size: comp.size || '',
-            length: comp.length || '',
-            width: comp.width || '',
-            material_id: comp.material_id || '',
-            roll_width: comp.roll_width || '',
-            consumption: comp.consumption || '',
-            details: comp.details || ''
-          };
-
-          if (comp.custom_name || comp.component_type === 'custom') {
-            processedCustomComponents.push({
-              ...componentData,
-              custom_name: comp.custom_name || comp.component_type,
-              type: 'custom'
-            });
-          } else if (
-            comp.component_type === 'part' || 
-            comp.component_type === 'border' || 
-            comp.component_type === 'handle' || 
-            comp.component_type === 'chain' || 
-            comp.component_type === 'runner'
-          ) {
-            processedComponents[comp.component_type] = componentData;
-          }
-        });
-
-        // Update state with processed components
-        Object.entries(processedComponents).forEach(([type, comp]) => {
-          Object.entries(comp).forEach(([field, value]) => {
-            if (field !== 'id' && field !== 'type') {
-              handleComponentChange(type, field, value as string);
-            }
-          });
-        });
-
-        // Update custom components 
-        processedCustomComponents.forEach((comp, index) => {
-          if (index === 0) {
-            addCustomComponent();
-          }
-          Object.entries(comp).forEach(([field, value]) => {
-            if (field !== 'id') {
-              handleCustomComponentChange(index, field, value as string);
-            }
-          });
-        });
-      }
-    }
-  }, [isEditMode, orderData, isLoading, handleOrderChange, handleComponentChange, handleCustomComponentChange, addCustomComponent]);
-
-  const onSubmitForm = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate the form
-    const errors = validateForm();
-    if (Object.keys(errors).length > 0) {
-      toast({
-        title: "Validation errors",
-        description: "Please correct the errors in the form",
-        variant: "destructive"
-      });
+  
+  const onSubmit = async (e: React.FormEvent) => {
+    if (!validateForm()) {
       return;
     }
     
-    // Submit the form
-    const success = await handleSubmit(isEditMode, id);
-    if (success) {
-      navigate("/orders");
+    const orderId = await handleSubmit(e);
+    if (orderId) {
+      navigate(`/orders/${orderId}`);
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
+  
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Button
+          <Button 
             variant="ghost"
             size="sm"
             onClick={() => navigate("/orders")}
@@ -284,47 +63,58 @@ const OrderNew = () => {
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              {isEditMode ? 'Edit Order' : 'New Order'}
-            </h1>
-            <p className="text-muted-foreground">
-              {isEditMode ? 'Update order details' : 'Create a new order'}
-            </p>
+            <h1 className="text-3xl font-bold tracking-tight">New Order</h1>
+            <p className="text-muted-foreground">Create a new order for production</p>
           </div>
         </div>
       </div>
-
-      <form onSubmit={onSubmitForm} className="space-y-6">
-        {/* Order details section */}
+      
+      <form onSubmit={onSubmit} className="space-y-6">
         <OrderDetailsForm 
-          formData={orderDetails} 
+          formData={orderDetails}
           handleOrderChange={handleOrderChange}
           onProductSelect={handleProductSelect}
           formErrors={formErrors}
-          totalMaterialCost={totalMaterialCost}
-          materialUsage={materialUsage}
         />
         
-        {/* Standard components section */}
-        <StandardComponents
-          components={components}
-          handleComponentChange={handleComponentChange}
-          componentOptions={componentOptions}
-        />
-
-        {/* Custom components section */}
-        <CustomComponentSection
-          components={customComponents}
-          handleCustomComponentChange={handleCustomComponentChange}
-          addCustomComponent={addCustomComponent}
-          removeCustomComponent={removeCustomComponent}
-          componentOptions={componentOptions}
-        />
-
-        {/* Form actions */}
         <Card>
+          <CardHeader>
+            <CardTitle>Bag Components</CardTitle>
+            <CardDescription>Specify the details for each component of the bag</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-8">
+              <StandardComponents 
+                components={components}
+                componentOptions={componentOptions}
+                onChange={handleComponentChange}
+              />
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-medium">Custom Components</h2>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-1"
+                    onClick={addCustomComponent}
+                  >
+                    + Add Custom Component
+                  </Button>
+                </div>
+                
+                <CustomComponentSection
+                  customComponents={customComponents}
+                  componentOptions={componentOptions}
+                  handleCustomComponentChange={handleCustomComponentChange}
+                  removeCustomComponent={removeCustomComponent}
+                />
+              </div>
+            </div>
+          </CardContent>
           <CardFooter>
-            <div className="flex justify-end gap-2 w-full">
+            <div className="flex justify-end gap-2">
               <Button
                 type="button"
                 variant="outline"
@@ -332,14 +122,8 @@ const OrderNew = () => {
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
-                disabled={submitting}
-              >
-                {submitting 
-                  ? (isEditMode ? "Updating..." : "Creating...") 
-                  : (isEditMode ? "Update Order" : "Create Order")
-                }
+              <Button type="submit" disabled={submitting}>
+                {submitting ? "Creating..." : "Create Order"}
               </Button>
             </div>
           </CardFooter>

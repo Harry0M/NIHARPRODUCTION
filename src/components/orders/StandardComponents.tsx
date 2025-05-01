@@ -4,27 +4,15 @@ import { ComponentForm } from "@/components/orders/ComponentForm";
 
 interface StandardComponentsProps {
   components: Record<string, any>;
-  componentOptions?: {
+  componentOptions: {
     color: string[];
     gsm: string[];
   };
-  onChange?: (type: string, field: string, value: string) => void;
-  handleComponentChange?: (type: string, field: string, value: string) => void;
+  onChange: (type: string, field: string, value: string) => void;
 }
 
-export function StandardComponents({ 
-  components, 
-  componentOptions = { 
-    color: ["White", "Black", "Red", "Blue", "Green", "Yellow"],
-    gsm: ["80", "100", "120", "150", "180", "200", "250"]
-  }, 
-  onChange,
-  handleComponentChange
-}: StandardComponentsProps) {
+export function StandardComponents({ components, componentOptions, onChange }: StandardComponentsProps) {
   const componentTypes = ["part", "border", "handle", "chain", "runner"];
-  
-  // Use either onChange or handleComponentChange (for backward compatibility)
-  const handleChange = onChange || handleComponentChange;
   
   return (
     <div className="space-y-8">
@@ -35,19 +23,10 @@ export function StandardComponents({
             <ComponentForm
               key={type}
               title={type.charAt(0).toUpperCase() + type.slice(1)}
-              component={components[type] || { 
-                type, 
-                width: "", 
-                length: "", 
-                color: "", 
-                gsm: "",
-                material_id: "",
-                roll_width: "",
-                consumption: "" 
-              }}
+              component={components[type] || { type, width: "", length: "", color: "", gsm: "" }}
               index={index}
               componentOptions={componentOptions}
-              onChange={(field, value) => handleChange && handleChange(type, field, value)}
+              onChange={(field, value) => onChange(type, field, value)}
               handleChange={() => {}}
             />
           ))}

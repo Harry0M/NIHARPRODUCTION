@@ -3,26 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { File } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-
-interface Component {
-  id: string;
-  component_type: string;
-  custom_name?: string;
-  size?: string;
-  color?: string;
-  gsm?: string;
-}
+import { Component } from "@/types/order";
 
 interface Order {
-  id: string;
   order_number: string;
   company_name: string;
-  bag_length?: number;
-  bag_width?: number;
-  order_date?: string;
-  quantity?: number;
-  status?: string;
-  components?: Component[];
+  bag_length: number;
+  bag_width: number;
+  order_date: string;
+  quantity: number;
+  status: string;
+  components: Component[];
 }
 
 type BadgeFn = (status: string) => React.ReactNode;
@@ -56,30 +47,22 @@ export const OrderInfoCard = ({
           <p className="text-sm font-medium">Company</p>
           <p>{order.company_name}</p>
         </div>
-        {order.order_date && (
-          <div>
-            <p className="text-sm font-medium">Order Date</p>
-            <p>{formatDate(order.order_date)}</p>
-          </div>
-        )}
-        {order.quantity && (
-          <div>
-            <p className="text-sm font-medium">Quantity</p>
-            <p>{order.quantity.toLocaleString()} bags</p>
-          </div>
-        )}
-        {order.bag_length && order.bag_width && (
-          <div>
-            <p className="text-sm font-medium">Bag Size</p>
-            <p>{order.bag_length}" × {order.bag_width}"</p>
-          </div>
-        )}
-        {order.status && (
-          <div>
-            <p className="text-sm font-medium">Status</p>
-            <p>{getStatusBadge(order.status)}</p>
-          </div>
-        )}
+        <div>
+          <p className="text-sm font-medium">Order Date</p>
+          <p>{formatDate(order.order_date)}</p>
+        </div>
+        <div>
+          <p className="text-sm font-medium">Quantity</p>
+          <p>{order.quantity.toLocaleString()} bags</p>
+        </div>
+        <div>
+          <p className="text-sm font-medium">Bag Size</p>
+          <p>{order.bag_length}" × {order.bag_width}"</p>
+        </div>
+        <div>
+          <p className="text-sm font-medium">Status</p>
+          <p>{getStatusBadge(order.status)}</p>
+        </div>
       </div>
 
       <Separator className="my-4" />
@@ -87,7 +70,7 @@ export const OrderInfoCard = ({
       <div>
         <h3 className="text-md font-medium mb-2">Components</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {order.components && order.components.length > 0 ? (
+          {order.components?.length > 0 ? (
             order.components.map((component) => (
               <div key={component.id} className="border rounded-md p-3">
                 <p className="text-sm font-medium capitalize">

@@ -1,465 +1,441 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, CheckCircle, AlertTriangle } from "lucide-react";
-import { OrderFormData, OrderStatus, ComponentType, DBOrderStatus } from "@/types/order";
-import { ComponentForm } from "@/components/orders/ComponentForm";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { 
+  ArrowLeft, 
+  Calendar, 
+  ClipboardList, 
+  Clock, 
+  FileText, 
+  Package, 
+  Pencil,
+  Plus,
+  Trash
+} from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Component } from "@/types/order";
 
-interface Component {
+interface Order {
   id: string;
-  component_type: string;
-  type: ComponentType;
-  color?: string;
-  gsm?: string;
-  size?: string;
-  custom_name?: string;
-  material_id?: string;
-  roll_width?: string;
-  consumption?: string;
-  order_id: string;
+  order_number: string;
+  company_name: string;
+  quantity: number;
+  bag_length: number;
+  bag_width: number;
+  order_date: string;
+  status: string;
+  rate: number | null;
+  special_instructions: string | null;
   created_at: string;
-  updated_at: string;
-  details?: string;
+  sales_account_id?: string | null;
+}
+
+interface JobCard {
+  id: string;
+  order_id: string;
+  job_name: string;
+  status: string;
+  created_at: string;
+}
+
+interface Company {
+  id: string;
+  name: string;
 }
 
 const OrderDetail = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams();
   const navigate = useNavigate();
-  const [orderData, setOrderData] = useState<any>(null);
-  const [orderDetails, setOrderDetails] = useState<OrderFormData>({
-    company_name: '', // Required property
-    order_number: '',
-    customer_name: '',
-    customer_phone: '',
-    customer_address: '',
-    product_name: '',
-    quantity: '',
-    rate: '',
-    order_date: '',
-    delivery_date: '',
-    delivery_address: '',
-    special_instructions: '',
-    status: 'pending',
-    bag_length: '',
-    bag_width: ''
-  });
+  const [order, setOrder] = useState<Order | null>(null);
   const [components, setComponents] = useState<Component[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-
-  const componentOptions = {
-    color: ['Red', 'Green', 'Blue', 'Yellow', 'Black', 'White'],
-    gsm: ['80', '120', '150', '200']
-  };
-
-  // Helper function to map frontend status to DB status
-  const mapStatusToDb = (status: OrderStatus): DBOrderStatus => {
-    if (status === 'processing') return 'in_production';
-    return status as DBOrderStatus;
-  };
-
-  // Helper function to map DB status to frontend status
-  const mapDbStatusToFrontend = (status: DBOrderStatus): OrderStatus => {
-    if (status === 'in_production') return 'processing';
-    return status as OrderStatus;
-  };
-
+  const [jobCards, setJobCards] = useState<JobCard[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  
   useEffect(() => {
-    const fetchOrder = async () => {
-      setIsLoading(true);
-      setError(null);
+    const fetchOrderData = async () => {
+      setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('orders')
-          .select(`
-            *,
-            components (*)
-          `)
-          .eq('id', id)
+        // Fetch order details
+        const { data: orderData, error: orderError } = await supabase
+          .from("orders")
+          .select("*")
+          .eq("id", id)
           .single();
-
-        if (error) {
-          setError(error.message);
-        } else {
-          setOrderData(data);
-        }
-      } catch (err: any) {
-        setError(err.message);
+          
+        if (orderError) throw orderError;
+        setOrder(orderData);
+        
+        // Fixed: Fetch order components from the correct table "order_components"
+        const { data: componentsData, error: componentsError } = await supabase
+          .from("order_components")
+          .select("*")
+          .eq("order_id", id);
+          
+        if (componentsError) throw componentsError;
+        
+        // Convert gsm from number to string if needed
+        const typeSafeComponents: Component[] = componentsData?.map(comp => ({
+          ...comp,
+          gsm: comp.gsm !== null ? String(comp.gsm) : null
+        })) || [];
+        
+        setComponents(typeSafeComponents);
+        
+        // Fetch job cards
+        const { data: jobCardsData, error: jobCardsError } = await supabase
+          .from("job_cards")
+          .select("*")
+          .eq("order_id", id)
+          .order("created_at", { ascending: false });
+          
+        if (jobCardsError) throw jobCardsError;
+        setJobCards(jobCardsData || []);
+        
+      } catch (error: any) {
+        toast({
+          title: "Error fetching order details",
+          description: error.message,
+          variant: "destructive"
+        });
+        navigate("/orders");
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
+    
+    const fetchCompanies = async () => {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id, name')
+        .eq('status', 'active');
 
-    if (id) {
-      fetchOrder();
-    }
-  }, [id]);
-
-  const processComponents = (orderComponents: any[]): Component[] => {
-    if (!orderComponents || orderComponents.length === 0) {
-      return [];
-    }
-
-    return orderComponents.map(component => {
-      // Ensure type is one of the valid ComponentType values
-      const compType = component.type || component.component_type;
-      let validCompType: ComponentType = "custom"; // Default fallback
-
-      // Validate component type
-      if (["part", "border", "handle", "chain", "runner", "custom"].includes(compType)) {
-        validCompType = compType as ComponentType;
+      if (!error && data) {
+        setCompanies(data);
       }
+    };
+    
+    fetchOrderData();
+    fetchCompanies();
+  }, [id, navigate]);
 
-      return {
-        id: component.id,
-        component_type: component.component_type,
-        type: validCompType,
-        color: component.color || '',
-        gsm: component.gsm?.toString() || '',
-        size: component.size || '',
-        custom_name: component.custom_name || '',
-        material_id: component.material_id || '',
-        roll_width: component.roll_width?.toString() || '',
-        consumption: component.consumption?.toString() || '',
-        order_id: component.order_id,
-        created_at: component.created_at,
-        updated_at: component.updated_at,
-        details: component.details || ''
-      };
-    });
+  
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
   };
-
-  useEffect(() => {
-    if (orderData) {
-      // Convert database status to frontend status if needed
-      let frontendStatus: OrderStatus = 'pending';
-      if (orderData.status) {
-        frontendStatus = mapDbStatusToFrontend(orderData.status as DBOrderStatus);
-      }
-
-      setOrderDetails({
-        company_name: orderData.company_name || '', // Required field
-        order_number: orderData.order_number || '',
-        customer_name: orderData.customer_name || '',
-        customer_phone: orderData.customer_phone || '',
-        customer_address: orderData.customer_address || '',
-        product_name: orderData.product_name || '',
-        quantity: orderData.quantity?.toString() || '',
-        rate: orderData.rate?.toString() || '',
-        order_date: orderData.order_date || '',
-        delivery_date: orderData.delivery_date || '',
-        delivery_address: orderData.delivery_address || '',
-        special_instructions: orderData.special_instructions || '',
-        status: frontendStatus,
-        bag_length: orderData.bag_length?.toString() || '',
-        bag_width: orderData.bag_width?.toString() || ''
-      });
-      setComponents(processComponents(orderData.components || []));
-    }
-  }, [orderData]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setOrderDetails(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleStatusChange = (status: string) => {
-    setOrderDetails(prev => ({ ...prev, status: status as OrderStatus }));
-  };
-
-  const handleComponentChange = (index: number, field: string, value: string) => {
-    const updatedComponents = [...components];
-    updatedComponents[index] = {
-      ...updatedComponents[index],
-      [field]: value
-    } as Component;
-    setComponents(updatedComponents);
-  };
-
-  const saveOrder = async () => {
-    setIsSaving(true);
-    setError(null);
-
-    try {
-      // Map frontend status to database status
-      const dbStatus: DBOrderStatus = mapStatusToDb(orderDetails.status as OrderStatus);
-      
-      const orderPayload = {
-        ...orderDetails,
-        quantity: parseInt(orderDetails.quantity as string),
-        rate: parseFloat(orderDetails.rate as string),
-        bag_length: parseFloat(orderDetails.bag_length as string),
-        bag_width: parseFloat(orderDetails.bag_width as string),
-        status: dbStatus
-      };
-
-      // Type assertion to bypass TypeScript constraints for the database operation
-      const { error: updateError } = await supabase
-        .from("orders")
-        .update(orderPayload as any)
-        .eq('id', id);
-
-      if (updateError) {
-        throw new Error(updateError.message);
-      }
-
-      // Delete existing components for this order
-      const { error: deleteError } = await supabase
-        .from("components")
-        .delete()
-        .eq('order_id', id);
-
-      if (deleteError) {
-        throw new Error(deleteError.message);
-      }
-
-      // Insert each component with the correct type format
-      for (const component of components) {
-        const { error: insertError } = await supabase
-          .from("components")
-          .insert({
-            order_id: id,
-            type: component.type,
-            component_type: component.component_type,
-            color: component.color,
-            gsm: component.gsm,
-            size: component.size,
-            details: component.details,
-            custom_name: component.custom_name
-          });
-
-        if (insertError) {
-          throw new Error(insertError.message);
-        }
-      }
-
-      toast({
-        title: "Order updated successfully",
-        description: "The order details have been updated."
-      });
-      navigate('/orders');
-
-    } catch (err: any) {
-      setError(err.message);
-      toast({
-        title: "Failed to update order",
-        description: err.message,
-        variant: "destructive"
-      });
-    } finally {
-      setIsSaving(false);
+  
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "completed":
+        return "bg-green-100 text-green-800";
+      case "ready_for_dispatch":
+        return "bg-blue-100 text-blue-800";
+      case "in_production":
+      case "cutting":
+      case "printing":
+      case "stitching":
+        return "bg-amber-100 text-amber-800";
+      case "cancelled":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
-
-  if (isLoading) {
-    return <div className="text-center p-4">Loading order details...</div>;
+  
+  const getStatusDisplay = (status: string) => {
+    return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+  
+  const getComponentTypeDisplay = (type: string) => {
+    return type.charAt(0).toUpperCase() + type.slice(1);
+  };
+  
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[50vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
   }
-
-  if (error) {
-    return <div className="text-red-500 p-4">Error: {error}</div>;
+  
+  if (!order) {
+    return (
+      <div className="p-8 text-center">
+        <h2 className="text-2xl font-bold mb-2">Order Not Found</h2>
+        <p className="mb-4 text-muted-foreground">The order you're looking for doesn't exist or has been deleted.</p>
+        <Button asChild>
+          <Link to="/orders">Return to Orders</Link>
+        </Button>
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto mt-8">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => navigate("/orders")}
-        className="mb-4 gap-1"
-      >
-        <ArrowLeft size={16} />
-        Back to Orders
-      </Button>
-      <Card className="bg-white shadow-md rounded-md">
-        <CardHeader>
-          <CardTitle className="text-2xl font-semibold">Order Details</CardTitle>
-          <CardDescription>View and modify order information</CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="order_number">Order Number</Label>
-              <Input
-                type="text"
-                id="order_number"
-                name="order_number"
-                value={orderDetails.order_number}
-                onChange={handleInputChange}
-                placeholder="Enter order number"
-              />
-            </div>
-            <div>
-              <Label htmlFor="customer_name">Customer Name</Label>
-              <Input
-                type="text"
-                id="customer_name"
-                name="customer_name"
-                value={orderDetails.customer_name}
-                onChange={handleInputChange}
-                placeholder="Enter customer name"
-              />
-            </div>
-            <div>
-              <Label htmlFor="customer_phone">Customer Phone</Label>
-              <Input
-                type="tel"
-                id="customer_phone"
-                name="customer_phone"
-                value={orderDetails.customer_phone}
-                onChange={handleInputChange}
-                placeholder="Enter customer phone"
-              />
-            </div>
-            <div>
-              <Label htmlFor="customer_address">Customer Address</Label>
-              <Input
-                type="text"
-                id="customer_address"
-                name="customer_address"
-                value={orderDetails.customer_address}
-                onChange={handleInputChange}
-                placeholder="Enter customer address"
-              />
-            </div>
-            <div>
-              <Label htmlFor="product_name">Product Name</Label>
-              <Input
-                type="text"
-                id="product_name"
-                name="product_name"
-                value={orderDetails.product_name}
-                onChange={handleInputChange}
-                placeholder="Enter product name"
-              />
-            </div>
-            <div>
-              <Label htmlFor="quantity">Quantity</Label>
-              <Input
-                type="number"
-                id="quantity"
-                name="quantity"
-                value={orderDetails.quantity}
-                onChange={handleInputChange}
-                placeholder="Enter quantity"
-              />
-            </div>
-            <div>
-              <Label htmlFor="rate">Rate</Label>
-              <Input
-                type="number"
-                id="rate"
-                name="rate"
-                value={orderDetails.rate}
-                onChange={handleInputChange}
-                placeholder="Enter rate"
-              />
-            </div>
-            <div>
-              <Label htmlFor="order_date">Order Date</Label>
-              <Input
-                type="date"
-                id="order_date"
-                name="order_date"
-                value={orderDetails.order_date}
-                onChange={handleInputChange}
-                placeholder="Select order date"
-              />
-            </div>
-            <div>
-              <Label htmlFor="delivery_date">Delivery Date</Label>
-              <Input
-                type="date"
-                id="delivery_date"
-                name="delivery_date"
-                value={orderDetails.delivery_date}
-                onChange={handleInputChange}
-                placeholder="Select delivery date"
-              />
-            </div>
-            <div>
-              <Label htmlFor="delivery_address">Delivery Address</Label>
-              <Input
-                type="text"
-                id="delivery_address"
-                name="delivery_address"
-                value={orderDetails.delivery_address}
-                onChange={handleInputChange}
-                placeholder="Enter delivery address"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Label htmlFor="special_instructions">Special Instructions</Label>
-              <Input
-                id="special_instructions"
-                name="special_instructions"
-                value={orderDetails.special_instructions}
-                onChange={handleInputChange}
-                placeholder="Enter special instructions"
-              />
-            </div>
-          </div>
-
-          <Separator className="my-6" />
-
-          <h4 className="text-lg font-semibold mb-4">Components</h4>
-          {components.map((component, index) => (
-            <ComponentForm
-              key={component.id}
-              component={component}
-              index={index}
-              componentOptions={componentOptions}
-              handleChange={handleComponentChange}
-            />
-          ))}
-
-          <Separator className="my-6" />
-
-          <div className="grid md:grid-cols-1 gap-6">
-            <div>
-              <Label htmlFor="status">Status</Label>
-              <Select value={orderDetails.status} onValueChange={handleStatusChange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="processing">Processing</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter className="flex justify-end p-6">
-          <Button onClick={saveOrder} disabled={isSaving}>
-            {isSaving ? (
-              <>
-                <span className="animate-spin mr-2">
-                  <CheckCircle size={16} />
-                </span>
-                Updating...
-              </>
-            ) : (
-              "Update Order"
-            )}
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="gap-1"
+            onClick={() => navigate("/orders")}
+          >
+            <ArrowLeft size={16} />
+            Back
           </Button>
-        </CardFooter>
-      </Card>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Order {order.order_number}
+            </h1>
+            <p className="text-muted-foreground">
+              View and manage order details
+            </p>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Button variant="outline" asChild>
+            <Link to={`/orders/${id}/edit`}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </Link>
+          </Button>
+          
+        </div>
+      </div>
+      
+      
+      
+      <div className="flex items-center gap-4">
+        <Badge className={`${getStatusColor(order.status)} px-3 py-1 text-xs`}>
+          {getStatusDisplay(order.status)}
+        </Badge>
+        <div className="flex items-center text-muted-foreground gap-1">
+          <Calendar size={14} />
+          <span className="text-sm">Created on {formatDate(order.created_at)}</span>
+        </div>
+      </div>
+      
+      <Tabs defaultValue="details" className="w-full">
+        <TabsList className="grid grid-cols-3 w-full max-w-md">
+          <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsTrigger value="components">Components</TabsTrigger>
+          <TabsTrigger value="production">Production</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="details" className="space-y-6 pt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package size={18} />
+                Order Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Company Name</h3>
+                  <p className="text-lg">{order.company_name}</p>
+                </div>
+                {order.sales_account_id && (
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Sales Account</h3>
+                    <p className="text-lg">
+                      {companies.find(c => c.id === order.sales_account_id)?.name || 'Unknown Account'}
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Order Date</h3>
+                  <p className="text-lg">{formatDate(order.order_date)}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Quantity</h3>
+                  <p className="text-lg">{order.quantity.toLocaleString()} bags</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Bag Size</h3>
+                  <p className="text-lg">{order.bag_length} × {order.bag_width} inches</p>
+                </div>
+                {order.rate && (
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Rate per Bag</h3>
+                    <p className="text-lg">${order.rate.toFixed(2)}</p>
+                  </div>
+                )}
+                {order.special_instructions && (
+                  <div className="col-span-1 md:col-span-2">
+                    <h3 className="text-sm font-medium text-muted-foreground">Special Instructions</h3>
+                    <p className="text-lg whitespace-pre-line">{order.special_instructions}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="components" className="space-y-6 pt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardList size={18} />
+                Bag Components
+              </CardTitle>
+              <CardDescription>Details of all components for this order</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {components.length > 0 ? (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Size</TableHead>
+                        <TableHead>Color</TableHead>
+                        <TableHead>GSM</TableHead>
+                        <TableHead>Details</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {components.map((component) => (
+                        <TableRow key={component.id}>
+                          <TableCell className="font-medium">
+                            {component.component_type === 'custom' && component.custom_name 
+                              ? component.custom_name 
+                              : getComponentTypeDisplay(component.component_type)}
+                          </TableCell>
+                          <TableCell>{component.size || "-"}</TableCell>
+                          <TableCell>{component.color || "-"}</TableCell>
+                          <TableCell>{component.gsm || "-"}</TableCell>
+                          <TableCell>{component.custom_name || "-"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No components found for this order</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="production" className="space-y-6 pt-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Job Cards</h2>
+            <Button asChild>
+              <Link to={`/production/job-cards/new?orderId=${id}`}>
+                <Plus size={16} className="mr-1" />
+                Create Job Card
+              </Link>
+            </Button>
+          </div>
+          
+          {jobCards.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              {jobCards.map((jobCard) => (
+                <Card key={jobCard.id}>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">{jobCard.job_name}</CardTitle>
+                    <CardDescription className="flex items-center justify-between">
+                      <span className="flex items-center gap-1">
+                        <Clock size={14} />
+                        {formatDate(jobCard.created_at)}
+                      </span>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(jobCard.status)}`}>
+                        {getStatusDisplay(jobCard.status)}
+                      </span>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="text-sm">
+                    <div className="grid grid-cols-3 gap-2 mb-4">
+                      <Button variant="outline" size="sm" asChild className="justify-center">
+                        <Link to={`/production/cutting/${jobCard.id}`}>
+                          Cutting
+                        </Link>
+                      </Button>
+                      <Button variant="outline" size="sm" asChild className="justify-center">
+                        <Link to={`/production/printing/${jobCard.id}`}>
+                          Printing
+                        </Link>
+                      </Button>
+                      <Button variant="outline" size="sm" asChild className="justify-center">
+                        <Link to={`/production/stitching/${jobCard.id}`}>
+                          Stitching
+                        </Link>
+                      </Button>
+                    </div>
+                  </CardContent>
+                  <CardFooter>
+                    <Button variant="secondary" size="sm" className="w-full" asChild>
+                      <Link to={`/production/job-cards/${jobCard.id}`}>
+                        <FileText size={14} className="mr-1" />
+                        View Job Card
+                      </Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-1">No job cards yet</h3>
+                <p className="text-muted-foreground text-center mb-4">
+                  Create a job card to start production for this order
+                </p>
+                <Button asChild>
+                  <Link to={`/production/job-cards/new?orderId=${id}`}>
+                    <Plus size={16} className="mr-1" />
+                    Create Job Card
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

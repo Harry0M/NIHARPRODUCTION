@@ -1,77 +1,76 @@
 
-import React from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Order } from "@/types/order";
-import OrderCard from "./OrderCard";
-import OrderTable from "./OrderTable";
-import { GridIcon, ListIcon } from "lucide-react";
-import { Toggle } from "@/components/ui/toggle";
+import { OrderTable } from "./OrderTable";
+import { OrderCard } from "./OrderCard";
 import { EmptyOrdersState } from "./EmptyOrdersState";
+import { OrderFilter, OrderFilters } from "@/components/orders/OrderFilter";
+import { SkeletonTable } from "@/components/ui/skeleton-table";
 
 interface OrderContentProps {
   orders: Order[];
-  view: "grid" | "list";
-  setView: (view: "grid" | "list") => void;
-  isFiltering: boolean;
-  loading?: boolean;
-  onDeleteClick?: (orderId: string) => void;
+  loading: boolean;
+  filters: OrderFilters;
+  setFilters: React.Dispatch<React.SetStateAction<OrderFilters>>;
+  onDeleteClick: (orderId: string) => void;
+  selectedOrders?: string[];
+  onSelectOrder?: (orderId: string, isSelected: boolean) => void;
+  onSelectAllOrders?: (isSelected: boolean) => void;
 }
 
-export function OrderContent({ 
+export const OrderContent = ({ 
   orders, 
-  view, 
-  setView, 
-  isFiltering,
-  loading = false,
-  onDeleteClick
-}: OrderContentProps) {
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-end mb-4">
-        <div className="border rounded-md flex">
-          <Toggle
-            aria-label="Grid view"
-            pressed={view === "grid"}
-            onPressedChange={() => setView("grid")}
-          >
-            <GridIcon size={16} />
-          </Toggle>
-          <Toggle
-            aria-label="List view"
-            pressed={view === "list"}
-            onPressedChange={() => setView("list")}
-          >
-            <ListIcon size={16} />
-          </Toggle>
-        </div>
-      </div>
-      
-      {loading ? (
-        <div className="text-center py-10">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading orders...</p>
-        </div>
-      ) : orders.length === 0 ? (
-        <EmptyOrdersState isFiltering={isFiltering} />
-      ) : (
-        view === "grid" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {orders.map((order) => (
-              <OrderCard 
-                key={order.id} 
-                order={order} 
-                onDeleteClick={onDeleteClick} 
-              />
-            ))}
-          </div>
-        ) : (
-          <OrderTable 
-            orders={orders} 
-            onDeleteClick={onDeleteClick} 
-          />
-        )
-      )}
-    </div>
-  );
-}
+  loading, 
+  filters, 
+  setFilters, 
+  onDeleteClick,
+  selectedOrders,
+  onSelectOrder,
+  onSelectAllOrders
+}: OrderContentProps) => {
+  const isMobile = useIsMobile();
+  const hasFilters = filters.searchTerm !== "" || filters.status !== "all" || filters.dateRange.from !== "" || filters.dateRange.to !== "";
 
-export default OrderContent;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>All Orders</CardTitle>
+        <CardDescription>A list of all your bag manufacturing orders</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <OrderFilter filters={filters} setFilters={setFilters} />
+
+        {loading ? (
+          <SkeletonTable rows={5} columns={6} />
+        ) : orders.length === 0 ? (
+          <EmptyOrdersState hasFilters={hasFilters} />
+        ) : (
+          <>
+            {isMobile ? (
+              <div className="space-y-4">
+                {orders.map(order => (
+                  <OrderCard
+                    key={order.id}
+                    order={order}
+                    onDeleteClick={onDeleteClick}
+                    isSelected={selectedOrders?.includes(order.id) || false}
+                    onSelectChange={(isSelected) => onSelectOrder?.(order.id, isSelected)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <OrderTable
+                orders={orders}
+                onDeleteClick={onDeleteClick}
+                selectedOrders={selectedOrders}
+                onSelectOrder={onSelectOrder}
+                onSelectAllOrders={onSelectAllOrders}
+              />
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+};

@@ -35,7 +35,7 @@ const JobCardFilters = ({
           />
         </div>
         <Select
-          value={statusFilter || "all"}
+          value={statusFilter}
           onValueChange={(value) => setStatusFilter(value)}
         >
           <SelectTrigger className="w-40">

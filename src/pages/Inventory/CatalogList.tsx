@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { Plus, Package, Trash2, Edit, Eye } from "lucide-react";
+import { Plus, Package, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 const CatalogList = () => {
   const navigate = useNavigate();
@@ -60,32 +60,20 @@ const CatalogList = () => {
       }
       
       // Success!
-      toast({
-        title: "Product deleted successfully",
-        description: "The product and its components have been removed from the catalog."
-      });
+      toast.success("Product deleted successfully");
       await refetch();
     } catch (error: any) {
       console.error('Error in handleDeleteProduct:', error);
-      toast({
-        title: "Failed to delete product",
-        description: `Error: ${error.message}`,
-        variant: "destructive"
-      });
+      toast.error(`Failed to delete product: ${error.message}`);
     } finally {
       setProductToDelete(null);
       setIsDeleting(false);
     }
   };
 
-  const handleRowClick = (productId: string) => {
-    navigate(`/inventory/catalog/detail/${productId}`);
-  };
-
   return (
     <Card>
-      <div className="p-4 flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Product Catalog (BOM)</h1>
+      <div className="p-4 flex justify-end">
         <Button onClick={() => navigate('/inventory/catalog/new')}>
           <Plus size={16} className="mr-2" />
           Add Product
@@ -115,36 +103,13 @@ const CatalogList = () => {
             {products?.map((product) => (
               <TableRow 
                 key={product.id}
-                className="hover:bg-muted cursor-pointer"
-                onClick={() => handleRowClick(product.id)}
+                className="cursor-pointer hover:bg-muted"
               >
-                <TableCell>{product.name}</TableCell>
-                <TableCell>{`${product.bag_length}×${product.bag_width}`}</TableCell>
-                <TableCell>{product.default_quantity || 'N/A'}</TableCell>
-                <TableCell>{product.default_rate ? `₹${product.default_rate}` : 'N/A'}</TableCell>
+                <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{product.name}</TableCell>
+                <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{`${product.bag_length}×${product.bag_width}`}</TableCell>
+                <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{product.default_quantity || 'N/A'}</TableCell>
+                <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>{product.default_rate ? `₹${product.default_rate}` : 'N/A'}</TableCell>
                 <TableCell className="text-right space-x-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/inventory/catalog/detail/${product.id}`);
-                    }}
-                  >
-                    <Eye size={16} className="mr-2" />
-                    View
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/inventory/catalog/edit/${product.id}`);
-                    }}
-                  >
-                    <Edit size={16} className="mr-2" />
-                    Edit
-                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -187,7 +152,6 @@ const CatalogList = () => {
             <AlertDialogAction
               onClick={handleDeleteProduct}
               disabled={isDeleting}
-              className="bg-destructive hover:bg-destructive/90"
             >
               {isDeleting ? (
                 <div className="flex items-center gap-2">

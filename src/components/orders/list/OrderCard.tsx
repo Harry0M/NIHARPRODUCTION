@@ -1,107 +1,88 @@
 
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { CalendarIcon, Package2Icon, Trash, Pencil, Eye } from "lucide-react";
-import { format } from "date-fns";
-import { Order, OrderStatus } from "@/types/order";
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Eye, MoreHorizontal, Plus, Trash } from "lucide-react";
+import { formatDate, getStatusColor, getStatusDisplay } from "@/utils/orderUtils";
+import type { Order } from "@/types/order";
 
 interface OrderCardProps {
   order: Order;
-  onDeleteClick?: (orderId: string) => void;
+  onDeleteClick: (orderId: string) => void;
+  isSelected?: boolean;
+  onSelectChange?: (isSelected: boolean) => void;
 }
 
-export function OrderCard({ order, onDeleteClick }: OrderCardProps) {
-  const getStatusColor = (status: OrderStatus): string => {
-    switch (status) {
-      case "pending":
-        return "bg-yellow-100 text-yellow-800 hover:bg-yellow-200";
-      case "processing":
-        return "bg-blue-100 text-blue-800 hover:bg-blue-200";
-      case "completed":
-        return "bg-green-100 text-green-800 hover:bg-green-200";
-      case "cancelled":
-        return "bg-red-100 text-red-800 hover:bg-red-200";
-      case "delivered":
-        return "bg-purple-100 text-purple-800 hover:bg-purple-200";
-      default:
-        return "bg-gray-100 text-gray-800 hover:bg-gray-200";
-    }
-  };
-
+export const OrderCard = ({ order, onDeleteClick, isSelected = false, onSelectChange }: OrderCardProps) => {
   return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-6">
-        <div className="flex justify-between">
-          <div className="space-y-1">
-            <div className="text-xl font-semibold">{order.company_name}</div>
-            <div className="text-sm text-muted-foreground">
-              Order #{order.order_number}
+    <Card className={`mb-4 ${isSelected ? "border-primary" : ""}`}>
+      <CardHeader className="pb-2">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-2">
+            {onSelectChange && (
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={(checked) => onSelectChange(!!checked)}
+                aria-label={`Select order ${order.order_number}`}
+              />
+            )}
+            <div>
+              <CardTitle className="text-lg">
+                <Link to={`/orders/${order.id}`} className="hover:text-primary hover:underline">
+                  {order.order_number}
+                </Link>
+              </CardTitle>
+              <CardDescription>{order.company_name}</CardDescription>
             </div>
           </div>
-          <Badge className={getStatusColor(order.status as OrderStatus)} variant="outline">
-            {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-          </Badge>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link to={`/orders/${order.id}`}>
+                  <Eye className="mr-2 h-4 w-4" /> View Details
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to={`/production/job-cards/new?orderId=${order.id}`}>
+                  <Plus className="mr-2 h-4 w-4" /> Create Job Card
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onDeleteClick(order.id)}>
+                <Trash className="mr-2 h-4 w-4" /> Delete Order
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        
-        <div className="grid grid-cols-2 gap-4 mt-4">
-          <div className="space-y-1">
-            <div className="text-sm text-muted-foreground flex items-center gap-1">
-              <Package2Icon size={14} />
-              Quantity
-            </div>
-            <div className="font-medium">{order.quantity} bags</div>
+      </CardHeader>
+      <CardContent className="pb-3">
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Quantity:</span>
+            <span className="font-medium">{order.quantity.toLocaleString()}</span>
           </div>
-          <div className="space-y-1">
-            <div className="text-sm text-muted-foreground flex items-center gap-1">
-              <CalendarIcon size={14} />
-              Order Date
-            </div>
-            <div className="font-medium">
-              {format(new Date(order.order_date), "PP")}
-            </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Size:</span>
+            <span className="font-medium">{order.bag_length} × {order.bag_width}</span>
           </div>
-        </div>
-        
-        <div className="mt-4 p-2 bg-muted rounded-sm">
-          <div className="text-sm text-muted-foreground">
-            Bag Size: {order.bag_length}" × {order.bag_width}"
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Date:</span>
+            <span className="font-medium">{formatDate(order.order_date)}</span>
           </div>
-          {order.rate && (
-            <div className="text-sm font-medium mt-1">
-              Rate: ₹{order.rate.toFixed(2)}
-            </div>
-          )}
+          <div className="flex justify-between items-center">
+            <span className="text-muted-foreground">Status:</span>
+            <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(order.status)}`}>
+              {getStatusDisplay(order.status)}
+            </span>
+          </div>
         </div>
       </CardContent>
-      <CardFooter className="bg-muted/50 p-4 flex justify-between">
-        <Button asChild size="sm" variant="outline">
-          <Link to={`/orders/${order.id}`}>
-            <Eye size={16} className="mr-1" />
-            View
-          </Link>
-        </Button>
-        <Button asChild size="sm" variant="outline">
-          <Link to={`/orders/${order.id}/edit`}>
-            <Pencil size={16} className="mr-1" />
-            Edit
-          </Link>
-        </Button>
-        {onDeleteClick && (
-          <Button 
-            size="sm" 
-            variant="outline" 
-            className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-            onClick={() => onDeleteClick(order.id)}
-          >
-            <Trash size={16} className="mr-1" />
-            Delete
-          </Button>
-        )}
-      </CardFooter>
     </Card>
   );
-}
-
-export default OrderCard;
+};

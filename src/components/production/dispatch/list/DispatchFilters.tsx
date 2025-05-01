@@ -32,7 +32,7 @@ export const DispatchFilters = ({
           />
         </div>
         <Select
-          value={statusFilter || "all"}
+          value={statusFilter}
           onValueChange={onStatusChange}
         >
           <SelectTrigger className="w-40">

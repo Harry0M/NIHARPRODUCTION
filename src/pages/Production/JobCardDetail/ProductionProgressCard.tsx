@@ -2,61 +2,42 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Scissors, Printer, PackageCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { JobStatus } from "@/types/production";
 
-interface JobInfo {
+interface TimelineJob {
   id: string;
-  status: JobStatus;
+  status: string;
   worker_name: string | null;
   created_at: string;
 }
+type FormatDateFn = (d: string) => string;
+type StatusColorFn = (s: string) => string;
 
 interface ProductionProgressCardProps {
-  jobCard: {
-    cutting_jobs: JobInfo[];
-    printing_jobs: JobInfo[];
-    stitching_jobs: JobInfo[];
-  }
+  cuttingJobs: TimelineJob[];
+  printingJobs: TimelineJob[];
+  stitchingJobs: TimelineJob[];
+  getStatusColor: StatusColorFn;
+  formatDate: FormatDateFn;
 }
 
-export const ProductionProgressCard = ({ jobCard }: ProductionProgressCardProps) => {
+export const ProductionProgressCard = ({
+  cuttingJobs,
+  printingJobs,
+  stitchingJobs,
+  getStatusColor,
+  formatDate,
+}: ProductionProgressCardProps) => {
   // Calculate overall status for a stage based on all jobs
-  const calculateStageStatus = (jobs: JobInfo[] | undefined): string => {
-    if (!jobs || jobs.length === 0) return 'No jobs created';
+  const calculateStageStatus = (jobs: TimelineJob[]): string => {
+    if (jobs.length === 0) return 'No jobs created';
     if (jobs.every(job => job.status === 'completed')) return 'completed';
     if (jobs.some(job => job.status === 'in_progress')) return 'in_progress';
     return 'pending';
   };
 
-  const getStatusColor = (status: string): string => {
-    switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800 hover:bg-green-200';
-      case 'in_progress':
-        return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
-      case 'pending':
-        return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
-      default:
-        return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
-    }
-  };
-
-  const formatDate = (dateString: string): string => {
-    try {
-      const date = new Date(dateString);
-      return new Intl.DateTimeFormat('en-US', { 
-        day: '2-digit', 
-        month: 'short', 
-        year: 'numeric'
-      }).format(date);
-    } catch (e) {
-      return 'Invalid date';
-    }
-  };
-
-  const cuttingStatus = calculateStageStatus(jobCard.cutting_jobs);
-  const printingStatus = calculateStageStatus(jobCard.printing_jobs);
-  const stitchingStatus = calculateStageStatus(jobCard.stitching_jobs);
+  const cuttingStatus = calculateStageStatus(cuttingJobs);
+  const printingStatus = calculateStageStatus(printingJobs);
+  const stitchingStatus = calculateStageStatus(stitchingJobs);
 
   return (
     <Card className="lg:col-span-3">
@@ -72,7 +53,7 @@ export const ProductionProgressCard = ({ jobCard }: ProductionProgressCardProps)
                 <Scissors className="h-5 w-5" /> 
                 Cutting
               </h3>
-              {jobCard.cutting_jobs?.length > 0 && (
+              {cuttingJobs?.length > 0 && (
                 <Badge 
                   variant="outline"
                   className={getStatusColor(cuttingStatus)}
@@ -86,9 +67,9 @@ export const ProductionProgressCard = ({ jobCard }: ProductionProgressCardProps)
               )}
             </div>
             
-            {jobCard.cutting_jobs?.length ? (
+            {cuttingJobs?.length ? (
               <div className="space-y-2">
-                {jobCard.cutting_jobs.map((job, index) => (
+                {cuttingJobs.map((job, index) => (
                   <div key={job.id} className="text-sm border-l-2 border-gray-200 pl-3">
                     <p>Job {index + 1}: {job.worker_name || 'Not assigned'}</p>
                     <div className="flex items-center justify-between">
@@ -114,7 +95,7 @@ export const ProductionProgressCard = ({ jobCard }: ProductionProgressCardProps)
                 <Printer className="h-5 w-5" /> 
                 Printing
               </h3>
-              {jobCard.printing_jobs?.length > 0 && (
+              {printingJobs?.length > 0 && (
                 <Badge 
                   variant="outline"
                   className={getStatusColor(printingStatus)}
@@ -128,9 +109,9 @@ export const ProductionProgressCard = ({ jobCard }: ProductionProgressCardProps)
               )}
             </div>
             
-            {jobCard.printing_jobs?.length ? (
+            {printingJobs?.length ? (
               <div className="space-y-2">
-                {jobCard.printing_jobs.map((job, index) => (
+                {printingJobs.map((job, index) => (
                   <div key={job.id} className="text-sm border-l-2 border-gray-200 pl-3">
                     <p>Job {index + 1}: {job.worker_name || 'Not assigned'}</p>
                     <div className="flex items-center justify-between">
@@ -156,7 +137,7 @@ export const ProductionProgressCard = ({ jobCard }: ProductionProgressCardProps)
                 <PackageCheck className="h-5 w-5" /> 
                 Stitching
               </h3>
-              {jobCard.stitching_jobs?.length > 0 && (
+              {stitchingJobs?.length > 0 && (
                 <Badge 
                   variant="outline"
                   className={getStatusColor(stitchingStatus)}
@@ -170,9 +151,9 @@ export const ProductionProgressCard = ({ jobCard }: ProductionProgressCardProps)
               )}
             </div>
             
-            {jobCard.stitching_jobs?.length ? (
+            {stitchingJobs?.length ? (
               <div className="space-y-2">
-                {jobCard.stitching_jobs.map((job, index) => (
+                {stitchingJobs.map((job, index) => (
                   <div key={job.id} className="text-sm border-l-2 border-gray-200 pl-3">
                     <p>Job {index + 1}: {job.worker_name || 'Not assigned'}</p>
                     <div className="flex items-center justify-between">
