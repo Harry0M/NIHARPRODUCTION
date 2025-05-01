@@ -88,6 +88,7 @@ const OrderNew = () => {
                 components={components}
                 componentOptions={componentOptions}
                 onChange={handleComponentChange}
+                defaultQuantity={orderDetails.quantity}
               />
               
               <div className="space-y-4">
@@ -109,6 +110,7 @@ const OrderNew = () => {
                   componentOptions={componentOptions}
                   handleCustomComponentChange={handleCustomComponentChange}
                   removeCustomComponent={removeCustomComponent}
+                  defaultQuantity={orderDetails.quantity}
                 />
               </div>
             </div>

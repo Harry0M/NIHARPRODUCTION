@@ -9,9 +9,15 @@ interface StandardComponentsProps {
     gsm: string[];
   };
   onChange: (type: string, field: string, value: string) => void;
+  defaultQuantity?: string;
 }
 
-export function StandardComponents({ components, componentOptions, onChange }: StandardComponentsProps) {
+export function StandardComponents({ 
+  components, 
+  componentOptions, 
+  onChange,
+  defaultQuantity
+}: StandardComponentsProps) {
   const componentTypes = ["part", "border", "handle", "chain", "runner"];
   
   return (
@@ -28,6 +34,7 @@ export function StandardComponents({ components, componentOptions, onChange }: S
               componentOptions={componentOptions}
               onChange={(field, value) => onChange(type, field, value)}
               handleChange={() => {}}
+              defaultQuantity={defaultQuantity}
             />
           ))}
         </div>

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
@@ -137,7 +137,13 @@ const CatalogNew = () => {
           size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
           color: comp.color || null,
           gsm: comp.gsm ? parseFloat(comp.gsm) : null,
-          custom_name: comp.type === 'custom' ? comp.customName : null
+          custom_name: comp.type === 'custom' ? comp.customName : null,
+          // Add new fields
+          roll_width: comp.roll_width ? parseFloat(comp.roll_width) : null,
+          consumption: comp.consumption ? parseFloat(comp.consumption) : null,
+          material_id: comp.material_id !== "not_applicable" ? comp.material_id : null,
+          length: comp.length ? parseFloat(comp.length) : null,
+          width: comp.width ? parseFloat(comp.width) : null
         }));
 
         const { error: componentsError } = await supabase
@@ -302,6 +308,7 @@ const CatalogNew = () => {
                     componentOptions={componentOptions}
                     onChange={(field, value) => handleComponentChange("part", field, value)}
                     handleChange={() => {}}
+                    defaultQuantity={productDetails.default_quantity}
                   />
                   
                   <ComponentForm
@@ -311,6 +318,7 @@ const CatalogNew = () => {
                     componentOptions={componentOptions}
                     onChange={(field, value) => handleComponentChange("border", field, value)}
                     handleChange={() => {}}
+                    defaultQuantity={productDetails.default_quantity}
                   />
                   
                   <ComponentForm
@@ -320,6 +328,7 @@ const CatalogNew = () => {
                     componentOptions={componentOptions}
                     onChange={(field, value) => handleComponentChange("handle", field, value)}
                     handleChange={() => {}}
+                    defaultQuantity={productDetails.default_quantity}
                   />
                   
                   <ComponentForm
@@ -329,6 +338,7 @@ const CatalogNew = () => {
                     componentOptions={componentOptions}
                     onChange={(field, value) => handleComponentChange("chain", field, value)}
                     handleChange={() => {}}
+                    defaultQuantity={productDetails.default_quantity}
                   />
                   
                   <ComponentForm
@@ -338,6 +348,7 @@ const CatalogNew = () => {
                     componentOptions={componentOptions}
                     onChange={(field, value) => handleComponentChange("runner", field, value)}
                     handleChange={() => {}}
+                    defaultQuantity={productDetails.default_quantity}
                   />
                 </div>
               </div>
@@ -362,6 +373,7 @@ const CatalogNew = () => {
                   componentOptions={componentOptions}
                   handleCustomComponentChange={handleCustomComponentChange}
                   removeCustomComponent={removeCustomComponent}
+                  defaultQuantity={productDetails.default_quantity}
                 />
               </div>
             </div>
