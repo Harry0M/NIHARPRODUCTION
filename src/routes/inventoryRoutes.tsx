@@ -34,7 +34,7 @@ const inventoryRoutes: RouteObject[] = [
               },
               {
                 path: "stock/:id",
-                element: <StockDetail />
+                element: <StockJournalDetail />
               },
               {
                 path: "stock/new",

@@ -13,7 +13,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Package, ArrowLeft, PencilLine } from "lucide-react";
 import { StockBasicInfo } from "@/components/inventory/StockBasicInfo";
-import { StockCostTracking } from "@/components/inventory/StockCostTracking";
 import { StockInventoryManagement } from "@/components/inventory/StockInventoryManagement";
 import { StockSupplierInfo } from "@/components/inventory/StockSupplierInfo";
 import { DeleteInventoryDialog } from "@/components/inventory/DeleteInventoryDialog";
@@ -109,14 +108,6 @@ const StockJournalDetail = () => {
           <StockInventoryManagement inventory={inventory} />
           <StockSupplierInfo supplier={inventory.supplier} />
         </div>
-
-        {/* Only show cost tracking if it's enabled */}
-        {inventory.track_cost && (
-          <>
-            <Separator />
-            <StockCostTracking inventory={inventory} />
-          </>
-        )}
         
         {/* Material usage history */}
         <Separator />

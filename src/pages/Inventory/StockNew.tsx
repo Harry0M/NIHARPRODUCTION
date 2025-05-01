@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
@@ -44,11 +43,7 @@ const inventoryFormSchema = z.object({
     message: "Please select a unit.",
   }),
   alternate_unit: z.string().optional(),
-  conversion_rate: z.coerce.number().optional().default(1),
-  track_cost: z.boolean().default(false),
-  purchase_price: z.coerce.number().optional(),
-  selling_price: z.coerce.number().optional(),
-  supplier_id: z.string().optional(),
+  conversion_rate: z.coerce.number().optional().default(0),
   reorder_level: z.coerce.number().optional(),
 });
 
@@ -59,7 +54,6 @@ const StockNew = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showConversionRate, setShowConversionRate] = useState(false);
-  const [showCostTracking, setShowCostTracking] = useState(false);
 
   const form = useForm<InventoryFormValues>({
     resolver: zodResolver(inventoryFormSchema),
@@ -70,11 +64,7 @@ const StockNew = () => {
       quantity: 0,
       unit: "",
       alternate_unit: "",
-      conversion_rate: 1,
-      track_cost: false,
-      purchase_price: undefined,
-      selling_price: undefined,
-      supplier_id: "",
+      conversion_rate: 0,
       reorder_level: 0,
     },
   });
@@ -90,10 +80,7 @@ const StockNew = () => {
         unit: formData.unit,
         alternate_unit: formData.alternate_unit || null,
         conversion_rate: formData.conversion_rate,
-        track_cost: formData.track_cost,
-        purchase_price: formData.purchase_price || null,
-        selling_price: formData.selling_price || null,
-        supplier_id: formData.supplier_id || null,
+        supplier_id: null,
         reorder_level: formData.reorder_level || null,
       };
       
@@ -111,7 +98,7 @@ const StockNew = () => {
         title: "Stock added",
         description: "The inventory item has been created successfully.",
       });
-      navigate('/inventory/stock');
+      navigate('/inventory/stock/journal/list');
     },
     onError: (error) => {
       toast({
@@ -138,7 +125,7 @@ const StockNew = () => {
     } else {
       setShowConversionRate(false);
       form.setValue("alternate_unit", "");
-      form.setValue("conversion_rate", 1);
+      form.setValue("conversion_rate", 0);
     }
   };
 
@@ -150,7 +137,7 @@ const StockNew = () => {
           <CardTitle>Add Raw Material</CardTitle>
         </div>
         <CardDescription>
-          Add a new material to your inventory with detailed tracking options
+          Add a new material to your inventory with tracking options
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -258,7 +245,7 @@ const StockNew = () => {
                             type="number" 
                             step="0.01" 
                             {...field} 
-                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 1)} 
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
                           />
                         </FormControl>
                         <ArrowLeftRight className="h-4 w-4" />
@@ -302,75 +289,6 @@ const StockNew = () => {
 
               <FormField
                 control={form.control}
-                name="track_cost"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={(checked) => {
-                          field.onChange(checked);
-                          setShowCostTracking(checked as boolean);
-                        }}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>
-                        Enable Cost Tracking
-                      </FormLabel>
-                      <FormDescription>
-                        Track purchase and selling prices for this material
-                      </FormDescription>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {showCostTracking && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="purchase_price"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Purchase Price</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            step="0.01" 
-                            {...field} 
-                            onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="selling_price"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Selling Price</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            step="0.01" 
-                            {...field} 
-                            onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
-              )}
-
-              <FormField
-                control={form.control}
                 name="reorder_level"
                 render={({ field }) => (
                   <FormItem>
@@ -392,7 +310,7 @@ const StockNew = () => {
             </div>
 
             <div className="flex justify-end space-x-2 pt-4">
-              <Button variant="outline" type="button" onClick={() => navigate('/inventory/stock')}>
+              <Button variant="outline" type="button" onClick={() => navigate('/inventory/stock/journal/list')}>
                 Cancel
               </Button>
               <Button type="submit" disabled={createInventoryMutation.isPending}>

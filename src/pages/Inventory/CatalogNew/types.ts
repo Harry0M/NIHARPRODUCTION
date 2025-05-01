@@ -18,16 +18,16 @@ export interface CustomComponent {
   type: string;
   component_type: string;
   color?: string;
-  gsm?: string | number;
+  gsm?: string;
   size?: string;
   quantity?: number;
-  consumption?: string | number;
+  consumption?: string;
   material_id?: string;
   material_name?: string;
-  roll_width?: string | number;
+  roll_width?: string;
   custom_name?: string;
-  length?: string | number;
-  width?: string | number;
+  length?: string;
+  width?: string;
 }
 
 export interface Material {
@@ -50,12 +50,17 @@ export interface Material {
 }
 
 export interface MaterialUsage {
+  id: string;
   material_id: string;
   material_name: string;
   component_type: string;
   consumption: number;
   unit_cost: number;
   total_cost: number;
+  quantity: number;
+  unit: string;
+  cost: number;
+  name: string;
 }
 
 export interface Component {
@@ -65,14 +70,17 @@ export interface Component {
   gsm?: string;
   size?: string;
   quantity?: number;
-  consumption?: string | number;
+  consumption?: string;
   material_id?: string;
   material_name?: string;
-  roll_width?: string | number;
+  roll_width?: string;
   custom_name?: string;
-  length?: string | number; 
-  width?: string | number;
+  length?: string;
+  width?: string;
   type?: string;
 }
 
-export type ComponentOptions = Record<string, Component>;
+export type ComponentOptions = {
+  color: string[];
+  gsm: string[];
+};
