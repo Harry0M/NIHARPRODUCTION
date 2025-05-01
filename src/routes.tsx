@@ -1,7 +1,7 @@
 
 import { Navigate } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
-import AuthLayout from "@/components/AuthLayout";
+import AuthLayout from "@/components/layout/AuthLayout";
 import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
 import NotFound from "@/pages/NotFound";
