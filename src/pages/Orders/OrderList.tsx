@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { MoreVertical, Edit, Trash, ArrowLeft, CheckCircle } from "lucide-react";
@@ -42,7 +43,7 @@ const OrderList = () => {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const [filters, setFilters] = useState<OrderFilters>({
-    status: '',
+    status: '' as OrderStatus | '',
     dateRange: {
       from: undefined,
       to: undefined,
@@ -115,9 +116,9 @@ const OrderList = () => {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Delete order mutation
-  const deleteOrderMutation = useMutation(
-    async (orderId: string) => {
+  // Delete order mutation - Fixed implementation with proper options
+  const deleteOrderMutation = useMutation({
+    mutationFn: async (orderId: string) => {
       const { error } = await supabase
         .from('orders')
         .delete()
@@ -127,24 +128,22 @@ const OrderList = () => {
         throw error;
       }
     },
-    {
-      onSuccess: () => {
-        // Invalidate and refetch queries
-        queryClient.invalidateQueries(['orders']);
-        toast({
-          title: "Order deleted",
-          description: "Order deleted successfully.",
-        });
-      },
-      onError: (error: any) => {
-        toast({
-          title: "Error deleting order",
-          description: error.message,
-          variant: "destructive"
-        });
-      },
+    onSuccess: () => {
+      // Invalidate and refetch queries
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      toast({
+        title: "Order deleted",
+        description: "Order deleted successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error deleting order",
+        description: error.message,
+        variant: "destructive"
+      });
     }
-  );
+  });
 
   const handleFilterChange = (newFilters: OrderFilters) => {
     setFilters(newFilters);
@@ -175,29 +174,27 @@ const OrderList = () => {
   const isFiltering = !!filters.status || !!filters.dateRange.from || !!filters.dateRange.to || !!filters.searchQuery;
 
   return (
-    <AppLayout>
-      <div className="container mx-auto py-6">
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold">Orders</h1>
-            <Badge variant="secondary">{orders.length} Orders</Badge>
-          </div>
-          <Button onClick={() => navigate("/orders/new")}>
-            Create Order
-          </Button>
+    <div className="container mx-auto py-6">
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-semibold">Orders</h1>
+          <Badge variant="secondary">{orders.length} Orders</Badge>
         </div>
-
-        <OrderFilter onFilterChange={handleFilterChange} />
-
-        <OrderContent
-          orders={orders}
-          view={view}
-          setView={setView}
-          isFiltering={isFiltering}
-          loading={loading}
-        />
+        <Button onClick={() => navigate("/orders/new")}>
+          Create Order
+        </Button>
       </div>
-    </AppLayout>
+
+      <OrderFilter onFilterChange={handleFilterChange} />
+
+      <OrderContent
+        orders={orders}
+        view={view}
+        setView={setView}
+        isFiltering={isFiltering}
+        loading={loading}
+      />
+    </div>
   );
 };
 
