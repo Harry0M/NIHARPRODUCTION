@@ -14,6 +14,7 @@ interface Component {
   width?: string;
   consumption?: string;
   roll_width?: string;
+  material_id?: string; // Added material_id to match what's being used in the code
 }
 
 interface FormErrors {
