@@ -13,6 +13,8 @@ interface Component {
   gsm?: string;
   length?: string;
   width?: string;
+  consumption?: string;
+  roll_width?: string;
 }
 
 interface FormErrors {
@@ -39,6 +41,7 @@ interface UseOrderFormReturn {
   handleProductSelect: (components: any[]) => void;
   handleSubmit: (e: React.FormEvent) => Promise<string | undefined>;
   validateForm: () => boolean;
+  updateConsumptionBasedOnQuantity: (quantity: number) => void;
 }
 
 export function useOrderForm(): UseOrderFormReturn {
@@ -59,6 +62,7 @@ export function useOrderForm(): UseOrderFormReturn {
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [components, setComponents] = useState<Record<string, any>>({});
   const [customComponents, setCustomComponents] = useState<Component[]>([]);
+  const [baseConsumptions, setBaseConsumptions] = useState<Record<string, number>>({});
 
   const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 
     target: { name: string; value: string | null } 
@@ -76,6 +80,14 @@ export function useOrderForm(): UseOrderFormReturn {
         ...prev,
         [name]: value
       }));
+
+      // If quantity changed, update consumption values
+      if (name === 'quantity' && value) {
+        const quantity = parseFloat(value as string);
+        if (!isNaN(quantity)) {
+          updateConsumptionBasedOnQuantity(quantity);
+        }
+      }
     }
     
     // Clear validation error when field is changed
@@ -85,6 +97,38 @@ export function useOrderForm(): UseOrderFormReturn {
         [name]: undefined
       }));
     }
+  };
+
+  const updateConsumptionBasedOnQuantity = (quantity: number) => {
+    if (isNaN(quantity) || quantity <= 0) return;
+
+    // Update consumption for standard components
+    const updatedComponents = { ...components };
+    Object.keys(updatedComponents).forEach(type => {
+      const baseConsumption = baseConsumptions[type];
+      if (baseConsumption && !isNaN(baseConsumption)) {
+        const newConsumption = baseConsumption * quantity;
+        updatedComponents[type] = {
+          ...updatedComponents[type],
+          consumption: newConsumption.toFixed(2)
+        };
+      }
+    });
+    setComponents(updatedComponents);
+
+    // Update consumption for custom components
+    const updatedCustomComponents = customComponents.map((component, idx) => {
+      const baseConsumption = baseConsumptions[`custom_${idx}`];
+      if (baseConsumption && !isNaN(baseConsumption)) {
+        const newConsumption = baseConsumption * quantity;
+        return {
+          ...component,
+          consumption: newConsumption.toFixed(2)
+        };
+      }
+      return component;
+    });
+    setCustomComponents(updatedCustomComponents);
   };
 
   const handleComponentChange = (type: string, field: string, value: string) => {
@@ -124,6 +168,11 @@ export function useOrderForm(): UseOrderFormReturn {
 
   const removeCustomComponent = (index: number) => {
     setCustomComponents(prev => prev.filter((_, i) => i !== index));
+    
+    // Also remove from base consumptions
+    const updatedBaseConsumptions = { ...baseConsumptions };
+    delete updatedBaseConsumptions[`custom_${index}`];
+    setBaseConsumptions(updatedBaseConsumptions);
   };
 
   const handleProductSelect = (components: any[]) => {
@@ -138,6 +187,7 @@ export function useOrderForm(): UseOrderFormReturn {
     const standardTypes = ['part', 'border', 'handle', 'chain', 'runner'];
     const newOrderComponents: Record<string, any> = {};
     const newCustomComponents: Component[] = [];
+    const newBaseConsumptions: Record<string, number> = {};
 
     components.forEach(component => {
       if (!component) return;
@@ -150,7 +200,12 @@ export function useOrderForm(): UseOrderFormReturn {
         width = sizeValues[1] || '';
       }
       
+      // Store consumption value directly from component
+      const consumption = component.consumption?.toString() || '';
+      const rollWidth = component.roll_width?.toString() || '';
+      
       if (component.component_type === 'custom') {
+        const customIndex = newCustomComponents.length;
         newCustomComponents.push({
           id: uuidv4(),
           type: 'custom',
@@ -158,8 +213,15 @@ export function useOrderForm(): UseOrderFormReturn {
           color: component.color || '',
           gsm: component.gsm?.toString() || '',
           length,
-          width
+          width,
+          consumption,
+          roll_width: rollWidth
         });
+        
+        // Store base consumption for this custom component
+        if (component.consumption) {
+          newBaseConsumptions[`custom_${customIndex}`] = parseFloat(component.consumption);
+        }
       } else if (standardTypes.includes(component.component_type)) {
         newOrderComponents[component.component_type] = {
           id: uuidv4(),
@@ -167,17 +229,34 @@ export function useOrderForm(): UseOrderFormReturn {
           color: component.color || '',
           gsm: component.gsm?.toString() || '',
           length,
-          width
+          width,
+          consumption,
+          roll_width: rollWidth
         };
+        
+        // Store base consumption for standard component
+        if (component.consumption) {
+          newBaseConsumptions[component.component_type] = parseFloat(component.consumption);
+        }
       }
     });
 
     console.log("Setting standard components:", newOrderComponents);
     console.log("Setting custom components:", newCustomComponents);
+    console.log("Setting base consumptions:", newBaseConsumptions);
 
     // Replace all components with the new ones
     setComponents(newOrderComponents);
     setCustomComponents(newCustomComponents);
+    setBaseConsumptions(newBaseConsumptions);
+
+    // If quantity already entered, update consumption values
+    if (orderDetails.quantity) {
+      const quantity = parseFloat(orderDetails.quantity);
+      if (!isNaN(quantity) && quantity > 0) {
+        setTimeout(() => updateConsumptionBasedOnQuantity(quantity), 0);
+      }
+    }
   };
 
   const validateForm = (): boolean => {
@@ -334,6 +413,7 @@ export function useOrderForm(): UseOrderFormReturn {
     removeCustomComponent,
     handleProductSelect,
     handleSubmit,
-    validateForm
+    validateForm,
+    updateConsumptionBasedOnQuantity
   };
 }

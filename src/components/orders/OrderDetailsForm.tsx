@@ -68,7 +68,7 @@ export const OrderDetailsForm = ({
     fetchCompanies();
   }, []);
 
-  const handleProductSelect = (productId: string) => {
+  const handleProductSelect = async (productId: string) => {
     const selectedProduct = catalogProducts?.find(p => p.id === productId);
     if (selectedProduct) {
       // Update all product dimensions including border dimension
@@ -77,16 +77,26 @@ export const OrderDetailsForm = ({
       if (selectedProduct.border_dimension !== undefined && selectedProduct.border_dimension !== null) {
         handleOrderChange({ target: { name: 'border_dimension', value: selectedProduct.border_dimension.toString() } });
       }
-      if (selectedProduct.default_quantity) {
-        handleOrderChange({ target: { name: 'quantity', value: selectedProduct.default_quantity.toString() } });
-      }
+      // We're no longer setting quantity from the product
+      // Only set rate from the product if available
       if (selectedProduct.default_rate) {
         handleOrderChange({ target: { name: 'rate', value: selectedProduct.default_rate.toString() } });
       }
       
-      // Pass components to parent component if they exist
-      if (onProductSelect && selectedProduct.catalog_components) {
-        onProductSelect(selectedProduct.catalog_components);
+      // Fetch product components with consumption values
+      const { data: catalogComponents, error } = await supabase
+        .from('catalog_components')
+        .select('*')
+        .eq('catalog_id', productId);
+        
+      if (error) {
+        console.error('Error fetching catalog components:', error);
+        return;
+      }
+      
+      // Pass components to parent component
+      if (onProductSelect && catalogComponents && catalogComponents.length > 0) {
+        onProductSelect(catalogComponents);
       }
     }
   };

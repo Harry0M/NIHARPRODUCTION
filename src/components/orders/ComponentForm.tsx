@@ -91,26 +91,9 @@ export const ComponentForm = ({
     fetchStockItems();
   }, []);
 
-  // Calculate consumption when length, width, roll width or quantity changes
-  useEffect(() => {
-    if (component.length && component.width && component.roll_width && defaultQuantity) {
-      try {
-        const length = parseFloat(component.length);
-        const width = parseFloat(component.width);
-        const rollWidth = parseFloat(component.roll_width);
-        const quantity = parseFloat(defaultQuantity);
-        
-        if (length > 0 && width > 0 && rollWidth > 0 && quantity > 0) {
-          // Formula: ([(length*width)/(roll width*39.39)]*quantity)
-          const consumption = ((length * width) / (rollWidth * 39.39)) * quantity;
-          const roundedConsumption = Math.round(consumption * 100) / 100;
-          onFieldChange('consumption', roundedConsumption.toString());
-        }
-      } catch (error) {
-        console.error('Error calculating consumption:', error);
-      }
-    }
-  }, [component.length, component.width, component.roll_width, defaultQuantity]);
+  // We're no longer calculating consumption based on dimensions
+  // The consumption is now directly set from the selected product template
+  // and modified based on quantity changes
 
   return (
     <div className="py-4 first:pt-0 last:pb-0">
@@ -214,19 +197,19 @@ export const ComponentForm = ({
           </div>
         )}
 
-        {/* Consumption Field - Not added to Chain and Runner */}
+        {/* Consumption Field - Now shows the value from the selected product */}
         {component.type !== 'chain' && component.type !== 'runner' && (
           <div className="space-y-2">
             <Label>Consumption</Label>
             <Input
               type="text"
-              placeholder="Auto calculated"
+              placeholder="Consumption value"
               value={component.consumption || ''}
               readOnly
               className="bg-gray-50"
             />
             <p className="text-xs text-muted-foreground">
-              Calculated using formula: (length×width)÷(roll width×39.39)×quantity
+              Consumption is based on the product template and order quantity
             </p>
           </div>
         )}
