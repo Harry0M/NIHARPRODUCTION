@@ -27,6 +27,8 @@ const StockList = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingStockId, setDeletingStockId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [hasTransactions, setHasTransactions] = useState(false);
+  const [deleteWithTransactions, setDeleteWithTransactions] = useState(false);
 
   const { data: stock, isLoading } = useQuery({
     queryKey: ['inventory'],
@@ -50,10 +52,45 @@ const StockList = () => {
     setSelectedStockId(null);
   };
 
-  const handleDeleteClick = (e: React.MouseEvent, id: string, name: string) => {
+  const checkForTransactions = async (stockId: string) => {
+    const { data, error } = await supabase
+      .from('inventory_transactions')
+      .select('id')
+      .eq('material_id', stockId)
+      .limit(1);
+    
+    if (error) {
+      console.error("Error checking for transactions:", error);
+      return false;
+    }
+    
+    return data && data.length > 0;
+  };
+
+  const handleDeleteClick = async (e: React.MouseEvent, id: string, name: string) => {
     e.stopPropagation(); // Prevent triggering the row click
     setDeletingStockId(id);
+    
+    // Check if this inventory has transactions
+    const hasRelatedTransactions = await checkForTransactions(id);
+    setHasTransactions(hasRelatedTransactions);
+    setDeleteWithTransactions(false);
+    
     setIsDeleteDialogOpen(true);
+  };
+
+  const deleteTransactions = async (stockId: string) => {
+    const { error } = await supabase
+      .from('inventory_transactions')
+      .delete()
+      .eq('material_id', stockId);
+      
+    if (error) {
+      console.error("Error deleting related transactions:", error);
+      throw error;
+    }
+    
+    return true;
   };
 
   const handleDeleteConfirm = async () => {
@@ -61,6 +98,13 @@ const StockList = () => {
     
     setIsDeleting(true);
     try {
+      // If this inventory has transactions and user confirmed to delete them too
+      if (hasTransactions && deleteWithTransactions) {
+        // First delete all related transactions
+        await deleteTransactions(deletingStockId);
+      }
+      
+      // Then delete the inventory item
       const { error } = await supabase
         .from('inventory')
         .delete()
@@ -68,11 +112,21 @@ const StockList = () => {
 
       if (error) {
         console.error("Error deleting stock:", error);
-        showToast({
-          title: "Delete failed",
-          description: error.message,
-          type: "error"
-        });
+        
+        // Show specific message for constraint violation
+        if (error.code === '23503') {
+          showToast({
+            title: "Cannot delete this item",
+            description: "This inventory item has transaction history. Please delete the transactions first or use the option to delete everything.",
+            type: "error"
+          });
+        } else {
+          showToast({
+            title: "Delete failed",
+            description: error.message,
+            type: "error"
+          });
+        }
         throw error;
       }
 
@@ -89,6 +143,8 @@ const StockList = () => {
       setIsDeleting(false);
       setIsDeleteDialogOpen(false);
       setDeletingStockId(null);
+      setHasTransactions(false);
+      setDeleteWithTransactions(false);
     }
   };
 
@@ -186,6 +242,9 @@ const StockList = () => {
         onConfirm={handleDeleteConfirm}
         isDeleting={isDeleting}
         itemName="this inventory item"
+        hasTransactions={hasTransactions}
+        deleteWithTransactions={deleteWithTransactions}
+        onToggleDeleteWithTransactions={setDeleteWithTransactions}
       />
     </Card>
   );
