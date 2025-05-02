@@ -17,7 +17,7 @@ interface Material {
 interface MaterialLinkSelectorProps {
   componentId: string;
   materials: Material[];
-  onSuccess: () => Promise<void>;
+  onSuccess: () => void;
   onCancel: () => void;
   isLoading: boolean;
 }
@@ -52,7 +52,7 @@ export const MaterialLinkSelector = ({
       
       console.log("Update response:", data);
       
-      await onSuccess();
+      onSuccess();
       showToast({
         title: "Material linked successfully",
         description: "The component has been updated with the selected material",

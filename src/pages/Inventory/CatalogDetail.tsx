@@ -1,3 +1,4 @@
+
 import { useParams, useNavigate } from "react-router-dom";
 import { useCatalogProducts, useInventoryItems } from "@/hooks/use-catalog-products";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,15 @@ const CatalogDetail = () => {
 
   const handleLinkMaterial = () => {
     setIsLinkingMaterial(true);
+  };
+
+  // Handle successful material link
+  const handleMaterialLinkSuccess = () => {
+    refetch().then(() => {
+      setIsLinkingMaterial(false);
+    }).catch(error => {
+      console.error("Error refetching data:", error);
+    });
   };
 
   // Filter materials based on component properties
@@ -290,7 +300,7 @@ const CatalogDetail = () => {
                   <MaterialLinkSelector 
                     componentId={selectedComponent.id}
                     materials={filteredMaterials}
-                    onSuccess={refetch}
+                    onSuccess={handleMaterialLinkSuccess}
                     onCancel={() => setIsLinkingMaterial(false)}
                     isLoading={isLoadingInventory}
                   />
