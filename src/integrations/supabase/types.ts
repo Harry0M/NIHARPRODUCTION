@@ -13,6 +13,7 @@ export type Database = {
         Row: {
           bag_length: number
           bag_width: number
+          border_dimension: number | null
           created_at: string
           created_by: string | null
           cutting_charge: number | null
@@ -31,6 +32,7 @@ export type Database = {
         Insert: {
           bag_length: number
           bag_width: number
+          border_dimension?: number | null
           created_at?: string
           created_by?: string | null
           cutting_charge?: number | null
@@ -49,6 +51,7 @@ export type Database = {
         Update: {
           bag_length?: number
           bag_width?: number
+          border_dimension?: number | null
           created_at?: string
           created_by?: string | null
           cutting_charge?: number | null

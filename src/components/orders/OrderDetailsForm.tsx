@@ -71,9 +71,12 @@ export const OrderDetailsForm = ({
   const handleProductSelect = (productId: string) => {
     const selectedProduct = catalogProducts?.find(p => p.id === productId);
     if (selectedProduct) {
-      // Only update bag dimensions, quantity and rate, not the company info
+      // Update all product dimensions including border dimension
       handleOrderChange({ target: { name: 'bag_length', value: selectedProduct.bag_length.toString() } });
       handleOrderChange({ target: { name: 'bag_width', value: selectedProduct.bag_width.toString() } });
+      if (selectedProduct.border_dimension !== undefined && selectedProduct.border_dimension !== null) {
+        handleOrderChange({ target: { name: 'border_dimension', value: selectedProduct.border_dimension.toString() } });
+      }
       if (selectedProduct.default_quantity) {
         handleOrderChange({ target: { name: 'quantity', value: selectedProduct.default_quantity.toString() } });
       }
@@ -273,6 +276,24 @@ export const OrderDetailsForm = ({
             )}
           </div>
           <div className="space-y-2">
+            <Label htmlFor="border_dimension">
+              Border Dimension / Height (inches)
+            </Label>
+            <Input 
+              id="border_dimension" 
+              name="border_dimension"
+              type="number"
+              step="0.01"
+              value={formData.border_dimension || ""}
+              onChange={handleOrderChange}
+              placeholder="Height in inches"
+              min="0"
+            />
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-2">
             <Label htmlFor="rate">Rate per Bag</Label>
             <Input 
               id="rate" 
@@ -285,18 +306,17 @@ export const OrderDetailsForm = ({
               min="0"
             />
           </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="special_instructions">Special Instructions (optional)</Label>
-          <Textarea 
-            id="special_instructions" 
-            name="special_instructions"
-            value={formData.special_instructions}
-            onChange={handleOrderChange}
-            placeholder="Any additional notes or requirements"
-            rows={3}
-          />
+          <div className="space-y-2">
+            <Label htmlFor="special_instructions">Special Instructions (optional)</Label>
+            <Textarea 
+              id="special_instructions" 
+              name="special_instructions"
+              value={formData.special_instructions}
+              onChange={handleOrderChange}
+              placeholder="Any additional notes or requirements"
+              rows={3}
+            />
+          </div>
         </div>
       </CardContent>
     </Card>

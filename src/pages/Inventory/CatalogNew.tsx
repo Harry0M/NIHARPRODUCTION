@@ -45,6 +45,7 @@ const CatalogNew = () => {
     description: "",
     bag_length: "",
     bag_width: "",
+    border_dimension: "", // Added border dimension field
     default_quantity: "",
     default_rate: ""
   });
@@ -146,6 +147,7 @@ const CatalogNew = () => {
         description: productData.description || null,
         bag_length: parseFloat(productData.bag_length),
         bag_width: parseFloat(productData.bag_width),
+        border_dimension: productData.border_dimension ? parseFloat(productData.border_dimension) : 0, // Added border dimension
         default_quantity: productData.default_quantity ? parseInt(productData.default_quantity) : null,
         default_rate: productData.default_rate ? parseFloat(productData.default_rate) : null
       };
@@ -259,7 +261,7 @@ const CatalogNew = () => {
               />
             </div>
             
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="bag_length">
                   Bag Length (inches) <span className="text-destructive">*</span>
@@ -289,6 +291,21 @@ const CatalogNew = () => {
                   onChange={handleProductChange}
                   placeholder="Width in inches"
                   required
+                  min="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="border_dimension">
+                  Border Dimension / Height (inches)
+                </Label>
+                <Input 
+                  id="border_dimension" 
+                  name="border_dimension"
+                  type="number"
+                  step="0.01"
+                  value={productData.border_dimension}
+                  onChange={handleProductChange}
+                  placeholder="Height/Border dimension in inches"
                   min="0"
                 />
               </div>

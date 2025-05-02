@@ -13,6 +13,7 @@ export const useCatalogProducts = () => {
           name,
           bag_length,
           bag_width,
+          border_dimension,
           default_quantity,
           default_rate,
           catalog_components (
