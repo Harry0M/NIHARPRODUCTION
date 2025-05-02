@@ -22,6 +22,7 @@ const navItems = [
   { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
   { name: "Orders", path: "/orders", icon: Package },
   { name: "Production", path: "/production", icon: Factory },
+  { name: "Stitching", path: "/production/stitching", icon: FileText },
   { name: "Job Cards", path: "/production/job-cards", icon: FileText },
   { name: "Vendors", path: "/vendors", icon: Users },
   { name: "Suppliers", path: "/suppliers", icon: ShoppingCart },

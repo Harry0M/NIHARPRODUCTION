@@ -54,13 +54,13 @@ const MobileNavigation = () => {
           </li>
           <li className="flex items-center justify-center">
             <NavLink 
-              to="/production/job-cards" 
+              to="/production/stitching" 
               className={({ isActive }) => `flex flex-col items-center justify-center w-full py-1 ${
                 isActive ? 'text-primary' : 'text-muted-foreground'
               }`}
             >
               <FileText className="h-6 w-6 mb-1" />
-              <span className="text-xs">Jobs</span>
+              <span className="text-xs">Stitching</span>
             </NavLink>
           </li>
           <li className="flex items-center justify-center">
