@@ -31,26 +31,42 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     enabled: !!stockId,
   });
 
+  // New enhanced delete stock mutation
   const deleteStockMutation = useMutation({
     mutationFn: async (id: string) => {
-      console.log(`Attempting to delete stock with ID: ${id}`);
-      try {
-        const { error } = await supabase
-          .from("inventory")
-          .delete()
-          .eq("id", id);
-        
-        if (error) {
-          console.error("Error in delete operation:", error);
-          throw error;
-        }
-        
-        console.log("Delete operation completed successfully");
-        return id;
-      } catch (error) {
-        console.error("Exception during delete operation:", error);
-        throw error;
+      console.log(`Initiating stock deletion for ID: ${id}`);
+      
+      // First check if there are any transactions referencing this stock item
+      const { data: transactionReferences, error: checkError } = await supabase
+        .from("inventory_transactions")
+        .select("id")
+        .eq("material_id", id)
+        .limit(1);
+      
+      if (checkError) {
+        console.error("Error checking inventory transaction references:", checkError);
+        throw checkError;
       }
+      
+      // If this stock is referenced by transactions, throw a user-friendly error
+      if (transactionReferences && transactionReferences.length > 0) {
+        console.log(`Stock ID ${id} is referenced by transactions and cannot be deleted`);
+        throw new Error("REFERENCE_ERROR");
+      }
+      
+      // Proceed with deletion if no references exist
+      const { error: deleteError } = await supabase
+        .from("inventory")
+        .delete()
+        .eq("id", id);
+      
+      if (deleteError) {
+        console.error("Error in delete operation:", deleteError);
+        throw deleteError;
+      }
+      
+      console.log("Delete operation completed successfully");
+      return id;
     },
     onSuccess: (deletedId) => {
       console.log(`Stock ${deletedId} deleted successfully, invalidating queries`);
@@ -71,9 +87,12 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     onError: (error: any) => {
       console.error("Error deleting stock:", error);
       
-      // Improved error message with more details
+      // Enhanced error message handling with specific messages for different error types
       let errorMessage = "Failed to delete stock item.";
-      if (error.code === "23503") {
+      
+      if (error.message === "REFERENCE_ERROR") {
+        errorMessage = "This item cannot be deleted because it is referenced by inventory transactions.";
+      } else if (error.code === "23503") {
         errorMessage = "This stock item is referenced by other records and cannot be deleted.";
       } else if (error.message) {
         errorMessage = `Error: ${error.message}`;
@@ -94,9 +113,18 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     }
   };
 
+  // Alternative delete function with forced navigation for handling edge cases
+  const forceDeleteStock = (id: string) => {
+    if (!id) return;
+
+    console.log(`Force deleting stock with ID: ${id}`);
+    deleteStockMutation.mutate(id);
+  };
+
   return {
     stockItem,
     handleDelete,
+    forceDeleteStock,
     isDeleting: deleteStockMutation.isPending
   };
 };

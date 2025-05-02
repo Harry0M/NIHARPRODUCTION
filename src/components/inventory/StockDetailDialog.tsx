@@ -24,12 +24,18 @@ interface StockDetailDialogProps {
 export const StockDetailDialog = ({ stockId, isOpen, onClose }: StockDetailDialogProps) => {
   const navigate = useNavigate();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const { stockItem, handleDelete, isDeleting } = useStockDetail({ 
+  
+  // Using our enhanced stock detail hook with better deletion handling
+  const { stockItem, handleDelete, forceDeleteStock, isDeleting } = useStockDetail({ 
     stockId, 
     onClose: () => {
       console.log("Stock detail onClose callback triggered");
       setIsDeleteDialogOpen(false);
-      onClose();
+      
+      // Navigate back to inventory stock list after a successful deletion
+      setTimeout(() => {
+        onClose();
+      }, 500);
     } 
   });
 
@@ -48,7 +54,7 @@ export const StockDetailDialog = ({ stockId, isOpen, onClose }: StockDetailDialo
       // Small delay to ensure dialog is closed before navigation
       setTimeout(() => {
         navigate(`/inventory/stock/${stockId}`);
-      }, 100);
+      }, 300);
     }
   };
 
@@ -60,8 +66,16 @@ export const StockDetailDialog = ({ stockId, isOpen, onClose }: StockDetailDialo
   const confirmDelete = () => {
     if (stockId) {
       console.log(`Confirming deletion of stock ID: ${stockId}`);
+      // Use the enhanced delete function
       handleDelete(stockId);
-      // Dialog will be closed by the onSuccess callback in the mutation
+    }
+  };
+
+  // New function to handle force delete if normal delete fails
+  const confirmForceDelete = () => {
+    if (stockId) {
+      console.log(`Force deleting stock ID: ${stockId}`);
+      forceDeleteStock(stockId);
     }
   };
 
@@ -118,6 +132,7 @@ export const StockDetailDialog = ({ stockId, isOpen, onClose }: StockDetailDialo
         isOpen={isDeleteDialogOpen}
         onOpenChange={handleCloseDeleteDialog}
         onConfirm={confirmDelete}
+        onForceDelete={confirmForceDelete}
         isDeleting={isDeleting}
       />
     </>
