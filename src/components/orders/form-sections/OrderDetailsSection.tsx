@@ -11,13 +11,28 @@ interface OrderDetailsSectionProps {
     quantity?: string;
     order_date?: string;
   };
+  updateConsumptionBasedOnQuantity?: (quantity: number) => void;
 }
 
 export const OrderDetailsSection = ({
   formData,
   handleOrderChange,
-  formErrors
+  formErrors,
+  updateConsumptionBasedOnQuantity
 }: OrderDetailsSectionProps) => {
+
+  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleOrderChange(e);
+    
+    // Update consumption values when quantity changes
+    if (updateConsumptionBasedOnQuantity && e.target.value) {
+      const quantity = parseFloat(e.target.value);
+      if (!isNaN(quantity)) {
+        updateConsumptionBasedOnQuantity(quantity);
+      }
+    }
+  };
+
   return (
     <div className="grid md:grid-cols-2 gap-4">
       <div className="space-y-2">
@@ -30,7 +45,7 @@ export const OrderDetailsSection = ({
           name="quantity"
           type="number"
           value={formData.quantity}
-          onChange={handleOrderChange}
+          onChange={handleQuantityChange}
           placeholder="Number of bags"
           required
           className={formErrors.quantity ? "border-destructive" : ""}

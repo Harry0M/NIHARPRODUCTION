@@ -25,13 +25,17 @@ interface OrderDetailsFormProps {
     bag_width?: string;
     order_date?: string;
   };
+  updateConsumptionBasedOnQuantity?: (quantity: number) => void;
+  productPopulatedFields?: boolean;
 }
 
 export const OrderDetailsForm = ({ 
   formData, 
   handleOrderChange, 
   onProductSelect,
-  formErrors 
+  formErrors,
+  updateConsumptionBasedOnQuantity,
+  productPopulatedFields = false
 }: OrderDetailsFormProps) => {
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
   const { data: catalogProducts, isLoading } = useCatalogProducts();
@@ -56,30 +60,21 @@ export const OrderDetailsForm = ({
     const selectedProduct = catalogProducts?.find(p => p.id === productId);
     if (selectedProduct) {
       // Update all product dimensions including border dimension
-      handleOrderChange({ target: { name: 'bag_length', value: selectedProduct.bag_length.toString() } });
-      handleOrderChange({ target: { name: 'bag_width', value: selectedProduct.bag_width.toString() } });
+      handleOrderChange({ target: { name: 'bag_length', value: selectedProduct.bag_length?.toString() } });
+      handleOrderChange({ target: { name: 'bag_width', value: selectedProduct.bag_width?.toString() } });
+      
       if (selectedProduct.border_dimension !== undefined && selectedProduct.border_dimension !== null) {
         handleOrderChange({ target: { name: 'border_dimension', value: selectedProduct.border_dimension.toString() } });
       }
+      
       // Only set rate from the product if available
       if (selectedProduct.default_rate) {
         handleOrderChange({ target: { name: 'rate', value: selectedProduct.default_rate.toString() } });
       }
       
-      // Fetch product components with consumption values
-      const { data: catalogComponents, error } = await supabase
-        .from('catalog_components')
-        .select('*')
-        .eq('catalog_id', productId);
-        
-      if (error) {
-        console.error('Error fetching catalog components:', error);
-        return;
-      }
-      
       // Pass components to parent component
-      if (onProductSelect && catalogComponents && catalogComponents.length > 0) {
-        onProductSelect(catalogComponents);
+      if (onProductSelect && selectedProduct.catalog_components && selectedProduct.catalog_components.length > 0) {
+        onProductSelect(selectedProduct.catalog_components);
       }
     }
   };
@@ -111,6 +106,7 @@ export const OrderDetailsForm = ({
           formData={formData}
           handleOrderChange={handleOrderChange}
           formErrors={formErrors}
+          updateConsumptionBasedOnQuantity={updateConsumptionBasedOnQuantity}
         />
 
         {/* Bag Dimensions Section Component */}
@@ -118,12 +114,14 @@ export const OrderDetailsForm = ({
           formData={formData}
           handleOrderChange={handleOrderChange}
           formErrors={formErrors}
+          readOnly={productPopulatedFields}
         />
 
         {/* Additional Details Section Component */}
         <AdditionalDetailsSection 
           formData={formData}
           handleOrderChange={handleOrderChange}
+          readOnly={productPopulatedFields}
         />
       </CardContent>
     </Card>

@@ -9,6 +9,19 @@ interface Product {
   bag_width?: number;
   border_dimension?: number;
   default_rate?: number;
+  catalog_components?: Array<{
+    id: string;
+    component_type: string;
+    size?: string;
+    color?: string;
+    gsm?: number;
+    custom_name?: string;
+    roll_width?: number;
+    length?: number;
+    width?: number;
+    consumption?: number;
+    material_id?: string;
+  }>;
 }
 
 interface ProductSelectorProps {

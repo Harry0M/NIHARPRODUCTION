@@ -7,11 +7,13 @@ import { OrderFormData } from "@/types/order";
 interface AdditionalDetailsSectionProps {
   formData: OrderFormData;
   handleOrderChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  readOnly?: boolean;
 }
 
 export const AdditionalDetailsSection = ({
   formData,
-  handleOrderChange
+  handleOrderChange,
+  readOnly = false
 }: AdditionalDetailsSectionProps) => {
   return (
     <div className="grid md:grid-cols-2 gap-4">
@@ -26,6 +28,8 @@ export const AdditionalDetailsSection = ({
           onChange={handleOrderChange}
           placeholder="Price per bag"
           min="0"
+          readOnly={readOnly}
+          className={readOnly ? "bg-muted cursor-not-allowed" : ""}
         />
       </div>
       <div className="space-y-2">

@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -28,7 +29,8 @@ export const useCatalogProducts = () => {
             roll_width,
             length,
             width,
-            consumption
+            consumption,
+            material_id
           )
         `);
 
