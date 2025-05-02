@@ -1,3 +1,4 @@
+
 import { useParams, useNavigate } from "react-router-dom";
 import { useCatalogProducts, useInventoryItems } from "@/hooks/use-catalog-products";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,45 @@ import { Badge } from "@/components/ui/badge";
 import { showToast } from "@/components/ui/enhanced-toast";
 import { MaterialLinkSelector } from "@/components/inventory/MaterialLinkSelector";
 
+// Import or define types
+interface Material {
+  id: string;
+  material_type: string;
+  color?: string | null;
+  gsm?: string | null;
+  quantity?: number;
+  unit?: string;
+}
+
+interface CatalogComponent {
+  id: string;
+  component_type: string;
+  size?: string | null;
+  color?: string | null;
+  gsm?: number | null;
+  custom_name?: string | null;
+  roll_width?: number | null;
+  length?: number | null;
+  width?: number | null;
+  consumption?: number | null;
+  material_id?: string | null;
+  material?: Material;
+}
+
+interface CatalogProduct {
+  id: string;
+  name: string;
+  description?: string | null;
+  bag_length: number;
+  bag_width: number;
+  border_dimension?: number | null;
+  default_quantity?: number | null;
+  default_rate?: number | null;
+  created_at: string;
+  updated_at: string;
+  catalog_components?: CatalogComponent[];
+}
+
 const CatalogDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -27,7 +67,7 @@ const CatalogDetail = () => {
   const { data: products, isLoading, refetch } = useCatalogProducts();
   const { data: inventoryItems, isLoading: isLoadingInventory } = useInventoryItems();
   
-  const product = products?.find((p) => p.id === id);
+  const product = products?.find((p) => p.id === id) as CatalogProduct | undefined;
   const components = product?.catalog_components || [];
 
   // Add debugging
@@ -70,7 +110,7 @@ const CatalogDetail = () => {
     setIsDialogOpen(true);
   };
 
-  const getSelectedComponent = () => {
+  const getSelectedComponent = (): CatalogComponent | null => {
     return components.find(c => c.id === componentView) || null;
   };
 
@@ -90,7 +130,7 @@ const CatalogDetail = () => {
   };
 
   // Filter materials based on component properties
-  const getFilteredMaterials = (component: any) => {
+  const getFilteredMaterials = (component: CatalogComponent) => {
     if (!inventoryItems) return [];
     
     return inventoryItems.filter(item => {

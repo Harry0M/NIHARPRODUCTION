@@ -2,6 +2,45 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+// Define proper types for our data structures
+interface Material {
+  id: string;
+  material_type: string;
+  color?: string | null;
+  gsm?: string | null;
+  quantity?: number;
+  unit?: string;
+}
+
+interface CatalogComponent {
+  id: string;
+  component_type: string;
+  size?: string | null;
+  color?: string | null;
+  gsm?: number | null;
+  custom_name?: string | null;
+  roll_width?: number | null;
+  length?: number | null;
+  width?: number | null;
+  consumption?: number | null;
+  material_id?: string | null;
+  material?: Material;
+}
+
+interface CatalogProduct {
+  id: string;
+  name: string;
+  description?: string | null;
+  bag_length: number;
+  bag_width: number;
+  border_dimension?: number | null;
+  default_quantity?: number | null;
+  default_rate?: number | null;
+  created_at: string;
+  updated_at: string;
+  catalog_components?: CatalogComponent[];
+}
+
 export const useCatalogProducts = () => {
   return useQuery({
     queryKey: ["catalog-products"],
@@ -42,7 +81,7 @@ export const useCatalogProducts = () => {
       }
       
       // Get all unique material IDs to fetch in a single query
-      const materialIds = new Set();
+      const materialIds = new Set<string>();
       data?.forEach(product => {
         product.catalog_components?.forEach(component => {
           if (component.material_id) {
@@ -66,7 +105,7 @@ export const useCatalogProducts = () => {
             quantity,
             unit
           `)
-          .in('id', materialIdsArray);
+          .in('id', materialIdsArray as string[]);
         
         if (materialsError) {
           console.error("Error fetching materials:", materialsError);
@@ -76,13 +115,13 @@ export const useCatalogProducts = () => {
         console.log("Materials data:", materialsData);
         
         // Map materials by ID for easy lookup
-        const materialsMap = {};
+        const materialsMap: Record<string, Material> = {};
         materialsData?.forEach(material => {
-          materialsMap[material.id] = material;
+          materialsMap[material.id] = material as Material;
         });
         
         // Attach material data to each component
-        data?.forEach(product => {
+        (data as CatalogProduct[])?.forEach(product => {
           product.catalog_components?.forEach(component => {
             if (component.material_id && materialsMap[component.material_id]) {
               component.material = materialsMap[component.material_id];
@@ -92,7 +131,7 @@ export const useCatalogProducts = () => {
       }
       
       console.log("Catalog products data with materials:", data);
-      return data;
+      return data as CatalogProduct[];
     },
   });
 };
