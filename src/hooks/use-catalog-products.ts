@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -11,6 +10,7 @@ export const useCatalogProducts = () => {
         .select(`
           id,
           name,
+          description,
           bag_length,
           bag_width,
           border_dimension,

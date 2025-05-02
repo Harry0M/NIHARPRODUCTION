@@ -1,4 +1,3 @@
-
 import { useParams, useNavigate } from "react-router-dom";
 import { useCatalogProducts } from "@/hooks/use-catalog-products";
 import { Button } from "@/components/ui/button";
@@ -79,7 +78,7 @@ const CatalogEdit = () => {
             id: comp.id,
             type: comp.component_type,
             color: comp.color || undefined,
-            gsm: comp.gsm || undefined,
+            gsm: comp.gsm?.toString() || undefined,
             length: comp.length?.toString() || undefined,
             width: comp.width?.toString() || undefined,
             roll_width: comp.roll_width?.toString() || undefined,
@@ -91,7 +90,7 @@ const CatalogEdit = () => {
             type: 'custom',
             customName: comp.custom_name || comp.component_type,
             color: comp.color || undefined,
-            gsm: comp.gsm || undefined,
+            gsm: comp.gsm?.toString() || undefined,
             length: comp.length?.toString() || undefined,
             width: comp.width?.toString() || undefined,
             roll_width: comp.roll_width?.toString() || undefined,
@@ -250,8 +249,8 @@ const CatalogEdit = () => {
           component_type: comp.type === 'custom' ? 'custom' : comp.type,
           size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
           color: comp.color || null,
-          gsm: comp.gsm || null,
-          roll_width: comp.roll_width || null,
+          gsm: comp.gsm ? parseFloat(comp.gsm) : null,
+          roll_width: comp.roll_width ? parseFloat(comp.roll_width) : null,
           custom_name: comp.type === 'custom' ? comp.customName : null,
           length: comp.length ? parseFloat(comp.length) : null,
           width: comp.width ? parseFloat(comp.width) : null,
