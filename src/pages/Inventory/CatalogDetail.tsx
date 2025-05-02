@@ -1,46 +1,12 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useCatalogProducts, useInventoryItems } from "@/hooks/use-catalog-products";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Package, Pencil, Link as LinkIcon } from "lucide-react";
+import { ArrowLeft, Package, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { showToast } from "@/components/ui/enhanced-toast";
-import { MaterialLinkSelector } from "@/components/inventory/MaterialLinkSelector";
-
-// Import or define types
-interface Material {
-  id: string;
-  material_type: string;
-  color?: string | null;
-  gsm?: string | null;
-  quantity?: number;
-  unit?: string;
-}
-
-interface CatalogComponent {
-  id: string;
-  component_type: string;
-  size?: string | null;
-  color?: string | null;
-  gsm?: number | null;
-  custom_name?: string | null;
-  roll_width?: number | null;
-  length?: number | null;
-  width?: number | null;
-  consumption?: number | null;
-  material_id?: string | null;
-  material?: Material;
-}
+import { ProductInfoCard } from "@/components/inventory/catalog/ProductInfoCard";
+import { ComponentsTable, CatalogComponent } from "@/components/inventory/catalog/ComponentsTable";
+import { ComponentDetailsDialog } from "@/components/inventory/catalog/ComponentDetailsDialog";
 
 interface CatalogProduct {
   id: string;
@@ -61,7 +27,6 @@ const CatalogDetail = () => {
   const navigate = useNavigate();
   const [componentView, setComponentView] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isLinkingMaterial, setIsLinkingMaterial] = useState(false);
 
   const { data: products, isLoading, refetch } = useCatalogProducts();
   const { data: inventoryItems, isLoading: isLoadingInventory } = useInventoryItems();
@@ -105,7 +70,6 @@ const CatalogDetail = () => {
 
   const handleViewComponent = (componentId: string) => {
     setComponentView(componentId);
-    setIsLinkingMaterial(false);
     setIsDialogOpen(true);
   };
 
@@ -113,15 +77,10 @@ const CatalogDetail = () => {
     return components.find(c => c.id === componentView) || null;
   };
 
-  const handleLinkMaterial = () => {
-    setIsLinkingMaterial(true);
-  };
-
   // Handle successful material link
   const handleMaterialLinkSuccess = () => {
     console.log("Material link success, refreshing data...");
     refetch().then(() => {
-      setIsLinkingMaterial(false);
       console.log("Data refreshed after linking material");
     }).catch(error => {
       console.error("Error refetching data:", error);
@@ -143,7 +102,7 @@ const CatalogDetail = () => {
         return true;
       }
       
-      // Match by GSM if specified - FIX: Convert both to string for comparison or ensure they're both numbers
+      // Match by GSM if specified - Convert both to string for comparison
       if (component.gsm && item.gsm) {
         // Convert both to string before comparison to avoid type mismatch
         return String(item.gsm) === String(component.gsm);
@@ -188,35 +147,15 @@ const CatalogDetail = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Product Information Card */}
-        <Card className="col-span-1">
-          <CardHeader>
-            <CardTitle>Product Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Size (L×W)</p>
-                <p className="font-medium">{product.bag_length} × {product.bag_width} inches</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Border Dimension</p>
-                <p className="font-medium">{product.border_dimension || 'N/A'} inches</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Default Quantity</p>
-                <p className="font-medium">{product.default_quantity || 'N/A'}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Default Rate</p>
-                <p className="font-medium">{product.default_rate ? `₹${product.default_rate}` : 'N/A'}</p>
-              </div>
-              <div className="col-span-2 space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Created On</p>
-                <p className="font-medium">{new Date(product.created_at).toLocaleDateString()}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <ProductInfoCard 
+          name={product.name}
+          bagLength={product.bag_length}
+          bagWidth={product.bag_width}
+          borderDimension={product.border_dimension}
+          defaultQuantity={product.default_quantity}
+          defaultRate={product.default_rate}
+          createdAt={product.created_at}
+        />
 
         {/* Components Card */}
         <Card className="col-span-1 md:col-span-2">
@@ -224,173 +163,24 @@ const CatalogDetail = () => {
             <CardTitle>Components</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Size</TableHead>
-                  <TableHead>Color</TableHead>
-                  <TableHead>GSM</TableHead>
-                  <TableHead>Material</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {components.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
-                      No components found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  components.map((component) => (
-                    <TableRow key={component.id}>
-                      <TableCell>
-                        {component.component_type === 'custom' 
-                          ? `Custom (${component.custom_name})` 
-                          : componentTypes[component.component_type as keyof typeof componentTypes]}
-                      </TableCell>
-                      <TableCell>{component.size || 'N/A'}</TableCell>
-                      <TableCell>{component.color || 'N/A'}</TableCell>
-                      <TableCell>{component.gsm || 'N/A'}</TableCell>
-                      <TableCell>
-                        {component.material ? (
-                          <Badge variant="outline" className="font-normal">
-                            {component.material.material_type} 
-                            {component.material.color ? ` - ${component.material.color}` : ''}
-                            {component.material.gsm ? ` ${component.material.gsm}` : ''}
-                          </Badge>
-                        ) : component.material_id ? (
-                          <Badge variant="outline" className="font-normal bg-yellow-50">
-                            Material ID: {component.material_id.substring(0, 8)}...
-                          </Badge>
-                        ) : (
-                          'No material linked'
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleViewComponent(component.id)}
-                        >
-                          View Details
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+            <ComponentsTable 
+              components={components} 
+              onViewComponent={handleViewComponent} 
+            />
           </CardContent>
         </Card>
       </div>
 
       {/* Component Details Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedComponent?.component_type === 'custom'
-                ? `Custom Component: ${selectedComponent.custom_name}`
-                : `${componentTypes[selectedComponent?.component_type as keyof typeof componentTypes]} Details`}
-            </DialogTitle>
-          </DialogHeader>
-          {selectedComponent && (
-            <div className="grid grid-cols-2 gap-4 py-4">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Size</p>
-                <p className="font-medium">{selectedComponent.size || 'N/A'}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Color</p>
-                <p className="font-medium">{selectedComponent.color || 'N/A'}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">GSM</p>
-                <p className="font-medium">{selectedComponent.gsm || 'N/A'}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Roll Width</p>
-                <p className="font-medium">{selectedComponent.roll_width || 'N/A'}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Length</p>
-                <p className="font-medium">{selectedComponent.length || 'N/A'}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Width</p>
-                <p className="font-medium">{selectedComponent.width || 'N/A'}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Consumption</p>
-                <p className="font-medium">{selectedComponent.consumption || 'N/A'}</p>
-              </div>
-              
-              {/* Material Information Section */}
-              <div className="col-span-2 border-t pt-4 mt-2">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-medium">Material Information</h3>
-                  {!isLinkingMaterial && !isLoadingInventory && (
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={handleLinkMaterial} 
-                      className="flex items-center gap-1"
-                    >
-                      <LinkIcon size={14} /> Link Material
-                    </Button>
-                  )}
-                </div>
-                
-                {isLinkingMaterial ? (
-                  <MaterialLinkSelector 
-                    componentId={selectedComponent.id}
-                    materials={filteredMaterials}
-                    onSuccess={handleMaterialLinkSuccess}
-                    onCancel={() => setIsLinkingMaterial(false)}
-                    isLoading={isLoadingInventory}
-                  />
-                ) : (
-                  <>
-                    {selectedComponent.material ? (
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium text-muted-foreground">Material Type</p>
-                          <p className="font-medium">{selectedComponent.material.material_type}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium text-muted-foreground">Color</p>
-                          <p className="font-medium">{selectedComponent.material.color || 'N/A'}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium text-muted-foreground">GSM</p>
-                          <p className="font-medium">{selectedComponent.material.gsm || 'N/A'}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium text-muted-foreground">Inventory Quantity</p>
-                          <p className="font-medium">
-                            {selectedComponent.material.quantity} {selectedComponent.material.unit}
-                          </p>
-                        </div>
-                      </div>
-                    ) : selectedComponent.material_id ? (
-                      <div className="p-3 bg-yellow-50 rounded-md text-amber-800">
-                        Material ID exists ({selectedComponent.material_id.substring(0, 8)}...) but no details found. 
-                        The material may have been deleted or is no longer available.
-                      </div>
-                    ) : (
-                      <div className="p-3 bg-gray-50 rounded-md text-gray-600">
-                        No material linked to this component. Click "Link Material" to associate a material from inventory.
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <ComponentDetailsDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        selectedComponent={selectedComponent}
+        filteredMaterials={filteredMaterials}
+        isLoadingInventory={isLoadingInventory}
+        onMaterialLinkSuccess={handleMaterialLinkSuccess}
+        componentTypes={componentTypes}
+      />
     </div>
   );
 };
