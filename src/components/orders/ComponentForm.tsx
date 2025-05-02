@@ -150,7 +150,7 @@ export const ComponentForm = ({
           </Select>
         </div>
 
-        {/* Material Selection (replaces GSM) */}
+        {/* Material Selection */}
         <div className="space-y-2">
           <Label>Material</Label>
           <Select 
@@ -161,6 +161,9 @@ export const ComponentForm = ({
                 const selectedStock = stockItems.find(item => item.id === value);
                 if (selectedStock) {
                   onFieldChange('gsm', selectedStock.gsm || '');
+                  if (selectedStock.color) {
+                    onFieldChange('color', selectedStock.color);
+                  }
                 }
               }
             }}
@@ -197,7 +200,7 @@ export const ComponentForm = ({
           </div>
         )}
 
-        {/* Consumption Field - Now shows the value from the selected product */}
+        {/* Consumption Field */}
         {component.type !== 'chain' && component.type !== 'runner' && (
           <div className="space-y-2">
             <Label>Consumption</Label>

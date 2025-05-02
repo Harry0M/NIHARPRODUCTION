@@ -26,6 +26,8 @@ interface Product {
       material_type: string;
       color?: string;
       gsm?: string;
+      quantity?: number;
+      unit?: string;
     };
   }>;
 }
@@ -48,13 +50,13 @@ export const ProductSelector = ({
         <SelectTrigger>
           <SelectValue placeholder="Choose a product template" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="max-h-[300px]">
           {isLoading ? (
             <SelectItem value="loading" disabled>Loading products...</SelectItem>
           ) : (
             catalogProducts?.map((product) => (
               <SelectItem key={product.id} value={product.id}>
-                {product.name}
+                {product.name} ({product.bag_length}" × {product.bag_width}")
               </SelectItem>
             ))
           )}
