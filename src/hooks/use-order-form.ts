@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -48,6 +49,7 @@ export function useOrderForm(): UseOrderFormReturn {
     quantity: "",
     bag_length: "",
     bag_width: "",
+    border_dimension: "",
     rate: "",
     special_instructions: "",
     sales_account_id: null,
@@ -239,6 +241,7 @@ export function useOrderForm(): UseOrderFormReturn {
         quantity: parseInt(orderDetails.quantity),
         bag_length: parseFloat(orderDetails.bag_length),
         bag_width: parseFloat(orderDetails.bag_width),
+        border_dimension: orderDetails.border_dimension ? parseFloat(orderDetails.border_dimension) : null,
         rate: orderDetails.rate ? parseFloat(orderDetails.rate) : null,
         order_date: orderDetails.order_date,
         sales_account_id: orderDetails.sales_account_id || null,

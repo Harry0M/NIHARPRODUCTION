@@ -11,6 +11,7 @@ export interface Order {
   quantity: number;
   bag_length: number;
   bag_width: number;
+  border_dimension?: number | null;
   order_date: string;
   status: OrderStatus;
   rate: number | null;
@@ -25,6 +26,7 @@ export interface OrderFormData {
   quantity: string;
   bag_length: string;
   bag_width: string;
+  border_dimension?: string;
   rate: string;
   special_instructions: string;
   order_date: string;
