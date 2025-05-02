@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -55,12 +54,14 @@ const StockList = () => {
       </div>
 
       {isLoading ? (
+        
         <div className="flex justify-center items-center p-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       ) : stock?.length === 0 ? (
         <EmptyStockState />
       ) : (
+        
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
