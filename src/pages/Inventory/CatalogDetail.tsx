@@ -1,8 +1,7 @@
-
 import { useParams, useNavigate } from "react-router-dom";
-import { useCatalogProducts } from "@/hooks/use-catalog-products";
+import { useCatalogProducts, useInventoryItems } from "@/hooks/use-catalog-products";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Package, Pencil } from "lucide-react";
+import { ArrowLeft, Package, Pencil, Link as LinkIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -15,14 +14,21 @@ import {
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const CatalogDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [componentView, setComponentView] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isLinkingMaterial, setIsLinkingMaterial] = useState(false);
+  const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  const { data: products, isLoading } = useCatalogProducts();
+  const { data: products, isLoading, refetch } = useCatalogProducts();
+  const { data: inventoryItems, isLoading: isLoadingInventory } = useInventoryItems();
   
   const product = products?.find((p) => p.id === id);
   const components = product?.catalog_components || [];
@@ -57,6 +63,7 @@ const CatalogDetail = () => {
 
   const handleViewComponent = (componentId: string) => {
     setComponentView(componentId);
+    setIsLinkingMaterial(false);
     setIsDialogOpen(true);
   };
 
@@ -64,7 +71,67 @@ const CatalogDetail = () => {
     return components.find(c => c.id === componentView) || null;
   };
 
+  const handleLinkMaterial = () => {
+    setIsLinkingMaterial(true);
+  };
+
+  const handleUpdateMaterial = async () => {
+    if (!selectedMaterialId || !componentView) return;
+    
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase
+        .from("catalog_components")
+        .update({ material_id: selectedMaterialId })
+        .eq("id", componentView);
+        
+      if (error) throw error;
+      
+      await refetch();
+      setIsLinkingMaterial(false);
+      toast({
+        title: "Material linked successfully",
+        description: "The component has been updated with the selected material",
+      });
+    } catch (error) {
+      console.error("Error updating material:", error);
+      toast({
+        title: "Failed to link material",
+        description: "There was an error linking the material to the component",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // Filter materials based on component properties
+  const getFilteredMaterials = (component: any) => {
+    if (!inventoryItems) return [];
+    
+    return inventoryItems.filter(item => {
+      // Match by material type if possible
+      if (component.component_type === 'part' && item.material_type.toLowerCase().includes('non-woven')) {
+        return true;
+      }
+      
+      // Match by color if specified
+      if (component.color && item.color && item.color.toLowerCase() === component.color.toLowerCase()) {
+        return true;
+      }
+      
+      // Match by GSM if specified
+      if (component.gsm && item.gsm && item.gsm === component.gsm) {
+        return true;
+      }
+      
+      // Otherwise just return all materials as options
+      return true;
+    });
+  };
+
   const selectedComponent = getSelectedComponent();
+  const filteredMaterials = selectedComponent ? getFilteredMaterials(selectedComponent) : [];
 
   return (
     <div className="space-y-6 p-4">
@@ -238,37 +305,98 @@ const CatalogDetail = () => {
               
               {/* Material Information Section */}
               <div className="col-span-2 border-t pt-4 mt-2">
-                <h3 className="font-medium mb-2">Material Information</h3>
-                {selectedComponent.material ? (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-muted-foreground">Material Type</p>
-                      <p className="font-medium">{selectedComponent.material.material_type}</p>
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="font-medium">Material Information</h3>
+                  {!isLinkingMaterial && !isLoadingInventory && (
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={handleLinkMaterial} 
+                      className="flex items-center gap-1"
+                    >
+                      <LinkIcon size={14} /> Link Material
+                    </Button>
+                  )}
+                </div>
+                
+                {isLinkingMaterial ? (
+                  <div className="space-y-4 border p-4 rounded-md bg-muted/20">
+                    <div className="space-y-2">
+                      <label htmlFor="material-select" className="text-sm font-medium">
+                        Select Material
+                      </label>
+                      <Select onValueChange={setSelectedMaterialId} value={selectedMaterialId || undefined}>
+                        <SelectTrigger id="material-select" className="w-full">
+                          <SelectValue placeholder="Select a material" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {isLoadingInventory ? (
+                            <SelectItem value="loading" disabled>Loading materials...</SelectItem>
+                          ) : filteredMaterials.length === 0 ? (
+                            <SelectItem value="none" disabled>No matching materials found</SelectItem>
+                          ) : (
+                            filteredMaterials.map((material) => (
+                              <SelectItem key={material.id} value={material.id}>
+                                {material.material_type} 
+                                {material.color ? ` - ${material.color}` : ''} 
+                                {material.gsm ? ` ${material.gsm}` : ''}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-muted-foreground">Color</p>
-                      <p className="font-medium">{selectedComponent.material.color || 'N/A'}</p>
+                    <div className="flex justify-end gap-2">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setIsLinkingMaterial(false)}
+                        size="sm"
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={handleUpdateMaterial} 
+                        disabled={!selectedMaterialId || isUpdating}
+                        size="sm"
+                      >
+                        {isUpdating ? 'Saving...' : 'Save'}
+                      </Button>
                     </div>
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-muted-foreground">GSM</p>
-                      <p className="font-medium">{selectedComponent.material.gsm || 'N/A'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-muted-foreground">Inventory Quantity</p>
-                      <p className="font-medium">
-                        {selectedComponent.material.quantity} {selectedComponent.material.unit}
-                      </p>
-                    </div>
-                  </div>
-                ) : selectedComponent.material_id ? (
-                  <div className="p-3 bg-yellow-50 rounded-md text-amber-800">
-                    Material ID exists ({selectedComponent.material_id.substring(0, 8)}...) but no details found. 
-                    The material may have been deleted or is no longer available.
                   </div>
                 ) : (
-                  <div className="p-3 bg-gray-50 rounded-md text-gray-600">
-                    No material linked to this component. You can link a material when editing this product.
-                  </div>
+                  <>
+                    {selectedComponent.material ? (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-muted-foreground">Material Type</p>
+                          <p className="font-medium">{selectedComponent.material.material_type}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-muted-foreground">Color</p>
+                          <p className="font-medium">{selectedComponent.material.color || 'N/A'}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-muted-foreground">GSM</p>
+                          <p className="font-medium">{selectedComponent.material.gsm || 'N/A'}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-muted-foreground">Inventory Quantity</p>
+                          <p className="font-medium">
+                            {selectedComponent.material.quantity} {selectedComponent.material.unit}
+                          </p>
+                        </div>
+                      </div>
+                    ) : selectedComponent.material_id ? (
+                      <div className="p-3 bg-yellow-50 rounded-md text-amber-800">
+                        Material ID exists ({selectedComponent.material_id.substring(0, 8)}...) but no details found. 
+                        The material may have been deleted or is no longer available.
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-gray-50 rounded-md text-gray-600">
+                        No material linked to this component. Click "Link Material" to associate a material from inventory.
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
