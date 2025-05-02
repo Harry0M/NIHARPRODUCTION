@@ -16,6 +16,7 @@ import StockDetail from "@/pages/Inventory/StockDetail";
 import CatalogList from "@/pages/Inventory/CatalogList";
 import CatalogNew from "@/pages/Inventory/CatalogNew";
 import CatalogDetail from "@/pages/Inventory/CatalogDetail";
+import CatalogEdit from "@/pages/Inventory/CatalogEdit";
 import CatalogOrders from "@/pages/Inventory/CatalogOrders";
 import ProductionDashboard from "@/pages/Production/ProductionDashboard";
 import JobCardList from "@/pages/Production/JobCardList";
@@ -66,6 +67,7 @@ const routes = [
               { path: "catalog", element: <CatalogList /> },
               { path: "catalog/new", element: <CatalogNew /> },
               { path: "catalog/:id", element: <CatalogDetail /> },
+              { path: "catalog/:id/edit", element: <CatalogEdit /> },
               { path: "catalog/:id/orders", element: <CatalogOrders /> },
             ],
           },
