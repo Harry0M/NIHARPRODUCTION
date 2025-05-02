@@ -1,4 +1,5 @@
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -14,9 +15,12 @@ import {
 } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { EmptyStockState } from "@/components/inventory/EmptyStockState";
+import { StockDetailDialog } from "@/components/inventory/StockDetailDialog";
 
 const StockList = () => {
   const navigate = useNavigate();
+  const [selectedStockId, setSelectedStockId] = useState<string | null>(null);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
 
   const { data: stock, isLoading } = useQuery({
     queryKey: ['inventory'],
@@ -29,6 +33,16 @@ const StockList = () => {
       return data;
     },
   });
+
+  const handleStockClick = (id: string) => {
+    setSelectedStockId(id);
+    setIsDetailDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDetailDialogOpen(false);
+    setSelectedStockId(null);
+  };
 
   return (
     <Card>
@@ -73,7 +87,7 @@ const StockList = () => {
                 <TableRow 
                   key={item.id}
                   className="cursor-pointer hover:bg-muted"
-                  onClick={() => navigate(`/inventory/stock/${item.id}`)}
+                  onClick={() => handleStockClick(item.id)}
                 >
                   <TableCell>{item.material_type}</TableCell>
                   <TableCell>{item.color || 'N/A'}</TableCell>
@@ -99,6 +113,12 @@ const StockList = () => {
           </Table>
         </div>
       )}
+
+      <StockDetailDialog 
+        stockId={selectedStockId}
+        isOpen={isDetailDialogOpen}
+        onClose={handleCloseDialog}
+      />
     </Card>
   );
 };
