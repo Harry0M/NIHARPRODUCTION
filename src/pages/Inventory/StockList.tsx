@@ -1,8 +1,9 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Table,
@@ -15,11 +16,17 @@ import {
 import { Card } from "@/components/ui/card";
 import { EmptyStockState } from "@/components/inventory/EmptyStockState";
 import { StockDetailDialog } from "@/components/inventory/StockDetailDialog";
+import { DeleteStockDialog } from "@/components/inventory/dialogs/DeleteStockDialog";
+import { showToast } from "@/components/ui/enhanced-toast";
 
 const StockList = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [selectedStockId, setSelectedStockId] = useState<string | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingStockId, setDeletingStockId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { data: stock, isLoading } = useQuery({
     queryKey: ['inventory'],
@@ -43,6 +50,48 @@ const StockList = () => {
     setSelectedStockId(null);
   };
 
+  const handleDeleteClick = (e: React.MouseEvent, id: string, name: string) => {
+    e.stopPropagation(); // Prevent triggering the row click
+    setDeletingStockId(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingStockId) return;
+    
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('inventory')
+        .delete()
+        .eq('id', deletingStockId);
+
+      if (error) {
+        console.error("Error deleting stock:", error);
+        showToast({
+          title: "Delete failed",
+          description: error.message,
+          type: "error"
+        });
+        throw error;
+      }
+
+      showToast({
+        title: "Stock deleted successfully",
+        type: "success"
+      });
+      
+      // Refetch inventory data
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    } catch (error) {
+      console.error("Unexpected error during deletion:", error);
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
+      setDeletingStockId(null);
+    }
+  };
+
   return (
     <Card>
       <div className="p-4 flex justify-between items-center">
@@ -54,14 +103,12 @@ const StockList = () => {
       </div>
 
       {isLoading ? (
-        
         <div className="flex justify-center items-center p-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       ) : stock?.length === 0 ? (
         <EmptyStockState />
       ) : (
-        
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -81,6 +128,7 @@ const StockList = () => {
                   </>
                 )}
                 <TableHead>Supplier</TableHead>
+                <TableHead className="w-[80px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -108,6 +156,17 @@ const StockList = () => {
                     </>
                   )}
                   <TableCell>{item.suppliers?.name || 'N/A'}</TableCell>
+                  <TableCell>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={(e) => handleDeleteClick(e, item.id, item.material_type)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Delete</span>
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -119,6 +178,14 @@ const StockList = () => {
         stockId={selectedStockId}
         isOpen={isDetailDialogOpen}
         onClose={handleCloseDialog}
+      />
+
+      <DeleteStockDialog
+        isOpen={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        onConfirm={handleDeleteConfirm}
+        isDeleting={isDeleting}
+        itemName="this inventory item"
       />
     </Card>
   );
