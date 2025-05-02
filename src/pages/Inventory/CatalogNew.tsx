@@ -150,9 +150,9 @@ const CatalogNew = () => {
         default_rate: productData.default_rate ? parseFloat(productData.default_rate) : null
       };
       
-      // Insert the product
+      // Insert the product - using 'catalog' table instead of 'catalog_products'
       const { data: productResult, error: productError } = await supabase
-        .from("catalog_products")
+        .from("catalog")
         .insert(productDbData)
         .select('id')
         .single();
@@ -169,7 +169,7 @@ const CatalogNew = () => {
       
       if (allComponents.length > 0) {
         const componentsToInsert = allComponents.map(comp => ({
-          product_id: productResult.id,
+          catalog_id: productResult.id, // Changed from product_id to catalog_id
           component_type: comp.type === 'custom' ? comp.customName || 'custom' : comp.type,
           size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
           color: comp.color || null,
@@ -178,7 +178,7 @@ const CatalogNew = () => {
           custom_name: comp.type === 'custom' ? comp.customName : null
         }));
 
-        // Insert components
+        // Insert components - make sure to insert into catalog_components table
         const { error: componentsError } = await supabase
           .from("catalog_components")
           .insert(componentsToInsert);
