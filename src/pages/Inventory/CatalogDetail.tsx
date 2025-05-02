@@ -1,4 +1,3 @@
-
 import { useParams, useNavigate } from "react-router-dom";
 import { useCatalogProducts, useInventoryItems } from "@/hooks/use-catalog-products";
 import { Button } from "@/components/ui/button";
@@ -144,9 +143,10 @@ const CatalogDetail = () => {
         return true;
       }
       
-      // Match by GSM if specified
-      if (component.gsm && item.gsm && item.gsm === component.gsm) {
-        return true;
+      // Match by GSM if specified - FIX: Convert both to string for comparison or ensure they're both numbers
+      if (component.gsm && item.gsm) {
+        // Convert both to string before comparison to avoid type mismatch
+        return String(item.gsm) === String(component.gsm);
       }
       
       // Otherwise just return all materials as options

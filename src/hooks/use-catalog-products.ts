@@ -105,7 +105,7 @@ export const useCatalogProducts = () => {
             quantity,
             unit
           `)
-          .in('id', materialIdsArray as string[]);
+          .in('id', materialIdsArray);
         
         if (materialsError) {
           console.error("Error fetching materials:", materialsError);
