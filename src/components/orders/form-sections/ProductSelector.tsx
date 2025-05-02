@@ -21,6 +21,12 @@ interface Product {
     width?: number;
     consumption?: number;
     material_id?: string;
+    material?: {
+      id: string;
+      material_type: string;
+      color?: string;
+      gsm?: string;
+    };
   }>;
 }
 

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -204,18 +203,33 @@ export function useOrderForm(): UseOrderFormReturn {
       const consumption = component.consumption?.toString() || '';
       const rollWidth = component.roll_width?.toString() || '';
       
+      // Include material_id if available
+      const materialId = component.material_id || null;
+      // Include material details from the nested material object
+      const materialType = component.material?.material_type || '';
+      const materialColor = component.material?.color || component.color || '';
+      const materialGsm = component.material?.gsm?.toString() || component.gsm?.toString() || '';
+
+      console.log(`Component ${component.component_type} has material:`, {
+        materialId,
+        materialType,
+        materialColor,
+        materialGsm
+      });
+      
       if (component.component_type === 'custom') {
         const customIndex = newCustomComponents.length;
         newCustomComponents.push({
           id: uuidv4(),
           type: 'custom',
           customName: component.custom_name || '',
-          color: component.color || '',
-          gsm: component.gsm?.toString() || '',
+          color: materialColor,
+          gsm: materialGsm,
           length,
           width,
           consumption,
-          roll_width: rollWidth
+          roll_width: rollWidth,
+          material_id: materialId
         });
         
         // Store base consumption for this custom component
@@ -226,12 +240,13 @@ export function useOrderForm(): UseOrderFormReturn {
         newOrderComponents[component.component_type] = {
           id: uuidv4(),
           type: component.component_type,
-          color: component.color || '',
-          gsm: component.gsm?.toString() || '',
+          color: materialColor,
+          gsm: materialGsm,
           length,
           width,
           consumption,
-          roll_width: rollWidth
+          roll_width: rollWidth,
+          material_id: materialId
         };
         
         // Store base consumption for standard component

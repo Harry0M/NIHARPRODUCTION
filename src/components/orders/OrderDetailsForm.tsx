@@ -59,6 +59,8 @@ export const OrderDetailsForm = ({
   const handleProductSelect = async (productId: string) => {
     const selectedProduct = catalogProducts?.find(p => p.id === productId);
     if (selectedProduct) {
+      console.log("Selected product:", selectedProduct);
+      
       // Update all product dimensions including border dimension
       handleOrderChange({ target: { name: 'bag_length', value: selectedProduct.bag_length?.toString() } });
       handleOrderChange({ target: { name: 'bag_width', value: selectedProduct.bag_width?.toString() } });
@@ -72,8 +74,9 @@ export const OrderDetailsForm = ({
         handleOrderChange({ target: { name: 'rate', value: selectedProduct.default_rate.toString() } });
       }
       
-      // Pass components to parent component
+      // Pass components to parent component with complete material data
       if (onProductSelect && selectedProduct.catalog_components && selectedProduct.catalog_components.length > 0) {
+        console.log("Passing components with material data:", selectedProduct.catalog_components);
         onProductSelect(selectedProduct.catalog_components);
       }
     }

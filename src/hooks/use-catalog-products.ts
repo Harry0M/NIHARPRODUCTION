@@ -30,7 +30,8 @@ export const useCatalogProducts = () => {
             length,
             width,
             consumption,
-            material_id
+            material_id,
+            material:inventory(id, material_type, color, gsm)
           )
         `);
 
