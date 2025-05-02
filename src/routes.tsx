@@ -82,7 +82,13 @@ const routes = [
               { path: "printing", element: <PrintingJob /> },
               { path: "stitching", element: <StitchingJob /> },
               { path: "dispatch", element: <Dispatch /> },
-              { path: "dispatch/:id", element: <DispatchDetail /> },
+            ],
+          },
+          { 
+            path: "dispatch", 
+            children: [
+              { path: "", element: <Dispatch /> },
+              { path: ":id", element: <DispatchDetail /> },
             ],
           },
           {
