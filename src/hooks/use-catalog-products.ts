@@ -16,13 +16,19 @@ export const useCatalogProducts = () => {
           border_dimension,
           default_quantity,
           default_rate,
+          created_at,
+          updated_at,
           catalog_components (
             id,
             component_type,
             size,
             color,
             gsm,
-            custom_name
+            custom_name,
+            roll_width,
+            length,
+            width,
+            consumption
           )
         `);
 
