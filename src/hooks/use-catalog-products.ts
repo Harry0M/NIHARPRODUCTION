@@ -31,15 +31,7 @@ export const useCatalogProducts = () => {
             length,
             width,
             consumption,
-            material_id,
-            material:inventory(
-              id, 
-              material_type, 
-              color, 
-              gsm,
-              quantity,
-              unit
-            )
+            material_id
           )
         `)
         .order('name');
@@ -49,7 +41,57 @@ export const useCatalogProducts = () => {
         throw error;
       }
       
-      console.log("Catalog products data:", data);
+      // Get all unique material IDs to fetch in a single query
+      const materialIds = new Set();
+      data?.forEach(product => {
+        product.catalog_components?.forEach(component => {
+          if (component.material_id) {
+            materialIds.add(component.material_id);
+          }
+        });
+      });
+      
+      // If we have material IDs, fetch their details
+      if (materialIds.size > 0) {
+        const materialIdsArray = Array.from(materialIds);
+        console.log("Fetching materials with IDs:", materialIdsArray);
+        
+        const { data: materialsData, error: materialsError } = await supabase
+          .from("inventory")
+          .select(`
+            id, 
+            material_type, 
+            color, 
+            gsm,
+            quantity,
+            unit
+          `)
+          .in('id', materialIdsArray);
+        
+        if (materialsError) {
+          console.error("Error fetching materials:", materialsError);
+          throw materialsError;
+        }
+        
+        console.log("Materials data:", materialsData);
+        
+        // Map materials by ID for easy lookup
+        const materialsMap = {};
+        materialsData?.forEach(material => {
+          materialsMap[material.id] = material;
+        });
+        
+        // Attach material data to each component
+        data?.forEach(product => {
+          product.catalog_components?.forEach(component => {
+            if (component.material_id && materialsMap[component.material_id]) {
+              component.material = materialsMap[component.material_id];
+            }
+          });
+        });
+      }
+      
+      console.log("Catalog products data with materials:", data);
       return data;
     },
   });
