@@ -25,7 +25,6 @@ import JobCardDetail from "@/pages/Production/JobCardDetail";
 import CuttingJob from "@/pages/Production/CuttingJob";
 import PrintingJob from "@/pages/Production/PrintingJob";
 import StitchingJob from "@/pages/Production/StitchingJob";
-import StitchingList from "@/pages/Production/StitchingList";
 import Dispatch from "@/pages/Production/Dispatch";
 import DispatchDetail from "@/pages/Production/DispatchDetail";
 import CompanyList from "@/pages/Companies/CompanyList";
@@ -80,11 +79,8 @@ const routes = [
               { path: "job-cards/new", element: <JobCardNew /> },
               { path: "job-cards/:id", element: <JobCardDetail /> },
               { path: "cutting", element: <CuttingJob /> },
-              { path: "cutting/:id", element: <CuttingJob /> },
               { path: "printing", element: <PrintingJob /> },
-              { path: "printing/:id", element: <PrintingJob /> },
-              { path: "stitching", element: <StitchingList /> },
-              { path: "stitching/:id", element: <StitchingJob /> },
+              { path: "stitching", element: <StitchingJob /> },
               { path: "dispatch", element: <Dispatch /> },
               { path: "dispatch/:id", element: <DispatchDetail /> },
             ],
