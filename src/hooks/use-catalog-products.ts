@@ -41,7 +41,8 @@ export const useCatalogProducts = () => {
               unit
             )
           )
-        `);
+        `)
+        .order('name');
 
       if (error) {
         console.error("Error fetching catalog products:", error);

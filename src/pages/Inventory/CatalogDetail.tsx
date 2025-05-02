@@ -1,4 +1,3 @@
-
 import { useParams, useNavigate } from "react-router-dom";
 import { useCatalogProducts, useInventoryItems } from "@/hooks/use-catalog-products";
 import { Button } from "@/components/ui/button";
@@ -30,6 +29,12 @@ const CatalogDetail = () => {
   
   const product = products?.find((p) => p.id === id);
   const components = product?.catalog_components || [];
+
+  // Add debugging
+  console.log("Product ID:", id);
+  console.log("Found product:", product);
+  console.log("Components:", components);
+  console.log("Components with materials:", components.filter(c => c.material || c.material_id));
 
   const componentTypes = {
     part: "Part",
@@ -75,8 +80,10 @@ const CatalogDetail = () => {
 
   // Handle successful material link
   const handleMaterialLinkSuccess = () => {
+    console.log("Material link success, refreshing data...");
     refetch().then(() => {
       setIsLinkingMaterial(false);
+      console.log("Data refreshed after linking material");
     }).catch(error => {
       console.error("Error refetching data:", error);
     });
