@@ -13,8 +13,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useState } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 
 const CatalogDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -140,13 +140,14 @@ const CatalogDetail = () => {
                   <TableHead>Size</TableHead>
                   <TableHead>Color</TableHead>
                   <TableHead>GSM</TableHead>
+                  <TableHead>Material</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {components.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground">
                       No components found
                     </TableCell>
                   </TableRow>
@@ -161,6 +162,21 @@ const CatalogDetail = () => {
                       <TableCell>{component.size || 'N/A'}</TableCell>
                       <TableCell>{component.color || 'N/A'}</TableCell>
                       <TableCell>{component.gsm || 'N/A'}</TableCell>
+                      <TableCell>
+                        {component.material ? (
+                          <Badge variant="outline" className="font-normal">
+                            {component.material.material_type} 
+                            {component.material.color ? ` - ${component.material.color}` : ''}
+                            {component.material.gsm ? ` ${component.material.gsm}` : ''}
+                          </Badge>
+                        ) : component.material_id ? (
+                          <Badge variant="outline" className="font-normal bg-yellow-50">
+                            Material ID: {component.material_id.substring(0, 8)}...
+                          </Badge>
+                        ) : (
+                          'No material linked'
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">
                         <Button 
                           variant="ghost" 
@@ -218,6 +234,42 @@ const CatalogDetail = () => {
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Consumption</p>
                 <p className="font-medium">{selectedComponent.consumption || 'N/A'}</p>
+              </div>
+              
+              {/* Material Information Section */}
+              <div className="col-span-2 border-t pt-4 mt-2">
+                <h3 className="font-medium mb-2">Material Information</h3>
+                {selectedComponent.material ? (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-muted-foreground">Material Type</p>
+                      <p className="font-medium">{selectedComponent.material.material_type}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-muted-foreground">Color</p>
+                      <p className="font-medium">{selectedComponent.material.color || 'N/A'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-muted-foreground">GSM</p>
+                      <p className="font-medium">{selectedComponent.material.gsm || 'N/A'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-muted-foreground">Inventory Quantity</p>
+                      <p className="font-medium">
+                        {selectedComponent.material.quantity} {selectedComponent.material.unit}
+                      </p>
+                    </div>
+                  </div>
+                ) : selectedComponent.material_id ? (
+                  <div className="p-3 bg-yellow-50 rounded-md text-amber-800">
+                    Material ID exists ({selectedComponent.material_id.substring(0, 8)}...) but no details found. 
+                    The material may have been deleted or is no longer available.
+                  </div>
+                ) : (
+                  <div className="p-3 bg-gray-50 rounded-md text-gray-600">
+                    No material linked to this component. You can link a material when editing this product.
+                  </div>
+                )}
               </div>
             </div>
           )}
