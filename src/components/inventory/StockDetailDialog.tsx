@@ -10,8 +10,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Edit, Trash2 } from "lucide-react";
-import { DeleteStockDialog } from "./dialogs/DeleteStockDialog";
+import { Edit } from "lucide-react";
 import { StockInfoGrid } from "./stock-detail/StockInfoGrid";
 import { useStockDetail } from "@/hooks/inventory/useStockDetail";
 
@@ -23,14 +22,12 @@ interface StockDetailDialogProps {
 
 export const StockDetailDialog = ({ stockId, isOpen, onClose }: StockDetailDialogProps) => {
   const navigate = useNavigate();
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
   // Using our enhanced stock detail hook with better deletion handling
-  const { stockItem, handleDelete, forceDeleteStock, isDeleting } = useStockDetail({ 
+  const { stockItem, isDeleting } = useStockDetail({ 
     stockId, 
     onClose: () => {
       console.log("Stock detail onClose callback triggered");
-      setIsDeleteDialogOpen(false);
       
       // Navigate back to inventory stock list after a successful deletion
       setTimeout(() => {
@@ -38,13 +35,6 @@ export const StockDetailDialog = ({ stockId, isOpen, onClose }: StockDetailDialo
       }, 500);
     } 
   });
-
-  // Effect to safely close delete dialog if main dialog closes
-  useEffect(() => {
-    if (!isOpen) {
-      setIsDeleteDialogOpen(false);
-    }
-  }, [isOpen]);
 
   const handleEdit = () => {
     if (stockId) {
@@ -55,35 +45,6 @@ export const StockDetailDialog = ({ stockId, isOpen, onClose }: StockDetailDialo
       setTimeout(() => {
         navigate(`/inventory/stock/${stockId}`);
       }, 300);
-    }
-  };
-
-  const openDeleteDialog = () => {
-    console.log("Opening delete confirmation dialog");
-    setIsDeleteDialogOpen(true);
-  };
-
-  const confirmDelete = () => {
-    if (stockId) {
-      console.log(`Confirming deletion of stock ID: ${stockId}`);
-      // Use the enhanced delete function
-      handleDelete(stockId);
-    }
-  };
-
-  // New function to handle force delete if normal delete fails
-  const confirmForceDelete = () => {
-    if (stockId) {
-      console.log(`Force deleting stock ID: ${stockId}`);
-      forceDeleteStock(stockId);
-    }
-  };
-
-  const handleCloseDeleteDialog = (open: boolean) => {
-    // Only allow closing if we're not in the middle of deleting
-    if (!isDeleting || !open) {
-      console.log(`Closing delete dialog, isDeleting: ${isDeleting}`);
-      setIsDeleteDialogOpen(open);
     }
   };
 
@@ -100,41 +61,27 @@ export const StockDetailDialog = ({ stockId, isOpen, onClose }: StockDetailDialo
   }
 
   return (
-    <>
-      <Dialog open={isOpen} onOpenChange={handleCloseMainDialog}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{stockItem?.material_type}</DialogTitle>
-            <DialogDescription>
-              Stock details and information
-            </DialogDescription>
-          </DialogHeader>
-          
-          {stockItem && <StockInfoGrid stockItem={stockItem} />}
-          
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={onClose} disabled={isDeleting}>
-              Close
-            </Button>
-            <Button variant="destructive" onClick={openDeleteDialog} disabled={isDeleting}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </Button>
-            <Button onClick={handleEdit} disabled={isDeleting}>
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      <DeleteStockDialog 
-        isOpen={isDeleteDialogOpen}
-        onOpenChange={handleCloseDeleteDialog}
-        onConfirm={confirmDelete}
-        onForceDelete={confirmForceDelete}
-        isDeleting={isDeleting}
-      />
-    </>
+    <Dialog open={isOpen} onOpenChange={handleCloseMainDialog}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{stockItem?.material_type}</DialogTitle>
+          <DialogDescription>
+            Stock details and information
+          </DialogDescription>
+        </DialogHeader>
+        
+        {stockItem && <StockInfoGrid stockItem={stockItem} />}
+        
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose} disabled={isDeleting}>
+            Close
+          </Button>
+          <Button onClick={handleEdit} disabled={isDeleting}>
+            <Edit className="mr-2 h-4 w-4" />
+            Edit
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
