@@ -40,6 +40,7 @@ export const StockDetailDialog = ({ stockId, isOpen, onClose }: StockDetailDialo
   const confirmDelete = () => {
     if (stockId) {
       handleDelete(stockId);
+      // Don't close the dialog here - it will be closed by the onSuccess callback in the mutation
     }
   };
 
@@ -49,7 +50,12 @@ export const StockDetailDialog = ({ stockId, isOpen, onClose }: StockDetailDialo
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
+      <Dialog open={isOpen} onOpenChange={(open) => {
+        // Only allow closing if we're not in the middle of deleting
+        if (!isDeleting || !open) {
+          onClose();
+        }
+      }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{stockItem.material_type}</DialogTitle>
@@ -78,7 +84,12 @@ export const StockDetailDialog = ({ stockId, isOpen, onClose }: StockDetailDialo
       
       <DeleteStockDialog 
         isOpen={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
+        onOpenChange={(open) => {
+          // Only allow closing if we're not in the middle of deleting
+          if (!isDeleting || !open) {
+            setIsDeleteDialogOpen(open);
+          }
+        }}
         onConfirm={confirmDelete}
         isDeleting={isDeleting}
       />

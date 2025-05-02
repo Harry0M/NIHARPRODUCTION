@@ -31,15 +31,22 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
 
   const deleteStockMutation = useMutation({
     mutationFn: async (id: string) => {
+      console.log(`Attempting to delete stock with ID: ${id}`);
       const { error } = await supabase
         .from("inventory")
         .delete()
         .eq("id", id);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error in delete operation:", error);
+        throw error;
+      }
+      
+      console.log("Delete operation completed successfully");
       return id;
     },
     onSuccess: () => {
+      console.log("Delete mutation successful, invalidating queries");
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       toast({
         title: "Stock deleted",
@@ -59,6 +66,7 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
 
   const handleDelete = (id: string) => {
     if (id) {
+      console.log(`Handling delete for stock ID: ${id}`);
       deleteStockMutation.mutate(id);
     }
   };
