@@ -11,12 +11,14 @@ interface BagDimensionsSectionProps {
     bag_length?: string;
     bag_width?: string;
   };
+  readOnly?: boolean;
 }
 
 export const BagDimensionsSection = ({
   formData,
   handleOrderChange,
-  formErrors
+  formErrors,
+  readOnly = false
 }: BagDimensionsSectionProps) => {
   return (
     <div className="grid md:grid-cols-3 gap-4">
@@ -34,8 +36,9 @@ export const BagDimensionsSection = ({
           onChange={handleOrderChange}
           placeholder="Length in inches"
           required
-          className={formErrors.bag_length ? "border-destructive" : ""}
+          className={formErrors.bag_length ? "border-destructive" : readOnly ? "bg-muted cursor-not-allowed" : ""}
           min="0"
+          readOnly={readOnly}
         />
         {formErrors.bag_length && (
           <p className="text-xs text-destructive flex items-center gap-1">
@@ -57,8 +60,9 @@ export const BagDimensionsSection = ({
           onChange={handleOrderChange}
           placeholder="Width in inches"
           required
-          className={formErrors.bag_width ? "border-destructive" : ""}
+          className={formErrors.bag_width ? "border-destructive" : readOnly ? "bg-muted cursor-not-allowed" : ""}
           min="0"
+          readOnly={readOnly}
         />
         {formErrors.bag_width && (
           <p className="text-xs text-destructive flex items-center gap-1">
@@ -79,6 +83,8 @@ export const BagDimensionsSection = ({
           onChange={handleOrderChange}
           placeholder="Height in inches"
           min="0"
+          readOnly={readOnly}
+          className={readOnly ? "bg-muted cursor-not-allowed" : ""}
         />
       </div>
     </div>
