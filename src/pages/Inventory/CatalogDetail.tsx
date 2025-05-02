@@ -14,9 +14,8 @@ import {
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { showToast } from "@/components/ui/enhanced-toast";
+import { MaterialLinkSelector } from "@/components/inventory/MaterialLinkSelector";
 
 const CatalogDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -24,8 +23,6 @@ const CatalogDetail = () => {
   const [componentView, setComponentView] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLinkingMaterial, setIsLinkingMaterial] = useState(false);
-  const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
-  const [isUpdating, setIsUpdating] = useState(false);
 
   const { data: products, isLoading, refetch } = useCatalogProducts();
   const { data: inventoryItems, isLoading: isLoadingInventory } = useInventoryItems();
@@ -73,36 +70,6 @@ const CatalogDetail = () => {
 
   const handleLinkMaterial = () => {
     setIsLinkingMaterial(true);
-  };
-
-  const handleUpdateMaterial = async () => {
-    if (!selectedMaterialId || !componentView) return;
-    
-    setIsUpdating(true);
-    try {
-      const { error } = await supabase
-        .from("catalog_components")
-        .update({ material_id: selectedMaterialId })
-        .eq("id", componentView);
-        
-      if (error) throw error;
-      
-      await refetch();
-      setIsLinkingMaterial(false);
-      toast({
-        title: "Material linked successfully",
-        description: "The component has been updated with the selected material",
-      });
-    } catch (error) {
-      console.error("Error updating material:", error);
-      toast({
-        title: "Failed to link material",
-        description: "There was an error linking the material to the component",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUpdating(false);
-    }
   };
 
   // Filter materials based on component properties
@@ -320,49 +287,13 @@ const CatalogDetail = () => {
                 </div>
                 
                 {isLinkingMaterial ? (
-                  <div className="space-y-4 border p-4 rounded-md bg-muted/20">
-                    <div className="space-y-2">
-                      <label htmlFor="material-select" className="text-sm font-medium">
-                        Select Material
-                      </label>
-                      <Select onValueChange={setSelectedMaterialId} value={selectedMaterialId || undefined}>
-                        <SelectTrigger id="material-select" className="w-full">
-                          <SelectValue placeholder="Select a material" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {isLoadingInventory ? (
-                            <SelectItem value="loading" disabled>Loading materials...</SelectItem>
-                          ) : filteredMaterials.length === 0 ? (
-                            <SelectItem value="none" disabled>No matching materials found</SelectItem>
-                          ) : (
-                            filteredMaterials.map((material) => (
-                              <SelectItem key={material.id} value={material.id}>
-                                {material.material_type} 
-                                {material.color ? ` - ${material.color}` : ''} 
-                                {material.gsm ? ` ${material.gsm}` : ''}
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setIsLinkingMaterial(false)}
-                        size="sm"
-                      >
-                        Cancel
-                      </Button>
-                      <Button 
-                        onClick={handleUpdateMaterial} 
-                        disabled={!selectedMaterialId || isUpdating}
-                        size="sm"
-                      >
-                        {isUpdating ? 'Saving...' : 'Save'}
-                      </Button>
-                    </div>
-                  </div>
+                  <MaterialLinkSelector 
+                    componentId={selectedComponent.id}
+                    materials={filteredMaterials}
+                    onSuccess={refetch}
+                    onCancel={() => setIsLinkingMaterial(false)}
+                    isLoading={isLoadingInventory}
+                  />
                 ) : (
                   <>
                     {selectedComponent.material ? (

@@ -6,6 +6,7 @@ export const useCatalogProducts = () => {
   return useQuery({
     queryKey: ["catalog-products"],
     queryFn: async () => {
+      console.log("Fetching catalog products...");
       const { data, error } = await supabase
         .from("catalog")
         .select(`
@@ -42,7 +43,12 @@ export const useCatalogProducts = () => {
           )
         `);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching catalog products:", error);
+        throw error;
+      }
+      
+      console.log("Catalog products data:", data);
       return data;
     },
   });
@@ -52,6 +58,7 @@ export const useInventoryItems = () => {
   return useQuery({
     queryKey: ["inventory-items"],
     queryFn: async () => {
+      console.log("Fetching inventory items...");
       const { data, error } = await supabase
         .from("inventory")
         .select(`
@@ -72,7 +79,12 @@ export const useInventoryItems = () => {
           )
         `);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching inventory items:", error);
+        throw error;
+      }
+      
+      console.log("Inventory items data:", data);
       return data;
     },
   });
