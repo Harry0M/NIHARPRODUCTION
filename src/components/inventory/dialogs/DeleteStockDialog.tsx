@@ -14,12 +14,14 @@ interface DeleteStockDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
+  isDeleting?: boolean;
 }
 
 export const DeleteStockDialog = ({ 
   isOpen, 
   onOpenChange, 
-  onConfirm 
+  onConfirm,
+  isDeleting = false
 }: DeleteStockDialogProps) => {
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
@@ -31,12 +33,13 @@ export const DeleteStockDialog = ({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
           <AlertDialogAction 
             onClick={onConfirm} 
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            disabled={isDeleting}
           >
-            Delete
+            {isDeleting ? 'Deleting...' : 'Delete'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

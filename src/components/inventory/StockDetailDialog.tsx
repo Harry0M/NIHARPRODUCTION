@@ -24,7 +24,7 @@ interface StockDetailDialogProps {
 export const StockDetailDialog = ({ stockId, isOpen, onClose }: StockDetailDialogProps) => {
   const navigate = useNavigate();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const { stockItem, handleDelete } = useStockDetail({ stockId, onClose });
+  const { stockItem, handleDelete, isDeleting } = useStockDetail({ stockId, onClose });
 
   const handleEdit = () => {
     if (stockId) {
@@ -41,7 +41,6 @@ export const StockDetailDialog = ({ stockId, isOpen, onClose }: StockDetailDialo
     if (stockId) {
       handleDelete(stockId);
     }
-    setIsDeleteDialogOpen(false);
   };
 
   if (!stockItem) {
@@ -62,14 +61,14 @@ export const StockDetailDialog = ({ stockId, isOpen, onClose }: StockDetailDialo
           <StockInfoGrid stockItem={stockItem} />
           
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={onClose}>
+            <Button variant="outline" onClick={onClose} disabled={isDeleting}>
               Close
             </Button>
-            <Button variant="destructive" onClick={openDeleteDialog}>
+            <Button variant="destructive" onClick={openDeleteDialog} disabled={isDeleting}>
               <Trash2 className="mr-2 h-4 w-4" />
               Delete
             </Button>
-            <Button onClick={handleEdit}>
+            <Button onClick={handleEdit} disabled={isDeleting}>
               <Edit className="mr-2 h-4 w-4" />
               Edit
             </Button>
@@ -81,6 +80,7 @@ export const StockDetailDialog = ({ stockId, isOpen, onClose }: StockDetailDialo
         isOpen={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
         onConfirm={confirmDelete}
+        isDeleting={isDeleting}
       />
     </>
   );

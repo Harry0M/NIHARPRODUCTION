@@ -66,5 +66,6 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
   return {
     stockItem,
     handleDelete,
+    isDeleting: deleteStockMutation.isPending
   };
 };
