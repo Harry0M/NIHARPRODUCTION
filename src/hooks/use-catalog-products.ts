@@ -1,5 +1,5 @@
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 // Define proper types for our data structures
@@ -43,10 +43,19 @@ interface CatalogProduct {
 }
 
 export const useCatalogProducts = () => {
+  const queryClient = useQueryClient();
+  
   return useQuery({
     queryKey: ["catalog-products"],
     queryFn: async () => {
       console.log("Fetching catalog products...");
+      
+      // First get the current user
+      const { data: authData } = await supabase.auth.getUser();
+      const currentUserId = authData.user?.id;
+      
+      console.log("Current user ID:", currentUserId);
+      
       const { data, error } = await supabase
         .from("catalog")
         .select(`
@@ -60,20 +69,7 @@ export const useCatalogProducts = () => {
           default_rate,
           created_at,
           updated_at,
-          created_by,
-          catalog_components (
-            id,
-            component_type,
-            size,
-            color,
-            gsm,
-            custom_name,
-            roll_width,
-            length,
-            width,
-            consumption,
-            material_id
-          )
+          created_by
         `)
         .order('name');
 
@@ -84,14 +80,77 @@ export const useCatalogProducts = () => {
       
       console.log("Raw catalog data:", data);
       
+      // Check if any catalog item is missing created_by and update it
+      for (const product of data) {
+        if (!product.created_by && currentUserId) {
+          console.log(`Catalog ${product.id} is missing created_by, setting to current user...`);
+          const { error: updateError } = await supabase
+            .from("catalog")
+            .update({ created_by: currentUserId })
+            .eq("id", product.id);
+            
+          if (updateError) {
+            console.error(`Failed to update created_by for catalog ${product.id}:`, updateError);
+          } else {
+            console.log(`Updated created_by for catalog ${product.id} to ${currentUserId}`);
+            // Update local object to reflect the change
+            product.created_by = currentUserId;
+          }
+        }
+      }
+      
+      // Now fetch components for all products
+      const productIds = data.map(product => product.id);
+      
+      if (productIds.length === 0) {
+        return [] as CatalogProduct[];
+      }
+      
+      const { data: componentsData, error: componentsError } = await supabase
+        .from("catalog_components")
+        .select(`
+          id,
+          catalog_id,
+          component_type,
+          size,
+          color,
+          gsm,
+          custom_name,
+          roll_width,
+          length,
+          width,
+          consumption,
+          material_id
+        `)
+        .in('catalog_id', productIds);
+        
+      if (componentsError) {
+        console.error("Error fetching catalog components:", componentsError);
+        throw componentsError;
+      }
+      
+      console.log("Catalog components data:", componentsData);
+      
+      // Group components by catalog_id
+      const componentsByProduct: Record<string, CatalogComponent[]> = {};
+      componentsData.forEach(component => {
+        if (!componentsByProduct[component.catalog_id]) {
+          componentsByProduct[component.catalog_id] = [];
+        }
+        componentsByProduct[component.catalog_id].push(component as CatalogComponent);
+      });
+      
+      // Set components for each product
+      data.forEach(product => {
+        product.catalog_components = componentsByProduct[product.id] || [];
+      });
+      
       // Get all unique material IDs to fetch in a single query
       const materialIds = new Set<string>();
-      data?.forEach(product => {
-        product.catalog_components?.forEach(component => {
-          if (component.material_id) {
-            materialIds.add(component.material_id);
-          }
-        });
+      componentsData.forEach(component => {
+        if (component.material_id) {
+          materialIds.add(component.material_id);
+        }
       });
       
       // If we have material IDs, fetch their details
@@ -125,7 +184,7 @@ export const useCatalogProducts = () => {
         });
         
         // Attach material data to each component
-        (data as CatalogProduct[])?.forEach(product => {
+        data.forEach(product => {
           product.catalog_components?.forEach(component => {
             if (component.material_id && materialsMap[component.material_id]) {
               component.material = materialsMap[component.material_id];

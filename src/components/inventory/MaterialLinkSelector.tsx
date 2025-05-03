@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { showToast } from "@/components/ui/enhanced-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { AlertCircle } from "lucide-react";
 
 interface Material {
   id: string;
@@ -31,30 +32,74 @@ export const MaterialLinkSelector = ({
 }: MaterialLinkSelectorProps) => {
   const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [debugMode, setDebugMode] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
 
   const handleUpdateMaterial = async () => {
     if (!selectedMaterialId || !componentId) return;
     
     setIsUpdating(true);
+    setDebugInfo(null);
+    
     try {
       console.log("Updating material with ID:", selectedMaterialId, "for component:", componentId);
       
-      // First, check if we can access the component
-      const { data: componentCheck, error: checkError } = await supabase
+      // First, get the component details including catalog_id
+      const { data: componentData, error: componentError } = await supabase
         .from("catalog_components")
-        .select("id, catalog_id")
+        .select("id, catalog_id, material_id")
         .eq("id", componentId)
         .single();
         
-      if (checkError) {
-        console.error("Error accessing component:", checkError);
-        throw new Error(`Cannot access component: ${checkError.message}`);
+      if (componentError) {
+        console.error("Error fetching component:", componentError);
+        setDebugInfo({ error: "component_fetch_error", details: componentError });
+        throw new Error(`Cannot access component: ${componentError.message}`);
       }
       
-      console.log("Component check successful:", componentCheck);
+      console.log("Component data fetched:", componentData);
       
-      // Perform the update
-      const { data, error } = await supabase
+      // Get the catalog details to check who created it
+      const { data: catalogData, error: catalogError } = await supabase
+        .from("catalog")
+        .select("id, created_by, name")
+        .eq("id", componentData.catalog_id)
+        .single();
+      
+      if (catalogError) {
+        console.error("Error fetching catalog:", catalogError);
+        setDebugInfo({ error: "catalog_fetch_error", details: catalogError });
+        throw new Error(`Cannot access catalog: ${catalogError.message}`);
+      }
+      
+      console.log("Catalog data fetched:", catalogData);
+      
+      if (!catalogData.created_by) {
+        // Update the catalog to set the created_by field to the current user
+        const { data: authData } = await supabase.auth.getUser();
+        const currentUserId = authData.user?.id;
+        
+        if (currentUserId) {
+          console.log("Setting catalog created_by to current user:", currentUserId);
+          
+          const { data: updateCatalogData, error: updateCatalogError } = await supabase
+            .from("catalog")
+            .update({ created_by: currentUserId })
+            .eq("id", catalogData.id)
+            .select();
+          
+          if (updateCatalogError) {
+            console.error("Error updating catalog created_by:", updateCatalogError);
+            setDebugInfo({ error: "catalog_update_error", details: updateCatalogError });
+            // Continue anyway, we'll try the component update
+          } else {
+            console.log("Catalog created_by updated successfully:", updateCatalogData);
+          }
+        }
+      }
+      
+      // Perform the component update
+      const { data: updateData, error: updateError } = await supabase
         .from("catalog_components")
         .update({ 
           material_id: selectedMaterialId,
@@ -62,13 +107,14 @@ export const MaterialLinkSelector = ({
         })
         .eq("id", componentId)
         .select();
-        
-      if (error) {
-        console.error("Error updating material:", error);
-        throw new Error(`Update failed: ${error.message}`);
+      
+      if (updateError) {
+        console.error("Error updating material:", updateError);
+        setDebugInfo({ error: "component_update_error", details: updateError });
+        throw new Error(`Update failed: ${updateError.message}`);
       }
       
-      console.log("Update response:", data);
+      console.log("Component update response:", updateData);
       
       // Verify the update was successful
       const { data: verifyData, error: verifyError } = await supabase
@@ -79,23 +125,27 @@ export const MaterialLinkSelector = ({
       
       if (verifyError) {
         console.error("Error verifying update:", verifyError);
+        setDebugInfo({ error: "verification_error", details: verifyError });
         throw new Error("Could not verify the update was successful");
       }
       
       if (verifyData.material_id !== selectedMaterialId) {
         console.error("Update verification failed: Material ID doesn't match what was set");
+        setDebugInfo({ error: "verification_mismatch", expected: selectedMaterialId, actual: verifyData.material_id });
         throw new Error("Material was not properly linked. Please try again.");
       }
       
       console.log("Update verified successful:", verifyData);
       
       // Update succeeded and was verified
-      onSuccess();
-      showToast({
-        title: "Material linked successfully",
-        description: "The component has been updated with the selected material",
-        type: "success"
-      });
+      setTimeout(() => {
+        onSuccess();
+        showToast({
+          title: "Material linked successfully",
+          description: "The component has been updated with the selected material",
+          type: "success"
+        });
+      }, 500); // Small delay to ensure database consistency
     } catch (error: any) {
       console.error("Error updating material:", error);
       showToast({
@@ -135,22 +185,46 @@ export const MaterialLinkSelector = ({
           </SelectContent>
         </Select>
       </div>
-      <div className="flex justify-end gap-2">
+      
+      <div className="flex justify-between items-center">
         <Button 
-          variant="outline" 
-          onClick={onCancel}
+          variant="ghost" 
           size="sm"
+          onClick={() => setDebugMode(!debugMode)}
+          type="button"
         >
-          Cancel
+          {debugMode ? "Hide Debug" : "Debug Info"}
         </Button>
-        <Button 
-          onClick={handleUpdateMaterial} 
-          disabled={!selectedMaterialId || isUpdating}
-          size="sm"
-        >
-          {isUpdating ? 'Saving...' : 'Save'}
-        </Button>
+        
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={onCancel}
+            size="sm"
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleUpdateMaterial} 
+            disabled={!selectedMaterialId || isUpdating}
+            size="sm"
+          >
+            {isUpdating ? 'Saving...' : 'Save'}
+          </Button>
+        </div>
       </div>
+      
+      {debugMode && debugInfo && (
+        <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded text-sm">
+          <div className="flex items-start gap-2 mb-2">
+            <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5" />
+            <div className="font-medium text-amber-800">Debug Information</div>
+          </div>
+          <pre className="text-xs overflow-auto max-h-40 bg-white p-2 rounded">
+            {JSON.stringify(debugInfo, null, 2)}
+          </pre>
+        </div>
+      )}
     </div>
   );
 };
