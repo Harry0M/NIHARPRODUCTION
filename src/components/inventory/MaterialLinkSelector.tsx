@@ -36,13 +36,20 @@ export const MaterialLinkSelector = ({
   const [debugInfo, setDebugInfo] = useState<any>(null);
 
   const handleUpdateMaterial = async () => {
-    if (!selectedMaterialId || !componentId) return;
+    if (!selectedMaterialId || !componentId) {
+      showToast({
+        title: "Selection required",
+        description: "Please select a material to link",
+        type: "warning"
+      });
+      return;
+    }
     
     setIsUpdating(true);
     setDebugInfo(null);
     
     try {
-      console.log("Updating material with ID:", selectedMaterialId, "for component:", componentId);
+      console.log("Linking material ID:", selectedMaterialId, "to component:", componentId);
       
       // Directly update the component with the selected material ID
       const { data: updateData, error: updateError } = await supabase
@@ -55,7 +62,7 @@ export const MaterialLinkSelector = ({
         .select();
       
       if (updateError) {
-        console.error("Error updating material:", updateError);
+        console.error("Error linking material:", updateError);
         setDebugInfo({ error: "component_update_error", details: updateError });
         throw new Error(`Update failed: ${updateError.message}`);
       }
@@ -81,19 +88,18 @@ export const MaterialLinkSelector = ({
         throw new Error("Material was not properly linked. Please try again.");
       }
       
-      console.log("Update verified successful:", verifyData);
+      console.log("Material linking verified successful");
       
-      // Update succeeded and was verified
-      setTimeout(() => {
-        onSuccess();
-        showToast({
-          title: "Material linked successfully",
-          description: "The component has been updated with the selected material",
-          type: "success"
-        });
-      }, 500); // Small delay to ensure database consistency
+      // Success - notify the parent component
+      showToast({
+        title: "Material linked successfully",
+        description: "The component has been updated with the selected material",
+        type: "success"
+      });
+      
+      onSuccess();
     } catch (error: any) {
-      console.error("Error updating material:", error);
+      console.error("Error linking material:", error);
       showToast({
         title: "Failed to link material",
         description: `Error: ${error.message || "Unknown error occurred"}`,

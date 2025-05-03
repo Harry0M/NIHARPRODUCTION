@@ -38,11 +38,28 @@ const CatalogDetail = () => {
   const product = products?.find((p) => p.id === id) as CatalogProduct | undefined;
   const components = product?.catalog_components || [];
 
-  // Add debugging
-  console.log("Product ID:", id);
-  console.log("Found product:", product);
-  console.log("Components:", components);
-  console.log("Components with materials:", components.filter(c => c.material || c.material_id));
+  // Enhanced debugging information
+  console.log("CatalogDetail - Product ID:", id);
+  console.log("CatalogDetail - Found product:", product);
+  console.log("CatalogDetail - Components:", components);
+  console.log("CatalogDetail - Components with materials:", 
+    components.filter(c => c.material || c.material_id)
+      .map(c => ({ 
+        id: c.id, 
+        type: c.component_type, 
+        material_id: c.material_id,
+        material: c.material 
+      }))
+  );
+  console.log("CatalogDetail - Available inventory items:", inventoryItems?.length);
+
+  // Force refresh on initial load
+  useEffect(() => {
+    if (id) {
+      console.log("Initial data load - forcing refresh");
+      refetch();
+    }
+  }, [id, refetch]);
 
   useEffect(() => {
     // Detect if we have components with material_id but no materials
@@ -90,19 +107,23 @@ const CatalogDetail = () => {
     return components.find(c => c.id === componentView) || null;
   };
 
-  // Handle successful material link
+  // Handle successful material link with stronger refresh
   const handleMaterialLinkSuccess = () => {
     console.log("Material link success, refreshing data...");
     
-    // Add a small delay before refetching to ensure the database has updated
-    setTimeout(() => {
-      setIsRefreshing(true);
-      refetch().then(() => {
+    // Force immediate refetch with no delay
+    setIsRefreshing(true);
+    refetch({ cancelRefetch: true })
+      .then(() => {
         console.log("Data refreshed after linking material");
         setIsRefreshing(false);
-        // Close the dialog after successful update and refresh
-        setIsDialogOpen(false);
-      }).catch(error => {
+        showToast({
+          title: "Material linked successfully",
+          description: "The component has been updated with the selected material",
+          type: "success"
+        });
+      })
+      .catch(error => {
         console.error("Error refetching data:", error);
         setIsRefreshing(false);
         showToast({
@@ -110,54 +131,42 @@ const CatalogDetail = () => {
           description: "Unable to refresh the data. Please try manually refreshing.",
           type: "error"
         });
+      })
+      .finally(() => {
+        // Close the dialog after attempt to refresh
+        setIsDialogOpen(false);
       });
-    }, 500); // 500ms delay to ensure database consistency
   };
 
-  // Manual refresh function
+  // Manual refresh function with stronger implementation
   const handleManualRefresh = () => {
     setIsRefreshing(true);
-    refetch().then(() => {
-      setIsRefreshing(false);
-      showToast({
-        title: "Data refreshed",
-        description: "The product details have been refreshed",
-        type: "success"
+    
+    // Clear cache and force refetch
+    refetch({ cancelRefetch: true, throwOnError: true })
+      .then(() => {
+        setIsRefreshing(false);
+        showToast({
+          title: "Data refreshed",
+          description: "The product details have been refreshed",
+          type: "success"
+        });
+      })
+      .catch(error => {
+        setIsRefreshing(false);
+        showToast({
+          title: "Error refreshing data",
+          description: error.message || "An error occurred while refreshing the data",
+          type: "error"
+        });
       });
-    }).catch(error => {
-      setIsRefreshing(false);
-      showToast({
-        title: "Error refreshing data",
-        description: error.message || "An error occurred while refreshing the data",
-        type: "error"
-      });
-    });
   };
 
   // Filter materials based on component properties
   const getFilteredMaterials = (component: CatalogComponent) => {
     if (!inventoryItems) return [];
     
-    return inventoryItems.filter(item => {
-      // Match by material type if possible
-      if (component.component_type === 'part' && item.material_type.toLowerCase().includes('non-woven')) {
-        return true;
-      }
-      
-      // Match by color if specified
-      if (component.color && item.color && item.color.toLowerCase() === component.color.toLowerCase()) {
-        return true;
-      }
-      
-      // Match by GSM if specified - Convert both to string for comparison
-      if (component.gsm && item.gsm) {
-        // Convert both to string before comparison to avoid type mismatch
-        return String(item.gsm) === String(component.gsm);
-      }
-      
-      // Otherwise just return all materials as options
-      return true;
-    });
+    return inventoryItems;
   };
 
   const selectedComponent = getSelectedComponent();

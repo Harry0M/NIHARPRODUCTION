@@ -80,6 +80,7 @@ export const ComponentForm = ({
           .order('material_type');
         
         if (error) throw error;
+        console.log("ComponentForm - Fetched stock items:", data?.length);
         setStockItems(data || []);
       } catch (err) {
         console.error('Error fetching stock items:', err);
@@ -91,9 +92,7 @@ export const ComponentForm = ({
     fetchStockItems();
   }, []);
 
-  // We're no longer calculating consumption based on dimensions
-  // The consumption is now directly set from the selected product template
-  // and modified based on quantity changes
+  console.log("ComponentForm - Current material_id:", component.material_id);
 
   return (
     <div className="py-4 first:pt-0 last:pb-0">
@@ -156,12 +155,15 @@ export const ComponentForm = ({
           <Select 
             value={component.material_id || "not_applicable"} 
             onValueChange={(value) => {
-              onFieldChange('material_id', value);
-              if (value !== "not_applicable") {
-                const selectedStock = stockItems.find(item => item.id === value);
+              const materialId = value === "not_applicable" ? undefined : value;
+              onFieldChange('material_id', materialId || '');
+              
+              if (materialId) {
+                const selectedStock = stockItems.find(item => item.id === materialId);
                 if (selectedStock) {
+                  console.log("Selected material:", selectedStock);
                   onFieldChange('gsm', selectedStock.gsm || '');
-                  if (selectedStock.color) {
+                  if (selectedStock.color && selectedStock.color !== "not_applicable") {
                     onFieldChange('color', selectedStock.color);
                   }
                 }

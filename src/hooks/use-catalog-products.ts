@@ -1,4 +1,3 @@
-
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -118,6 +117,8 @@ export const useCatalogProducts = () => {
         }
       });
       
+      console.log("Material IDs from components:", Array.from(materialIds));
+      
       // Create a map to store material data
       const materialsMap: Record<string, Material> = {};
       
@@ -143,7 +144,7 @@ export const useCatalogProducts = () => {
           throw materialsError;
         }
         
-        console.log("Materials data:", materialsData);
+        console.log("Materials data fetched successfully:", materialsData);
         
         // Store materials by ID for easy lookup
         materialsData?.forEach(material => {
@@ -167,6 +168,9 @@ export const useCatalogProducts = () => {
           material: component.material_id ? materialsMap[component.material_id] || null : null
         } as CatalogComponent;
         
+        console.log(`Component ${component.id} has material_id:`, component.material_id);
+        console.log(`Associated material:`, componentWithMaterial.material);
+        
         componentsByProduct[component.catalog_id].push(componentWithMaterial);
       });
       
@@ -179,7 +183,6 @@ export const useCatalogProducts = () => {
       return typedProducts;
     },
     staleTime: 10000, // 10 seconds before refetching the same data
-    refetchOnWindowFocus: false, // Disable automatic refetching when window gains focus
   });
 };
 

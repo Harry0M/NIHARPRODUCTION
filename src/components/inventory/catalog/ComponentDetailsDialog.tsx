@@ -45,6 +45,13 @@ export const ComponentDetailsDialog = ({
     setIsLinkingMaterial(true);
   };
 
+  // Debug logged information about the component and its material
+  console.log("ComponentDetailsDialog - Selected Component:", selectedComponent);
+  if (selectedComponent) {
+    console.log("  - material_id:", selectedComponent.material_id);
+    console.log("  - material object:", selectedComponent.material);
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
@@ -106,7 +113,10 @@ export const ComponentDetailsDialog = ({
                 <MaterialLinkSelector 
                   componentId={selectedComponent.id}
                   materials={filteredMaterials}
-                  onSuccess={onMaterialLinkSuccess}
+                  onSuccess={() => {
+                    setIsLinkingMaterial(false);
+                    onMaterialLinkSuccess();
+                  }}
                   onCancel={() => setIsLinkingMaterial(false)}
                   isLoading={isLoadingInventory}
                 />
