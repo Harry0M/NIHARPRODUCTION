@@ -25,9 +25,10 @@ interface CatalogComponent {
   consumption?: number | null;
   material_id?: string | null;
   material?: Material;
+  catalog_id?: string;
 }
 
-interface CatalogProduct {
+export interface CatalogProduct {
   id: string;
   name: string;
   description?: string | null;
@@ -141,7 +142,8 @@ export const useCatalogProducts = () => {
       });
       
       // Set components for each product
-      data.forEach(product => {
+      const typedData = data as CatalogProduct[];
+      typedData.forEach(product => {
         product.catalog_components = componentsByProduct[product.id] || [];
       });
       
@@ -184,7 +186,7 @@ export const useCatalogProducts = () => {
         });
         
         // Attach material data to each component
-        data.forEach(product => {
+        typedData.forEach(product => {
           product.catalog_components?.forEach(component => {
             if (component.material_id && materialsMap[component.material_id]) {
               component.material = materialsMap[component.material_id];
@@ -198,8 +200,8 @@ export const useCatalogProducts = () => {
         console.log("No material IDs found in components");
       }
       
-      console.log("Catalog products data with materials:", data);
-      return data as CatalogProduct[];
+      console.log("Catalog products data with materials:", typedData);
+      return typedData;
     },
     staleTime: 10000, // 10 seconds before refetching the same data
     refetchOnWindowFocus: false, // Disable automatic refetching when window gains focus
