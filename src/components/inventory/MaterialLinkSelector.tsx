@@ -5,7 +5,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { showToast } from "@/components/ui/enhanced-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertCircle } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
 
 interface Material {
   id: string;
@@ -35,7 +34,6 @@ export const MaterialLinkSelector = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const [debugMode, setDebugMode] = useState(false);
   const [debugInfo, setDebugInfo] = useState<any>(null);
-  const { user } = useAuth(); // Get the current user
 
   const handleUpdateMaterial = async () => {
     if (!selectedMaterialId || !componentId) return;

@@ -24,7 +24,7 @@ interface CatalogComponent {
   width?: number | null;
   consumption?: number | null;
   material_id?: string | null;
-  material?: Material;
+  material?: Material | null;
   catalog_id?: string;
 }
 
@@ -51,13 +51,8 @@ export const useCatalogProducts = () => {
     queryFn: async () => {
       console.log("Fetching catalog products...");
       
-      // First get the current user
-      const { data: authData } = await supabase.auth.getUser();
-      const currentUserId = authData.user?.id;
-      
-      console.log("Current user ID:", currentUserId);
-      
-      const { data, error } = await supabase
+      // Fetch all catalog products
+      const { data: catalogData, error: catalogError } = await supabase
         .from("catalog")
         .select(`
           id,
@@ -74,39 +69,22 @@ export const useCatalogProducts = () => {
         `)
         .order('name');
 
-      if (error) {
-        console.error("Error fetching catalog products:", error);
-        throw error;
+      if (catalogError) {
+        console.error("Error fetching catalog products:", catalogError);
+        throw catalogError;
       }
       
-      console.log("Raw catalog data:", data);
+      console.log("Raw catalog data:", catalogData);
       
-      // Check if any catalog item is missing created_by and update it
-      for (const product of data) {
-        if (!product.created_by && currentUserId) {
-          console.log(`Catalog ${product.id} is missing created_by, setting to current user...`);
-          const { error: updateError } = await supabase
-            .from("catalog")
-            .update({ created_by: currentUserId })
-            .eq("id", product.id);
-            
-          if (updateError) {
-            console.error(`Failed to update created_by for catalog ${product.id}:`, updateError);
-          } else {
-            console.log(`Updated created_by for catalog ${product.id} to ${currentUserId}`);
-            // Update local object to reflect the change
-            product.created_by = currentUserId;
-          }
-        }
-      }
-      
-      // Now fetch components for all products
-      const productIds = data.map(product => product.id);
-      
-      if (productIds.length === 0) {
+      // If no products, return empty array
+      if (!catalogData || catalogData.length === 0) {
         return [] as CatalogProduct[];
       }
       
+      // Get all product IDs for fetching components
+      const productIds = catalogData.map(product => product.id);
+      
+      // Fetch all components for these products in a single query
       const { data: componentsData, error: componentsError } = await supabase
         .from("catalog_components")
         .select(`
@@ -132,30 +110,18 @@ export const useCatalogProducts = () => {
       
       console.log("Catalog components data:", componentsData);
       
-      // Group components by catalog_id
-      const componentsByProduct: Record<string, CatalogComponent[]> = {};
-      componentsData.forEach(component => {
-        if (!componentsByProduct[component.catalog_id]) {
-          componentsByProduct[component.catalog_id] = [];
-        }
-        componentsByProduct[component.catalog_id].push(component as CatalogComponent);
-      });
-      
-      // Set components for each product
-      const typedData = data as CatalogProduct[];
-      typedData.forEach(product => {
-        product.catalog_components = componentsByProduct[product.id] || [];
-      });
-      
-      // Get all unique material IDs to fetch in a single query
+      // Get all unique material IDs from components
       const materialIds = new Set<string>();
-      componentsData.forEach(component => {
+      componentsData?.forEach(component => {
         if (component.material_id) {
           materialIds.add(component.material_id);
         }
       });
       
-      // If we have material IDs, fetch their details
+      // Create a map to store material data
+      const materialsMap: Record<string, Material> = {};
+      
+      // If there are material IDs, fetch their data
       if (materialIds.size > 0) {
         const materialIdsArray = Array.from(materialIds);
         console.log("Fetching materials with IDs:", materialIdsArray);
@@ -179,29 +145,38 @@ export const useCatalogProducts = () => {
         
         console.log("Materials data:", materialsData);
         
-        // Map materials by ID for easy lookup
-        const materialsMap: Record<string, Material> = {};
+        // Store materials by ID for easy lookup
         materialsData?.forEach(material => {
           materialsMap[material.id] = material as Material;
         });
-        
-        // Attach material data to each component
-        typedData.forEach(product => {
-          product.catalog_components?.forEach(component => {
-            if (component.material_id && materialsMap[component.material_id]) {
-              component.material = materialsMap[component.material_id];
-              console.log(`Attached material to component ${component.id}:`, component.material);
-            } else if (component.material_id) {
-              console.warn(`Component ${component.id} references material_id ${component.material_id} but no material was found`);
-            }
-          });
-        });
-      } else {
-        console.log("No material IDs found in components");
       }
       
-      console.log("Catalog products data with materials:", typedData);
-      return typedData;
+      // Create typed catalog products with associated components
+      const typedProducts = catalogData as CatalogProduct[];
+      
+      // Group components by catalog_id
+      const componentsByProduct: Record<string, CatalogComponent[]> = {};
+      componentsData?.forEach(component => {
+        if (!componentsByProduct[component.catalog_id]) {
+          componentsByProduct[component.catalog_id] = [];
+        }
+        
+        // Add material data to the component if available
+        const componentWithMaterial = {
+          ...component,
+          material: component.material_id ? materialsMap[component.material_id] || null : null
+        } as CatalogComponent;
+        
+        componentsByProduct[component.catalog_id].push(componentWithMaterial);
+      });
+      
+      // Attach components to their respective products
+      typedProducts.forEach(product => {
+        product.catalog_components = componentsByProduct[product.id] || [];
+      });
+      
+      console.log("Final catalog products with components:", typedProducts);
+      return typedProducts;
     },
     staleTime: 10000, // 10 seconds before refetching the same data
     refetchOnWindowFocus: false, // Disable automatic refetching when window gains focus

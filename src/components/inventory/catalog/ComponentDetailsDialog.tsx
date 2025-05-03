@@ -86,14 +86,6 @@ export const ComponentDetailsDialog = ({
               <p className="font-medium">{selectedComponent.consumption || 'N/A'}</p>
             </div>
             
-            {/* Current Material ID */}
-            {selectedComponent.material_id && (
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Material ID</p>
-                <p className="font-medium text-xs">{selectedComponent.material_id}</p>
-              </div>
-            )}
-            
             {/* Material Information Section */}
             <div className="col-span-2 border-t pt-4 mt-2">
               <div className="flex justify-between items-center mb-2">
