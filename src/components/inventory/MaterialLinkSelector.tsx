@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { showToast } from "@/components/ui/enhanced-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertCircle } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 interface Material {
   id: string;
@@ -34,6 +35,7 @@ export const MaterialLinkSelector = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const [debugMode, setDebugMode] = useState(false);
   const [debugInfo, setDebugInfo] = useState<any>(null);
+  const { user } = useAuth(); // Get the current user
 
   const handleUpdateMaterial = async () => {
     if (!selectedMaterialId || !componentId) return;
@@ -44,61 +46,7 @@ export const MaterialLinkSelector = ({
     try {
       console.log("Updating material with ID:", selectedMaterialId, "for component:", componentId);
       
-      // First, get the component details including catalog_id
-      const { data: componentData, error: componentError } = await supabase
-        .from("catalog_components")
-        .select("id, catalog_id, material_id")
-        .eq("id", componentId)
-        .single();
-        
-      if (componentError) {
-        console.error("Error fetching component:", componentError);
-        setDebugInfo({ error: "component_fetch_error", details: componentError });
-        throw new Error(`Cannot access component: ${componentError.message}`);
-      }
-      
-      console.log("Component data fetched:", componentData);
-      
-      // Get the catalog details to check who created it
-      const { data: catalogData, error: catalogError } = await supabase
-        .from("catalog")
-        .select("id, created_by, name")
-        .eq("id", componentData.catalog_id)
-        .single();
-      
-      if (catalogError) {
-        console.error("Error fetching catalog:", catalogError);
-        setDebugInfo({ error: "catalog_fetch_error", details: catalogError });
-        throw new Error(`Cannot access catalog: ${catalogError.message}`);
-      }
-      
-      console.log("Catalog data fetched:", catalogData);
-      
-      if (!catalogData.created_by) {
-        // Update the catalog to set the created_by field to the current user
-        const { data: authData } = await supabase.auth.getUser();
-        const currentUserId = authData.user?.id;
-        
-        if (currentUserId) {
-          console.log("Setting catalog created_by to current user:", currentUserId);
-          
-          const { data: updateCatalogData, error: updateCatalogError } = await supabase
-            .from("catalog")
-            .update({ created_by: currentUserId })
-            .eq("id", catalogData.id)
-            .select();
-          
-          if (updateCatalogError) {
-            console.error("Error updating catalog created_by:", updateCatalogError);
-            setDebugInfo({ error: "catalog_update_error", details: updateCatalogError });
-            // Continue anyway, we'll try the component update
-          } else {
-            console.log("Catalog created_by updated successfully:", updateCatalogData);
-          }
-        }
-      }
-      
-      // Perform the component update
+      // Directly update the component with the selected material ID
       const { data: updateData, error: updateError } = await supabase
         .from("catalog_components")
         .update({ 
