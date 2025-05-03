@@ -1,12 +1,14 @@
+
 import { useParams, useNavigate } from "react-router-dom";
 import { useCatalogProducts, useInventoryItems } from "@/hooks/use-catalog-products";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Package, Pencil } from "lucide-react";
+import { ArrowLeft, Package, Pencil, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ProductInfoCard } from "@/components/inventory/catalog/ProductInfoCard";
 import { ComponentsTable, CatalogComponent } from "@/components/inventory/catalog/ComponentsTable";
 import { ComponentDetailsDialog } from "@/components/inventory/catalog/ComponentDetailsDialog";
+import { showToast } from "@/components/ui/enhanced-toast";
 
 interface CatalogProduct {
   id: string;
@@ -19,6 +21,7 @@ interface CatalogProduct {
   default_rate?: number | null;
   created_at: string;
   updated_at: string;
+  created_by?: string | null;
   catalog_components?: CatalogComponent[];
 }
 
@@ -27,6 +30,7 @@ const CatalogDetail = () => {
   const navigate = useNavigate();
   const [componentView, setComponentView] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data: products, isLoading, refetch } = useCatalogProducts();
   const { data: inventoryItems, isLoading: isLoadingInventory } = useInventoryItems();
@@ -39,6 +43,15 @@ const CatalogDetail = () => {
   console.log("Found product:", product);
   console.log("Components:", components);
   console.log("Components with materials:", components.filter(c => c.material || c.material_id));
+
+  useEffect(() => {
+    // Detect if we have components with material_id but no materials
+    const hasOrphanedMaterialIds = components.some(c => c.material_id && !c.material);
+    
+    if (hasOrphanedMaterialIds) {
+      console.warn("Detected components with material_id but no attached material data.");
+    }
+  }, [components]);
 
   const componentTypes = {
     part: "Part",
@@ -80,10 +93,44 @@ const CatalogDetail = () => {
   // Handle successful material link
   const handleMaterialLinkSuccess = () => {
     console.log("Material link success, refreshing data...");
+    
+    // Add a small delay before refetching to ensure the database has updated
+    setTimeout(() => {
+      setIsRefreshing(true);
+      refetch().then(() => {
+        console.log("Data refreshed after linking material");
+        setIsRefreshing(false);
+        // Close the dialog after successful update and refresh
+        setIsDialogOpen(false);
+      }).catch(error => {
+        console.error("Error refetching data:", error);
+        setIsRefreshing(false);
+        showToast({
+          title: "Error refreshing data",
+          description: "Unable to refresh the data. Please try manually refreshing.",
+          type: "error"
+        });
+      });
+    }, 500); // 500ms delay to ensure database consistency
+  };
+
+  // Manual refresh function
+  const handleManualRefresh = () => {
+    setIsRefreshing(true);
     refetch().then(() => {
-      console.log("Data refreshed after linking material");
+      setIsRefreshing(false);
+      showToast({
+        title: "Data refreshed",
+        description: "The product details have been refreshed",
+        type: "success"
+      });
     }).catch(error => {
-      console.error("Error refetching data:", error);
+      setIsRefreshing(false);
+      showToast({
+        title: "Error refreshing data",
+        description: error.message || "An error occurred while refreshing the data",
+        type: "error"
+      });
     });
   };
 
@@ -130,6 +177,15 @@ const CatalogDetail = () => {
           <h1 className="text-2xl font-bold">{product.name}</h1>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw size={16} className={`mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
           <Button
             variant="outline"
             onClick={() => navigate(`/inventory/catalog/${id}/orders`)}

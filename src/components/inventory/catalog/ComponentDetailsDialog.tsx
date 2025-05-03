@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle 
 } from "@/components/ui/dialog";
-import { LinkIcon } from "lucide-react";
+import { AlertCircle, LinkIcon } from "lucide-react";
 import { MaterialLinkSelector } from "@/components/inventory/MaterialLinkSelector";
 import { CatalogComponent } from "./ComponentsTable";
 
@@ -52,7 +52,7 @@ export const ComponentDetailsDialog = ({
           <DialogTitle>
             {selectedComponent?.component_type === 'custom'
               ? `Custom Component: ${selectedComponent.custom_name}`
-              : `${componentTypes[selectedComponent?.component_type as keyof typeof componentTypes]} Details`}
+              : `${componentTypes[selectedComponent?.component_type as keyof typeof componentTypes] || 'Component'} Details`}
           </DialogTitle>
         </DialogHeader>
         {selectedComponent && (
@@ -86,6 +86,14 @@ export const ComponentDetailsDialog = ({
               <p className="font-medium">{selectedComponent.consumption || 'N/A'}</p>
             </div>
             
+            {/* Current Material ID */}
+            {selectedComponent.material_id && (
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Material ID</p>
+                <p className="font-medium text-xs">{selectedComponent.material_id}</p>
+              </div>
+            )}
+            
             {/* Material Information Section */}
             <div className="col-span-2 border-t pt-4 mt-2">
               <div className="flex justify-between items-center mb-2">
@@ -97,7 +105,7 @@ export const ComponentDetailsDialog = ({
                     onClick={handleLinkMaterial} 
                     className="flex items-center gap-1"
                   >
-                    <LinkIcon size={14} /> Link Material
+                    <LinkIcon size={14} /> {selectedComponent.material ? 'Change Material' : 'Link Material'}
                   </Button>
                 )}
               </div>
@@ -134,9 +142,15 @@ export const ComponentDetailsDialog = ({
                       </div>
                     </div>
                   ) : selectedComponent.material_id ? (
-                    <div className="p-3 bg-yellow-50 rounded-md text-amber-800">
-                      Material ID exists ({selectedComponent.material_id.substring(0, 8)}...) but no details found. 
-                      The material may have been deleted or is no longer available.
+                    <div className="p-3 bg-yellow-50 rounded-md text-amber-800 flex items-start gap-2">
+                      <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="font-semibold">Material reference found but details missing</p>
+                        <p className="text-sm">
+                          Material ID exists ({selectedComponent.material_id.substring(0, 8)}...) but the material details couldn't be loaded. 
+                          This may happen if the material has been deleted or if there's a permission issue.
+                        </p>
+                      </div>
                     </div>
                   ) : (
                     <div className="p-3 bg-gray-50 rounded-md text-gray-600">

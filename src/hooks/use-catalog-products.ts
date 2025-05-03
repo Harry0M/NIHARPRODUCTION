@@ -38,6 +38,7 @@ interface CatalogProduct {
   default_rate?: number | null;
   created_at: string;
   updated_at: string;
+  created_by?: string | null;
   catalog_components?: CatalogComponent[];
 }
 
@@ -59,6 +60,7 @@ export const useCatalogProducts = () => {
           default_rate,
           created_at,
           updated_at,
+          created_by,
           catalog_components (
             id,
             component_type,
@@ -79,6 +81,8 @@ export const useCatalogProducts = () => {
         console.error("Error fetching catalog products:", error);
         throw error;
       }
+      
+      console.log("Raw catalog data:", data);
       
       // Get all unique material IDs to fetch in a single query
       const materialIds = new Set<string>();
@@ -125,14 +129,21 @@ export const useCatalogProducts = () => {
           product.catalog_components?.forEach(component => {
             if (component.material_id && materialsMap[component.material_id]) {
               component.material = materialsMap[component.material_id];
+              console.log(`Attached material to component ${component.id}:`, component.material);
+            } else if (component.material_id) {
+              console.warn(`Component ${component.id} references material_id ${component.material_id} but no material was found`);
             }
           });
         });
+      } else {
+        console.log("No material IDs found in components");
       }
       
       console.log("Catalog products data with materials:", data);
       return data as CatalogProduct[];
     },
+    staleTime: 10000, // 10 seconds before refetching the same data
+    refetchOnWindowFocus: false, // Disable automatic refetching when window gains focus
   });
 };
 

@@ -39,19 +39,57 @@ export const MaterialLinkSelector = ({
     try {
       console.log("Updating material with ID:", selectedMaterialId, "for component:", componentId);
       
+      // First, check if we can access the component
+      const { data: componentCheck, error: checkError } = await supabase
+        .from("catalog_components")
+        .select("id, catalog_id")
+        .eq("id", componentId)
+        .single();
+        
+      if (checkError) {
+        console.error("Error accessing component:", checkError);
+        throw new Error(`Cannot access component: ${checkError.message}`);
+      }
+      
+      console.log("Component check successful:", componentCheck);
+      
+      // Perform the update
       const { data, error } = await supabase
         .from("catalog_components")
-        .update({ material_id: selectedMaterialId })
+        .update({ 
+          material_id: selectedMaterialId,
+          updated_at: new Date().toISOString()
+        })
         .eq("id", componentId)
         .select();
         
       if (error) {
         console.error("Error updating material:", error);
-        throw error;
+        throw new Error(`Update failed: ${error.message}`);
       }
       
       console.log("Update response:", data);
       
+      // Verify the update was successful
+      const { data: verifyData, error: verifyError } = await supabase
+        .from("catalog_components")
+        .select("material_id")
+        .eq("id", componentId)
+        .single();
+      
+      if (verifyError) {
+        console.error("Error verifying update:", verifyError);
+        throw new Error("Could not verify the update was successful");
+      }
+      
+      if (verifyData.material_id !== selectedMaterialId) {
+        console.error("Update verification failed: Material ID doesn't match what was set");
+        throw new Error("Material was not properly linked. Please try again.");
+      }
+      
+      console.log("Update verified successful:", verifyData);
+      
+      // Update succeeded and was verified
       onSuccess();
       showToast({
         title: "Material linked successfully",
