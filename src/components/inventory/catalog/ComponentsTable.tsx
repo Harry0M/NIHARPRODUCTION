@@ -1,4 +1,3 @@
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +12,7 @@ import { AlertCircle, Link, Plus } from "lucide-react";
 
 export interface Material {
   id: string;
-  material_type: string;
+  material_name: string;  // Changed from material_type to material_name
   color?: string | null;
   gsm?: string | null;
   quantity?: number;
@@ -134,7 +133,7 @@ export const ComponentsTable = ({
                   {component.material ? (
                     <Badge {...getMaterialBadgeProps(component)} className="flex items-center gap-1">
                       <Link className="h-3 w-3" />
-                      {component.material.material_type} 
+                      {component.material.material_name} 
                       {component.material.color ? ` - ${component.material.color}` : ''}
                       {component.material.gsm ? ` ${component.material.gsm}` : ''}
                     </Badge>

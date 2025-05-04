@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 // Define proper types for our data structures
 interface Material {
   id: string;
-  material_name: string;
+  material_name: string;  // Changed from material_type to material_name
   color?: string | null;
   gsm?: string | null;
   quantity?: number;

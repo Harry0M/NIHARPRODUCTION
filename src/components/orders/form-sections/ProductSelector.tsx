@@ -23,7 +23,7 @@ interface Product {
     material_id?: string;
     material?: {
       id: string;
-      material_type: string;
+      material_name: string; // Changed from material_type to material_name
       color?: string;
       gsm?: string;
       quantity?: number;

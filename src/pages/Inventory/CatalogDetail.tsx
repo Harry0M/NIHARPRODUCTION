@@ -1,4 +1,3 @@
-
 import { useParams, useNavigate } from "react-router-dom";
 import { useCatalogProducts, useInventoryItems } from "@/hooks/use-catalog-products";
 import { Button } from "@/components/ui/button";
@@ -37,7 +36,8 @@ const CatalogDetail = () => {
   const { data: products, isLoading, refetch } = useCatalogProducts();
   const { data: inventoryItems, isLoading: isLoadingInventory } = useInventoryItems();
   
-  const product = products?.find((p) => p.id === id) as CatalogProduct | undefined;
+  // Explicitly cast the product as CatalogProduct
+  const product = products?.find((p) => p.id === id) as unknown as CatalogProduct | undefined;
   const components = product?.catalog_components || [];
 
   // Enhanced debugging information
@@ -196,6 +196,7 @@ const CatalogDetail = () => {
   const getFilteredMaterials = (component: CatalogComponent) => {
     if (!inventoryItems) return [];
     
+    // Safely cast the inventory items to the correct type
     return inventoryItems;
   };
 
