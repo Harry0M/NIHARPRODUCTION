@@ -18,9 +18,10 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
       
       console.log("Fetching stock details for ID:", stockId);
       
+      // Modified query to remove the vendors relationship that doesn't exist
       const { data, error } = await supabase
         .from("inventory")
-        .select("*, suppliers(name), vendors(name)")
+        .select("*, suppliers(name)")
         .eq("id", stockId)
         .single();
         

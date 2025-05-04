@@ -96,12 +96,6 @@ export const StockInfoGrid = ({ stockItem, linkedComponents = [] }: StockInfoGri
                 <p className="font-medium">{formatValue(stockItem.reorder_level)} {formatValue(stockItem.unit)}</p>
               </div>
             )}
-            {stockItem.vendors && (
-              <div>
-                <p className="text-sm text-muted-foreground">Vendor</p>
-                <p className="font-medium">{formatValue(stockItem.vendors.name)}</p>
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>

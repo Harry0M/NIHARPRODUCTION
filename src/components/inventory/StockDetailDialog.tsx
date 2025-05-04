@@ -8,9 +8,10 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, AlertCircle } from "lucide-react";
 import { StockInfoGrid } from "./stock-detail/StockInfoGrid";
 import { useStockDetail } from "@/hooks/inventory/useStockDetail";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface StockDetailDialogProps {
   stockId: string | null;
@@ -71,12 +72,20 @@ export const StockDetailDialog = ({
           )}
         </DialogHeader>
         {isLoading ? (
-          <div className="flex justify-center py-8">Loading...</div>
+          <div className="space-y-4 py-4">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
         ) : stockItem ? (
           <StockInfoGrid stockItem={stockItem} linkedComponents={linkedComponents} />
         ) : (
-          <div className="py-6 text-center text-muted-foreground">
-            No stock information found
+          <div className="py-8 text-center flex flex-col items-center gap-2">
+            <AlertCircle className="h-10 w-10 text-muted-foreground" />
+            <p className="text-lg font-medium">No stock information found</p>
+            <p className="text-sm text-muted-foreground">
+              There was an issue loading the stock details. Please try again.
+            </p>
           </div>
         )}
       </DialogContent>
