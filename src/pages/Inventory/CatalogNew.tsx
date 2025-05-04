@@ -34,6 +34,7 @@ interface ComponentType {
   length?: string;
   width?: string;
   roll_width?: string;
+  material_id?: string;
 }
 
 const CatalogNew = () => {
@@ -183,7 +184,11 @@ const CatalogNew = () => {
           color: comp.color || null,
           gsm: comp.gsm || null,
           roll_width: comp.roll_width || null,
-          custom_name: comp.type === 'custom' ? comp.customName : null
+          length: comp.length || null,
+          width: comp.width || null,
+          custom_name: comp.type === 'custom' ? comp.customName : null,
+          material_id: comp.material_id || null,
+          material_linked: comp.material_id ? true : false
         }));
 
         // Insert components

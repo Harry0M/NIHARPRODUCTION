@@ -9,13 +9,15 @@ interface MaterialGridProps {
   filteredMaterials: Material[];
   selectedMaterialId: string | null;
   setSelectedMaterialId: (id: string) => void;
+  maxHeight?: string;
 }
 
 export const MaterialGrid = ({
   isLoading,
   filteredMaterials,
   selectedMaterialId,
-  setSelectedMaterialId
+  setSelectedMaterialId,
+  maxHeight = "max-h-64"
 }: MaterialGridProps) => {
   if (isLoading) {
     return (
@@ -34,7 +36,7 @@ export const MaterialGrid = ({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-64 overflow-y-auto p-2">
+    <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 ${maxHeight} overflow-y-auto p-2`}>
       {filteredMaterials.map((material) => (
         <Card
           key={material.id}
