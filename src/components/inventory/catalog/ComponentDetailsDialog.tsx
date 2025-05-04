@@ -13,7 +13,7 @@ import { CatalogComponent } from "./ComponentsTable";
 
 interface Material {
   id: string;
-  material_type: string;
+  material_name: string;  // Updated from material_type to material_name
   color?: string | null;
   gsm?: string | null;
   quantity?: number;
@@ -132,7 +132,7 @@ export const ComponentDetailsDialog = ({
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <p className="text-sm font-medium text-muted-foreground">Material Type</p>
-                        <p className="font-medium">{selectedComponent.material.material_type}</p>
+                        <p className="font-medium">{selectedComponent.material.material_name}</p>
                       </div>
                       <div className="space-y-1">
                         <p className="text-sm font-medium text-muted-foreground">Color</p>

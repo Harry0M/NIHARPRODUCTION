@@ -1,3 +1,4 @@
+
 import { useParams, useNavigate } from "react-router-dom";
 import { useCatalogProducts, useInventoryItems } from "@/hooks/use-catalog-products";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,16 @@ interface CatalogProduct {
   updated_at: string;
   created_by?: string | null;
   catalog_components?: CatalogComponent[];
+}
+
+// Update Material interface to match the changes in ComponentsTable.tsx
+interface Material {
+  id: string;
+  material_name: string; // Changed from material_type to material_name
+  color?: string | null;
+  gsm?: string | null;
+  quantity?: number;
+  unit?: string;
 }
 
 const CatalogDetail = () => {
@@ -197,7 +208,7 @@ const CatalogDetail = () => {
     if (!inventoryItems) return [];
     
     // Safely cast the inventory items to the correct type
-    return inventoryItems;
+    return inventoryItems as unknown as Material[];
   };
 
   const selectedComponent = getSelectedComponent();
@@ -262,6 +273,7 @@ const CatalogDetail = () => {
             <ComponentsTable 
               components={components} 
               onViewComponent={handleViewComponent} 
+              onLinkMaterial={handleViewComponent}
             />
           </CardContent>
         </Card>
