@@ -122,14 +122,14 @@ const ComponentForm = ({
             <div>
               <Label htmlFor={`${component.type}-color`}>Color</Label>
               <Select 
-                value={component.color || ""} 
+                value={component.color || "none"} 
                 onValueChange={(value) => handleSelectChange('color', value)}
               >
                 <SelectTrigger id={`${component.type}-color`}>
                   <SelectValue placeholder="Select color" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {componentOptions.color.map(color => (
                     <SelectItem key={`${component.type}-${color}`} value={color}>
                       {color}
@@ -151,14 +151,14 @@ const ComponentForm = ({
             <div>
               <Label htmlFor={`${component.type}-gsm`}>GSM</Label>
               <Select 
-                value={component.gsm || ""} 
+                value={component.gsm || "none"} 
                 onValueChange={(value) => handleSelectChange('gsm', value)}
               >
                 <SelectTrigger id={`${component.type}-gsm`}>
                   <SelectValue placeholder="Select GSM" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {componentOptions.gsm.map(gsm => (
                     <SelectItem key={`${component.type}-${gsm}`} value={gsm}>
                       {gsm}

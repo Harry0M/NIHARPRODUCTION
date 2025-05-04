@@ -1,3 +1,4 @@
+
 import { 
   Card, 
   CardContent,
@@ -154,14 +155,14 @@ const CustomComponentForm = ({
             <div>
               <Label htmlFor={`custom-${index}-color`}>Color</Label>
               <Select 
-                value={component.color || ""} 
+                value={component.color || "none"} 
                 onValueChange={handleColorChange}
               >
                 <SelectTrigger id={`custom-${index}-color`}>
                   <SelectValue placeholder="Select color" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {componentOptions.color.map(color => (
                     <SelectItem key={`custom-${index}-${color}`} value={color}>
                       {color}
@@ -183,14 +184,14 @@ const CustomComponentForm = ({
             <div>
               <Label htmlFor={`custom-${index}-gsm`}>GSM</Label>
               <Select 
-                value={component.gsm || ""} 
+                value={component.gsm || "none"} 
                 onValueChange={handleGSMChange}
               >
                 <SelectTrigger id={`custom-${index}-gsm`}>
                   <SelectValue placeholder="Select GSM" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {componentOptions.gsm.map(gsm => (
                     <SelectItem key={`custom-${index}-${gsm}`} value={gsm}>
                       {gsm}
