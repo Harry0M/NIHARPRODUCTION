@@ -875,6 +875,7 @@ export type Database = {
         Row: {
           bag_length: number
           bag_width: number
+          border_dimension: number | null
           catalog_id: string | null
           company_id: string | null
           company_name: string
@@ -898,6 +899,7 @@ export type Database = {
         Insert: {
           bag_length: number
           bag_width: number
+          border_dimension?: number | null
           catalog_id?: string | null
           company_id?: string | null
           company_name: string
@@ -921,6 +923,7 @@ export type Database = {
         Update: {
           bag_length?: number
           bag_width?: number
+          border_dimension?: number | null
           catalog_id?: string | null
           company_id?: string | null
           company_name?: string
