@@ -232,8 +232,14 @@ const StockList = () => {
 
       <StockDetailDialog 
         stockId={selectedStockId}
-        isOpen={isDetailDialogOpen}
-        onClose={handleCloseDialog}
+        open={isDetailDialogOpen}
+        onOpenChange={setIsDetailDialogOpen}
+        onEdit={() => navigate(`/inventory/stock/${selectedStockId}/edit`)}
+        onDelete={() => {
+          if (selectedStockId) {
+            confirmDeleteJobCard(selectedStockId);
+          }
+        }}
       />
 
       <DeleteStockDialog

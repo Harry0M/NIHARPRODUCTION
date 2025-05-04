@@ -16,16 +16,16 @@ interface StockDetailDialogProps {
   stockId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 export const StockDetailDialog = ({
   stockId,
   open,
   onOpenChange,
-  onEdit,
-  onDelete,
+  onEdit = () => {},
+  onDelete = () => {},
 }: StockDetailDialogProps) => {
   const handleClose = () => onOpenChange(false);
 
