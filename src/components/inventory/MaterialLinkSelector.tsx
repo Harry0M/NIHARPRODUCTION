@@ -7,15 +7,7 @@ import { AlertCircle, Plus, Search, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-
-interface Material {
-  id: string;
-  material_type: string;
-  color?: string | null;
-  gsm?: string | null;
-  quantity?: number;
-  unit?: string;
-}
+import { Material } from "@/components/inventory/catalog/ComponentsTable";
 
 interface MaterialLinkSelectorProps {
   componentId: string;
@@ -41,7 +33,7 @@ export const MaterialLinkSelector = ({
   const filteredMaterials = materials.filter(material => {
     const searchLower = searchQuery.toLowerCase();
     return (
-      material.material_type.toLowerCase().includes(searchLower) || 
+      material.material_name.toLowerCase().includes(searchLower) || 
       (material.color && material.color.toLowerCase().includes(searchLower)) ||
       (material.gsm && material.gsm.toLowerCase().includes(searchLower))
     );
@@ -167,7 +159,7 @@ export const MaterialLinkSelector = ({
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="font-medium text-slate-900">{material.material_type}</h4>
+                    <h4 className="font-medium text-slate-900">{material.material_name}</h4>
                     <div className="mt-1 flex flex-wrap gap-2">
                       {material.color && (
                         <Badge variant="outline" className="bg-white">
