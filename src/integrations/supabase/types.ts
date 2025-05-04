@@ -436,6 +436,7 @@ export type Database = {
           rate: number | null
           reorder_level: number | null
           reorder_quantity: number | null
+          roll_width: number | null
           selling_price: number | null
           status: string | null
           supplier_id: string | null
@@ -460,6 +461,7 @@ export type Database = {
           rate?: number | null
           reorder_level?: number | null
           reorder_quantity?: number | null
+          roll_width?: number | null
           selling_price?: number | null
           status?: string | null
           supplier_id?: string | null
@@ -484,6 +486,7 @@ export type Database = {
           rate?: number | null
           reorder_level?: number | null
           reorder_quantity?: number | null
+          roll_width?: number | null
           selling_price?: number | null
           status?: string | null
           supplier_id?: string | null

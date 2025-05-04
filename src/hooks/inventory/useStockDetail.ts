@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { showToast } from "@/components/ui/enhanced-toast";
@@ -10,14 +11,14 @@ interface UseStockDetailProps {
 export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
   const queryClient = useQueryClient();
 
-  const { data: stockItem } = useQuery({
+  const { data: stockItem, isLoading } = useQuery({
     queryKey: ["stock-detail", stockId],
     queryFn: async () => {
       if (!stockId) return null;
       
       const { data, error } = await supabase
         .from("inventory")
-        .select("*, suppliers(name)")
+        .select("*, suppliers(name), vendors(name)")
         .eq("id", stockId)
         .single();
         
@@ -30,8 +31,28 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     enabled: !!stockId,
   });
 
+  const { data: linkedComponents } = useQuery({
+    queryKey: ["stock-linked-components", stockId],
+    queryFn: async () => {
+      if (!stockId) return [];
+      
+      const { data, error } = await supabase
+        .from("catalog_components")
+        .select("*, catalog(name)")
+        .eq("material_id", stockId);
+        
+      if (error) {
+        console.error("Error fetching linked components:", error);
+        throw error;
+      }
+      return data || [];
+    },
+    enabled: !!stockId,
+  });
+
   return {
     stockItem,
-    isDeleting: false
+    linkedComponents,
+    isLoading
   };
 };

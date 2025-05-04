@@ -1,86 +1,84 @@
 
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { 
+import React from "react";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
-import { Edit } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Edit, Trash2 } from "lucide-react";
 import { StockInfoGrid } from "./stock-detail/StockInfoGrid";
 import { useStockDetail } from "@/hooks/inventory/useStockDetail";
 
 interface StockDetailDialogProps {
   stockId: string | null;
-  isOpen: boolean;
-  onClose: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }
 
-export const StockDetailDialog = ({ stockId, isOpen, onClose }: StockDetailDialogProps) => {
-  const navigate = useNavigate();
-  
-  // Using our enhanced stock detail hook with better deletion handling
-  const { stockItem, isDeleting } = useStockDetail({ 
-    stockId, 
-    onClose: () => {
-      console.log("Stock detail onClose callback triggered");
-      
-      // Navigate back to inventory stock list after a successful deletion
-      setTimeout(() => {
-        onClose();
-      }, 500);
-    } 
+export const StockDetailDialog = ({
+  stockId,
+  open,
+  onOpenChange,
+  onEdit,
+  onDelete,
+}: StockDetailDialogProps) => {
+  const handleClose = () => onOpenChange(false);
+
+  const { stockItem, linkedComponents, isLoading } = useStockDetail({
+    stockId,
+    onClose: handleClose,
   });
 
-  const handleEdit = () => {
-    if (stockId) {
-      console.log(`Navigating to edit page for stock ID: ${stockId}`);
-      // First close the dialog, then navigate
-      onClose();
-      // Small delay to ensure dialog is closed before navigation
-      setTimeout(() => {
-        navigate(`/inventory/stock/${stockId}`);
-      }, 300);
-    }
-  };
-
-  const handleCloseMainDialog = (open: boolean) => {
-    // Only allow closing if we're not in the middle of deleting
-    if (!isDeleting || !open) {
-      console.log(`Closing main dialog, isDeleting: ${isDeleting}`);
-      onClose();
-    }
-  };
-
-  if (!stockItem && stockId) {
-    return null;
-  }
-
   return (
-    <Dialog open={isOpen} onOpenChange={handleCloseMainDialog}>
-      <DialogContent className="sm:max-w-lg">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{stockItem?.material_type}</DialogTitle>
-          <DialogDescription>
-            Stock details and information
-          </DialogDescription>
+          <DialogTitle className="text-xl flex items-center justify-between">
+            <span>{stockItem?.material_type || "Stock Details"}</span>
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="destructive"
+                size="icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </DialogTitle>
+          {stockItem?.color && (
+            <DialogDescription>
+              Color: {stockItem.color}
+              {stockItem.gsm ? ` | GSM: ${stockItem.gsm}` : ""}
+            </DialogDescription>
+          )}
         </DialogHeader>
-        
-        {stockItem && <StockInfoGrid stockItem={stockItem} />}
-        
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose} disabled={isDeleting}>
-            Close
-          </Button>
-          <Button onClick={handleEdit} disabled={isDeleting}>
-            <Edit className="mr-2 h-4 w-4" />
-            Edit
-          </Button>
-        </DialogFooter>
+        {isLoading ? (
+          <div className="flex justify-center py-8">Loading...</div>
+        ) : stockItem ? (
+          <StockInfoGrid stockItem={stockItem} linkedComponents={linkedComponents} />
+        ) : (
+          <div className="py-6 text-center text-muted-foreground">
+            No stock information found
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

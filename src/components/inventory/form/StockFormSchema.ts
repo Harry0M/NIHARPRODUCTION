@@ -13,6 +13,7 @@ export const stockFormSchema = z.object({
   purchase_price: z.number().optional(),
   selling_price: z.number().optional(),
   supplier_id: z.string().optional(),
+  vendor_id: z.string().optional(),
   reorder_level: z.number().optional(),
 });
 
@@ -30,5 +31,6 @@ export const defaultValues: StockFormValues = {
   purchase_price: 0,
   selling_price: 0,
   supplier_id: "",
+  vendor_id: "",
   reorder_level: 0,
 };

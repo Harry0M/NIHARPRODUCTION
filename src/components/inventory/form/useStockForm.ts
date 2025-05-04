@@ -28,6 +28,15 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
     },
   });
 
+  const { data: vendors } = useQuery({
+    queryKey: ["vendors"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("vendors").select("id, name");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   const { data: stockItem, isLoading } = useQuery({
     queryKey: ["stock", stockId],
     queryFn: async () => {
@@ -63,6 +72,7 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
         purchase_price: stockItem.purchase_price || 0,
         selling_price: stockItem.selling_price || 0,
         supplier_id: stockItem.supplier_id || "",
+        vendor_id: stockItem.vendor_id || "",
         reorder_level: stockItem.reorder_level || 0,
       });
       setHasAlternateUnit(!!stockItem.alternate_unit);
@@ -90,6 +100,7 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
         purchase_price: values.purchase_price || null,
         selling_price: values.selling_price || null,
         supplier_id: values.supplier_id || null,
+        vendor_id: values.vendor_id || null,
         reorder_level: values.reorder_level || null,
       };
       
@@ -137,6 +148,7 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
         purchase_price: values.purchase_price || null,
         selling_price: values.selling_price || null,
         supplier_id: values.supplier_id || null,
+        vendor_id: values.vendor_id || null,
         reorder_level: values.reorder_level || null,
       };
       
@@ -183,9 +195,13 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
       submissionValues.selling_price = undefined;
     }
 
-    // Handle empty value for supplier_id
+    // Handle empty value for supplier_id and vendor_id
     if (submissionValues.supplier_id === "") {
       submissionValues.supplier_id = undefined;
+    }
+    
+    if (submissionValues.vendor_id === "") {
+      submissionValues.vendor_id = undefined;
     }
 
     if (stockId) {
@@ -199,6 +215,7 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
     form,
     onSubmit,
     suppliers,
+    vendors,
     hasAlternateUnit,
     setHasAlternateUnit,
     trackCost,

@@ -8,7 +8,6 @@ import {
   FormControl,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -17,16 +16,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-interface AdditionalInfoFieldsProps {
+interface VendorSupplierFieldsProps {
   suppliers?: { id: string; name: string }[];
+  vendors?: { id: string; name: string }[];
 }
 
-export const AdditionalInfoFields = ({ suppliers }: AdditionalInfoFieldsProps) => {
+export const VendorSupplierFields = ({ suppliers, vendors }: VendorSupplierFieldsProps) => {
   const { control } = useFormContext();
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-medium">Additional Information</h3>
+      <h3 className="text-lg font-medium">Vendors & Suppliers</h3>
       
       <FormField
         control={control}
@@ -57,21 +57,32 @@ export const AdditionalInfoFields = ({ suppliers }: AdditionalInfoFieldsProps) =
           </FormItem>
         )}
       />
-      
+
       <FormField
         control={control}
-        name="reorder_level"
+        name="vendor_id"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Reorder Level</FormLabel>
-            <FormControl>
-              <Input
-                type="number"
-                min="0"
-                {...field}
-                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-              />
-            </FormControl>
+            <FormLabel>Vendor</FormLabel>
+            <Select 
+              onValueChange={field.onChange} 
+              defaultValue={field.value}
+              value={field.value || ""}
+            >
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a vendor" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                <SelectItem value="">None</SelectItem>
+                {vendors?.map((vendor) => (
+                  <SelectItem key={vendor.id} value={vendor.id}>
+                    {vendor.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <FormMessage />
           </FormItem>
         )}

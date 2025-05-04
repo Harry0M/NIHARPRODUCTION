@@ -2,27 +2,26 @@
 import React from "react";
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FormProvider } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { BasicInfoFields } from "./form/BasicInfoFields";
 import { QuantityUnitFields } from "./form/QuantityUnitFields";
 import { AlternateUnitFields } from "./form/AlternateUnitFields";
 import { CostTrackingFields } from "./form/CostTrackingFields";
 import { AdditionalInfoFields } from "./form/AdditionalInfoFields";
+import { VendorSupplierFields } from "./form/VendorSupplierFields";
 import { useStockForm } from "./form/useStockForm";
+import { Loader2 } from "lucide-react";
 
 interface StockFormProps {
   stockId?: string;
 }
 
 export const StockForm = ({ stockId }: StockFormProps) => {
-  const navigate = useNavigate();
   const {
     form,
     onSubmit,
     suppliers,
+    vendors,
     hasAlternateUnit,
     setHasAlternateUnit,
     trackCost,
@@ -30,65 +29,76 @@ export const StockForm = ({ stockId }: StockFormProps) => {
     isLoading,
   } = useStockForm({ stockId });
 
-  if (isLoading && stockId) {
+  if (isLoading) {
     return (
-      <div className="flex justify-center items-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle>{stockId ? "Edit Stock Item" : "Add New Stock Item"}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <FormProvider {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Basic Information */}
-              <BasicInfoFields />
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <div className="grid gap-6">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle>
+                {stockId ? "Edit Stock" : "Add New Stock"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                  <BasicInfoFields />
+                </div>
+                <div>
+                  <QuantityUnitFields
+                    hasAlternateUnit={hasAlternateUnit}
+                    onAlternateUnitChange={setHasAlternateUnit}
+                  />
 
-              {/* Quantity and Units */}
-              <QuantityUnitFields
-                hasAlternateUnit={hasAlternateUnit}
-                onAlternateUnitChange={setHasAlternateUnit}
-              />
-            </div>
+                  {hasAlternateUnit && <AlternateUnitFields />}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Alternate Unit Settings */}
-            {hasAlternateUnit && (
-              <>
-                <Separator className="my-4" />
-                <AlternateUnitFields />
-              </>
-            )}
-
-            {/* Cost Tracking */}
-            <Separator className="my-4" />
-            <CostTrackingFields trackCost={trackCost} onTrackCostChange={setTrackCost} />
-
-            {/* Additional Information */}
-            <Separator className="my-4" />
-            <h3 className="text-lg font-medium">Additional Information</h3>
-            <AdditionalInfoFields suppliers={suppliers} />
-
-            <div className="flex justify-end space-x-4 pt-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                  <CostTrackingFields
+                    trackCost={trackCost}
+                    onTrackCostChange={setTrackCost}
+                  />
+                </div>
+                <div>
+                  <VendorSupplierFields 
+                    suppliers={suppliers} 
+                    vendors={vendors} 
+                  />
+                  <div className="mt-6">
+                    <AdditionalInfoFields suppliers={suppliers} />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="border-t px-6 py-4 flex justify-end">
               <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate("/inventory/stock")}
+                type="submit"
+                disabled={form.formState.isSubmitting}
+                className="ml-auto"
               >
-                Cancel
+                {form.formState.isSubmitting && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {stockId ? "Update Stock" : "Save Stock"}
               </Button>
-              <Button type="submit">
-                {stockId ? "Update Stock" : "Add Stock"}
-              </Button>
-            </div>
-          </form>
-        </FormProvider>
-      </CardContent>
-    </Card>
+            </CardFooter>
+          </Card>
+        </div>
+      </form>
+    </Form>
   );
 };
