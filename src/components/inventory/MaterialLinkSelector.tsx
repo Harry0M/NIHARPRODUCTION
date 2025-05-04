@@ -1,10 +1,12 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { showToast } from "@/components/ui/enhanced-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Plus, Search, Check } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 
 interface Material {
   id: string;
@@ -34,6 +36,16 @@ export const MaterialLinkSelector = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const [debugMode, setDebugMode] = useState(false);
   const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredMaterials = materials.filter(material => {
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      material.material_type.toLowerCase().includes(searchLower) || 
+      (material.color && material.color.toLowerCase().includes(searchLower)) ||
+      (material.gsm && material.gsm.toLowerCase().includes(searchLower))
+    );
+  });
 
   const handleUpdateMaterial = async () => {
     if (!selectedMaterialId || !componentId) {
@@ -116,33 +128,76 @@ export const MaterialLinkSelector = ({
   };
 
   return (
-    <div className="space-y-4 border p-4 rounded-md bg-muted/20">
-      <div className="space-y-2">
-        <label htmlFor="material-select" className="text-sm font-medium">
-          Select Material
-        </label>
-        <Select onValueChange={setSelectedMaterialId} value={selectedMaterialId || undefined}>
-          <SelectTrigger id="material-select" className="w-full">
-            <SelectValue placeholder="Select a material" />
-          </SelectTrigger>
-          <SelectContent>
-            {isLoading ? (
-              <SelectItem value="loading" disabled>Loading materials...</SelectItem>
-            ) : materials.length === 0 ? (
-              <SelectItem value="none" disabled>No matching materials found</SelectItem>
-            ) : (
-              materials.map((material) => (
-                <SelectItem key={material.id} value={material.id}>
-                  {material.material_type} 
-                  {material.color ? ` - ${material.color}` : ''} 
-                  {material.gsm ? ` ${material.gsm}` : ''}
-                </SelectItem>
-              ))
-            )}
-          </SelectContent>
-        </Select>
+    <div className="space-y-4">
+      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-5 border border-blue-100 shadow-sm">
+        <h3 className="text-lg font-medium text-blue-800 mb-2">Link Material</h3>
+        <p className="text-sm text-slate-600 mb-4">
+          Select a material to link to this component. This will update the component with material properties.
+        </p>
+
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder="Search materials..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 bg-white border-slate-200"
+          />
+        </div>
+        
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          </div>
+        ) : filteredMaterials.length === 0 ? (
+          <div className="text-center py-8 bg-white rounded-md">
+            <p className="text-slate-500">No materials found matching your search.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-64 overflow-y-auto p-2">
+            {filteredMaterials.map((material) => (
+              <Card
+                key={material.id}
+                className={`cursor-pointer transition-all p-3 hover:shadow-md ${
+                  selectedMaterialId === material.id 
+                    ? 'border-2 border-blue-500 bg-blue-50' 
+                    : 'border border-slate-200 bg-white'
+                }`}
+                onClick={() => setSelectedMaterialId(material.id)}
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-medium text-slate-900">{material.material_type}</h4>
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      {material.color && (
+                        <Badge variant="outline" className="bg-white">
+                          {material.color}
+                        </Badge>
+                      )}
+                      {material.gsm && (
+                        <Badge variant="outline" className="bg-white">
+                          {material.gsm} GSM
+                        </Badge>
+                      )}
+                      {material.quantity && (
+                        <Badge variant="outline" className="bg-white">
+                          {material.quantity} {material.unit || ''}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  {selectedMaterialId === material.id && (
+                    <div className="h-6 w-6 rounded-full bg-blue-500 flex items-center justify-center">
+                      <Check className="h-4 w-4 text-white" />
+                    </div>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
-      
+
       <div className="flex justify-between items-center">
         <Button 
           variant="ghost" 
@@ -165,6 +220,7 @@ export const MaterialLinkSelector = ({
             onClick={handleUpdateMaterial} 
             disabled={!selectedMaterialId || isUpdating}
             size="sm"
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
           >
             {isUpdating ? 'Saving...' : 'Save'}
           </Button>
