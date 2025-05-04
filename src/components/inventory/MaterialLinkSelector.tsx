@@ -51,11 +51,12 @@ export const MaterialLinkSelector = ({
     try {
       console.log("Linking material ID:", selectedMaterialId, "to component:", componentId);
       
-      // Directly update the component with the selected material ID
+      // Directly update the component with the selected material ID and set material_linked to true
       const { data: updateData, error: updateError } = await supabase
         .from("catalog_components")
         .update({ 
           material_id: selectedMaterialId,
+          material_linked: true,  // Set the flag to indicate material is linked
           updated_at: new Date().toISOString()
         })
         .eq("id", componentId)
@@ -72,7 +73,7 @@ export const MaterialLinkSelector = ({
       // Verify the update was successful
       const { data: verifyData, error: verifyError } = await supabase
         .from("catalog_components")
-        .select("material_id")
+        .select("material_id, material_linked")
         .eq("id", componentId)
         .single();
       
@@ -82,9 +83,13 @@ export const MaterialLinkSelector = ({
         throw new Error("Could not verify the update was successful");
       }
       
-      if (verifyData.material_id !== selectedMaterialId) {
-        console.error("Update verification failed: Material ID doesn't match what was set");
-        setDebugInfo({ error: "verification_mismatch", expected: selectedMaterialId, actual: verifyData.material_id });
+      if (verifyData.material_id !== selectedMaterialId || verifyData.material_linked !== true) {
+        console.error("Update verification failed: Material ID or linked status doesn't match what was set");
+        setDebugInfo({ 
+          error: "verification_mismatch", 
+          expected: { id: selectedMaterialId, linked: true }, 
+          actual: { id: verifyData.material_id, linked: verifyData.material_linked }
+        });
         throw new Error("Material was not properly linked. Please try again.");
       }
       

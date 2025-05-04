@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AlertCircle } from "lucide-react";
 
 export interface Material {
   id: string;
@@ -31,6 +32,7 @@ export interface CatalogComponent {
   width?: number | null;
   consumption?: number | null;
   material_id?: string | null;
+  material_linked?: boolean | null;
   material?: Material;
 }
 
@@ -47,6 +49,31 @@ export const ComponentsTable = ({ components, onViewComponent }: ComponentsTable
     chain: "Chain",
     runner: "Runner",
     custom: "Custom"
+  };
+
+  // Helper to determine the badge style based on material status
+  const getMaterialBadgeProps = (component: CatalogComponent) => {
+    if (component.material) {
+      return {
+        variant: "outline" as const,
+        className: "font-normal"
+      };
+    } else if (component.material_id && component.material_linked) {
+      return {
+        variant: "outline" as const,
+        className: "font-normal bg-yellow-50 text-amber-800 border-amber-300"
+      };
+    } else if (component.material_id && !component.material_linked) {
+      return {
+        variant: "outline" as const,
+        className: "font-normal bg-blue-50 text-blue-800 border-blue-300"
+      };
+    } else {
+      return {
+        variant: "outline" as const,
+        className: "font-normal text-muted-foreground"
+      };
+    }
   };
 
   return (
@@ -81,17 +108,26 @@ export const ComponentsTable = ({ components, onViewComponent }: ComponentsTable
               <TableCell>{component.gsm || 'N/A'}</TableCell>
               <TableCell>
                 {component.material ? (
-                  <Badge variant="outline" className="font-normal">
+                  <Badge {...getMaterialBadgeProps(component)}>
                     {component.material.material_type} 
                     {component.material.color ? ` - ${component.material.color}` : ''}
                     {component.material.gsm ? ` ${component.material.gsm}` : ''}
                   </Badge>
+                ) : component.material_id && component.material_linked ? (
+                  <div className="flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3 text-amber-500" />
+                    <Badge {...getMaterialBadgeProps(component)}>
+                      Material reference issue
+                    </Badge>
+                  </div>
                 ) : component.material_id ? (
-                  <Badge variant="outline" className="font-normal bg-yellow-50">
-                    Material ID: {component.material_id.substring(0, 8)}...
+                  <Badge {...getMaterialBadgeProps(component)}>
+                    Material ID: {component.material_id.substring(0, 8)}... (not linked)
                   </Badge>
                 ) : (
-                  'No material linked'
+                  <Badge {...getMaterialBadgeProps(component)}>
+                    No material linked
+                  </Badge>
                 )}
               </TableCell>
               <TableCell className="text-right">

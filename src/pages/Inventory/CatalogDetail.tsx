@@ -9,6 +9,7 @@ import { ProductInfoCard } from "@/components/inventory/catalog/ProductInfoCard"
 import { ComponentsTable, CatalogComponent } from "@/components/inventory/catalog/ComponentsTable";
 import { ComponentDetailsDialog } from "@/components/inventory/catalog/ComponentDetailsDialog";
 import { showToast } from "@/components/ui/enhanced-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface CatalogProduct {
   id: string;
@@ -31,6 +32,7 @@ const CatalogDetail = () => {
   const [componentView, setComponentView] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: products, isLoading, refetch } = useCatalogProducts();
   const { data: inventoryItems, isLoading: isLoadingInventory } = useInventoryItems();
@@ -48,6 +50,7 @@ const CatalogDetail = () => {
         id: c.id, 
         type: c.component_type, 
         material_id: c.material_id,
+        material_linked: c.material_linked,
         material: c.material 
       }))
   );
@@ -63,7 +66,7 @@ const CatalogDetail = () => {
 
   useEffect(() => {
     // Detect if we have components with material_id but no materials
-    const hasOrphanedMaterialIds = components.some(c => c.material_id && !c.material);
+    const hasOrphanedMaterialIds = components.some(c => c.material_id && c.material_linked && !c.material);
     
     if (hasOrphanedMaterialIds) {
       console.warn("Detected components with material_id but no attached material data.");
@@ -113,15 +116,29 @@ const CatalogDetail = () => {
     
     // Force immediate refetch with no delay
     setIsRefreshing(true);
+    
+    // First invalidate the queries to ensure fresh data
+    queryClient.invalidateQueries({ queryKey: ["catalog-products"] });
+    queryClient.invalidateQueries({ queryKey: ["stock-detail", componentView] });
+    
     refetch({ cancelRefetch: true })
-      .then(() => {
-        console.log("Data refreshed after linking material");
+      .then((result) => {
+        console.log("Data refreshed after linking material:", result);
         setIsRefreshing(false);
-        showToast({
-          title: "Material linked successfully",
-          description: "The component has been updated with the selected material",
-          type: "success"
-        });
+        
+        if (result.isSuccess) {
+          showToast({
+            title: "Material linked successfully",
+            description: "The component has been updated with the selected material",
+            type: "success"
+          });
+        } else if (result.isError) {
+          showToast({
+            title: "Error refreshing data",
+            description: "Unable to reload data. Please try manually refreshing.",
+            type: "error"
+          });
+        }
       })
       .catch(error => {
         console.error("Error refetching data:", error);
@@ -143,14 +160,27 @@ const CatalogDetail = () => {
     setIsRefreshing(true);
     
     // Clear cache and force refetch
+    queryClient.invalidateQueries({ queryKey: ["catalog-products"] });
+    queryClient.invalidateQueries({ queryKey: ["stock-detail"] });
+    queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
+    
     refetch({ cancelRefetch: true, throwOnError: true })
-      .then(() => {
+      .then((result) => {
         setIsRefreshing(false);
-        showToast({
-          title: "Data refreshed",
-          description: "The product details have been refreshed",
-          type: "success"
-        });
+        
+        if (result.isSuccess) {
+          showToast({
+            title: "Data refreshed",
+            description: "The product details have been refreshed",
+            type: "success"
+          });
+        } else if (result.isError) {
+          showToast({
+            title: "Error refreshing data",
+            description: result.error?.message || "An error occurred while refreshing the data",
+            type: "error"
+          });
+        }
       })
       .catch(error => {
         setIsRefreshing(false);

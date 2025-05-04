@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle 
 } from "@/components/ui/dialog";
-import { AlertCircle, LinkIcon } from "lucide-react";
+import { AlertCircle, LinkIcon, LoaderCircle } from "lucide-react";
 import { MaterialLinkSelector } from "@/components/inventory/MaterialLinkSelector";
 import { CatalogComponent } from "./ComponentsTable";
 
@@ -49,6 +49,7 @@ export const ComponentDetailsDialog = ({
   console.log("ComponentDetailsDialog - Selected Component:", selectedComponent);
   if (selectedComponent) {
     console.log("  - material_id:", selectedComponent.material_id);
+    console.log("  - material_linked:", selectedComponent.material_linked);
     console.log("  - material object:", selectedComponent.material);
   }
 
@@ -120,6 +121,11 @@ export const ComponentDetailsDialog = ({
                   onCancel={() => setIsLinkingMaterial(false)}
                   isLoading={isLoadingInventory}
                 />
+              ) : isLoadingInventory ? (
+                <div className="p-3 bg-muted rounded-md flex items-center justify-center gap-2">
+                  <LoaderCircle className="h-5 w-5 animate-spin text-primary" />
+                  <span>Loading material information...</span>
+                </div>
               ) : (
                 <>
                   {selectedComponent.material ? (
@@ -143,7 +149,7 @@ export const ComponentDetailsDialog = ({
                         </p>
                       </div>
                     </div>
-                  ) : selectedComponent.material_id ? (
+                  ) : selectedComponent.material_id && selectedComponent.material_linked ? (
                     <div className="p-3 bg-yellow-50 rounded-md text-amber-800 flex items-start gap-2">
                       <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
                       <div>
@@ -151,6 +157,25 @@ export const ComponentDetailsDialog = ({
                         <p className="text-sm">
                           Material ID exists ({selectedComponent.material_id.substring(0, 8)}...) but the material details couldn't be loaded. 
                           This may happen if the material has been deleted or if there's a permission issue.
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="mt-2" 
+                          onClick={handleLinkMaterial}
+                        >
+                          Link Different Material
+                        </Button>
+                      </div>
+                    </div>
+                  ) : selectedComponent.material_id ? (
+                    <div className="p-3 bg-blue-50 rounded-md text-blue-800 flex items-start gap-2">
+                      <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="font-semibold">Material ID found but not properly linked</p>
+                        <p className="text-sm">
+                          This component has a reference to a material ({selectedComponent.material_id.substring(0, 8)}...) 
+                          but the linking process was not completed. Click "Link Material" to associate it properly.
                         </p>
                       </div>
                     </div>

@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -23,6 +24,7 @@ interface CatalogComponent {
   width?: number | null;
   consumption?: number | null;
   material_id?: string | null;
+  material_linked?: boolean | null;
   material?: Material | null;
   catalog_id?: string;
 }
@@ -84,6 +86,7 @@ export const useCatalogProducts = () => {
       const productIds = catalogData.map(product => product.id);
       
       // Fetch all components for these products in a single query
+      // Include material_linked field in the query
       const { data: componentsData, error: componentsError } = await supabase
         .from("catalog_components")
         .select(`
@@ -98,7 +101,8 @@ export const useCatalogProducts = () => {
           length,
           width,
           consumption,
-          material_id
+          material_id,
+          material_linked
         `)
         .in('catalog_id', productIds);
         
@@ -162,13 +166,16 @@ export const useCatalogProducts = () => {
           componentsByProduct[component.catalog_id] = [];
         }
         
-        // Add material data to the component if available
+        // Add material data to the component if available and material_linked is true
         const componentWithMaterial = {
           ...component,
-          material: component.material_id ? materialsMap[component.material_id] || null : null
+          material: (component.material_id && component.material_linked) 
+            ? materialsMap[component.material_id] || null 
+            : null
         } as CatalogComponent;
         
         console.log(`Component ${component.id} has material_id:`, component.material_id);
+        console.log(`Component ${component.id} material_linked:`, component.material_linked);
         console.log(`Associated material:`, componentWithMaterial.material);
         
         componentsByProduct[component.catalog_id].push(componentWithMaterial);
@@ -182,7 +189,7 @@ export const useCatalogProducts = () => {
       console.log("Final catalog products with components:", typedProducts);
       return typedProducts;
     },
-    staleTime: 10000, // 10 seconds before refetching the same data
+    staleTime: 5000, // Reduce stale time to 5 seconds for more frequent updates
   });
 };
 
