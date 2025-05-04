@@ -37,7 +37,7 @@ export const VendorSupplierFields = ({ suppliers, vendors }: VendorSupplierField
             <Select 
               onValueChange={field.onChange} 
               defaultValue={field.value}
-              value={field.value || ""}
+              value={field.value || undefined}
             >
               <FormControl>
                 <SelectTrigger>
@@ -45,7 +45,7 @@ export const VendorSupplierFields = ({ suppliers, vendors }: VendorSupplierField
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 {suppliers?.map((supplier) => (
                   <SelectItem key={supplier.id} value={supplier.id}>
                     {supplier.name}
@@ -67,7 +67,7 @@ export const VendorSupplierFields = ({ suppliers, vendors }: VendorSupplierField
             <Select 
               onValueChange={field.onChange} 
               defaultValue={field.value}
-              value={field.value || ""}
+              value={field.value || undefined}
             >
               <FormControl>
                 <SelectTrigger>
@@ -75,7 +75,7 @@ export const VendorSupplierFields = ({ suppliers, vendors }: VendorSupplierField
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 {vendors?.map((vendor) => (
                   <SelectItem key={vendor.id} value={vendor.id}>
                     {vendor.name}

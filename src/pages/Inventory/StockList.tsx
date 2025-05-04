@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2 } from "lucide-react";
@@ -148,6 +147,22 @@ const StockList = () => {
     }
   };
 
+  // Function to initiate deletion process from detail dialog
+  const handleInitiateDelete = async (stockId: string) => {
+    if (!stockId) return;
+    
+    // Check if this inventory has transactions
+    const hasRelatedTransactions = await checkForTransactions(stockId);
+    setHasTransactions(hasRelatedTransactions);
+    setDeleteWithTransactions(false);
+    
+    // Set the ID of the stock item to delete
+    setDeletingStockId(stockId);
+    
+    // Open the delete confirmation dialog
+    setIsDeleteDialogOpen(true);
+  };
+
   return (
     <Card>
       <div className="p-4 flex justify-between items-center">
@@ -237,7 +252,7 @@ const StockList = () => {
         onEdit={() => navigate(`/inventory/stock/${selectedStockId}/edit`)}
         onDelete={() => {
           if (selectedStockId) {
-            confirmDeleteJobCard(selectedStockId);
+            handleInitiateDelete(selectedStockId);
           }
         }}
       />
