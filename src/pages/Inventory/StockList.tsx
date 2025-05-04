@@ -184,7 +184,7 @@ const StockList = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Material Type</TableHead>
+                <TableHead>Material Name</TableHead>
                 <TableHead>Color</TableHead>
                 <TableHead>GSM</TableHead>
                 <TableHead>Quantity</TableHead>
@@ -209,14 +209,14 @@ const StockList = () => {
                   className="cursor-pointer hover:bg-muted"
                   onClick={() => handleStockClick(item.id)}
                 >
-                  <TableCell>{item.material_type}</TableCell>
+                  <TableCell>{item.material_name}</TableCell>
                   <TableCell>{item.color || 'N/A'}</TableCell>
                   <TableCell>{item.gsm || 'N/A'}</TableCell>
                   <TableCell>{item.quantity} {item.unit}</TableCell>
                   {stock?.some(i => i.alternate_unit) && (
                     <TableCell>
                       {item.alternate_unit ? 
-                        `${(item.quantity * (item.conversion_rate || 1)).toFixed(2)} ${item.alternate_unit}` : 
+                        `${(item.quantity * (item.conversion_rate || 0)).toFixed(2)} ${item.alternate_unit}` : 
                         'N/A'}
                     </TableCell>
                   )}
@@ -231,7 +231,7 @@ const StockList = () => {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={(e) => handleDeleteClick(e, item.id, item.material_type)}
+                      onClick={(e) => handleDeleteClick(e, item.id, item.material_name)}
                       className="h-8 w-8 p-0"
                     >
                       <Trash2 className="h-4 w-4" />

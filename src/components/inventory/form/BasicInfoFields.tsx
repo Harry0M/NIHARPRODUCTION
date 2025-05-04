@@ -9,6 +9,14 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { predefinedColors } from "./StockFormSchema";
 
 export const BasicInfoFields = () => {
   const { control } = useFormContext();
@@ -18,10 +26,10 @@ export const BasicInfoFields = () => {
       <h3 className="text-lg font-medium">Basic Information</h3>
       <FormField
         control={control}
-        name="material_type"
+        name="material_name"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Material Type</FormLabel>
+            <FormLabel>Material Name</FormLabel>
             <FormControl>
               <Input placeholder="Fabric, Thread, Zipper, etc" {...field} />
             </FormControl>
@@ -35,9 +43,37 @@ export const BasicInfoFields = () => {
         render={({ field }) => (
           <FormItem>
             <FormLabel>Color</FormLabel>
-            <FormControl>
-              <Input placeholder="Red, Blue, Green, etc" {...field} />
-            </FormControl>
+            <Select
+              onValueChange={field.onChange}
+              value={field.value || ""}
+            >
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a color" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {predefinedColors.map((color) => (
+                  <SelectItem key={color} value={color}>
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-4 h-4 rounded-full" 
+                        style={{ backgroundColor: color.toLowerCase() }}
+                      />
+                      <span>{color}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+                <SelectItem value="custom">Custom...</SelectItem>
+              </SelectContent>
+            </Select>
+            {field.value === "custom" && (
+              <Input 
+                placeholder="Enter custom color" 
+                className="mt-2"
+                onChange={(e) => field.onChange(e.target.value)}
+              />
+            )}
             <FormMessage />
           </FormItem>
         )}

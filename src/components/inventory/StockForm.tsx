@@ -8,7 +8,6 @@ import { QuantityUnitFields } from "./form/QuantityUnitFields";
 import { AlternateUnitFields } from "./form/AlternateUnitFields";
 import { CostTrackingFields } from "./form/CostTrackingFields";
 import { AdditionalInfoFields } from "./form/AdditionalInfoFields";
-import { VendorSupplierFields } from "./form/VendorSupplierFields";
 import { useStockForm } from "./form/useStockForm";
 import { Loader2 } from "lucide-react";
 
@@ -21,7 +20,6 @@ export const StockForm = ({ stockId }: StockFormProps) => {
     form,
     onSubmit,
     suppliers,
-    vendors,
     hasAlternateUnit,
     setHasAlternateUnit,
     trackCost,
@@ -74,13 +72,7 @@ export const StockForm = ({ stockId }: StockFormProps) => {
                   />
                 </div>
                 <div>
-                  <VendorSupplierFields 
-                    suppliers={suppliers} 
-                    vendors={vendors} 
-                  />
-                  <div className="mt-6">
-                    <AdditionalInfoFields suppliers={suppliers} />
-                  </div>
+                  <AdditionalInfoFields suppliers={suppliers} />
                 </div>
               </div>
             </CardContent>

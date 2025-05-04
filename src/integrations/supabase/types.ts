@@ -429,7 +429,7 @@ export type Database = {
           gsm: string | null
           id: string
           location_id: string | null
-          material_type: string
+          material_name: string
           min_stock_level: number | null
           purchase_price: number | null
           quantity: number
@@ -443,7 +443,6 @@ export type Database = {
           track_cost: boolean | null
           unit: string
           updated_at: string
-          vendor_id: string | null
         }
         Insert: {
           alternate_unit?: string | null
@@ -454,7 +453,7 @@ export type Database = {
           gsm?: string | null
           id?: string
           location_id?: string | null
-          material_type: string
+          material_name: string
           min_stock_level?: number | null
           purchase_price?: number | null
           quantity?: number
@@ -468,7 +467,6 @@ export type Database = {
           track_cost?: boolean | null
           unit: string
           updated_at?: string
-          vendor_id?: string | null
         }
         Update: {
           alternate_unit?: string | null
@@ -479,7 +477,7 @@ export type Database = {
           gsm?: string | null
           id?: string
           location_id?: string | null
-          material_type?: string
+          material_name?: string
           min_stock_level?: number | null
           purchase_price?: number | null
           quantity?: number
@@ -493,7 +491,6 @@ export type Database = {
           track_cost?: boolean | null
           unit?: string
           updated_at?: string
-          vendor_id?: string | null
         }
         Relationships: [
           {
@@ -515,13 +512,6 @@ export type Database = {
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "inventory_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]

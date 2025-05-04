@@ -10,6 +10,14 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { allUnits } from "./StockFormSchema";
 
 export const AlternateUnitFields = () => {
   const { control, watch } = useFormContext();
@@ -22,9 +30,31 @@ export const AlternateUnitFields = () => {
         render={({ field }) => (
           <FormItem>
             <FormLabel>Alternate Unit</FormLabel>
-            <FormControl>
-              <Input placeholder="yards, pieces, etc" {...field} />
-            </FormControl>
+            <Select
+              onValueChange={field.onChange}
+              value={field.value || ""}
+            >
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select alternate unit" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {allUnits.map((unit) => (
+                  <SelectItem key={unit} value={unit}>
+                    {unit}
+                  </SelectItem>
+                ))}
+                <SelectItem value="custom">Custom...</SelectItem>
+              </SelectContent>
+            </Select>
+            {field.value === "custom" && (
+              <Input 
+                placeholder="Enter custom unit" 
+                className="mt-2"
+                onChange={(e) => field.onChange(e.target.value)}
+              />
+            )}
             <FormMessage />
           </FormItem>
         )}
@@ -39,10 +69,10 @@ export const AlternateUnitFields = () => {
               <Input
                 type="number"
                 step="any"
-                min="0.01"
+                min="0"
                 placeholder="1 primary unit = ? alternate units"
                 {...field}
-                onChange={(e) => field.onChange(parseFloat(e.target.value) || 1)}
+                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
               />
             </FormControl>
             <FormDescription>

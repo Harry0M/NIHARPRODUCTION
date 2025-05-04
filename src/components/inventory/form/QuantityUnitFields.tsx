@@ -10,6 +10,14 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { allUnits } from "./StockFormSchema";
 
 interface QuantityUnitFieldsProps {
   hasAlternateUnit: boolean;
@@ -50,9 +58,31 @@ export const QuantityUnitFields = ({
         render={({ field }) => (
           <FormItem>
             <FormLabel>Unit</FormLabel>
-            <FormControl>
-              <Input placeholder="meters, kg, pieces, etc" {...field} />
-            </FormControl>
+            <Select
+              onValueChange={field.onChange}
+              value={field.value || ""}
+            >
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select unit" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {allUnits.map((unit) => (
+                  <SelectItem key={unit} value={unit}>
+                    {unit}
+                  </SelectItem>
+                ))}
+                <SelectItem value="custom">Custom...</SelectItem>
+              </SelectContent>
+            </Select>
+            {field.value === "custom" && (
+              <Input 
+                placeholder="Enter custom unit" 
+                className="mt-2"
+                onChange={(e) => field.onChange(e.target.value)}
+              />
+            )}
             <FormMessage />
           </FormItem>
         )}
