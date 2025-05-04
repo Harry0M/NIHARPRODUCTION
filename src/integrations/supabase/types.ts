@@ -22,8 +22,10 @@ export type Database = {
           description: string | null
           height: number | null
           id: string
+          margin: number | null
           name: string
           printing_charge: number | null
+          selling_rate: number | null
           stitching_charge: number | null
           total_cost: number | null
           transport_charge: number | null
@@ -41,8 +43,10 @@ export type Database = {
           description?: string | null
           height?: number | null
           id?: string
+          margin?: number | null
           name: string
           printing_charge?: number | null
+          selling_rate?: number | null
           stitching_charge?: number | null
           total_cost?: number | null
           transport_charge?: number | null
@@ -60,8 +64,10 @@ export type Database = {
           description?: string | null
           height?: number | null
           id?: string
+          margin?: number | null
           name?: string
           printing_charge?: number | null
+          selling_rate?: number | null
           stitching_charge?: number | null
           total_cost?: number | null
           transport_charge?: number | null
@@ -432,6 +438,7 @@ export type Database = {
           material_name: string
           min_stock_level: number | null
           purchase_price: number | null
+          purchase_rate: number | null
           quantity: number
           rate: number | null
           reorder_level: number | null
@@ -456,6 +463,7 @@ export type Database = {
           material_name: string
           min_stock_level?: number | null
           purchase_price?: number | null
+          purchase_rate?: number | null
           quantity?: number
           rate?: number | null
           reorder_level?: number | null
@@ -480,6 +488,7 @@ export type Database = {
           material_name?: string
           min_stock_level?: number | null
           purchase_price?: number | null
+          purchase_rate?: number | null
           quantity?: number
           rate?: number | null
           reorder_level?: number | null
