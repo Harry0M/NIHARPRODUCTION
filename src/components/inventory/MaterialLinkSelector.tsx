@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Material } from "@/components/inventory/catalog/ComponentsTable";
+import { MaterialSearchBar } from "./material-selector/MaterialSearchBar";
+import { MaterialGrid } from "./material-selector/MaterialGrid";
+import { DebugPanel } from "./material-selector/DebugPanel";
 
 interface MaterialLinkSelectorProps {
   componentId: string;
@@ -137,109 +140,78 @@ export const MaterialLinkSelector = ({
           Select a material to link to this component. This will update the component with material properties.
         </p>
 
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-          <Input
-            placeholder="Search materials..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 bg-white border-slate-200"
-          />
-        </div>
+        <MaterialSearchBar 
+          searchQuery={searchQuery} 
+          setSearchQuery={setSearchQuery} 
+        />
         
-        {isLoading ? (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          </div>
-        ) : filteredMaterials.length === 0 ? (
-          <div className="text-center py-8 bg-white rounded-md">
-            <p className="text-slate-500">No materials found matching your search.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-64 overflow-y-auto p-2">
-            {filteredMaterials.map((material) => (
-              <Card
-                key={material.id}
-                className={`cursor-pointer transition-all p-3 hover:shadow-md ${
-                  selectedMaterialId === material.id 
-                    ? 'border-2 border-blue-500 bg-blue-50' 
-                    : 'border border-slate-200 bg-white'
-                }`}
-                onClick={() => setSelectedMaterialId(material.id)}
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="font-medium text-slate-900">{material.material_name}</h4>
-                    <div className="mt-1 flex flex-wrap gap-2">
-                      {material.color && (
-                        <Badge variant="outline" className="bg-white">
-                          {material.color}
-                        </Badge>
-                      )}
-                      {material.gsm && (
-                        <Badge variant="outline" className="bg-white">
-                          {material.gsm} GSM
-                        </Badge>
-                      )}
-                      {material.quantity && (
-                        <Badge variant="outline" className="bg-white">
-                          {material.quantity} {material.unit || ''}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  {selectedMaterialId === material.id && (
-                    <div className="h-6 w-6 rounded-full bg-blue-500 flex items-center justify-center">
-                      <Check className="h-4 w-4 text-white" />
-                    </div>
-                  )}
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
+        <MaterialGrid 
+          isLoading={isLoading}
+          filteredMaterials={filteredMaterials}
+          selectedMaterialId={selectedMaterialId}
+          setSelectedMaterialId={setSelectedMaterialId}
+        />
       </div>
 
-      <div className="flex justify-between items-center">
-        <Button 
-          variant="ghost" 
-          size="sm"
-          onClick={() => setDebugMode(!debugMode)}
-          type="button"
-        >
-          {debugMode ? "Hide Debug" : "Debug Info"}
-        </Button>
-        
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={onCancel}
-            size="sm"
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleUpdateMaterial} 
-            disabled={!selectedMaterialId || isUpdating}
-            size="sm"
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-          >
-            {isUpdating ? 'Saving...' : 'Save'}
-          </Button>
-        </div>
-      </div>
+      <ActionButtons 
+        debugMode={debugMode}
+        setDebugMode={setDebugMode}
+        onCancel={onCancel}
+        handleUpdateMaterial={handleUpdateMaterial}
+        isUpdating={isUpdating}
+        selectedMaterialId={selectedMaterialId}
+      />
       
-      {debugMode && debugInfo && (
-        <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded text-sm">
-          <div className="flex items-start gap-2 mb-2">
-            <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5" />
-            <div className="font-medium text-amber-800">Debug Information</div>
-          </div>
-          <pre className="text-xs overflow-auto max-h-40 bg-white p-2 rounded">
-            {JSON.stringify(debugInfo, null, 2)}
-          </pre>
-        </div>
-      )}
+      <DebugPanel 
+        debugMode={debugMode} 
+        debugInfo={debugInfo} 
+      />
     </div>
   );
 };
+
+// Action buttons component
+const ActionButtons = ({ 
+  debugMode, 
+  setDebugMode, 
+  onCancel, 
+  handleUpdateMaterial,
+  isUpdating,
+  selectedMaterialId
+}: {
+  debugMode: boolean;
+  setDebugMode: (mode: boolean) => void;
+  onCancel: () => void;
+  handleUpdateMaterial: () => Promise<void>;
+  isUpdating: boolean;
+  selectedMaterialId: string | null;
+}) => (
+  <div className="flex justify-between items-center">
+    <Button 
+      variant="ghost" 
+      size="sm"
+      onClick={() => setDebugMode(!debugMode)}
+      type="button"
+    >
+      {debugMode ? "Hide Debug" : "Debug Info"}
+    </Button>
+    
+    <div className="flex gap-2">
+      <Button 
+        variant="outline" 
+        onClick={onCancel}
+        size="sm"
+      >
+        Cancel
+      </Button>
+      <Button 
+        onClick={handleUpdateMaterial} 
+        disabled={!selectedMaterialId || isUpdating}
+        size="sm"
+        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+      >
+        {isUpdating ? 'Saving...' : 'Save'}
+      </Button>
+    </div>
+  </div>
+);
