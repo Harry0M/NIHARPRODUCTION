@@ -19,7 +19,7 @@ import {
 import { predefinedColors } from "./StockFormSchema";
 
 export const BasicInfoFields = () => {
-  const { control } = useFormContext();
+  const { control, formState } = useFormContext();
 
   return (
     <div className="space-y-4">
@@ -29,7 +29,9 @@ export const BasicInfoFields = () => {
         name="material_name"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Material Name</FormLabel>
+            <FormLabel className="flex items-center">
+              Material Name <span className="text-red-500 ml-1">*</span>
+            </FormLabel>
             <FormControl>
               <Input placeholder="Fabric, Thread, Zipper, etc" {...field} />
             </FormControl>

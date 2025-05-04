@@ -28,7 +28,7 @@ export const QuantityUnitFields = ({
   hasAlternateUnit,
   onAlternateUnitChange,
 }: QuantityUnitFieldsProps) => {
-  const { control } = useFormContext();
+  const { control, formState } = useFormContext();
 
   return (
     <div className="space-y-4">
@@ -57,10 +57,13 @@ export const QuantityUnitFields = ({
         name="unit"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Unit</FormLabel>
+            <FormLabel className="flex items-center">
+              Unit <span className="text-red-500 ml-1">*</span>
+            </FormLabel>
             <Select
               onValueChange={field.onChange}
               value={field.value || ""}
+              defaultValue={field.value}
             >
               <FormControl>
                 <SelectTrigger>

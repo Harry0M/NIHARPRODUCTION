@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -46,6 +45,7 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
   const form = useForm<StockFormValues>({
     resolver: zodResolver(stockFormSchema),
     defaultValues,
+    mode: "onChange" // Update to validate on change
   });
 
   // Set form values when editing an existing stock item
@@ -72,27 +72,32 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
 
   const createStockMutation = useMutation({
     mutationFn: async (values: StockFormValues) => {
-      // Ensure required fields are present
-      if (!values.material_name || !values.quantity || !values.unit) {
-        throw new Error("Required fields are missing");
+      // Make sure all required fields are present and valid
+      if (!values.material_name || values.material_name.trim() === '') {
+        throw new Error("Material name is required");
+      }
+
+      if (!values.unit || values.unit.trim() === '') {
+        throw new Error("Unit is required");
       }
 
       // Create a properly typed object for insertion
       const stockData = {
-        material_name: values.material_name,
+        material_name: values.material_name.trim(),
         color: values.color || null,
         gsm: values.gsm || null,
         quantity: values.quantity,
         unit: values.unit,
-        alternate_unit: values.alternate_unit || null,
-        conversion_rate: values.conversion_rate || 0,
-        track_cost: values.track_cost || false,
-        purchase_price: values.purchase_price || null,
-        selling_price: values.selling_price || null,
-        supplier_id: values.supplier_id || null,
+        alternate_unit: hasAlternateUnit ? values.alternate_unit || null : null,
+        conversion_rate: hasAlternateUnit ? values.conversion_rate || 0 : 0,
+        track_cost: trackCost,
+        purchase_price: trackCost ? values.purchase_price || null : null,
+        selling_price: trackCost ? values.selling_price || null : null,
+        supplier_id: values.supplier_id && values.supplier_id !== "" && values.supplier_id !== "none" ? values.supplier_id : null,
         reorder_level: values.reorder_level || null,
       };
       
+      console.log("Submitting stock data:", stockData);
       const { data, error } = await supabase.from("inventory").insert(stockData).select();
       if (error) throw error;
       return data;
@@ -109,7 +114,7 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
       console.error("Error creating stock:", error);
       toast({
         title: "Failed to create stock",
-        description: "There was an error creating the stock item",
+        description: error instanceof Error ? error.message : "There was an error creating the stock item",
         variant: "destructive",
       });
     },
@@ -168,25 +173,34 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
   });
 
   const onSubmit = (values: StockFormValues) => {
-    // Prepare the values for submission
-    const submissionValues = { ...values };
+    // Log the form values before submission
+    console.log("Form values before submission:", values);
+    
+    // Make sure the values are correct before submission
+    const submissionValues = { 
+      ...values,
+      material_name: values.material_name.trim(),
+      unit: values.unit.trim(), 
+    };
 
     // Remove alternate unit data if not using it
     if (!hasAlternateUnit) {
-      submissionValues.alternate_unit = undefined;
-      submissionValues.conversion_rate = undefined;
+      submissionValues.alternate_unit = '';
+      submissionValues.conversion_rate = 0;
     }
 
     // Remove cost tracking data if not using it
     if (!trackCost) {
-      submissionValues.purchase_price = undefined;
-      submissionValues.selling_price = undefined;
+      submissionValues.purchase_price = 0;
+      submissionValues.selling_price = 0;
     }
 
     // Handle empty value for supplier_id
-    if (submissionValues.supplier_id === "") {
-      submissionValues.supplier_id = undefined;
+    if (submissionValues.supplier_id === "" || submissionValues.supplier_id === "none") {
+      submissionValues.supplier_id = "";
     }
+
+    console.log("Submitting values:", submissionValues);
 
     if (stockId) {
       updateStockMutation.mutate(submissionValues);
