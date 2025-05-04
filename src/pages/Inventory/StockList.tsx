@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2 } from "lucide-react";
@@ -249,7 +250,12 @@ const StockList = () => {
         stockId={selectedStockId}
         open={isDetailDialogOpen}
         onOpenChange={setIsDetailDialogOpen}
-        onEdit={() => navigate(`/inventory/stock/${selectedStockId}/edit`)}
+        onEdit={() => {
+          if (selectedStockId) {
+            navigate(`/inventory/stock/${selectedStockId}/edit`);
+            setIsDetailDialogOpen(false);
+          }
+        }}
         onDelete={() => {
           if (selectedStockId) {
             handleInitiateDelete(selectedStockId);

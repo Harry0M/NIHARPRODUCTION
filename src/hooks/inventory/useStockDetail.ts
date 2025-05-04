@@ -16,6 +16,8 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     queryFn: async () => {
       if (!stockId) return null;
       
+      console.log("Fetching stock details for ID:", stockId);
+      
       const { data, error } = await supabase
         .from("inventory")
         .select("*, suppliers(name), vendors(name)")
@@ -26,6 +28,8 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
         console.error("Error fetching stock details:", error);
         throw error;
       }
+      
+      console.log("Stock details fetched:", data);
       return data;
     },
     enabled: !!stockId,

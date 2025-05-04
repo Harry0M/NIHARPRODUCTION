@@ -4,6 +4,8 @@ import { StockForm } from "@/components/inventory/StockForm";
 
 const StockDetail = () => {
   const { id } = useParams<{ id: string }>();
+  
+  console.log("Stock detail page opened with ID:", id);
 
   return (
     <div className="space-y-6">

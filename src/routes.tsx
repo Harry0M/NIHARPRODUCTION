@@ -1,4 +1,3 @@
-
 import { Navigate } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import AuthLayout from "@/components/layout/AuthLayout";
@@ -63,6 +62,7 @@ const routes = [
               { path: "", element: <Navigate to="stock" replace /> },
               { path: "stock", element: <StockList /> },
               { path: "stock/new", element: <StockNew /> },
+              { path: "stock/:id/edit", element: <StockDetail /> },
               { path: "stock/:id", element: <StockDetail /> },
               { path: "catalog", element: <CatalogList /> },
               { path: "catalog/new", element: <CatalogNew /> },
