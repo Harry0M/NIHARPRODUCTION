@@ -66,72 +66,24 @@ export const MaterialLinkSelector = ({
         throw new Error(`Component verification failed: ${componentCheckError.message}`);
       }
 
-      // Update with explicit fields selection for better tracking
-      const { data: updateData, error: updateError } = await supabase
-        .from("catalog_components")
-        .update({
-          material_id: selectedMaterialId,
-          material_linked: true,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", componentId)
-        .select();
+      // Use the RPC function to update the material link
+      const { data: updateResult, error: rpcError } = await supabase
+        .rpc('update_component_material', {
+          component_id: componentId,
+          material_id: selectedMaterialId
+        });
       
-      if (updateError) {
-        console.error("Error linking material:", updateError);
-        setDebugInfo({ error: "component_update_error", details: updateError });
-        throw new Error(`Update failed: ${updateError.message}`);
+      if (rpcError) {
+        console.error("Error using update_component_material RPC:", rpcError);
+        setDebugInfo({ error: "rpc_error", details: rpcError });
+        throw new Error(`Material link update failed: ${rpcError.message}`);
       }
       
-      console.log("Component update response:", updateData);
-      
-      // Improved verification with direct comparison of expected values
-      const { data: verifyData, error: verifyError } = await supabase
-        .from("catalog_components")
-        .select("material_id, material_linked")
-        .eq("id", componentId)
-        .single();
-      
-      if (verifyError) {
-        console.error("Error verifying update:", verifyError);
-        setDebugInfo({ error: "verification_error", details: verifyError });
-        throw new Error("Could not verify the update was successful");
-      }
-      
-      // Strict equality check for both fields
-      if (verifyData.material_id !== selectedMaterialId || verifyData.material_linked !== true) {
-        console.error("Update verification failed", {
-          expected: { id: selectedMaterialId, linked: true },
-          actual: { id: verifyData.material_id, linked: verifyData.material_linked }
-        });
-        
-        setDebugInfo({ 
-          error: "verification_mismatch", 
-          expected: { id: selectedMaterialId, linked: true }, 
-          actual: { id: verifyData.material_id, linked: verifyData.material_linked }
-        });
-        
-        // Try one more time with a different approach
-        const { error: retryError } = await supabase
-          .rpc('update_component_material', {
-            component_id: componentId,
-            material_id: selectedMaterialId
-          });
-          
-        if (retryError) {
-          throw new Error(`Material was not properly linked after retry: ${retryError.message}`);
-        }
-        
-        // Final verification after retry
-        const { data: finalCheck } = await supabase
-          .from("catalog_components")
-          .select("material_id, material_linked")
-          .eq("id", componentId)
-          .single();
-          
-        if (!finalCheck || finalCheck.material_id !== selectedMaterialId || finalCheck.material_linked !== true) {
-          throw new Error("Material linking failed after multiple attempts");
-        }
+      // Check the result of the RPC call (should be true if successful)
+      if (!updateResult) {
+        console.error("Material link update unsuccessful");
+        setDebugInfo({ error: "update_failed", details: "RPC call returned false" });
+        throw new Error("Material linking failed - database operation did not verify");
       }
       
       console.log("Material linking verified successful");

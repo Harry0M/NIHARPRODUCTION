@@ -1396,6 +1396,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      update_component_material: {
+        Args: { component_id: string; material_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       component_type:
