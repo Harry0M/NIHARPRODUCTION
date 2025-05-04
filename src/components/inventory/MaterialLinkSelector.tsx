@@ -55,12 +55,23 @@ export const MaterialLinkSelector = ({
     try {
       console.log("Linking material ID:", selectedMaterialId, "to component:", componentId);
       
-      // Directly update the component with the selected material ID and set material_linked to true
+      // First, verify the component exists
+      const { data: componentCheck, error: componentCheckError } = await supabase
+        .from("catalog_components")
+        .select("id")
+        .eq("id", componentId)
+        .single();
+        
+      if (componentCheckError) {
+        throw new Error(`Component verification failed: ${componentCheckError.message}`);
+      }
+
+      // Update with explicit fields selection for better tracking
       const { data: updateData, error: updateError } = await supabase
         .from("catalog_components")
-        .update({ 
+        .update({
           material_id: selectedMaterialId,
-          material_linked: true,  // Set the flag to indicate material is linked
+          material_linked: true,
           updated_at: new Date().toISOString()
         })
         .eq("id", componentId)
@@ -74,7 +85,7 @@ export const MaterialLinkSelector = ({
       
       console.log("Component update response:", updateData);
       
-      // Verify the update was successful
+      // Improved verification with direct comparison of expected values
       const { data: verifyData, error: verifyError } = await supabase
         .from("catalog_components")
         .select("material_id, material_linked")
@@ -87,14 +98,40 @@ export const MaterialLinkSelector = ({
         throw new Error("Could not verify the update was successful");
       }
       
+      // Strict equality check for both fields
       if (verifyData.material_id !== selectedMaterialId || verifyData.material_linked !== true) {
-        console.error("Update verification failed: Material ID or linked status doesn't match what was set");
+        console.error("Update verification failed", {
+          expected: { id: selectedMaterialId, linked: true },
+          actual: { id: verifyData.material_id, linked: verifyData.material_linked }
+        });
+        
         setDebugInfo({ 
           error: "verification_mismatch", 
           expected: { id: selectedMaterialId, linked: true }, 
           actual: { id: verifyData.material_id, linked: verifyData.material_linked }
         });
-        throw new Error("Material was not properly linked. Please try again.");
+        
+        // Try one more time with a different approach
+        const { error: retryError } = await supabase
+          .rpc('update_component_material', {
+            component_id: componentId,
+            material_id: selectedMaterialId
+          });
+          
+        if (retryError) {
+          throw new Error(`Material was not properly linked after retry: ${retryError.message}`);
+        }
+        
+        // Final verification after retry
+        const { data: finalCheck } = await supabase
+          .from("catalog_components")
+          .select("material_id, material_linked")
+          .eq("id", componentId)
+          .single();
+          
+        if (!finalCheck || finalCheck.material_id !== selectedMaterialId || finalCheck.material_linked !== true) {
+          throw new Error("Material linking failed after multiple attempts");
+        }
       }
       
       console.log("Material linking verified successful");
