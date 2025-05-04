@@ -45,7 +45,7 @@ const CatalogNew = () => {
     description: "",
     bag_length: "",
     bag_width: "",
-    border_dimension: "", // Added border dimension field
+    border_dimension: "", 
     default_quantity: "",
     default_rate: ""
   });
@@ -141,18 +141,24 @@ const CatalogNew = () => {
     setSubmitting(true);
     
     try {
-      // Prepare product data
+      // Format the name to include quantity if default_quantity is provided
+      let formattedName = productData.name;
+      if (productData.default_quantity) {
+        formattedName = `${productData.name}*${productData.default_quantity}`;
+      }
+      
+      // Prepare product data with formatted name
       const productDbData = {
-        name: productData.name,
+        name: formattedName,
         description: productData.description || null,
         bag_length: parseFloat(productData.bag_length),
         bag_width: parseFloat(productData.bag_width),
-        border_dimension: productData.border_dimension ? parseFloat(productData.border_dimension) : 0, // Added border dimension
+        border_dimension: productData.border_dimension ? parseFloat(productData.border_dimension) : 0,
         default_quantity: productData.default_quantity ? parseInt(productData.default_quantity) : null,
         default_rate: productData.default_rate ? parseFloat(productData.default_rate) : null
       };
       
-      // Insert the product - using 'catalog' table instead of 'catalog_products'
+      // Insert the product
       const { data: productResult, error: productError } = await supabase
         .from("catalog")
         .insert(productDbData)
@@ -171,7 +177,7 @@ const CatalogNew = () => {
       
       if (allComponents.length > 0) {
         const componentsToInsert = allComponents.map(comp => ({
-          catalog_id: productResult.id, // Changed from product_id to catalog_id
+          catalog_id: productResult.id,
           component_type: comp.type === 'custom' ? comp.customName || 'custom' : comp.type,
           size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
           color: comp.color || null,
@@ -180,7 +186,7 @@ const CatalogNew = () => {
           custom_name: comp.type === 'custom' ? comp.customName : null
         }));
 
-        // Insert components - make sure to insert into catalog_components table
+        // Insert components
         const { error: componentsError } = await supabase
           .from("catalog_components")
           .insert(componentsToInsert);
@@ -192,7 +198,7 @@ const CatalogNew = () => {
       
       toast({
         title: "Product created successfully",
-        description: `${productData.name} has been added to the catalog`
+        description: `${formattedName} has been added to the catalog`
       });
 
       navigate("/inventory/catalog");
@@ -247,6 +253,9 @@ const CatalogNew = () => {
                 placeholder="Enter product name"
                 required
               />
+              <p className="text-xs text-muted-foreground">
+                Product name without quantity (e.g., "Test Bag"). Quantity will be automatically appended if provided below.
+              </p>
             </div>
             
             <div className="space-y-2">
@@ -323,6 +332,9 @@ const CatalogNew = () => {
                   placeholder="Default order quantity"
                   min="0"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Will be shown in product name as "Product Name*Quantity"
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="default_rate">Default Rate</Label>
