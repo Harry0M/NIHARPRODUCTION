@@ -14,6 +14,7 @@ export const stockFormSchema = z.object({
   selling_price: z.number().optional(),
   supplier_id: z.string().optional(),
   reorder_level: z.number().optional(),
+  purchase_rate: z.number().optional(), // Added purchase rate field
 });
 
 export type StockFormValues = z.infer<typeof stockFormSchema>;
@@ -31,6 +32,7 @@ export const defaultValues: StockFormValues = {
   selling_price: 0,
   supplier_id: "",
   reorder_level: 0,
+  purchase_rate: 0, // Default purchase rate
 };
 
 // Define units for length and weight

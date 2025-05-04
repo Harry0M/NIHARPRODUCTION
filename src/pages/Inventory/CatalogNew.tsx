@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -48,7 +47,9 @@ const CatalogNew = () => {
     bag_width: "",
     border_dimension: "", 
     default_quantity: "",
-    default_rate: ""
+    default_rate: "",
+    selling_rate: "",
+    margin: ""
   });
   
   const [components, setComponents] = useState<Record<string, any>>({});
@@ -60,6 +61,34 @@ const CatalogNew = () => {
       ...prev,
       [name]: value
     }));
+
+    // Calculate margin when selling_rate or default_rate changes
+    if (name === "selling_rate" || name === "default_rate") {
+      const costRate = parseFloat(name === "default_rate" ? value : productData.default_rate);
+      const sellingRate = parseFloat(name === "selling_rate" ? value : productData.selling_rate);
+      
+      if (!isNaN(costRate) && !isNaN(sellingRate) && costRate > 0) {
+        const calculatedMargin = ((sellingRate - costRate) / costRate) * 100;
+        setProductData(prev => ({
+          ...prev,
+          margin: calculatedMargin.toFixed(2)
+        }));
+      }
+    }
+    
+    // Update selling_rate when margin changes
+    if (name === "margin") {
+      const costRate = parseFloat(productData.default_rate);
+      const marginValue = parseFloat(value);
+      
+      if (!isNaN(costRate) && !isNaN(marginValue) && costRate > 0) {
+        const calculatedSellingRate = costRate * (1 + (marginValue / 100));
+        setProductData(prev => ({
+          ...prev,
+          selling_rate: calculatedSellingRate.toFixed(2)
+        }));
+      }
+    }
   };
 
   const handleComponentChange = (type: string, field: string, value: string) => {
@@ -148,7 +177,7 @@ const CatalogNew = () => {
         formattedName = `${productData.name}*${productData.default_quantity}`;
       }
       
-      // Prepare product data with formatted name
+      // Prepare product data with formatted name and new fields
       const productDbData = {
         name: formattedName,
         description: productData.description || null,
@@ -156,7 +185,9 @@ const CatalogNew = () => {
         bag_width: parseFloat(productData.bag_width),
         border_dimension: productData.border_dimension ? parseFloat(productData.border_dimension) : 0,
         default_quantity: productData.default_quantity ? parseInt(productData.default_quantity) : null,
-        default_rate: productData.default_rate ? parseFloat(productData.default_rate) : null
+        default_rate: productData.default_rate ? parseFloat(productData.default_rate) : null,
+        selling_rate: productData.selling_rate ? parseFloat(productData.selling_rate) : null,
+        margin: productData.margin ? parseFloat(productData.margin) : null
       };
       
       // Insert the product
@@ -342,7 +373,7 @@ const CatalogNew = () => {
                 </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="default_rate">Default Rate</Label>
+                <Label htmlFor="default_rate">Cost Rate</Label>
                 <Input 
                   id="default_rate" 
                   name="default_rate"
@@ -350,10 +381,40 @@ const CatalogNew = () => {
                   step="0.01"
                   value={productData.default_rate}
                   onChange={handleProductChange}
-                  placeholder="Default price per bag"
+                  placeholder="Cost price per bag"
                   min="0"
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="selling_rate">Selling Rate</Label>
+                <Input 
+                  id="selling_rate" 
+                  name="selling_rate"
+                  type="number"
+                  step="0.01"
+                  value={productData.selling_rate}
+                  onChange={handleProductChange}
+                  placeholder="Selling price per bag"
+                  min="0"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="margin">Margin (%)</Label>
+              <Input 
+                id="margin" 
+                name="margin"
+                type="number"
+                step="0.01"
+                value={productData.margin}
+                onChange={handleProductChange}
+                placeholder="Profit margin percentage"
+                min="0"
+              />
+              <p className="text-xs text-muted-foreground">
+                Margin is calculated as ((Selling Rate - Cost Rate) / Cost Rate) × 100
+              </p>
             </div>
           </CardContent>
         </Card>

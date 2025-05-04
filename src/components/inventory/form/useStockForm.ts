@@ -64,6 +64,7 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
         selling_price: stockItem.selling_price || 0,
         supplier_id: stockItem.supplier_id || "",
         reorder_level: stockItem.reorder_level || 0,
+        purchase_rate: stockItem.purchase_rate || 0, // Added purchase rate
       });
       setHasAlternateUnit(!!stockItem.alternate_unit);
       setTrackCost(stockItem.track_cost || false);
@@ -95,6 +96,7 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
         selling_price: trackCost ? values.selling_price || null : null,
         supplier_id: values.supplier_id && values.supplier_id !== "" && values.supplier_id !== "none" ? values.supplier_id : null,
         reorder_level: values.reorder_level || null,
+        purchase_rate: values.purchase_rate || null, // Added purchase rate
       };
       
       console.log("Submitting stock data:", stockData);
@@ -143,6 +145,7 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
         selling_price: values.selling_price || null,
         supplier_id: values.supplier_id || null,
         reorder_level: values.reorder_level || null,
+        purchase_rate: values.purchase_rate || null, // Added purchase rate
       };
       
       const { data, error } = await supabase

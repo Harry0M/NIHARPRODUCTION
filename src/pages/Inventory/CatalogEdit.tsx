@@ -44,7 +44,9 @@ const CatalogEdit = () => {
     bag_width: "",
     border_dimension: "",
     default_quantity: "",
-    default_rate: ""
+    default_rate: "",
+    selling_rate: "",
+    margin: ""
   });
   
   const [components, setComponents] = useState<Record<string, any>>({});
@@ -61,7 +63,9 @@ const CatalogEdit = () => {
         bag_width: product.bag_width.toString(),
         border_dimension: product.border_dimension ? product.border_dimension.toString() : "",
         default_quantity: product.default_quantity ? product.default_quantity.toString() : "",
-        default_rate: product.default_rate ? product.default_rate.toString() : ""
+        default_rate: product.default_rate ? product.default_rate.toString() : "",
+        selling_rate: product.selling_rate ? product.selling_rate.toString() : "",
+        margin: product.margin ? product.margin.toString() : ""
       });
 
       // Process components from product
@@ -110,6 +114,34 @@ const CatalogEdit = () => {
       ...prev,
       [name]: value
     }));
+
+    // Calculate margin when selling_rate or default_rate changes
+    if (name === "selling_rate" || name === "default_rate") {
+      const costRate = parseFloat(name === "default_rate" ? value : productData.default_rate);
+      const sellingRate = parseFloat(name === "selling_rate" ? value : productData.selling_rate);
+      
+      if (!isNaN(costRate) && !isNaN(sellingRate) && costRate > 0) {
+        const calculatedMargin = ((sellingRate - costRate) / costRate) * 100;
+        setProductData(prev => ({
+          ...prev,
+          margin: calculatedMargin.toFixed(2)
+        }));
+      }
+    }
+    
+    // Update selling_rate when margin changes
+    if (name === "margin") {
+      const costRate = parseFloat(productData.default_rate);
+      const marginValue = parseFloat(value);
+      
+      if (!isNaN(costRate) && !isNaN(marginValue) && costRate > 0) {
+        const calculatedSellingRate = costRate * (1 + (marginValue / 100));
+        setProductData(prev => ({
+          ...prev,
+          selling_rate: calculatedSellingRate.toFixed(2)
+        }));
+      }
+    }
   };
 
   const handleComponentChange = (type: string, field: string, value: string) => {
@@ -200,7 +232,7 @@ const CatalogEdit = () => {
     setSubmitting(true);
     
     try {
-      // Prepare product data
+      // Prepare product data with new fields
       const productDbData = {
         name: productData.name,
         description: productData.description || null,
@@ -209,6 +241,8 @@ const CatalogEdit = () => {
         border_dimension: productData.border_dimension ? parseFloat(productData.border_dimension) : null,
         default_quantity: productData.default_quantity ? parseInt(productData.default_quantity) : null,
         default_rate: productData.default_rate ? parseFloat(productData.default_rate) : null,
+        selling_rate: productData.selling_rate ? parseFloat(productData.selling_rate) : null,
+        margin: productData.margin ? parseFloat(productData.margin) : null,
         updated_at: new Date().toISOString()
       };
       
@@ -433,7 +467,7 @@ const CatalogEdit = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="default_rate">Default Rate</Label>
+                <Label htmlFor="default_rate">Cost Rate</Label>
                 <Input 
                   id="default_rate" 
                   name="default_rate"
@@ -441,10 +475,40 @@ const CatalogEdit = () => {
                   step="0.01"
                   value={productData.default_rate}
                   onChange={handleProductChange}
-                  placeholder="Default price per bag"
+                  placeholder="Cost price per bag"
                   min="0"
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="selling_rate">Selling Rate</Label>
+                <Input 
+                  id="selling_rate" 
+                  name="selling_rate"
+                  type="number"
+                  step="0.01"
+                  value={productData.selling_rate}
+                  onChange={handleProductChange}
+                  placeholder="Selling price per bag"
+                  min="0"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="margin">Margin (%)</Label>
+              <Input 
+                id="margin" 
+                name="margin"
+                type="number"
+                step="0.01"
+                value={productData.margin}
+                onChange={handleProductChange}
+                placeholder="Profit margin percentage"
+                min="0"
+              />
+              <p className="text-xs text-muted-foreground">
+                Margin is calculated as ((Selling Rate - Cost Rate) / Cost Rate) × 100
+              </p>
             </div>
           </CardContent>
         </Card>

@@ -34,6 +34,27 @@ export const CostTrackingFields = ({
         </label>
       </div>
 
+      {/* Purchase Rate field (always visible) */}
+      <FormField
+        control={control}
+        name="purchase_rate"
+        render={({ field }) => (
+          <FormItem className="mb-4">
+            <FormLabel>Purchase Rate (per {watch("unit")})</FormLabel>
+            <FormControl>
+              <Input
+                type="number"
+                step="any"
+                min="0"
+                {...field}
+                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
       {trackCost && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
