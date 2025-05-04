@@ -25,6 +25,7 @@ const componentOptions = {
 
 interface ComponentData extends ComponentProps {
   id?: string;
+  details?: string; // Ensure details is defined in ComponentData
 }
 
 type ComponentType = Database["public"]["Enums"]["component_type"];
@@ -299,7 +300,7 @@ const OrderEdit = () => {
               size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
               color: comp.color || null,
               gsm: comp.gsm || null,
-              details: comp.customName || comp.details || null
+              details: comp.customName || comp.details || null // Handle both customName and details properties
             } as any); // Type assertion to bypass TypeScript strict checking
             
           if (componentError) throw componentError;

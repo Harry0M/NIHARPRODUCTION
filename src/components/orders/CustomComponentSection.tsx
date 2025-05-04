@@ -1,4 +1,3 @@
-
 import { 
   Card, 
   CardContent,
@@ -23,6 +22,7 @@ export interface CustomComponent {
   width?: string;
   roll_width?: string;
   material_id?: string;
+  details?: string; // Add details property to match ComponentData
 }
 
 interface CustomComponentSectionProps {
@@ -76,6 +76,7 @@ interface CustomComponentFormProps {
     width?: string;
     roll_width?: string;
     material_id?: string;
+    details?: string; // Add details property here too
   };
   index: number;
   componentOptions: {
