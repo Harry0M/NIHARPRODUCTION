@@ -12,8 +12,21 @@ import { Trash2 } from "lucide-react";
 import { MaterialSelector } from "@/components/inventory/material-selector/MaterialSelector";
 import { useState } from "react";
 
+// Export this interface for external use
+export interface CustomComponent {
+  id: string;
+  type: string;
+  customName?: string;
+  color?: string;
+  gsm?: string;
+  length?: string;
+  width?: string;
+  roll_width?: string;
+  material_id?: string;
+}
+
 interface CustomComponentSectionProps {
-  customComponents: any[];
+  customComponents: CustomComponent[];
   componentOptions: {
     color: string[];
     gsm: string[];

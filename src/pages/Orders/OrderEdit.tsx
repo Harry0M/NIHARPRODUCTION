@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { OrderDetailsForm } from "@/components/orders/OrderDetailsForm";
 import { ComponentForm, ComponentProps } from "@/components/orders/ComponentForm";
-import { CustomComponent, CustomComponentSection } from "@/components/orders/CustomComponentSection";
+import { CustomComponentSection, CustomComponent } from "@/components/orders/CustomComponentSection";
 import { v4 as uuidv4 } from "uuid";
 
 const componentOptions = {
@@ -395,8 +395,8 @@ const OrderEdit = () => {
 
                 <CustomComponentSection
                   customComponents={customComponents}
-                  onChange={handleCustomComponentChange}
-                  onRemove={removeCustomComponent}
+                  handleCustomComponentChange={handleCustomComponentChange}
+                  removeCustomComponent={removeCustomComponent}
                   componentOptions={componentOptions}
                 />
               </div>
