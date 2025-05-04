@@ -28,7 +28,7 @@ export interface ComponentProps {
 
 interface StockItem {
   id: string;
-  material_type: string;
+  material_name: string;
   gsm: string;
   color: string;
 }
@@ -76,12 +76,14 @@ export const ComponentForm = ({
       try {
         const { data, error } = await supabase
           .from('inventory')
-          .select('id, material_type, gsm, color')
-          .order('material_type');
+          .select('id, material_name, gsm, color')
+          .order('material_name');
         
         if (error) throw error;
         console.log("ComponentForm - Fetched stock items:", data?.length);
-        setStockItems(data || []);
+        if (data) {
+          setStockItems(data as StockItem[]);
+        }
       } catch (err) {
         console.error('Error fetching stock items:', err);
       } finally {
@@ -180,7 +182,7 @@ export const ComponentForm = ({
               ) : (
                 stockItems.map(item => (
                   <SelectItem key={item.id} value={item.id}>
-                    {item.material_type} - {item.gsm}GSM {item.color ? `(${item.color})` : ''}
+                    {item.material_name} - {item.gsm}GSM {item.color ? `(${item.color})` : ''}
                   </SelectItem>
                 ))
               )}

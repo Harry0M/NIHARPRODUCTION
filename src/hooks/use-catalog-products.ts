@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 // Define proper types for our data structures
 interface Material {
   id: string;
-  material_type: string;
+  material_name: string;
   color?: string | null;
   gsm?: string | null;
   quantity?: number;
@@ -135,7 +135,7 @@ export const useCatalogProducts = () => {
           .from("inventory")
           .select(`
             id, 
-            material_type, 
+            material_name, 
             color, 
             gsm,
             quantity,
@@ -151,9 +151,13 @@ export const useCatalogProducts = () => {
         console.log("Materials data fetched successfully:", materialsData);
         
         // Store materials by ID for easy lookup
-        materialsData?.forEach(material => {
-          materialsMap[material.id] = material as Material;
-        });
+        if (materialsData) {
+          materialsData.forEach(material => {
+            if (material && typeof material === 'object' && 'id' in material) {
+              materialsMap[material.id] = material as Material;
+            }
+          });
+        }
       }
       
       // Create typed catalog products with associated components
@@ -202,7 +206,7 @@ export const useInventoryItems = () => {
         .from("inventory")
         .select(`
           id,
-          material_type,
+          material_name,
           color,
           gsm,
           quantity,
@@ -224,7 +228,7 @@ export const useInventoryItems = () => {
       }
       
       console.log("Inventory items data:", data);
-      return data;
+      return data || [];
     },
   });
 };

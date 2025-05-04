@@ -39,7 +39,7 @@ export const StockDetailDialog = ({
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center justify-between">
-            <span>{stockItem?.material_type || "Stock Details"}</span>
+            <span>{stockItem?.material_name || "Stock Details"}</span>
             <div className="flex space-x-2">
               <Button
                 variant="outline"

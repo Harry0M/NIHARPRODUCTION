@@ -25,8 +25,8 @@ export const StockInfoGrid = ({ stockItem, linkedComponents = [] }: StockInfoGri
           <h3 className="text-lg font-medium mb-4">Basic Information</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div>
-              <p className="text-sm text-muted-foreground">Material Type</p>
-              <p className="font-medium">{formatValue(stockItem.material_type)}</p>
+              <p className="text-sm text-muted-foreground">Material Name</p>
+              <p className="font-medium">{formatValue(stockItem.material_name)}</p>
             </div>
             {stockItem.color && (
               <div>
