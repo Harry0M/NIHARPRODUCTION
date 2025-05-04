@@ -66,7 +66,7 @@ export const MaterialLinkSelector = ({
         throw new Error(`Component verification failed: ${componentCheckError.message}`);
       }
 
-      // Use the RPC function to update the material link
+      // Use the updated RPC function to update the material link
       const { data: updateResult, error: rpcError } = await supabase
         .rpc('update_component_material', {
           component_id: componentId,
@@ -80,10 +80,31 @@ export const MaterialLinkSelector = ({
       }
       
       // Check the result of the RPC call (should be true if successful)
-      if (!updateResult) {
-        console.error("Material link update unsuccessful");
-        setDebugInfo({ error: "update_failed", details: "RPC call returned false" });
-        throw new Error("Material linking failed - database operation did not verify");
+      if (updateResult !== true) {
+        console.error("Material link update unsuccessful, result:", updateResult);
+        setDebugInfo({ 
+          error: "update_failed", 
+          details: "RPC call returned false or unexpected value", 
+          result: updateResult 
+        });
+        
+        // Double-check the update manually
+        const { data: verifyData, error: verifyError } = await supabase
+          .from("catalog_components")
+          .select("material_id, material_linked")
+          .eq("id", componentId)
+          .single();
+          
+        if (verifyError || !verifyData) {
+          throw new Error("Material linking failed - verification check failed");
+        }
+        
+        if (verifyData.material_id !== selectedMaterialId || !verifyData.material_linked) {
+          throw new Error("Material was not properly linked after retry");
+        }
+        
+        // If we got here, the update actually worked despite the RPC returning false
+        console.log("Manual verification succeeded despite RPC returning false");
       }
       
       console.log("Material linking verified successful");
