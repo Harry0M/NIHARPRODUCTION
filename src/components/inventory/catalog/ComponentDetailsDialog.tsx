@@ -9,16 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { AlertCircle, LinkIcon, LoaderCircle } from "lucide-react";
 import { MaterialLinkSelector } from "@/components/inventory/MaterialLinkSelector";
-import { CatalogComponent } from "./ComponentsTable";
-
-interface Material {
-  id: string;
-  material_name: string;  // Updated from material_type to material_name
-  color?: string | null;
-  gsm?: string | null;
-  quantity?: number;
-  unit?: string;
-}
+import { CatalogComponent, Material } from "./ComponentsTable";
 
 interface ComponentDetailsDialogProps {
   open: boolean;
