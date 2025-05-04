@@ -60,6 +60,7 @@ export const CustomComponentSection = ({
               componentOptions={componentOptions}
               handleCustomComponentChange={handleCustomComponentChange}
               removeCustomComponent={removeCustomComponent}
+              defaultQuantity={defaultQuantity}
             />
           ))}
         </div>
@@ -86,6 +87,7 @@ interface CustomComponentFormProps {
   };
   handleCustomComponentChange: (index: number, field: string, value: string) => void;
   removeCustomComponent: (index: number) => void;
+  defaultQuantity?: string;
 }
 
 const CustomComponentForm = ({
@@ -93,7 +95,8 @@ const CustomComponentForm = ({
   index,
   componentOptions,
   handleCustomComponentChange,
-  removeCustomComponent
+  removeCustomComponent,
+  defaultQuantity
 }: CustomComponentFormProps) => {
   const [customColor, setCustomColor] = useState(component.color === "Custom" ? "" : "");
   const [customGSM, setCustomGSM] = useState(component.gsm === "Custom" ? "" : "");
@@ -125,6 +128,25 @@ const CustomComponentForm = ({
   const handleMaterialSelect = (materialId: string | null) => {
     handleCustomComponentChange(index, 'material_id', materialId || '');
   };
+  
+  // Calculate consumption based on dimensions and default quantity
+  const calculateConsumption = () => {
+    if (component.length && component.width && component.roll_width && defaultQuantity) {
+      const length = parseFloat(component.length);
+      const width = parseFloat(component.width);
+      const rollWidth = parseFloat(component.roll_width);
+      const quantity = parseInt(defaultQuantity);
+      
+      if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && !isNaN(quantity) && rollWidth > 0) {
+        // Formula: (length * width) / (roll_width * 39.39) * quantity
+        const consumption = ((length * width) / (rollWidth * 39.39)) * quantity;
+        return consumption.toFixed(2);
+      }
+    }
+    return '';
+  };
+  
+  const consumption = calculateConsumption();
   
   return (
     <Card>
@@ -248,6 +270,22 @@ const CustomComponentForm = ({
                 onChange={(e) => handleCustomComponentChange(index, 'roll_width', e.target.value)}
               />
             </div>
+          </div>
+          
+          {/* Consumption based on dimensions and default quantity */}
+          <div>
+            <Label htmlFor={`custom-${index}-consumption`}>Consumption</Label>
+            <Input
+              id={`custom-${index}-consumption`}
+              value={consumption}
+              readOnly
+              className="bg-gray-100"
+            />
+            {defaultQuantity && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Based on dimensions and quantity of {defaultQuantity}
+              </p>
+            )}
           </div>
           
           {/* Add Material Selector */}

@@ -28,17 +28,34 @@ export const StandardComponents = ({
   defaultQuantity
 }: StandardComponentsProps) => {
   const standardComponents = [
-    { type: "Fabric" },
+    { type: "Part" },
     { type: "Border" },
     { type: "Chain" },
     { type: "Piping" },
     { type: "Runner" },
-    { type: "Plastic Cover" },
+    { type: "Handle" },
   ];
 
   // Handle material selection
   const handleMaterialSelect = (componentType: string, materialId: string | null) => {
     onChange(componentType, 'material_id', materialId || '');
+  };
+
+  // Calculate consumption based on dimensions and default quantity
+  const calculateConsumption = (component: any) => {
+    if (component.length && component.width && component.roll_width && defaultQuantity) {
+      const length = parseFloat(component.length);
+      const width = parseFloat(component.width);
+      const rollWidth = parseFloat(component.roll_width);
+      const quantity = parseInt(defaultQuantity);
+      
+      if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && !isNaN(quantity) && rollWidth > 0) {
+        // Formula: (length * width) / (roll_width * 39.39) * quantity
+        const consumption = ((length * width) / (rollWidth * 39.39)) * quantity;
+        return consumption.toFixed(2);
+      }
+    }
+    return '';
   };
 
   return (
@@ -54,6 +71,7 @@ export const StandardComponents = ({
             onChange={onChange}
             defaultQuantity={defaultQuantity}
             onMaterialSelect={(materialId) => handleMaterialSelect(component.type, materialId)}
+            calculateConsumption={calculateConsumption}
           />
         ))}
       </div>
@@ -78,6 +96,7 @@ interface ComponentFormProps {
   onChange: (type: string, field: string, value: string) => void;
   defaultQuantity?: string;
   onMaterialSelect: (materialId: string | null) => void;
+  calculateConsumption: (component: any) => string;
 }
 
 const ComponentForm = ({ 
@@ -85,7 +104,8 @@ const ComponentForm = ({
   componentOptions, 
   onChange,
   defaultQuantity,
-  onMaterialSelect
+  onMaterialSelect,
+  calculateConsumption
 }: ComponentFormProps) => {
   const [customColor, setCustomColor] = useState("");
   const [customGSM, setCustomGSM] = useState("");
@@ -110,6 +130,9 @@ const ComponentForm = ({
     }
     onChange(component.type, field, value);
   };
+  
+  // Calculate consumption for this component
+  const consumption = calculateConsumption(component);
   
   return (
     <Card>
@@ -215,6 +238,22 @@ const ComponentForm = ({
                 onChange={(e) => onChange(component.type, 'roll_width', e.target.value)}
               />
             </div>
+          </div>
+          
+          {/* Consumption based on dimensions and default quantity */}
+          <div>
+            <Label htmlFor={`${component.type}-consumption`}>Consumption</Label>
+            <Input
+              id={`${component.type}-consumption`}
+              value={consumption}
+              readOnly
+              className="bg-gray-100"
+            />
+            {defaultQuantity && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Based on dimensions and quantity of {defaultQuantity}
+              </p>
+            )}
           </div>
           
           {/* Add Material Selector */}
