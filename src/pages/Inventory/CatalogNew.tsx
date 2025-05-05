@@ -428,7 +428,7 @@ const CatalogNew = () => {
             <div className="space-y-8">
               <StandardComponents 
                 components={components}
-                componentOptions={componentOptions}
+                componentOptions={componentOptions as any} // Type cast to fix TypeScript error
                 onChange={handleComponentChange}
                 defaultQuantity={productData.default_quantity}
               />
@@ -449,7 +449,7 @@ const CatalogNew = () => {
                 
                 <CustomComponentSection 
                   customComponents={customComponents}
-                  componentOptions={componentOptions}
+                  componentOptions={componentOptions as any} // Type cast to fix TypeScript error
                   handleCustomComponentChange={handleCustomComponentChange}
                   removeCustomComponent={removeCustomComponent}
                   defaultQuantity={productData.default_quantity}

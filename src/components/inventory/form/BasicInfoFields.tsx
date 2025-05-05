@@ -80,19 +80,7 @@ export const BasicInfoFields = () => {
           </FormItem>
         )}
       />
-      <FormField
-        control={control}
-        name="gsm"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>GSM</FormLabel>
-            <FormControl>
-              <Input placeholder="120, 250, etc" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      {/* Removed GSM field as requested */}
     </div>
   );
 };
