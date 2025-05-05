@@ -35,7 +35,8 @@ const OrderNew = () => {
     removeCustomComponent,
     handleProductSelect,
     handleSubmit,
-    validateForm
+    validateForm,
+    updateConsumptionBasedOnQuantity
   } = useOrderForm();
   
   const onSubmit = async (e: React.FormEvent) => {
