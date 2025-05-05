@@ -38,6 +38,8 @@ export interface CatalogProduct {
   border_dimension?: number | null;
   default_quantity?: number | null;
   default_rate?: number | null;
+  selling_rate?: number | null; // Added selling_rate property
+  margin?: number | null; // Added margin property
   created_at: string;
   updated_at: string;
   created_by?: string | null;
@@ -64,6 +66,8 @@ export const useCatalogProducts = () => {
           border_dimension,
           default_quantity,
           default_rate,
+          selling_rate, 
+          margin,
           created_at,
           updated_at,
           created_by
