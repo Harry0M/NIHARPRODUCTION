@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { 
@@ -12,23 +13,23 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Database } from "@/integrations/supabase/types";
 import { OrderDetailsForm } from "@/components/orders/OrderDetailsForm";
-import { ComponentForm, ComponentProps } from "@/components/orders/ComponentForm";
-import { CustomComponentSection, CustomComponent } from "@/components/orders/CustomComponentSection";
+import { StandardComponents } from "@/components/orders/StandardComponents";
+import { CustomComponentSection } from "@/components/orders/CustomComponentSection";
 import { v4 as uuidv4 } from "uuid";
 
 const componentOptions = {
   color: ["Red", "Blue", "Green", "Black", "White", "Yellow", "Brown", "Orange", "Purple", "Gray", "Custom"],
-  gsm: ["70", "80", "90", "100", "120", "140", "160", "180", "200", "250", "300", "Custom"]
+  // gsm has been removed as requested
 };
 
-interface ComponentData extends ComponentProps {
-  id?: string;
-  details?: string; // Ensure details is defined in ComponentData
+interface FormErrors {
+  company?: string;
+  quantity?: string;
+  bag_length?: string;
+  bag_width?: string;
+  order_date?: string;
 }
-
-type ComponentType = Database["public"]["Enums"]["component_type"];
 
 const OrderEdit = () => {
   const { id } = useParams();
@@ -38,36 +39,22 @@ const OrderEdit = () => {
   
   const [formData, setFormData] = useState({
     company_name: "",
-    company_id: null as string | null,  // Add the missing company_id property
+    company_id: null as string | null,
     quantity: "",
     bag_length: "",
     bag_width: "",
+    border_dimension: "",
     rate: "",
     special_instructions: "",
-    order_date: ""
+    order_date: "",
+    sales_account_id: null as string | null
   });
   
-  // Add formErrors state
-  const [formErrors, setFormErrors] = useState({
-    company: undefined,
-    quantity: undefined,
-    bag_length: undefined,
-    bag_width: undefined,
-    order_date: undefined
-  });
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [components, setComponents] = useState<Record<string, any>>({});
+  const [customComponents, setCustomComponents] = useState<any[]>([]);
+  const [baseConsumptions, setBaseConsumptions] = useState<Record<string, number>>({});
   
-  const [components, setComponents] = useState<ComponentData[]>([
-    { type: "part", width: "", length: "", color: "", gsm: "" },
-    { type: "border", width: "", length: "", color: "", gsm: "" },
-    { type: "handle", width: "", length: "", color: "", gsm: "" },
-    { type: "chain", width: "", length: "", color: "", gsm: "" },
-    { type: "runner", width: "", length: "", color: "", gsm: "" }
-  ]);
-  
-  const [customComponents, setCustomComponents] = useState<CustomComponent[]>([]);
-  
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
-
   useEffect(() => {
     const fetchOrderData = async () => {
       setLoading(true);
@@ -83,71 +70,90 @@ const OrderEdit = () => {
         
         // Format order data for the form
         setFormData({
-          company_name: orderData.company_name,
-          company_id: orderData.company_id,  // Include company_id in the form data
-          quantity: orderData.quantity.toString(),
-          bag_length: orderData.bag_length.toString(),
-          bag_width: orderData.bag_width.toString(),
+          company_name: orderData.company_name || "",
+          company_id: orderData.company_id,
+          quantity: orderData.quantity?.toString() || "",
+          bag_length: orderData.bag_length?.toString() || "",
+          bag_width: orderData.bag_width?.toString() || "",
+          border_dimension: orderData.border_dimension?.toString() || "",
           rate: orderData.rate ? orderData.rate.toString() : "",
           special_instructions: orderData.special_instructions || "",
-          order_date: new Date(orderData.order_date).toISOString().split('T')[0]
+          order_date: new Date(orderData.order_date).toISOString().split('T')[0],
+          sales_account_id: orderData.sales_account_id
         });
         
         // Check if the order has a catalog_id (product)
         if (orderData.catalog_id) {
-          setSelectedProductId(orderData.catalog_id);
+          // Could potentially fetch catalog details here
         }
         
-        // Fetch order components
+        // Fetch order components - now using order_components table
         const { data: componentsData, error: componentsError } = await supabase
-          .from("components")
+          .from("order_components")
           .select("*")
           .eq("order_id", id);
           
         if (componentsError) throw componentsError;
         
+        console.log("Fetched components:", componentsData);
+        
         // Process components
-        const standardComponents = ["part", "border", "handle", "chain", "runner"];
-        const fetchedCustomComponents: CustomComponent[] = [];
+        const standardComponents: Record<string, any> = {};
+        const fetchedCustomComponents: any[] = [];
+        const fetchedBaseConsumptions: Record<string, number> = {};
         
-        // Initialize components with fetched data
-        const updatedComponents = [...components];
+        if (componentsData && componentsData.length > 0) {
+          componentsData.forEach(comp => {
+            // Extract size information
+            let length = "", width = "";
+            if (comp.size) {
+              const sizeParts = comp.size.split('x');
+              if (sizeParts.length >= 2) {
+                length = sizeParts[0] || "";
+                width = sizeParts[1] || "";
+              }
+            }
+            
+            const componentData = {
+              id: comp.id,
+              type: comp.component_type,
+              color: comp.color || "",
+              gsm: comp.gsm?.toString() || "",
+              length,
+              width,
+              roll_width: comp.roll_width?.toString() || "",
+              consumption: comp.consumption?.toString() || "",
+              material_id: comp.material_id || null,
+              customName: comp.custom_name || ""
+            };
+            
+            // Extract any base consumption values
+            if (comp.consumption) {
+              const consumption = parseFloat(comp.consumption.toString());
+              if (!isNaN(consumption) && orderData.quantity > 0) {
+                const baseConsumption = consumption / orderData.quantity;
+                fetchedBaseConsumptions[comp.component_type] = baseConsumption;
+              }
+            }
+            
+            // Check if it's a standard component or custom
+            if (comp.component_type === 'custom') {
+              fetchedCustomComponents.push({
+                ...componentData,
+                id: comp.id || uuidv4(),
+                customName: comp.custom_name || ""
+              });
+            } else {
+              // Using original component types (with capitalization) for UI
+              const uiComponentType = comp.component_type.charAt(0).toUpperCase() + comp.component_type.slice(1);
+              standardComponents[uiComponentType] = componentData;
+            }
+          });
+        }
         
-        componentsData?.forEach(comp => {
-          // Extract size information
-          let width = "", length = "";
-          if (comp.size) {
-            const [l, w] = comp.size.split('x');
-            length = l || "";
-            width = w || "";
-          }
-          
-          const componentData: ComponentData = {
-            id: comp.id,
-            type: comp.type,
-            color: comp.color || "",
-            gsm: comp.gsm || "",
-            length,
-            width,
-            details: comp.details || ""
-          };
-          
-          // Check if it's a standard component or custom
-          if (standardComponents.includes(comp.type)) {
-            const index = standardComponents.indexOf(comp.type);
-            updatedComponents[index] = componentData;
-          } else {
-            // Make sure id field is not optional for CustomComponent
-            fetchedCustomComponents.push({
-              id: comp.id || uuidv4(),
-              ...componentData,
-              customName: comp.type !== "custom" ? comp.type : comp.details || "",
-            });
-          }
-        });
-        
-        setComponents(updatedComponents);
+        setComponents(standardComponents);
         setCustomComponents(fetchedCustomComponents);
+        setBaseConsumptions(fetchedBaseConsumptions);
         
       } catch (error: any) {
         toast({
@@ -164,21 +170,91 @@ const OrderEdit = () => {
     fetchOrderData();
   }, [id, navigate]);
 
-  const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 
+    target: { name: string; value: string | null } 
+  }) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Handle special case for sales_account_id
+    if (name === 'sales_account_id') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value === 'none' ? null : value
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
     
     // Clear validation error when field is changed
-    if (formErrors[name as keyof typeof formErrors]) {
-      setFormErrors(prev => ({ ...prev, [name]: undefined }));
+    if (formErrors[name as keyof FormErrors]) {
+      setFormErrors(prev => ({
+        ...prev,
+        [name]: undefined
+      }));
+    }
+    
+    // If quantity changed, update consumption values
+    if (name === 'quantity' && value) {
+      const quantity = parseFloat(value as string);
+      if (!isNaN(quantity)) {
+        updateConsumptionBasedOnQuantity(quantity);
+      }
     }
   };
 
-  const handleComponentChange = (index: number, field: string, value: string) => {
+  const updateConsumptionBasedOnQuantity = (quantity: number) => {
+    if (isNaN(quantity) || quantity <= 0) return;
+
+    console.log(`Updating consumption based on quantity: ${quantity}`);
+    console.log("Base consumptions:", baseConsumptions);
+
+    // Update consumption for standard components
+    const updatedComponents = { ...components };
+    Object.keys(updatedComponents).forEach(type => {
+      const baseConsumption = baseConsumptions[type.toLowerCase()];
+      if (baseConsumption && !isNaN(baseConsumption)) {
+        const newConsumption = baseConsumption * quantity;
+        updatedComponents[type] = {
+          ...updatedComponents[type],
+          baseConsumption: baseConsumption.toFixed(2),
+          consumption: newConsumption.toFixed(2)
+        };
+      }
+    });
+    setComponents(updatedComponents);
+
+    // Update consumption for custom components
+    const updatedCustomComponents = customComponents.map((component, idx) => {
+      const baseConsumption = baseConsumptions[`custom_${idx}`] || baseConsumptions['custom'];
+      if (baseConsumption && !isNaN(baseConsumption)) {
+        const newConsumption = baseConsumption * quantity;
+        return {
+          ...component,
+          baseConsumption: baseConsumption.toFixed(2),
+          consumption: newConsumption.toFixed(2)
+        };
+      }
+      return component;
+    });
+    setCustomComponents(updatedCustomComponents);
+  };
+
+  const handleComponentChange = (type: string, field: string, value: string) => {
     setComponents(prev => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
-      return updated;
+      const component = prev[type] || { 
+        id: uuidv4(),
+        type 
+      };
+      return {
+        ...prev,
+        [type]: {
+          ...component,
+          [field]: value
+        }
+      };
     });
   };
 
@@ -191,59 +267,97 @@ const OrderEdit = () => {
   };
 
   const addCustomComponent = () => {
-    setCustomComponents(prev => [...prev, { 
-      id: uuidv4(),
-      type: "custom",
-      customName: "",
-      width: "",
-      length: "",
-      color: "",
-      gsm: "",
-    }]);
+    setCustomComponents([
+      ...customComponents, 
+      { 
+        id: uuidv4(),
+        type: "custom",
+        customName: "" 
+      }
+    ]);
   };
 
   const removeCustomComponent = (index: number) => {
     setCustomComponents(prev => prev.filter((_, i) => i !== index));
   };
-
-  const validateForm = () => {
-    const errors = {
-      company: undefined,
-      quantity: undefined,
-      bag_length: undefined,
-      bag_width: undefined,
-      order_date: undefined
-    };
-    
+  
+  const validateForm = (): boolean => {
+    const errors: FormErrors = {};
     let isValid = true;
-    
+
+    // Validate company information
     if (!formData.company_name) {
       errors.company = "Company name is required";
       isValid = false;
     }
-    
-    if (!formData.quantity || parseInt(formData.quantity) <= 0) {
+
+    // Validate quantity
+    if (!formData.quantity || parseFloat(formData.quantity) <= 0) {
       errors.quantity = "Valid quantity is required";
       isValid = false;
     }
-    
+
+    // Validate bag length
     if (!formData.bag_length || parseFloat(formData.bag_length) <= 0) {
       errors.bag_length = "Valid bag length is required";
       isValid = false;
     }
-    
+
+    // Validate bag width
     if (!formData.bag_width || parseFloat(formData.bag_width) <= 0) {
       errors.bag_width = "Valid bag width is required";
       isValid = false;
     }
-    
+
+    // Validate order date
     if (!formData.order_date) {
       errors.order_date = "Order date is required";
       isValid = false;
     }
-    
+
     setFormErrors(errors);
     return isValid;
+  };
+  
+  // Helper function to convert string values to appropriate types
+  const convertStringToNumeric = (value: string | undefined | null): number | null => {
+    if (value === undefined || value === null || value === '') {
+      return null;
+    }
+    const numValue = parseFloat(value);
+    return isNaN(numValue) ? null : numValue;
+  };
+  
+  // Helper function to validate component data
+  const validateComponentData = (component: any): boolean => {
+    if (!component) {
+      console.warn("Invalid component data: component is null or undefined");
+      return false;
+    }
+    
+    // Check for required type field (using either type or component_type)
+    if (!component.type) {
+      console.warn("Invalid component data: missing type", component);
+      return false;
+    }
+    
+    // Validate numeric fields to ensure they're not NaN when parsed
+    if (component.length && isNaN(parseFloat(component.length))) {
+      console.warn("Invalid component data: length is not a valid number", component);
+      return false;
+    }
+    
+    if (component.width && isNaN(parseFloat(component.width))) {
+      console.warn("Invalid component data: width is not a valid number", component);
+      return false;
+    }
+    
+    if (component.roll_width && isNaN(parseFloat(component.roll_width))) {
+      console.warn("Invalid component data: roll_width is not a valid number", component);
+      return false;
+    }
+    
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -251,7 +365,7 @@ const OrderEdit = () => {
     
     if (!validateForm()) {
       toast({
-        title: "Validation Error",
+        title: "Form validation failed",
         description: "Please correct the highlighted fields",
         variant: "destructive"
       });
@@ -265,14 +379,16 @@ const OrderEdit = () => {
       const { error: orderError } = await supabase
         .from("orders")
         .update({
-          company_name: formData.company_name,
-          company_id: formData.company_id,  // Include company_id in the update
+          company_name: formData.company_id ? null : formData.company_name,
+          company_id: formData.company_id,
           quantity: parseInt(formData.quantity),
           bag_length: parseFloat(formData.bag_length),
           bag_width: parseFloat(formData.bag_width),
+          border_dimension: formData.border_dimension ? parseFloat(formData.border_dimension) : null,
           rate: formData.rate ? parseFloat(formData.rate) : null,
           special_instructions: formData.special_instructions || null,
-          order_date: formData.order_date
+          order_date: formData.order_date,
+          sales_account_id: formData.sales_account_id
         })
         .eq("id", id);
       
@@ -280,7 +396,7 @@ const OrderEdit = () => {
       
       // Delete existing components and recreate them
       const { error: deleteError } = await supabase
-        .from("components")
+        .from("order_components")
         .delete()
         .eq("order_id", id);
       
@@ -288,29 +404,78 @@ const OrderEdit = () => {
       
       // Process and insert updated components
       const allComponents = [
-        ...components.filter(comp => comp.length || comp.width || comp.color || comp.gsm),
-        ...customComponents.filter(comp => comp.length || comp.width || comp.color || comp.gsm)
+        ...Object.values(components).filter(comp => 
+          comp.length || comp.width || comp.color || comp.gsm || comp.material_id
+        ),
+        ...customComponents.filter(comp => 
+          comp.length || comp.width || comp.color || comp.gsm || comp.material_id || comp.customName
+        )
       ];
 
-      if (allComponents.length > 0) {
-        for (const comp of allComponents) {
-          // Define allowable component type values that match the database enum
-          const componentType = comp.type === 'custom' ? 'custom' : 
-            (['part', 'border', 'handle', 'chain', 'runner'].includes(comp.type) ? 
-              comp.type as any : 'custom');
+      console.log("Components to save:", allComponents);
 
-          const { error: componentError } = await supabase
-            .from("components")
-            .insert({
-              order_id: id,
-              type: componentType,
-              size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
-              color: comp.color || null,
-              gsm: comp.gsm || null,
-              details: comp.customName || comp.details || null // Handle both customName and details properties
-            } as any); // Type assertion to bypass TypeScript strict checking
+      if (allComponents.length > 0) {
+        // Create a properly formatted array of components with correct data types
+        const componentsToInsert = allComponents
+          .filter(comp => validateComponentData(comp))
+          .map(comp => {
+            // Convert component type to lowercase for database
+            const componentTypeRaw = comp.type === 'custom' ? 'custom' : comp.type;
+            const componentType = componentTypeRaw.toLowerCase();
             
-          if (componentError) throw componentError;
+            // Use proper size formatting or null
+            const size = comp.length && comp.width 
+              ? `${comp.length}x${comp.width}` 
+              : null;
+            
+            // Get the appropriate custom name based on component type
+            const customName = comp.type === 'custom' ? comp.customName : null;
+            
+            // Convert string values to appropriate types for numeric fields
+            const gsmValue = convertStringToNumeric(comp.gsm);
+            const rollWidthValue = convertStringToNumeric(comp.roll_width);
+            const consumptionValue = convertStringToNumeric(comp.consumption);
+            
+            return {
+              order_id: id,
+              component_type: componentType,
+              size,
+              color: comp.color || null,
+              gsm: gsmValue,
+              custom_name: customName,
+              material_id: comp.material_id || null,
+              roll_width: rollWidthValue,
+              consumption: consumptionValue
+            };
+        });
+
+        console.log("Formatted components to insert:", componentsToInsert);
+
+        if (componentsToInsert.length > 0) {
+          const { data: insertedComponents, error: componentsError } = await supabase
+            .from("order_components")
+            .insert(componentsToInsert)
+            .select();
+          
+          if (componentsError) {
+            console.error("Error saving components:", componentsError);
+            console.error("Components that failed to save:", componentsToInsert);
+            
+            toast({
+              title: "Error saving components",
+              description: componentsError.message,
+              variant: "destructive"
+            });
+          } else {
+            console.log("Components saved successfully:", insertedComponents);
+            
+            toast({
+              title: "Components saved successfully",
+              description: `${insertedComponents?.length || 0} components saved`
+            });
+          }
+        } else {
+          console.warn("No valid components to insert after validation");
         }
       }
 
@@ -333,13 +498,169 @@ const OrderEdit = () => {
   };
 
   const handleProductSelect = async (components: any[]) => {
-    // This would be similar to the function in use-order-form.ts
-    // Process the components and update state
-    console.log("Selected product components:", components);
+    if (!components || components.length === 0) {
+      console.log("No components to process");
+      return;
+    }
     
-    // Logic to update component state based on selected product
-    // This would be simplified compared to the useOrderForm version
-    // since we're in a different context
+    // Define standard types in lowercase for case-insensitive comparison
+    const standardTypesLower = ['part', 'border', 'handle', 'chain', 'runner', 'piping'];
+    const newOrderComponents: Record<string, any> = {};
+    const newCustomComponents: any[] = [];
+    const newBaseConsumptions: Record<string, number> = {};
+
+    // Extract all material_ids that need to be fetched
+    const materialIds = components
+      .filter(comp => comp.material_id)
+      .map(comp => comp.material_id);
+
+    let materialsData: Record<string, any> = {};
+    
+    // Fetch complete material data for all components with material_id
+    if (materialIds.length > 0) {
+      try {
+        const { data: materials, error } = await supabase
+          .from('inventory')
+          .select('id, material_name, color, gsm, unit, roll_width')
+          .in('id', materialIds);
+          
+        if (error) {
+          console.error('Error fetching materials:', error);
+          toast({
+            title: "Error fetching materials",
+            description: error.message,
+            variant: "destructive"
+          });
+        } else if (materials) {
+          materialsData = materials.reduce((acc, material) => {
+            acc[material.id] = material;
+            return acc;
+          }, {} as Record<string, any>);
+        }
+      } catch (err) {
+        console.error('Error in material fetch:', err);
+      }
+    }
+
+    components.forEach(component => {
+      if (!component) return;
+      
+      // Extract length and width from size format "length x width"
+      let length = '', width = '';
+      if (component.size) {
+        const sizeValues = component.size.split('x').map((s: string) => s.trim());
+        if (sizeValues.length >= 2) {
+          length = sizeValues[0] || '';
+          width = sizeValues[1] || '';
+        }
+      } else {
+        // If no size but separate length/width provided
+        length = component.length?.toString() || '';
+        width = component.width?.toString() || '';
+      }
+      
+      // Get consumption value directly from component
+      let consumption = component.consumption?.toString() || '';
+      const rollWidth = component.roll_width?.toString() || '';
+      
+      // If consumption isn't available, calculate it
+      if (!consumption && length && width && rollWidth) {
+        const lengthVal = parseFloat(length);
+        const widthVal = parseFloat(width);
+        const rollWidthVal = parseFloat(rollWidth);
+        
+        if (!isNaN(lengthVal) && !isNaN(widthVal) && !isNaN(rollWidthVal) && rollWidthVal > 0) {
+          // Formula: (length * width) / (roll_width * 39.39)
+          const calculatedConsumption = (lengthVal * widthVal) / (rollWidthVal * 39.39);
+          consumption = calculatedConsumption.toFixed(2);
+        }
+      }
+      
+      // Include material_id if available
+      const materialId = component.material_id || null;
+      
+      // Get material details either from fetched data or component
+      let materialColor = '';
+      let materialGsm = '';
+      let materialRollWidth = '';
+      
+      if (materialId && materialsData[materialId]) {
+        // If we have fetched material data, use it
+        materialColor = materialsData[materialId].color || '';
+        materialGsm = materialsData[materialId].gsm?.toString() || '';
+        materialRollWidth = materialsData[materialId].roll_width?.toString() || rollWidth;
+      } else {
+        // Fallback to component data
+        materialColor = component.material?.color || component.color || '';
+        materialGsm = component.material?.gsm?.toString() || component.gsm?.toString() || '';
+      }
+      
+      // Make sure component_type exists and is a string before converting to lower case
+      if (!component.component_type || typeof component.component_type !== 'string') {
+        return;
+      }
+      
+      const componentTypeLower = component.component_type.toLowerCase();
+      
+      // Extract the base consumption value (before multiplication)
+      const baseConsumption = consumption ? parseFloat(consumption) : undefined;
+      
+      if (componentTypeLower === 'custom') {
+        const customIndex = newCustomComponents.length;
+        newCustomComponents.push({
+          id: uuidv4(),
+          type: 'custom',
+          customName: component.custom_name || '',
+          color: materialColor,
+          gsm: materialGsm,
+          length,
+          width,
+          consumption,
+          baseConsumption: baseConsumption?.toString(),
+          roll_width: materialRollWidth || rollWidth,
+          material_id: materialId
+        });
+        
+        // Store base consumption for this custom component
+        if (baseConsumption) {
+          newBaseConsumptions[`custom_${customIndex}`] = baseConsumption;
+        }
+      } else if (standardTypesLower.includes(componentTypeLower)) {
+        // Map the component type to the capitalized version used in the UI
+        const componentTypeKey = component.component_type.charAt(0).toUpperCase() + component.component_type.slice(1);
+        
+        newOrderComponents[componentTypeKey] = {
+          id: uuidv4(),
+          type: componentTypeKey, // Preserve original capitalization for UI
+          color: materialColor,
+          gsm: materialGsm,
+          length,
+          width,
+          consumption,
+          baseConsumption: baseConsumption?.toString(),
+          roll_width: materialRollWidth || rollWidth,
+          material_id: materialId
+        };
+        
+        // Store base consumption for standard component
+        if (baseConsumption) {
+          newBaseConsumptions[componentTypeLower] = baseConsumption;
+        }
+      }
+    });
+
+    // Replace all components with the new ones
+    setComponents(newOrderComponents);
+    setCustomComponents(newCustomComponents);
+    setBaseConsumptions(newBaseConsumptions);
+
+    // If quantity already entered, update consumption values
+    if (formData.quantity) {
+      const quantity = parseFloat(formData.quantity);
+      if (!isNaN(quantity) && quantity > 0) {
+        setTimeout(() => updateConsumptionBasedOnQuantity(quantity), 100);
+      }
+    }
   };
 
   if (loading) {
@@ -374,28 +695,22 @@ const OrderEdit = () => {
           handleOrderChange={handleOrderChange}
           formErrors={formErrors}
           onProductSelect={handleProductSelect}
+          updateConsumptionBasedOnQuantity={updateConsumptionBasedOnQuantity}
         />
 
         <Card>
           <CardHeader>
             <CardTitle>Bag Components</CardTitle>
-            <CardDescription>Specify the details for each bag component</CardDescription>
+            <CardDescription>Specify the details for each component of the bag</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-6">
-              {components.map((component, index) => (
-                <div key={index} className="p-4 border rounded-md space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium capitalize">{component.type}</h3>
-                  </div>
-                  <ComponentForm
-                    component={component}
-                    index={index}
-                    componentOptions={componentOptions}
-                    handleChange={handleComponentChange}
-                  />
-                </div>
-              ))}
+            <div className="space-y-8">
+              <StandardComponents 
+                components={components}
+                componentOptions={componentOptions}
+                onChange={handleComponentChange}
+                defaultQuantity={formData.quantity}
+              />
               
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -407,16 +722,16 @@ const OrderEdit = () => {
                     className="flex items-center gap-1"
                     onClick={addCustomComponent}
                   >
-                    <Plus size={16} />
-                    Add Custom Component
+                    + Add Custom Component
                   </Button>
                 </div>
-
+                
                 <CustomComponentSection
                   customComponents={customComponents}
+                  componentOptions={componentOptions}
                   handleCustomComponentChange={handleCustomComponentChange}
                   removeCustomComponent={removeCustomComponent}
-                  componentOptions={componentOptions}
+                  defaultQuantity={formData.quantity}
                 />
               </div>
             </div>
