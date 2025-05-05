@@ -35,6 +35,18 @@ export const ComponentDetailsDialog = ({
   const handleLinkMaterial = () => {
     setIsLinkingMaterial(true);
   };
+  
+  // Get the appropriate component name to display in the dialog title
+  const getComponentName = () => {
+    if (!selectedComponent) return "Component";
+    
+    if (selectedComponent.component_type === 'custom') {
+      return `Custom Component: ${selectedComponent.custom_name || ""}`;
+    } 
+    
+    const typeName = componentTypes[selectedComponent.component_type] || selectedComponent.component_type;
+    return `${typeName} Details`;
+  };
 
   // Debug logged information about the component and its material
   console.log("ComponentDetailsDialog - Selected Component:", selectedComponent);
@@ -48,14 +60,16 @@ export const ComponentDetailsDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>
-            {selectedComponent?.component_type === 'custom'
-              ? `Custom Component: ${selectedComponent.custom_name}`
-              : `${componentTypes[selectedComponent?.component_type as keyof typeof componentTypes] || 'Component'} Details`}
-          </DialogTitle>
+          <DialogTitle>{getComponentName()}</DialogTitle>
         </DialogHeader>
         {selectedComponent && (
           <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Component Type</p>
+              <p className="font-medium">
+                {componentTypes[selectedComponent.component_type] || selectedComponent.component_type}
+              </p>
+            </div>
             <div className="space-y-1">
               <p className="text-sm font-medium text-muted-foreground">Size</p>
               <p className="font-medium">{selectedComponent.size || 'N/A'}</p>
