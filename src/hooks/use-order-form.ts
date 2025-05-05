@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -409,6 +408,30 @@ export function useOrderForm(): UseOrderFormReturn {
     return isValid;
   };
 
+  // Helper function to convert string values to appropriate types
+  const convertStringToNumeric = (value: string | undefined | null): number | null => {
+    if (value === undefined || value === null || value === '') {
+      return null;
+    }
+    const numValue = parseFloat(value);
+    return isNaN(numValue) ? null : numValue;
+  };
+
+  // Helper function to validate component data
+  const validateComponentData = (component: any): boolean => {
+    if (!component) {
+      console.warn("Invalid component data: component is null or undefined");
+      return false;
+    }
+    
+    if (!component.type && !component.component_type) {
+      console.warn("Invalid component data: missing type/component_type", component);
+      return false;
+    }
+    
+    return true;
+  }
+
   const handleSubmit = async (e: React.FormEvent): Promise<string | undefined> => {
     e.preventDefault();
     
@@ -492,38 +515,86 @@ export function useOrderForm(): UseOrderFormReturn {
         ...customComponents
       ].filter(Boolean);
       
-      console.log("Components to be saved:", allComponents);
+      console.log("Raw components to be saved:", allComponents);
       
       if (allComponents.length > 0) {
-        // FIXED: Now including material_id, roll_width, and consumption data in the saved components
-        const componentsToInsert = allComponents.map(comp => ({
-          order_id: orderResult.id,
-          component_type: comp.type === 'custom' ? 'custom' : comp.type,
-          size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
-          color: comp.color || null,
-          gsm: comp.gsm || null,
-          custom_name: comp.type === 'custom' ? comp.customName : null,
-          material_id: comp.material_id || null,           // Include material ID
-          roll_width: comp.roll_width || null,             // Include roll width
-          consumption: comp.consumption || null            // Include consumption
-        }));
+        // Create a properly formatted array of components with correct data types
+        const componentsToInsert = allComponents
+          .filter(comp => validateComponentData(comp))
+          .map(comp => {
+            // Determine correct component type
+            const componentType = comp.type === 'custom' ? 'custom' : comp.type;
+            
+            // Use proper size formatting or null
+            const size = comp.length && comp.width 
+              ? `${comp.length}x${comp.width}` 
+              : null;
+            
+            // Get the appropriate custom name based on component type
+            const customName = comp.type === 'custom' ? comp.customName : null;
+            
+            // Convert string values to appropriate types for numeric fields
+            const gsmValue = convertStringToNumeric(comp.gsm);
+            const rollWidthValue = convertStringToNumeric(comp.roll_width);
+            const consumptionValue = convertStringToNumeric(comp.consumption);
+            
+            // Debug log for individual component
+            console.log(`Preparing component ${componentType}:`, {
+              originalGsm: comp.gsm,
+              originalRollWidth: comp.roll_width,
+              originalConsumption: comp.consumption,
+              convertedGsm: gsmValue,
+              convertedRollWidth: rollWidthValue,
+              convertedConsumption: consumptionValue,
+              size,
+              materialId: comp.material_id || null
+            });
+            
+            return {
+              order_id: orderResult.id,
+              component_type: componentType,
+              size,
+              color: comp.color || null,
+              gsm: gsmValue,
+              custom_name: customName,
+              material_id: comp.material_id || null,
+              roll_width: rollWidthValue,
+              consumption: consumptionValue
+            };
+        });
 
-        console.log("Inserting components with enhanced data:", componentsToInsert);
+        // Additional debug log for final components array
+        console.log("Formatted components to insert:", componentsToInsert);
 
-        const { error: componentsError } = await supabase
-          .from("order_components")
-          .insert(componentsToInsert);
-        
-        if (componentsError) {
-          console.error("Error saving components:", componentsError);
-          toast({
-            title: "Error saving components",
-            description: componentsError.message,
-            variant: "destructive"
-          });
+        if (componentsToInsert.length > 0) {
+          const { data: insertedComponents, error: componentsError } = await supabase
+            .from("order_components")
+            .insert(componentsToInsert)
+            .select();
+          
+          if (componentsError) {
+            console.error("Error saving components:", componentsError);
+            console.error("Components that failed to save:", componentsToInsert);
+            
+            toast({
+              title: "Error saving components",
+              description: componentsError.message,
+              variant: "destructive"
+            });
+          } else {
+            console.log("Components saved successfully:", insertedComponents);
+            
+            // Success toast for components
+            toast({
+              title: "Components saved successfully",
+              description: `${insertedComponents?.length || 0} components saved`
+            });
+          }
         } else {
-          console.log("Components saved successfully");
+          console.warn("No valid components to insert after validation");
         }
+      } else {
+        console.log("No components to save");
       }
       
       toast({
