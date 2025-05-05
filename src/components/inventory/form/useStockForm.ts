@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,7 +16,7 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [hasAlternateUnit, setHasAlternateUnit] = useState(false);
-  const [trackCost, setTrackCost] = useState(false);
+  // Remove trackCost state as we're removing that functionality
 
   const { data: suppliers } = useQuery({
     queryKey: ["suppliers"],
@@ -46,7 +45,7 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
   const form = useForm<StockFormValues>({
     resolver: zodResolver(stockFormSchema),
     defaultValues,
-    mode: "onChange" // Update to validate on change
+    mode: "onChange"
   });
 
   // Set form values when editing an existing stock item
@@ -60,15 +59,14 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
         unit: stockItem.unit,
         alternate_unit: stockItem.alternate_unit || "",
         conversion_rate: stockItem.conversion_rate || 0,
-        track_cost: stockItem.track_cost || false,
+        track_cost: false, // Always set to false since we're removing this option
         purchase_price: stockItem.purchase_price || 0,
         selling_price: stockItem.selling_price || 0,
         supplier_id: stockItem.supplier_id || "",
         reorder_level: stockItem.reorder_level || 0,
-        purchase_rate: stockItem.purchase_rate || 0, // Added purchase rate
+        purchase_rate: stockItem.purchase_rate || 0,
       });
       setHasAlternateUnit(!!stockItem.alternate_unit);
-      setTrackCost(stockItem.track_cost || false);
     }
   }, [stockItem, form]);
 
@@ -92,12 +90,12 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
         unit: values.unit,
         alternate_unit: hasAlternateUnit ? values.alternate_unit || null : null,
         conversion_rate: hasAlternateUnit ? values.conversion_rate || 0 : 0,
-        track_cost: trackCost,
-        purchase_price: trackCost ? values.purchase_price || null : null,
-        selling_price: trackCost ? values.selling_price || null : null,
+        track_cost: false, // Always set to false since we're removing this option
+        purchase_price: null, // Set to null since we're not tracking cost
+        selling_price: null, // Set to null since we're not tracking cost
         supplier_id: values.supplier_id && values.supplier_id !== "" && values.supplier_id !== "none" ? values.supplier_id : null,
         reorder_level: values.reorder_level || null,
-        purchase_rate: values.purchase_rate || null, // Added purchase rate
+        purchase_rate: values.purchase_rate || null, // Keep purchase rate
       };
       
       console.log("Submitting stock data:", stockData);
@@ -141,12 +139,12 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
         unit: values.unit,
         alternate_unit: values.alternate_unit || null,
         conversion_rate: values.conversion_rate || 0,
-        track_cost: values.track_cost || false,
-        purchase_price: values.purchase_price || null,
-        selling_price: values.selling_price || null,
+        track_cost: false, // Always set to false since we're removing this option
+        purchase_price: null, // Set to null since we're not tracking cost
+        selling_price: null, // Set to null since we're not tracking cost
         supplier_id: values.supplier_id || null,
         reorder_level: values.reorder_level || null,
-        purchase_rate: values.purchase_rate || null, // Added purchase rate
+        purchase_rate: values.purchase_rate || null, // Keep purchase rate
       };
       
       const { data, error } = await supabase
@@ -185,18 +183,13 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
       ...values,
       material_name: values.material_name.trim(),
       unit: values.unit.trim(), 
+      track_cost: false // Always set to false since we're removing this option
     };
 
     // Remove alternate unit data if not using it
     if (!hasAlternateUnit) {
       submissionValues.alternate_unit = '';
       submissionValues.conversion_rate = 0;
-    }
-
-    // Remove cost tracking data if not using it
-    if (!trackCost) {
-      submissionValues.purchase_price = 0;
-      submissionValues.selling_price = 0;
     }
 
     // Handle empty value for supplier_id
@@ -219,8 +212,7 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
     suppliers,
     hasAlternateUnit,
     setHasAlternateUnit,
-    trackCost,
-    setTrackCost,
     isLoading,
+    // Remove trackCost and setTrackCost from the returned object
   };
 }

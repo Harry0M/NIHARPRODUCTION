@@ -22,9 +22,8 @@ export const StockForm = ({ stockId }: StockFormProps) => {
     suppliers,
     hasAlternateUnit,
     setHasAlternateUnit,
-    trackCost,
-    setTrackCost,
     isLoading,
+    // trackCost and setTrackCost are removed
   } = useStockForm({ stockId });
 
   if (isLoading) {
@@ -66,10 +65,7 @@ export const StockForm = ({ stockId }: StockFormProps) => {
             <CardContent className="pt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
-                  <CostTrackingFields
-                    trackCost={trackCost}
-                    onTrackCostChange={setTrackCost}
-                  />
+                  <CostTrackingFields />
                 </div>
                 <div>
                   <AdditionalInfoFields suppliers={suppliers} />

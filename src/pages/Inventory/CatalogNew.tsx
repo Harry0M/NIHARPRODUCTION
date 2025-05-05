@@ -21,7 +21,7 @@ import { v4 as uuidv4 } from "uuid";
 
 const componentOptions = {
   color: ["Red", "Blue", "Green", "Black", "White", "Yellow", "Brown", "Orange", "Purple", "Gray", "Custom"],
-  gsm: ["70", "80", "90", "100", "120", "140", "160", "180", "200", "250", "300", "Custom"]
+  // Removed GSM options as requested
 };
 
 interface ComponentType {
@@ -29,7 +29,7 @@ interface ComponentType {
   type: string;
   customName?: string;
   color?: string;
-  gsm?: string;
+  // Removed gsm field
   length?: string;
   width?: string;
   roll_width?: string;
@@ -204,7 +204,7 @@ const CatalogNew = () => {
       // Process components
       const allComponents = [
         ...Object.values(components).filter(Boolean),
-        ...customComponents.filter(comp => comp.customName || comp.color || comp.gsm || comp.length || comp.width || comp.roll_width)
+        ...customComponents.filter(comp => comp.customName || comp.color || comp.length || comp.width || comp.roll_width)
       ];
       
       if (allComponents.length > 0) {
@@ -213,7 +213,7 @@ const CatalogNew = () => {
           component_type: comp.type === 'custom' ? comp.customName || 'custom' : comp.type,
           size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
           color: comp.color || null,
-          gsm: comp.gsm || null,
+          gsm: null, // Always set GSM to null as we don't need it
           roll_width: comp.roll_width || null,
           length: comp.length || null,
           width: comp.width || null,
