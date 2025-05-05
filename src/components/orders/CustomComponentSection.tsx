@@ -30,7 +30,7 @@ interface CustomComponentSectionProps {
   customComponents: CustomComponent[];
   componentOptions: {
     color: string[];
-    gsm: string[];
+    gsm?: string[]; // Make gsm optional
   };
   handleCustomComponentChange: (index: number, field: string, value: string) => void;
   removeCustomComponent: (index: number) => void;
@@ -83,7 +83,7 @@ interface CustomComponentFormProps {
   index: number;
   componentOptions: {
     color: string[];
-    gsm: string[];
+    gsm?: string[]; // Make gsm optional
   };
   handleCustomComponentChange: (index: number, field: string, value: string) => void;
   removeCustomComponent: (index: number) => void;
@@ -203,34 +203,37 @@ const CustomComponentForm = ({
               )}
             </div>
             
-            <div>
-              <Label htmlFor={`custom-${index}-gsm`}>GSM</Label>
-              <Select 
-                value={component.gsm || "none"} 
-                onValueChange={handleGSMChange}
-              >
-                <SelectTrigger id={`custom-${index}-gsm`}>
-                  <SelectValue placeholder="Select GSM" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {componentOptions.gsm.map(gsm => (
-                    <SelectItem key={`custom-${index}-${gsm}`} value={gsm}>
-                      {gsm}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              {component.gsm === "Custom" && (
-                <Input
-                  className="mt-2"
-                  placeholder="Enter custom GSM"
-                  value={customGSM}
-                  onChange={(e) => handleCustomGSMChange(e.target.value)}
-                />
-              )}
-            </div>
+            {/* Only render GSM field if gsm options are provided */}
+            {componentOptions.gsm && (
+              <div>
+                <Label htmlFor={`custom-${index}-gsm`}>GSM</Label>
+                <Select 
+                  value={component.gsm || "none"} 
+                  onValueChange={handleGSMChange}
+                >
+                  <SelectTrigger id={`custom-${index}-gsm`}>
+                    <SelectValue placeholder="Select GSM" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {componentOptions.gsm.map(gsm => (
+                      <SelectItem key={`custom-${index}-${gsm}`} value={gsm}>
+                        {gsm}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                {component.gsm === "Custom" && (
+                  <Input
+                    className="mt-2"
+                    placeholder="Enter custom GSM"
+                    value={customGSM}
+                    onChange={(e) => handleCustomGSMChange(e.target.value)}
+                  />
+                )}
+              </div>
+            )}
           </div>
           
           <div className="grid grid-cols-3 gap-3">
