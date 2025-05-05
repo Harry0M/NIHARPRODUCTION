@@ -27,6 +27,7 @@ export const StandardComponents = ({
   onChange,
   defaultQuantity
 }: StandardComponentsProps) => {
+  // Define standard component types with proper capitalization as they appear in UI
   const standardComponents = [
     { type: "Part" },
     { type: "Border" },

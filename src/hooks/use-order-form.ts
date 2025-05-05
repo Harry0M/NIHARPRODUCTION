@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -185,7 +184,8 @@ export function useOrderForm(): UseOrderFormReturn {
     }
     
     // Clear existing components first
-    const standardTypes = ['part', 'border', 'handle', 'chain', 'runner'];
+    // Define standard types in lowercase for case-insensitive comparison
+    const standardTypesLower = ['part', 'border', 'handle', 'chain', 'runner', 'piping'];
     const newOrderComponents: Record<string, any> = {};
     const newCustomComponents: Component[] = [];
     const newBaseConsumptions: Record<string, number> = {};
@@ -227,6 +227,8 @@ export function useOrderForm(): UseOrderFormReturn {
 
     components.forEach(component => {
       if (!component) return;
+      
+      console.log("Processing component:", component);
       
       // Extract length and width from size format "length x width"
       let length = '', width = '';
@@ -270,7 +272,9 @@ export function useOrderForm(): UseOrderFormReturn {
         materialRollWidth
       });
       
-      if (component.component_type === 'custom') {
+      const componentTypeLower = component.component_type.toLowerCase();
+      
+      if (componentTypeLower === 'custom') {
         const customIndex = newCustomComponents.length;
         newCustomComponents.push({
           id: uuidv4(),
@@ -289,10 +293,15 @@ export function useOrderForm(): UseOrderFormReturn {
         if (component.consumption) {
           newBaseConsumptions[`custom_${customIndex}`] = parseFloat(component.consumption);
         }
-      } else if (standardTypes.includes(component.component_type)) {
-        newOrderComponents[component.component_type] = {
+      } else if (standardTypesLower.includes(componentTypeLower)) {
+        // Map the component type to the capitalized version used in the UI
+        // This is crucial - we use the original case from the component for UI display
+        // but standardize to lowercase for lookups
+        const componentTypeKey = component.component_type;
+        
+        newOrderComponents[componentTypeKey] = {
           id: uuidv4(),
-          type: component.component_type,
+          type: componentTypeKey, // Preserve original capitalization
           color: materialColor,
           gsm: materialGsm,
           length,
@@ -304,7 +313,7 @@ export function useOrderForm(): UseOrderFormReturn {
         
         // Store base consumption for standard component
         if (component.consumption) {
-          newBaseConsumptions[component.component_type] = parseFloat(component.consumption);
+          newBaseConsumptions[componentTypeKey] = parseFloat(component.consumption);
         }
       }
     });
