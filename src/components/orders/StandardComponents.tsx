@@ -64,17 +64,24 @@ export const StandardComponents = ({
       <h2 className="text-lg font-medium">Standard Components</h2>
       
       <div className="grid md:grid-cols-2 gap-4">
-        {standardComponents.map((component) => (
-          <ComponentForm
-            key={component.type}
-            component={components[component.type] || { type: component.type }}
-            componentOptions={componentOptions}
-            onChange={onChange}
-            defaultQuantity={defaultQuantity}
-            onMaterialSelect={(materialId) => handleMaterialSelect(component.type, materialId)}
-            calculateConsumption={calculateConsumption}
-          />
-        ))}
+        {standardComponents.map((component) => {
+          // Get the actual component data if it exists
+          const componentData = components[component.type] || { type: component.type };
+          
+          console.log(`Rendering ${component.type}, data:`, componentData);
+          
+          return (
+            <ComponentForm
+              key={component.type}
+              component={componentData}
+              componentOptions={componentOptions}
+              onChange={onChange}
+              defaultQuantity={defaultQuantity}
+              onMaterialSelect={(materialId) => handleMaterialSelect(component.type, materialId)}
+              calculateConsumption={calculateConsumption}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -110,6 +117,8 @@ const ComponentForm = ({
 }: ComponentFormProps) => {
   const [customColor, setCustomColor] = useState("");
   const [customGSM, setCustomGSM] = useState("");
+  
+  console.log("Component Form rendering for:", component.type, "with data:", component);
   
   const handleCustomColorChange = (value: string) => {
     setCustomColor(value);

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -234,8 +235,10 @@ export function useOrderForm(): UseOrderFormReturn {
       let length = '', width = '';
       if (component.size) {
         const sizeValues = component.size.split('x').map((s: string) => s.trim());
-        length = sizeValues[0] || '';
-        width = sizeValues[1] || '';
+        if (sizeValues.length >= 2) {
+          length = sizeValues[0] || '';
+          width = sizeValues[1] || '';
+        }
       } else {
         // If no size but separate length/width provided
         length = component.length?.toString() || '';
@@ -272,6 +275,12 @@ export function useOrderForm(): UseOrderFormReturn {
         materialRollWidth
       });
       
+      // Make sure component_type exists and is a string before converting to lower case
+      if (!component.component_type || typeof component.component_type !== 'string') {
+        console.warn('Component has no valid component_type:', component);
+        return;
+      }
+      
       const componentTypeLower = component.component_type.toLowerCase();
       
       if (componentTypeLower === 'custom') {
@@ -298,6 +307,8 @@ export function useOrderForm(): UseOrderFormReturn {
         // This is crucial - we use the original case from the component for UI display
         // but standardize to lowercase for lookups
         const componentTypeKey = component.component_type;
+        
+        console.log(`Found standard component ${componentTypeLower} -> mapping to key ${componentTypeKey}`);
         
         newOrderComponents[componentTypeKey] = {
           id: uuidv4(),
@@ -331,7 +342,7 @@ export function useOrderForm(): UseOrderFormReturn {
     if (orderDetails.quantity) {
       const quantity = parseFloat(orderDetails.quantity);
       if (!isNaN(quantity) && quantity > 0) {
-        setTimeout(() => updateConsumptionBasedOnQuantity(quantity), 0);
+        setTimeout(() => updateConsumptionBasedOnQuantity(quantity), 100);
       }
     }
   };

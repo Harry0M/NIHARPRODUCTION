@@ -81,6 +81,16 @@ export const OrderDetailsForm = ({
       if (onProductSelect && selectedProduct.catalog_components && selectedProduct.catalog_components.length > 0) {
         console.log("Passing components with material data:", selectedProduct.catalog_components);
         onProductSelect(selectedProduct.catalog_components);
+        
+        // If quantity is already set, update consumption values
+        if (formData.quantity && updateConsumptionBasedOnQuantity) {
+          const quantity = parseFloat(formData.quantity);
+          if (!isNaN(quantity) && quantity > 0) {
+            setTimeout(() => updateConsumptionBasedOnQuantity(quantity), 100);
+          }
+        }
+      } else {
+        console.log("No components found in the selected product");
       }
     }
   };
