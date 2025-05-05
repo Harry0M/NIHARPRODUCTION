@@ -150,18 +150,19 @@ const OrderDetail = () => {
                 
               const material = comp.inventory;
               // Ensure purchase_rate is a number or default to 0
-              const purchaseRate = material && material.purchase_rate ? Number(material.purchase_rate) : 0;
+              const purchaseRate = material && 'purchase_rate' in material ? 
+                (material.purchase_rate ? Number(material.purchase_rate) : 0) : 0;
 
               if (materialMap.has(materialId)) {
                 // Update existing material
                 const existing = materialMap.get(materialId)!;
                 existing.total_consumption += consumption;
-                existing.total_cost = existing.total_consumption * (existing.purchase_rate || 0);
-              } else {
-                // Add new material
+                existing.total_cost = existing.total_consumption * (existing.purchase_rate ?? 0);
+              } else if (material) {
+                // Add new material - ensure material is not null
                 materialMap.set(materialId, {
                   material_id: materialId,
-                  material_name: material.material_name,
+                  material_name: material.material_name || 'Unknown Material',
                   color: material.color,
                   gsm: material.gsm,
                   total_consumption: consumption,
