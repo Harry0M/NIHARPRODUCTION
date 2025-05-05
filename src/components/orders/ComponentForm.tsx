@@ -39,7 +39,7 @@ interface ComponentFormProps {
   isCustom?: boolean;
   componentOptions: {
     color: string[];
-    gsm: string[];
+    gsm?: string[]; // Make gsm optional
   };
   title?: string;
   handleChange: (index: number, field: string, value: string) => void;
@@ -164,7 +164,9 @@ export const ComponentForm = ({
                 const selectedStock = stockItems.find(item => item.id === materialId);
                 if (selectedStock) {
                   console.log("Selected material:", selectedStock);
-                  onFieldChange('gsm', selectedStock.gsm || '');
+                  if (selectedStock.gsm) {
+                    onFieldChange('gsm', selectedStock.gsm || '');
+                  }
                   if (selectedStock.color && selectedStock.color !== "not_applicable") {
                     onFieldChange('color', selectedStock.color);
                   }

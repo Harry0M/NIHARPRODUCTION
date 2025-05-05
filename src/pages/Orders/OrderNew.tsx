@@ -17,7 +17,7 @@ import {
 
 const componentOptions = {
   color: ["Red", "Blue", "Green", "Black", "White", "Yellow", "Brown", "Orange", "Purple", "Gray", "Custom"],
-  gsm: ["70", "80", "90", "100", "120", "140", "160", "180", "200", "250", "300", "Custom"]
+  // gsm has been removed as requested
 };
 
 const OrderNew = () => {

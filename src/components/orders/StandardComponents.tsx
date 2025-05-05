@@ -15,7 +15,7 @@ interface StandardComponentsProps {
   components: Record<string, any>;
   componentOptions: {
     color: string[];
-    gsm: string[];
+    gsm?: string[]; // Make gsm optional
   };
   onChange: (type: string, field: string, value: string) => void;
   defaultQuantity?: string;
@@ -91,7 +91,7 @@ interface ComponentFormProps {
   };
   componentOptions: {
     color: string[];
-    gsm: string[];
+    gsm?: string[]; // Make gsm optional
   };
   onChange: (type: string, field: string, value: string) => void;
   defaultQuantity?: string;
@@ -171,34 +171,37 @@ const ComponentForm = ({
               )}
             </div>
             
-            <div>
-              <Label htmlFor={`${component.type}-gsm`}>GSM</Label>
-              <Select 
-                value={component.gsm || "none"} 
-                onValueChange={(value) => handleSelectChange('gsm', value)}
-              >
-                <SelectTrigger id={`${component.type}-gsm`}>
-                  <SelectValue placeholder="Select GSM" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {componentOptions.gsm.map(gsm => (
-                    <SelectItem key={`${component.type}-${gsm}`} value={gsm}>
-                      {gsm}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              {component.gsm === "Custom" && (
-                <Input
-                  className="mt-2"
-                  placeholder="Enter custom GSM"
-                  value={customGSM}
-                  onChange={(e) => handleCustomGSMChange(e.target.value)}
-                />
-              )}
-            </div>
+            {/* Only render GSM field if gsm options are provided */}
+            {componentOptions.gsm && (
+              <div>
+                <Label htmlFor={`${component.type}-gsm`}>GSM</Label>
+                <Select 
+                  value={component.gsm || "none"} 
+                  onValueChange={(value) => handleSelectChange('gsm', value)}
+                >
+                  <SelectTrigger id={`${component.type}-gsm`}>
+                    <SelectValue placeholder="Select GSM" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {componentOptions.gsm.map(gsm => (
+                      <SelectItem key={`${component.type}-${gsm}`} value={gsm}>
+                        {gsm}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                {component.gsm === "Custom" && (
+                  <Input
+                    className="mt-2"
+                    placeholder="Enter custom GSM"
+                    value={customGSM}
+                    onChange={(e) => handleCustomGSMChange(e.target.value)}
+                  />
+                )}
+              </div>
+            )}
           </div>
           
           <div className="grid grid-cols-3 gap-3">
