@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { 
@@ -125,10 +124,13 @@ const OrderDetail = () => {
           
         if (componentsError) throw componentsError;
         
-        // Convert gsm from number to string if needed
+        // Convert components data to match our Component type
         const typeSafeComponents: Component[] = componentsData?.map(comp => ({
           ...comp,
-          gsm: comp.gsm !== null ? String(comp.gsm) : null
+          // Ensure gsm is a string
+          gsm: comp.gsm !== null ? String(comp.gsm) : null,
+          // Ensure we handle inventory correctly
+          inventory: comp.inventory && typeof comp.inventory === 'object' ? comp.inventory : null
         })) || [];
         
         setComponents(typeSafeComponents);
@@ -139,11 +141,16 @@ const OrderDetail = () => {
           let totalCost = 0;
 
           componentsData.forEach(comp => {
-            if (comp.material_id && comp.inventory && comp.consumption) {
+            // Only process components with valid material_id, inventory, and consumption
+            if (comp.material_id && comp.inventory && typeof comp.inventory === 'object' && comp.consumption) {
               const materialId = comp.material_id;
-              const consumption = parseFloat(comp.consumption as string);
+              const consumption = typeof comp.consumption === 'string' 
+                ? parseFloat(comp.consumption) 
+                : Number(comp.consumption);
+                
               const material = comp.inventory;
-              const purchaseRate = material.purchase_rate || 0;
+              // Ensure purchase_rate is a number or default to 0
+              const purchaseRate = material && material.purchase_rate ? Number(material.purchase_rate) : 0;
 
               if (materialMap.has(materialId)) {
                 // Update existing material
@@ -386,7 +393,7 @@ const OrderDetail = () => {
                           <TableCell>{component.gsm || "-"}</TableCell>
                           <TableCell>
                             {component.consumption 
-                              ? `${parseFloat(component.consumption).toFixed(2)} ${component.inventory?.unit || 'units'}`
+                              ? `${parseFloat(component.consumption.toString()).toFixed(2)} ${component.inventory?.unit || 'units'}`
                               : "-"}
                           </TableCell>
                         </TableRow>

@@ -44,8 +44,8 @@ export interface Component {
   created_at?: string | null;
   updated_at?: string | null;
   material_id?: string | null;
-  consumption?: string | null;
-  roll_width?: string | null;
+  consumption?: string | number | null; // Allow both string and number for flexibility
+  roll_width?: string | number | null; // Allow both string and number for flexibility
   inventory?: {
     id: string;
     material_name: string;
