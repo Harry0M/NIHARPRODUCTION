@@ -107,6 +107,11 @@ export const ComponentsTable = ({ components, onViewComponent, onLinkMaterial }:
                       <span className="font-medium">Consumption:</span> {component.consumption}
                     </span>
                   )}
+                  {component.roll_width && (
+                    <span className="text-xs flex items-center gap-1">
+                      <span className="font-medium">Roll Width:</span> {component.roll_width}
+                    </span>
+                  )}
                 </div>
               </TableCell>
               <TableCell>
@@ -122,6 +127,11 @@ export const ComponentsTable = ({ components, onViewComponent, onLinkMaterial }:
                       {component.material.gsm && (
                         <Badge variant="outline" className="text-xs">
                           {component.material.gsm} GSM
+                        </Badge>
+                      )}
+                      {component.material.unit && (
+                        <Badge variant="outline" className="text-xs">
+                          {component.material.unit}
                         </Badge>
                       )}
                     </div>

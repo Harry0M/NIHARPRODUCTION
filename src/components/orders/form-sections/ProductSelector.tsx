@@ -23,12 +23,14 @@ interface Product {
     material_id?: string;
     material?: {
       id: string;
-      material_name: string; // Changed from material_type to material_name
+      material_name: string;
       color?: string;
       gsm?: string;
       quantity?: number;
       unit?: string;
+      roll_width?: number;
     };
+    material_linked?: boolean;
   }>;
 }
 

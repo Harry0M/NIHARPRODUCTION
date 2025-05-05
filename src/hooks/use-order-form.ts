@@ -175,7 +175,7 @@ export function useOrderForm(): UseOrderFormReturn {
     setBaseConsumptions(updatedBaseConsumptions);
   };
 
-  const handleProductSelect = (components: any[]) => {
+  const handleProductSelect = async (components: any[]) => {
     console.log("Selected product components:", components);
     
     if (!components || components.length === 0) {
@@ -189,6 +189,40 @@ export function useOrderForm(): UseOrderFormReturn {
     const newCustomComponents: Component[] = [];
     const newBaseConsumptions: Record<string, number> = {};
 
+    // Fetch complete material data for all components with material_id
+    const materialIds = components
+      .filter(comp => comp.material_id)
+      .map(comp => comp.material_id);
+
+    let materialsData: Record<string, any> = {};
+    
+    if (materialIds.length > 0) {
+      try {
+        const { data: materials, error } = await supabase
+          .from('inventory')
+          .select('id, material_name, color, gsm, unit, roll_width')
+          .in('id', materialIds);
+          
+        if (error) {
+          console.error('Error fetching materials:', error);
+          toast({
+            title: "Error fetching materials",
+            description: error.message,
+            variant: "destructive"
+          });
+        } else if (materials) {
+          materialsData = materials.reduce((acc, material) => {
+            acc[material.id] = material;
+            return acc;
+          }, {} as Record<string, any>);
+          
+          console.log("Fetched materials data:", materialsData);
+        }
+      } catch (err) {
+        console.error('Error in material fetch:', err);
+      }
+    }
+
     components.forEach(component => {
       if (!component) return;
       
@@ -198,6 +232,10 @@ export function useOrderForm(): UseOrderFormReturn {
         const sizeValues = component.size.split('x').map((s: string) => s.trim());
         length = sizeValues[0] || '';
         width = sizeValues[1] || '';
+      } else {
+        // If no size but separate length/width provided
+        length = component.length?.toString() || '';
+        width = component.width?.toString() || '';
       }
       
       // Store consumption value directly from component
@@ -206,16 +244,28 @@ export function useOrderForm(): UseOrderFormReturn {
       
       // Include material_id if available
       const materialId = component.material_id || null;
-      // Include material details from the nested material object
-      const materialType = component.material?.material_type || '';
-      const materialColor = component.material?.color || component.color || '';
-      const materialGsm = component.material?.gsm?.toString() || component.gsm?.toString() || '';
+      
+      // Get material details either from fetched data or component
+      let materialColor = '';
+      let materialGsm = '';
+      let materialRollWidth = '';
+      
+      if (materialId && materialsData[materialId]) {
+        // If we have fetched material data, use it
+        materialColor = materialsData[materialId].color || '';
+        materialGsm = materialsData[materialId].gsm?.toString() || '';
+        materialRollWidth = materialsData[materialId].roll_width?.toString() || rollWidth;
+      } else {
+        // Fallback to component data
+        materialColor = component.material?.color || component.color || '';
+        materialGsm = component.material?.gsm?.toString() || component.gsm?.toString() || '';
+      }
 
       console.log(`Component ${component.component_type} has material:`, {
         materialId,
-        materialType,
         materialColor,
-        materialGsm
+        materialGsm,
+        materialRollWidth
       });
       
       if (component.component_type === 'custom') {
@@ -229,7 +279,7 @@ export function useOrderForm(): UseOrderFormReturn {
           length,
           width,
           consumption,
-          roll_width: rollWidth,
+          roll_width: materialRollWidth || rollWidth,
           material_id: materialId
         });
         
@@ -246,7 +296,7 @@ export function useOrderForm(): UseOrderFormReturn {
           length,
           width,
           consumption,
-          roll_width: rollWidth,
+          roll_width: materialRollWidth || rollWidth,
           material_id: materialId
         };
         

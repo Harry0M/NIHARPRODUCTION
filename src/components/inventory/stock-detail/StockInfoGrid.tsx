@@ -79,6 +79,12 @@ export const StockInfoGrid = ({ stockItem, linkedComponents = [] }: StockInfoGri
                 <p className="font-medium">1 {formatValue(stockItem.unit)} = {formatValue(stockItem.conversion_rate)} {formatValue(stockItem.alternate_unit)}</p>
               </div>
             )}
+            {stockItem.roll_width && (
+              <div>
+                <p className="text-sm text-muted-foreground">Roll Width</p>
+                <p className="font-medium">{formatValue(stockItem.roll_width)} inches</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -138,6 +144,11 @@ export const StockInfoGrid = ({ stockItem, linkedComponents = [] }: StockInfoGri
                   {component.consumption && (
                     <p className="text-sm text-muted-foreground">
                       Consumption: {component.consumption.toFixed(2)} {stockItem.unit}
+                    </p>
+                  )}
+                  {(component.size || (component.length && component.width)) && (
+                    <p className="text-sm text-muted-foreground">
+                      Size: {component.size || `${component.length}x${component.width}`}
                     </p>
                   )}
                 </div>
