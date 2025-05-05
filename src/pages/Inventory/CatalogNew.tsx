@@ -21,7 +21,7 @@ import { v4 as uuidv4 } from "uuid";
 
 const componentOptions = {
   color: ["Red", "Blue", "Green", "Black", "White", "Yellow", "Brown", "Orange", "Purple", "Gray", "Custom"],
-  // Removed GSM options as requested
+  // GSM has been completely removed
 };
 
 interface ComponentType {

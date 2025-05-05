@@ -23,7 +23,6 @@ export const StockForm = ({ stockId }: StockFormProps) => {
     hasAlternateUnit,
     setHasAlternateUnit,
     isLoading,
-    // trackCost and setTrackCost are removed
   } = useStockForm({ stockId });
 
   if (isLoading) {

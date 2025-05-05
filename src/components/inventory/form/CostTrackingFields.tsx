@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
-// We're removing the props since we no longer need trackCost and onTrackCostChange
 interface CostTrackingFieldsProps {}
 
 export const CostTrackingFields = ({}: CostTrackingFieldsProps) => {
