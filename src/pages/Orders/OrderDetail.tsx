@@ -39,7 +39,7 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Component } from "@/types/order";
+import { Component, InventoryMaterial } from "@/types/order";
 import { getStatusColor, getStatusDisplay } from "@/utils/orderUtils";
 
 interface Order {
@@ -130,7 +130,8 @@ const OrderDetail = () => {
           // Ensure gsm is a string
           gsm: comp.gsm !== null ? String(comp.gsm) : null,
           // Ensure we handle inventory correctly
-          inventory: comp.inventory && typeof comp.inventory === 'object' ? comp.inventory : null
+          inventory: comp.inventory && typeof comp.inventory === 'object' ? 
+            comp.inventory as InventoryMaterial : null
         })) || [];
         
         setComponents(typeSafeComponents);
@@ -149,11 +150,15 @@ const OrderDetail = () => {
                 : Number(comp.consumption);
                 
               const material = comp.inventory;
+              
               // Type guard to ensure material is an object with expected properties
               if (material && typeof material === 'object') {
+                // Cast material to InventoryMaterial to access its properties safely
+                const typedMaterial = material as unknown as InventoryMaterial;
+                
                 // Ensure purchase_rate is a number or default to 0
-                const purchaseRate = 'purchase_rate' in material && material.purchase_rate !== null
-                  ? Number(material.purchase_rate) 
+                const purchaseRate = typedMaterial.purchase_rate !== null
+                  ? Number(typedMaterial.purchase_rate) 
                   : 0;
 
                 if (materialMap.has(materialId)) {
@@ -162,19 +167,14 @@ const OrderDetail = () => {
                   existing.total_consumption += consumption;
                   existing.total_cost = existing.total_consumption * (existing.purchase_rate ?? 0);
                 } else {
-                  // Add new material - ensure material is not null
-                  const materialName = 'material_name' in material ? material.material_name : 'Unknown Material';
-                  const materialColor = 'color' in material ? material.color : null;
-                  const materialGsm = 'gsm' in material ? material.gsm : null;
-                  const materialUnit = 'unit' in material ? material.unit : 'meters';
-                  
+                  // Add new material with safe property access
                   materialMap.set(materialId, {
                     material_id: materialId,
-                    material_name: materialName,
-                    color: materialColor,
-                    gsm: materialGsm,
+                    material_name: typedMaterial.material_name || 'Unknown Material',
+                    color: typedMaterial.color,
+                    gsm: typedMaterial.gsm,
                     total_consumption: consumption,
-                    unit: materialUnit,
+                    unit: typedMaterial.unit || 'meters',
                     purchase_rate: purchaseRate,
                     total_cost: consumption * purchaseRate
                   });

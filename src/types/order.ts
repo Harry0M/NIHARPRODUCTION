@@ -33,6 +33,15 @@ export interface OrderFormData {
   sales_account_id?: string | null;
 }
 
+export interface InventoryMaterial {
+  id: string;
+  material_name: string;
+  color: string | null;
+  gsm: string | null;
+  unit: string | null;
+  purchase_rate: number | null;
+}
+
 export interface Component {
   id: string;
   component_type: string;
@@ -46,12 +55,5 @@ export interface Component {
   material_id?: string | null;
   consumption?: string | number | null; // Allow both string and number for flexibility
   roll_width?: string | number | null; // Allow both string and number for flexibility
-  inventory?: {
-    id: string;
-    material_name: string;
-    color: string | null;
-    gsm: string | null;
-    unit: string | null;
-    purchase_rate: number | null;
-  } | null;
+  inventory?: InventoryMaterial | null;
 }
