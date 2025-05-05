@@ -424,8 +424,35 @@ export function useOrderForm(): UseOrderFormReturn {
       return false;
     }
     
+    // Check for required type field (using either type or component_type)
     if (!component.type && !component.component_type) {
       console.warn("Invalid component data: missing type/component_type", component);
+      return false;
+    }
+    
+    // Validate numeric fields to ensure they're not NaN when parsed
+    if (component.length && isNaN(parseFloat(component.length))) {
+      console.warn("Invalid component data: length is not a valid number", component);
+      return false;
+    }
+    
+    if (component.width && isNaN(parseFloat(component.width))) {
+      console.warn("Invalid component data: width is not a valid number", component);
+      return false;
+    }
+    
+    if (component.roll_width && isNaN(parseFloat(component.roll_width))) {
+      console.warn("Invalid component data: roll_width is not a valid number", component);
+      return false;
+    }
+    
+    if (component.consumption && isNaN(parseFloat(component.consumption))) {
+      console.warn("Invalid component data: consumption is not a valid number", component);
+      return false;
+    }
+    
+    if (component.gsm && isNaN(parseFloat(component.gsm))) {
+      console.warn("Invalid component data: gsm is not a valid number", component);
       return false;
     }
     
@@ -522,8 +549,12 @@ export function useOrderForm(): UseOrderFormReturn {
         const componentsToInsert = allComponents
           .filter(comp => validateComponentData(comp))
           .map(comp => {
-            // Determine correct component type
-            const componentType = comp.type === 'custom' ? 'custom' : comp.type;
+            // Determine correct component type - IMPORTANT: convert to lowercase to match database enum
+            // The database expects component_type in lowercase, but UI might display it with capitalization
+            const componentTypeRaw = comp.type === 'custom' ? 'custom' : comp.type;
+            const componentType = componentTypeRaw.toLowerCase();
+            
+            console.log(`Converting component type from '${componentTypeRaw}' to '${componentType}'`);
             
             // Use proper size formatting or null
             const size = comp.length && comp.width 
@@ -540,6 +571,8 @@ export function useOrderForm(): UseOrderFormReturn {
             
             // Debug log for individual component
             console.log(`Preparing component ${componentType}:`, {
+              originalType: comp.type,
+              normalizedType: componentType,
               originalGsm: comp.gsm,
               originalRollWidth: comp.roll_width,
               originalConsumption: comp.consumption,
