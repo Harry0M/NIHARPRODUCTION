@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -465,18 +464,21 @@ export function useOrderForm(): UseOrderFormReturn {
       console.log("Components to be saved:", allComponents);
       
       if (allComponents.length > 0) {
+        // FIXED: Now including material_id, roll_width, and consumption data in the saved components
         const componentsToInsert = allComponents.map(comp => ({
           order_id: orderResult.id,
           component_type: comp.type === 'custom' ? 'custom' : comp.type,
           size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
           color: comp.color || null,
           gsm: comp.gsm || null,
-          custom_name: comp.type === 'custom' ? comp.customName : null
+          custom_name: comp.type === 'custom' ? comp.customName : null,
+          material_id: comp.material_id || null,           // Include material ID
+          roll_width: comp.roll_width || null,             // Include roll width
+          consumption: comp.consumption || null            // Include consumption
         }));
 
-        console.log("Inserting components:", componentsToInsert);
+        console.log("Inserting components with enhanced data:", componentsToInsert);
 
-        // Fixed: Using the correct table name "order_components" instead of "components"
         const { error: componentsError } = await supabase
           .from("order_components")
           .insert(componentsToInsert);

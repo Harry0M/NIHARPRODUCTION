@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { 
@@ -16,17 +17,6 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import {
   Tabs,
   TabsContent,
@@ -45,7 +35,8 @@ import {
   Package, 
   Pencil,
   Plus,
-  Trash
+  Calculator,
+  Layers
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -79,6 +70,17 @@ interface Company {
   name: string;
 }
 
+interface MaterialSummary {
+  material_id: string;
+  material_name: string;
+  color: string | null;
+  gsm: string | null;
+  total_consumption: number;
+  unit: string;
+  purchase_rate: number | null;
+  total_cost: number;
+}
+
 const OrderDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -86,7 +88,8 @@ const OrderDetail = () => {
   const [components, setComponents] = useState<Component[]>([]);
   const [jobCards, setJobCards] = useState<JobCard[]>([]);
   const [loading, setLoading] = useState(true);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [materialSummary, setMaterialSummary] = useState<MaterialSummary[]>([]);
+  const [totalMaterialCost, setTotalMaterialCost] = useState<number>(0);
   const [companies, setCompanies] = useState<Company[]>([]);
   
   useEffect(() => {
@@ -103,10 +106,20 @@ const OrderDetail = () => {
         if (orderError) throw orderError;
         setOrder(orderData);
         
-        // Fixed: Fetch order components from the correct table "order_components"
+        // Fetch order components with material data
         const { data: componentsData, error: componentsError } = await supabase
           .from("order_components")
-          .select("*")
+          .select(`
+            *,
+            inventory:material_id (
+              id,
+              material_name,
+              unit,
+              color,
+              gsm,
+              purchase_rate
+            )
+          `)
           .eq("order_id", id);
           
         if (componentsError) throw componentsError;
@@ -118,6 +131,48 @@ const OrderDetail = () => {
         })) || [];
         
         setComponents(typeSafeComponents);
+
+        // Calculate material summary - group by material_id
+        if (componentsData && componentsData.length > 0) {
+          const materialMap = new Map<string, MaterialSummary>();
+          let totalCost = 0;
+
+          componentsData.forEach(comp => {
+            if (comp.material_id && comp.inventory && comp.consumption) {
+              const materialId = comp.material_id;
+              const consumption = parseFloat(comp.consumption);
+              const material = comp.inventory;
+              const purchaseRate = material.purchase_rate || 0;
+
+              if (materialMap.has(materialId)) {
+                // Update existing material
+                const existing = materialMap.get(materialId)!;
+                existing.total_consumption += consumption;
+                existing.total_cost = existing.total_consumption * (existing.purchase_rate || 0);
+              } else {
+                // Add new material
+                materialMap.set(materialId, {
+                  material_id: materialId,
+                  material_name: material.material_name,
+                  color: material.color,
+                  gsm: material.gsm,
+                  total_consumption: consumption,
+                  unit: material.unit || 'meters',
+                  purchase_rate: purchaseRate,
+                  total_cost: consumption * purchaseRate
+                });
+              }
+            }
+          });
+
+          const summaries = Array.from(materialMap.values());
+          
+          // Calculate total cost
+          totalCost = summaries.reduce((sum, item) => sum + item.total_cost, 0);
+          
+          setMaterialSummary(summaries);
+          setTotalMaterialCost(totalCost);
+        }
         
         // Fetch job cards
         const { data: jobCardsData, error: jobCardsError } = await supabase
@@ -155,8 +210,6 @@ const OrderDetail = () => {
     fetchOrderData();
     fetchCompanies();
   }, [id, navigate]);
-
-  
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
@@ -208,6 +261,13 @@ const OrderDetail = () => {
     );
   }
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -238,11 +298,8 @@ const OrderDetail = () => {
               Edit
             </Link>
           </Button>
-          
         </div>
       </div>
-      
-      
       
       <div className="flex items-center gap-4">
         <Badge className={`${getStatusColor(order.status)} px-3 py-1 text-xs`}>
@@ -255,13 +312,13 @@ const OrderDetail = () => {
       </div>
       
       <Tabs defaultValue="details" className="w-full">
-        <TabsList className="grid grid-cols-3 w-full max-w-md">
-          <TabsTrigger value="details">Details</TabsTrigger>
-          <TabsTrigger value="components">Components</TabsTrigger>
+        <TabsList className="grid grid-cols-2 w-full max-w-md">
+          <TabsTrigger value="details">Order Details</TabsTrigger>
           <TabsTrigger value="production">Production</TabsTrigger>
         </TabsList>
         
         <TabsContent value="details" className="space-y-6 pt-4">
+          {/* Order Information Card */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -310,9 +367,8 @@ const OrderDetail = () => {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-        
-        <TabsContent value="components" className="space-y-6 pt-4">
+
+          {/* Component List Card */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -329,9 +385,10 @@ const OrderDetail = () => {
                       <TableRow>
                         <TableHead>Type</TableHead>
                         <TableHead>Size</TableHead>
+                        <TableHead>Material</TableHead>
                         <TableHead>Color</TableHead>
                         <TableHead>GSM</TableHead>
-                        <TableHead>Details</TableHead>
+                        <TableHead>Consumption</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -343,9 +400,16 @@ const OrderDetail = () => {
                               : getComponentTypeDisplay(component.component_type)}
                           </TableCell>
                           <TableCell>{component.size || "-"}</TableCell>
+                          <TableCell>
+                            {component.inventory?.material_name || "-"}
+                          </TableCell>
                           <TableCell>{component.color || "-"}</TableCell>
                           <TableCell>{component.gsm || "-"}</TableCell>
-                          <TableCell>{component.custom_name || "-"}</TableCell>
+                          <TableCell>
+                            {component.consumption 
+                              ? `${parseFloat(component.consumption as string).toFixed(2)} ${component.inventory?.unit || 'units'}`
+                              : "-"}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -354,6 +418,91 @@ const OrderDetail = () => {
               ) : (
                 <div className="text-center py-8">
                   <p className="text-muted-foreground">No components found for this order</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Material Consumption Summary Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calculator size={18} />
+                Material Consumption Summary
+              </CardTitle>
+              <CardDescription>Total materials consumed and cost calculation</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {materialSummary.length > 0 ? (
+                <>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Material</TableHead>
+                          <TableHead>Specifications</TableHead>
+                          <TableHead>Consumption</TableHead>
+                          <TableHead>Rate</TableHead>
+                          <TableHead>Cost</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {materialSummary.map((material) => (
+                          <TableRow key={material.material_id}>
+                            <TableCell className="font-medium">{material.material_name}</TableCell>
+                            <TableCell>
+                              {[
+                                material.color ? `Color: ${material.color}` : null,
+                                material.gsm ? `GSM: ${material.gsm}` : null
+                              ].filter(Boolean).join(', ') || '-'}
+                            </TableCell>
+                            <TableCell>
+                              {material.total_consumption.toFixed(2)} {material.unit}
+                            </TableCell>
+                            <TableCell>
+                              {material.purchase_rate 
+                                ? formatCurrency(material.purchase_rate) 
+                                : '-'}
+                            </TableCell>
+                            <TableCell>
+                              {formatCurrency(material.total_cost)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  
+                  {/* Cost Summary */}
+                  <div className="mt-6 border-t pt-4">
+                    <div className="flex justify-between font-medium">
+                      <span>Total Material Cost:</span>
+                      <span>{formatCurrency(totalMaterialCost)}</span>
+                    </div>
+                    
+                    {order.rate && (
+                      <>
+                        <div className="flex justify-between mt-2">
+                          <span>Total Revenue (Rate × Quantity):</span>
+                          <span>{formatCurrency(order.rate * order.quantity)}</span>
+                        </div>
+                        <div className="flex justify-between mt-2 font-medium">
+                          <span>Estimated Gross Profit:</span>
+                          <span className={
+                            order.rate * order.quantity - totalMaterialCost > 0 
+                              ? "text-green-600" 
+                              : "text-red-600"
+                          }>
+                            {formatCurrency(order.rate * order.quantity - totalMaterialCost)}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No material consumption data available</p>
                 </div>
               )}
             </CardContent>
