@@ -149,27 +149,36 @@ const OrderDetail = () => {
                 : Number(comp.consumption);
                 
               const material = comp.inventory;
-              // Ensure purchase_rate is a number or default to 0
-              const purchaseRate = material && 'purchase_rate' in material ? 
-                (material.purchase_rate ? Number(material.purchase_rate) : 0) : 0;
+              // Type guard to ensure material is an object with expected properties
+              if (material && typeof material === 'object') {
+                // Ensure purchase_rate is a number or default to 0
+                const purchaseRate = 'purchase_rate' in material && material.purchase_rate !== null
+                  ? Number(material.purchase_rate) 
+                  : 0;
 
-              if (materialMap.has(materialId)) {
-                // Update existing material
-                const existing = materialMap.get(materialId)!;
-                existing.total_consumption += consumption;
-                existing.total_cost = existing.total_consumption * (existing.purchase_rate ?? 0);
-              } else if (material) {
-                // Add new material - ensure material is not null
-                materialMap.set(materialId, {
-                  material_id: materialId,
-                  material_name: material.material_name || 'Unknown Material',
-                  color: material.color,
-                  gsm: material.gsm,
-                  total_consumption: consumption,
-                  unit: material.unit || 'meters',
-                  purchase_rate: purchaseRate,
-                  total_cost: consumption * purchaseRate
-                });
+                if (materialMap.has(materialId)) {
+                  // Update existing material
+                  const existing = materialMap.get(materialId)!;
+                  existing.total_consumption += consumption;
+                  existing.total_cost = existing.total_consumption * (existing.purchase_rate ?? 0);
+                } else {
+                  // Add new material - ensure material is not null
+                  const materialName = 'material_name' in material ? material.material_name : 'Unknown Material';
+                  const materialColor = 'color' in material ? material.color : null;
+                  const materialGsm = 'gsm' in material ? material.gsm : null;
+                  const materialUnit = 'unit' in material ? material.unit : 'meters';
+                  
+                  materialMap.set(materialId, {
+                    material_id: materialId,
+                    material_name: materialName,
+                    color: materialColor,
+                    gsm: materialGsm,
+                    total_consumption: consumption,
+                    unit: materialUnit,
+                    purchase_rate: purchaseRate,
+                    total_cost: consumption * purchaseRate
+                  });
+                }
               }
             }
           });
