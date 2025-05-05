@@ -18,27 +18,6 @@ export const StockInfoGrid = ({ stockItem, linkedComponents = [] }: StockInfoGri
     return value;
   };
 
-  // Map for component type display names
-  const componentTypeNames = {
-    part: "Part",
-    border: "Border",
-    handle: "Handle",
-    chain: "Chain",
-    runner: "Runner",
-    piping: "Piping",
-    custom: "Custom"
-  };
-
-  // Function to get component display name
-  const getComponentName = (component: any) => {
-    if (component.component_type === 'custom' && component.custom_name) {
-      return component.custom_name;
-    }
-    
-    return componentTypeNames[component.component_type as keyof typeof componentTypeNames] || 
-           component.component_type.charAt(0).toUpperCase() + component.component_type.slice(1);
-  };
-
   return (
     <div className="space-y-6">
       <Card>
@@ -129,7 +108,7 @@ export const StockInfoGrid = ({ stockItem, linkedComponents = [] }: StockInfoGri
               {linkedComponents.map((component) => (
                 <div key={component.id} className="flex flex-col space-y-2 p-3 bg-secondary/20 rounded-md">
                   <div className="flex justify-between items-center">
-                    <span className="font-medium">{getComponentName(component)}</span>
+                    <span className="font-medium">{component.component_type}</span>
                     <Badge variant="outline">{component.catalog?.name || "Unknown Product"}</Badge>
                   </div>
                   {component.consumption && (
@@ -146,4 +125,3 @@ export const StockInfoGrid = ({ stockItem, linkedComponents = [] }: StockInfoGri
     </div>
   );
 };
-

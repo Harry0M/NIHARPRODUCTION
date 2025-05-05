@@ -44,36 +44,18 @@ export const ComponentDetailsDialog = ({
     console.log("  - material object:", selectedComponent.material);
   }
 
-  // Get the component name - use custom_name for custom components, or componentTypes lookup for standard types
-  const getComponentName = () => {
-    if (!selectedComponent) return "Component Details";
-    
-    if (selectedComponent.component_type === 'custom' && selectedComponent.custom_name) {
-      return `Custom Component: ${selectedComponent.custom_name}`;
-    } else {
-      const typeName = componentTypes[selectedComponent.component_type as keyof typeof componentTypes] || 'Component';
-      return `${typeName} Details`;
-    }
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            {getComponentName()}
+            {selectedComponent?.component_type === 'custom'
+              ? `Custom Component: ${selectedComponent.custom_name}`
+              : `${componentTypes[selectedComponent?.component_type as keyof typeof componentTypes] || 'Component'} Details`}
           </DialogTitle>
         </DialogHeader>
         {selectedComponent && (
           <div className="grid grid-cols-2 gap-4 py-4">
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">Component Type</p>
-              <p className="font-medium">
-                {selectedComponent.component_type === 'custom' 
-                  ? 'Custom' 
-                  : componentTypes[selectedComponent.component_type as keyof typeof componentTypes] || selectedComponent.component_type}
-              </p>
-            </div>
             <div className="space-y-1">
               <p className="text-sm font-medium text-muted-foreground">Size</p>
               <p className="font-medium">{selectedComponent.size || 'N/A'}</p>
@@ -202,4 +184,3 @@ export const ComponentDetailsDialog = ({
     </Dialog>
   );
 };
-
