@@ -26,7 +26,14 @@ export const StockInfoGrid = ({ stockItem, linkedComponents = [] }: StockInfoGri
       handle: "Handle",
       chain: "Chain",
       runner: "Runner",
-      custom: "Custom Component"
+      custom: "Custom Component",
+      // Adding uppercase first letter versions for components coming from the database
+      Part: "Part",
+      Border: "Border",
+      Handle: "Handle",
+      Chain: "Chain",
+      Runner: "Runner",
+      Custom: "Custom Component"
     };
 
     return componentTypeLabels[componentType] || componentType;
