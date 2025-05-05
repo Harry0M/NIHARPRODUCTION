@@ -44,4 +44,14 @@ export interface Component {
   created_at?: string | null;
   updated_at?: string | null;
   material_id?: string | null;
+  consumption?: string | null;
+  roll_width?: string | null;
+  inventory?: {
+    id: string;
+    material_name: string;
+    color: string | null;
+    gsm: string | null;
+    unit: string | null;
+    purchase_rate: number | null;
+  } | null;
 }

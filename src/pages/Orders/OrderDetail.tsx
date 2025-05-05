@@ -41,6 +41,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Component } from "@/types/order";
+import { getStatusColor, getStatusDisplay } from "@/utils/orderUtils";
 
 interface Order {
   id: string;
@@ -140,7 +141,7 @@ const OrderDetail = () => {
           componentsData.forEach(comp => {
             if (comp.material_id && comp.inventory && comp.consumption) {
               const materialId = comp.material_id;
-              const consumption = parseFloat(comp.consumption);
+              const consumption = parseFloat(comp.consumption as string);
               const material = comp.inventory;
               const purchaseRate = material.purchase_rate || 0;
 
@@ -213,28 +214,6 @@ const OrderDetail = () => {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
-  };
-  
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-100 text-green-800";
-      case "ready_for_dispatch":
-        return "bg-blue-100 text-blue-800";
-      case "in_production":
-      case "cutting":
-      case "printing":
-      case "stitching":
-        return "bg-amber-100 text-amber-800";
-      case "cancelled":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-  
-  const getStatusDisplay = (status: string) => {
-    return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
   
   const getComponentTypeDisplay = (type: string) => {
@@ -407,7 +386,7 @@ const OrderDetail = () => {
                           <TableCell>{component.gsm || "-"}</TableCell>
                           <TableCell>
                             {component.consumption 
-                              ? `${parseFloat(component.consumption as string).toFixed(2)} ${component.inventory?.unit || 'units'}`
+                              ? `${parseFloat(component.consumption).toFixed(2)} ${component.inventory?.unit || 'units'}`
                               : "-"}
                           </TableCell>
                         </TableRow>
