@@ -85,24 +85,58 @@ const JobCardNew = () => {
     setSubmitting(true);
     
     try {
-      const { data, error } = await supabase
-        .from("job_cards")
-        .insert({
-          order_id: selectedOrderId,
-          job_name: jobName,
-          status: "pending",
-        })
-        .select()
-        .single();
+      // Implement retry logic for job card creation
+      let jobCardResult = null;
+      let attempts = 0;
+      const maxAttempts = 3;
+      
+      while (attempts < maxAttempts && !jobCardResult) {
+        attempts++;
+        
+        try {
+          const { data, error } = await supabase
+            .from("job_cards")
+            .insert({
+              order_id: selectedOrderId,
+              job_name: jobName,
+              status: "pending",
+              notes: notes || null,
+            })
+            .select()
+            .single();
 
-      if (error) throw error;
+          if (error) {
+            console.error(`Job card creation attempt ${attempts} error:`, error);
+            
+            // If it's not a duplicate key error or we've reached max attempts, throw the error
+            if (error.code !== '23505' || attempts >= maxAttempts) {
+              throw error;
+            }
+            
+            // For duplicate key errors, wait briefly and retry
+            await new Promise(resolve => setTimeout(resolve, 100 * attempts));
+          } else {
+            // Success! Store the result and exit the retry loop
+            jobCardResult = data;
+            break;
+          }
+        } catch (insertError) {
+          if (attempts >= maxAttempts) {
+            throw insertError;
+          }
+        }
+      }
+      
+      if (!jobCardResult) {
+        throw new Error("Failed to create job card after multiple attempts");
+      }
       
       toast({
         title: "Job Card created",
-        description: `Job ${data.job_number || 'card'} created successfully`,
+        description: `Job ${jobCardResult.job_number || 'card'} created successfully`,
       });
       
-      navigate(`/production/job-cards/${data.id}`);
+      navigate(`/production/job-cards/${jobCardResult.id}`);
     } catch (error: any) {
       toast({
         title: "Error creating job card",
