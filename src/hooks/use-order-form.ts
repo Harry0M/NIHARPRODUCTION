@@ -14,6 +14,7 @@ interface Component {
   length?: string;
   width?: string;
   consumption?: string;
+  baseConsumption?: string;
   roll_width?: string;
   material_id?: string; // Added material_id to match what's being used in the code
 }
@@ -103,6 +104,9 @@ export function useOrderForm(): UseOrderFormReturn {
   const updateConsumptionBasedOnQuantity = (quantity: number) => {
     if (isNaN(quantity) || quantity <= 0) return;
 
+    console.log(`Updating consumption based on quantity: ${quantity}`);
+    console.log("Base consumptions:", baseConsumptions);
+
     // Update consumption for standard components
     const updatedComponents = { ...components };
     Object.keys(updatedComponents).forEach(type => {
@@ -111,6 +115,7 @@ export function useOrderForm(): UseOrderFormReturn {
         const newConsumption = baseConsumption * quantity;
         updatedComponents[type] = {
           ...updatedComponents[type],
+          baseConsumption: baseConsumption.toFixed(2),
           consumption: newConsumption.toFixed(2)
         };
       }
@@ -124,6 +129,7 @@ export function useOrderForm(): UseOrderFormReturn {
         const newConsumption = baseConsumption * quantity;
         return {
           ...component,
+          baseConsumption: baseConsumption.toFixed(2),
           consumption: newConsumption.toFixed(2)
         };
       }
@@ -245,9 +251,22 @@ export function useOrderForm(): UseOrderFormReturn {
         width = component.width?.toString() || '';
       }
       
-      // Store consumption value directly from component
-      const consumption = component.consumption?.toString() || '';
+      // Get consumption value directly from component
+      let consumption = component.consumption?.toString() || '';
       const rollWidth = component.roll_width?.toString() || '';
+      
+      // If consumption isn't available, calculate it
+      if (!consumption && length && width && rollWidth) {
+        const lengthVal = parseFloat(length);
+        const widthVal = parseFloat(width);
+        const rollWidthVal = parseFloat(rollWidth);
+        
+        if (!isNaN(lengthVal) && !isNaN(widthVal) && !isNaN(rollWidthVal) && rollWidthVal > 0) {
+          // Formula: (length * width) / (roll_width * 39.39)
+          const calculatedConsumption = (lengthVal * widthVal) / (rollWidthVal * 39.39);
+          consumption = calculatedConsumption.toFixed(2);
+        }
+      }
       
       // Include material_id if available
       const materialId = component.material_id || null;
@@ -283,6 +302,9 @@ export function useOrderForm(): UseOrderFormReturn {
       
       const componentTypeLower = component.component_type.toLowerCase();
       
+      // Extract the base consumption value (before multiplication)
+      const baseConsumption = consumption ? parseFloat(consumption) : undefined;
+      
       if (componentTypeLower === 'custom') {
         const customIndex = newCustomComponents.length;
         newCustomComponents.push({
@@ -294,13 +316,14 @@ export function useOrderForm(): UseOrderFormReturn {
           length,
           width,
           consumption,
+          baseConsumption: baseConsumption?.toString(),
           roll_width: materialRollWidth || rollWidth,
           material_id: materialId
         });
         
         // Store base consumption for this custom component
-        if (component.consumption) {
-          newBaseConsumptions[`custom_${customIndex}`] = parseFloat(component.consumption);
+        if (baseConsumption) {
+          newBaseConsumptions[`custom_${customIndex}`] = baseConsumption;
         }
       } else if (standardTypesLower.includes(componentTypeLower)) {
         // Map the component type to the capitalized version used in the UI
@@ -318,13 +341,14 @@ export function useOrderForm(): UseOrderFormReturn {
           length,
           width,
           consumption,
+          baseConsumption: baseConsumption?.toString(),
           roll_width: materialRollWidth || rollWidth,
           material_id: materialId
         };
         
         // Store base consumption for standard component
-        if (component.consumption) {
-          newBaseConsumptions[componentTypeKey] = parseFloat(component.consumption);
+        if (baseConsumption) {
+          newBaseConsumptions[componentTypeKey] = baseConsumption;
         }
       }
     });

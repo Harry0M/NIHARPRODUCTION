@@ -80,7 +80,26 @@ export const OrderDetailsForm = ({
       // Pass components to parent component with complete material data
       if (onProductSelect && selectedProduct.catalog_components && selectedProduct.catalog_components.length > 0) {
         console.log("Passing components with material data:", selectedProduct.catalog_components);
-        onProductSelect(selectedProduct.catalog_components);
+        
+        // Make sure each component has consumption data
+        const componentsWithConsumption = selectedProduct.catalog_components.map(component => {
+          // Ensure each component has a consumption value
+          if (!component.consumption && component.length && component.width && component.roll_width) {
+            // Calculate consumption if not already set
+            const length = parseFloat(component.length.toString());
+            const width = parseFloat(component.width.toString());
+            const rollWidth = parseFloat(component.roll_width.toString());
+            
+            if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && rollWidth > 0) {
+              // Formula: (length * width) / (roll_width * 39.39)
+              const consumption = (length * width) / (rollWidth * 39.39);
+              component.consumption = consumption;
+            }
+          }
+          return component;
+        });
+        
+        onProductSelect(componentsWithConsumption);
         
         // If quantity is already set, update consumption values
         if (formData.quantity && updateConsumptionBasedOnQuantity) {

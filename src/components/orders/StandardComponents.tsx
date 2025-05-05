@@ -42,23 +42,6 @@ export const StandardComponents = ({
     onChange(componentType, 'material_id', materialId || '');
   };
 
-  // Calculate consumption based on dimensions and default quantity
-  const calculateConsumption = (component: any) => {
-    if (component.length && component.width && component.roll_width && defaultQuantity) {
-      const length = parseFloat(component.length);
-      const width = parseFloat(component.width);
-      const rollWidth = parseFloat(component.roll_width);
-      const quantity = parseInt(defaultQuantity);
-      
-      if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && !isNaN(quantity) && rollWidth > 0) {
-        // Formula: (length * width) / (roll_width * 39.39) * quantity
-        const consumption = ((length * width) / (rollWidth * 39.39)) * quantity;
-        return consumption.toFixed(2);
-      }
-    }
-    return '';
-  };
-
   return (
     <div className="space-y-6">
       <h2 className="text-lg font-medium">Standard Components</h2>
@@ -78,7 +61,6 @@ export const StandardComponents = ({
               onChange={onChange}
               defaultQuantity={defaultQuantity}
               onMaterialSelect={(materialId) => handleMaterialSelect(component.type, materialId)}
-              calculateConsumption={calculateConsumption}
             />
           );
         })}
@@ -96,6 +78,8 @@ interface ComponentFormProps {
     width?: string;
     roll_width?: string;
     material_id?: string;
+    consumption?: string;
+    baseConsumption?: string;
   };
   componentOptions: {
     color: string[];
@@ -104,7 +88,6 @@ interface ComponentFormProps {
   onChange: (type: string, field: string, value: string) => void;
   defaultQuantity?: string;
   onMaterialSelect: (materialId: string | null) => void;
-  calculateConsumption: (component: any) => string;
 }
 
 const ComponentForm = ({ 
@@ -112,8 +95,7 @@ const ComponentForm = ({
   componentOptions, 
   onChange,
   defaultQuantity,
-  onMaterialSelect,
-  calculateConsumption
+  onMaterialSelect
 }: ComponentFormProps) => {
   const [customColor, setCustomColor] = useState("");
   const [customGSM, setCustomGSM] = useState("");
@@ -141,8 +123,9 @@ const ComponentForm = ({
     onChange(component.type, field, value);
   };
   
-  // Calculate consumption for this component
-  const consumption = calculateConsumption(component);
+  // Get consumption - it should be already calculated from the parent component
+  const consumption = component.consumption || '';
+  const baseConsumption = component.baseConsumption || '';
   
   return (
     <Card>
@@ -262,9 +245,9 @@ const ComponentForm = ({
               readOnly
               className="bg-gray-100"
             />
-            {defaultQuantity && (
+            {defaultQuantity && baseConsumption && (
               <p className="text-xs text-muted-foreground mt-1">
-                Based on dimensions and quantity of {defaultQuantity}
+                Base consumption: {baseConsumption} × Quantity: {defaultQuantity}
               </p>
             )}
           </div>

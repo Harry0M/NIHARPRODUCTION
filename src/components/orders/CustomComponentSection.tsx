@@ -23,7 +23,9 @@ export interface CustomComponent {
   width?: string;
   roll_width?: string;
   material_id?: string;
-  details?: string; // Add details property to match ComponentData
+  details?: string;
+  consumption?: string;
+  baseConsumption?: string;
 }
 
 interface CustomComponentSectionProps {
@@ -78,7 +80,9 @@ interface CustomComponentFormProps {
     width?: string;
     roll_width?: string;
     material_id?: string;
-    details?: string; // Add details property here too
+    details?: string;
+    consumption?: string;
+    baseConsumption?: string;
   };
   index: number;
   componentOptions: {
@@ -129,24 +133,8 @@ const CustomComponentForm = ({
     handleCustomComponentChange(index, 'material_id', materialId || '');
   };
   
-  // Calculate consumption based on dimensions and default quantity
-  const calculateConsumption = () => {
-    if (component.length && component.width && component.roll_width && defaultQuantity) {
-      const length = parseFloat(component.length);
-      const width = parseFloat(component.width);
-      const rollWidth = parseFloat(component.roll_width);
-      const quantity = parseInt(defaultQuantity);
-      
-      if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && !isNaN(quantity) && rollWidth > 0) {
-        // Formula: (length * width) / (roll_width * 39.39) * quantity
-        const consumption = ((length * width) / (rollWidth * 39.39)) * quantity;
-        return consumption.toFixed(2);
-      }
-    }
-    return '';
-  };
-  
-  const consumption = calculateConsumption();
+  const consumption = component.consumption || '';
+  const baseConsumption = component.baseConsumption || '';
   
   return (
     <Card>
@@ -284,9 +272,9 @@ const CustomComponentForm = ({
               readOnly
               className="bg-gray-100"
             />
-            {defaultQuantity && (
+            {defaultQuantity && baseConsumption && (
               <p className="text-xs text-muted-foreground mt-1">
-                Based on dimensions and quantity of {defaultQuantity}
+                Base consumption: {baseConsumption} × Quantity: {defaultQuantity}
               </p>
             )}
           </div>
