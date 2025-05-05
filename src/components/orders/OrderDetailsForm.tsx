@@ -39,6 +39,7 @@ export const OrderDetailsForm = ({
 }: OrderDetailsFormProps) => {
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
   const { data: catalogProducts, isLoading } = useCatalogProducts();
+  const [selectedProductId, setSelectedProductId] = useState<string | undefined>();
 
   // Fetch companies on component mount
   useEffect(() => {
@@ -57,7 +58,9 @@ export const OrderDetailsForm = ({
   }, []);
 
   const handleProductSelect = async (productId: string) => {
+    setSelectedProductId(productId);
     const selectedProduct = catalogProducts?.find(p => p.id === productId);
+    
     if (selectedProduct) {
       console.log("Selected product:", selectedProduct);
       
@@ -94,6 +97,7 @@ export const OrderDetailsForm = ({
           catalogProducts={catalogProducts}
           isLoading={isLoading}
           onProductSelect={handleProductSelect}
+          selectedProductId={selectedProductId}
         />
 
         {/* Company Section Component */}

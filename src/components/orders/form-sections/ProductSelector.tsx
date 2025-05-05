@@ -38,17 +38,19 @@ interface ProductSelectorProps {
   catalogProducts: Product[] | undefined;
   isLoading: boolean;
   onProductSelect: (productId: string) => void;
+  selectedProductId?: string;
 }
 
 export const ProductSelector = ({
   catalogProducts,
   isLoading,
-  onProductSelect
+  onProductSelect,
+  selectedProductId
 }: ProductSelectorProps) => {
   return (
     <div className="space-y-2">
       <Label>Select Product (Optional)</Label>
-      <Select onValueChange={onProductSelect}>
+      <Select onValueChange={onProductSelect} value={selectedProductId}>
         <SelectTrigger>
           <SelectValue placeholder="Choose a product template" />
         </SelectTrigger>

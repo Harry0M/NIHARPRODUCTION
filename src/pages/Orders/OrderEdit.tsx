@@ -66,6 +66,8 @@ const OrderEdit = () => {
   
   const [customComponents, setCustomComponents] = useState<CustomComponent[]>([]);
   
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+
   useEffect(() => {
     const fetchOrderData = async () => {
       setLoading(true);
@@ -90,6 +92,11 @@ const OrderEdit = () => {
           special_instructions: orderData.special_instructions || "",
           order_date: new Date(orderData.order_date).toISOString().split('T')[0]
         });
+        
+        // Check if the order has a catalog_id (product)
+        if (orderData.catalog_id) {
+          setSelectedProductId(orderData.catalog_id);
+        }
         
         // Fetch order components
         const { data: componentsData, error: componentsError } = await supabase
@@ -325,6 +332,16 @@ const OrderEdit = () => {
     }
   };
 
+  const handleProductSelect = async (components: any[]) => {
+    // This would be similar to the function in use-order-form.ts
+    // Process the components and update state
+    console.log("Selected product components:", components);
+    
+    // Logic to update component state based on selected product
+    // This would be simplified compared to the useOrderForm version
+    // since we're in a different context
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[50vh]">
@@ -356,6 +373,7 @@ const OrderEdit = () => {
           formData={formData}
           handleOrderChange={handleOrderChange}
           formErrors={formErrors}
+          onProductSelect={handleProductSelect}
         />
 
         <Card>

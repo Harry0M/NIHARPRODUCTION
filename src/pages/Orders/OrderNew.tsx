@@ -75,6 +75,7 @@ const OrderNew = () => {
           handleOrderChange={handleOrderChange}
           onProductSelect={handleProductSelect}
           formErrors={formErrors}
+          updateConsumptionBasedOnQuantity={updateConsumptionBasedOnQuantity}
         />
         
         <Card>

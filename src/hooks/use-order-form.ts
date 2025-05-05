@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -189,13 +190,14 @@ export function useOrderForm(): UseOrderFormReturn {
     const newCustomComponents: Component[] = [];
     const newBaseConsumptions: Record<string, number> = {};
 
-    // Fetch complete material data for all components with material_id
+    // Extract all material_ids that need to be fetched
     const materialIds = components
       .filter(comp => comp.material_id)
       .map(comp => comp.material_id);
 
     let materialsData: Record<string, any> = {};
     
+    // Fetch complete material data for all components with material_id
     if (materialIds.length > 0) {
       try {
         const { data: materials, error } = await supabase
