@@ -36,6 +36,8 @@ interface ComponentType {
   material_id?: string;
   consumption?: string;
   baseConsumption?: string;
+  materialRate?: number;
+  materialCost?: number;
 }
 
 const CatalogNew = () => {
@@ -52,7 +54,7 @@ const CatalogNew = () => {
     default_rate: "",
     selling_rate: "",
     margin: "",
-    // New cost fields
+    // Cost fields
     cutting_charge: "0",
     printing_charge: "0",
     stitching_charge: "0",
@@ -63,6 +65,38 @@ const CatalogNew = () => {
   
   const [components, setComponents] = useState<Record<string, any>>({});
   const [customComponents, setCustomComponents] = useState<ComponentType[]>([]);
+  const [materialPrices, setMaterialPrices] = useState<Record<string, number>>({});
+  
+  // Function to fetch material price by ID
+  const fetchMaterialPrice = async (materialId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('inventory')
+        .select('purchase_rate, rate')
+        .eq('id', materialId)
+        .single();
+      
+      if (error) {
+        console.error("Error fetching material price:", error);
+        return null;
+      }
+      
+      // Use purchase_rate if available, otherwise fall back to rate
+      const materialRate = data.purchase_rate || data.rate || 0;
+      console.log(`Material ${materialId} price:`, materialRate);
+      
+      // Add to materialPrices state
+      setMaterialPrices(prev => ({
+        ...prev,
+        [materialId]: materialRate
+      }));
+      
+      return materialRate;
+    } catch (error) {
+      console.error("Error in fetchMaterialPrice:", error);
+      return null;
+    }
+  };
   
   // Function to calculate consumption based on dimensions
   const calculateConsumption = (length?: string, width?: string, rollWidth?: string): string | undefined => {
@@ -80,6 +114,76 @@ const CatalogNew = () => {
     const consumption = (lengthVal * widthVal) / (rollWidthVal * 39.39);
     return consumption.toFixed(4);
   };
+  
+  // Calculate material cost for a component
+  const calculateComponentMaterialCost = (component: any): number => {
+    if (!component.material_id || !component.consumption) return 0;
+    
+    const materialId = component.material_id;
+    const consumption = parseFloat(component.consumption);
+    const rate = materialPrices[materialId] || 0;
+    
+    if (isNaN(consumption) || isNaN(rate)) return 0;
+    
+    const cost = consumption * rate;
+    return cost;
+  };
+  
+  // Calculate total material cost from all components
+  const calculateTotalMaterialCost = (): number => {
+    let totalCost = 0;
+    
+    // Add costs from standard components
+    Object.values(components).forEach((component: any) => {
+      if (component.material_id && component.consumption) {
+        const componentCost = calculateComponentMaterialCost(component);
+        totalCost += componentCost;
+        
+        // Update the component with its calculated cost
+        component.materialCost = componentCost;
+      }
+    });
+    
+    // Add costs from custom components
+    customComponents.forEach((component) => {
+      if (component.material_id && component.consumption) {
+        const componentCost = calculateComponentMaterialCost(component);
+        totalCost += componentCost;
+        
+        // Update the component with its calculated cost
+        component.materialCost = componentCost;
+      }
+    });
+    
+    return totalCost;
+  };
+  
+  // Update material costs whenever components or material prices change
+  useEffect(() => {
+    const totalMaterialCost = calculateTotalMaterialCost();
+    
+    setProductData(prev => {
+      const updatedData = {
+        ...prev,
+        material_cost: totalMaterialCost.toFixed(2)
+      };
+      
+      // Also update total cost
+      const totalCost = calculateTotalCost({
+        ...updatedData
+      });
+      
+      updatedData.total_cost = totalCost.toString();
+      
+      // If selling_rate exists, update margin
+      if (updatedData.selling_rate && parseFloat(updatedData.selling_rate) > 0 && totalCost > 0) {
+        const calculatedMargin = ((parseFloat(updatedData.selling_rate) - totalCost) / totalCost) * 100;
+        updatedData.margin = calculatedMargin.toFixed(2);
+      }
+      
+      return updatedData;
+    });
+  }, [components, customComponents, materialPrices]);
   
   // Function to update consumption values based on dimensions and default quantity
   const updateConsumptionValues = () => {
@@ -203,7 +307,7 @@ const CatalogNew = () => {
     return cuttingCharge + printingCharge + stitchingCharge + transportCharge + materialCost;
   };
 
-  const handleComponentChange = (type: string, field: string, value: string) => {
+  const handleComponentChange = async (type: string, field: string, value: string) => {
     setComponents(prev => {
       const component = prev[type] || { 
         id: uuidv4(),
@@ -214,6 +318,24 @@ const CatalogNew = () => {
         ...component,
         [field]: value
       };
+      
+      // If material_id changed, fetch the material price
+      if (field === 'material_id' && value) {
+        fetchMaterialPrice(value).then(rate => {
+          if (rate !== null) {
+            setComponents(current => {
+              const componentToUpdate = current[type] || {};
+              return {
+                ...current,
+                [type]: {
+                  ...componentToUpdate,
+                  materialRate: rate
+                }
+              };
+            });
+          }
+        });
+      }
       
       // If dimensions or roll width changed, recalculate consumption
       if (['length', 'width', 'roll_width'].includes(field) && 
@@ -242,10 +364,26 @@ const CatalogNew = () => {
     });
   };
 
-  const handleCustomComponentChange = (index: number, field: string, value: string) => {
+  const handleCustomComponentChange = async (index: number, field: string, value: string) => {
     setCustomComponents(prev => {
       const updated = [...prev];
       const updatedComponent = { ...updated[index], [field]: value };
+      
+      // If material_id changed, fetch the material price
+      if (field === 'material_id' && value) {
+        fetchMaterialPrice(value).then(rate => {
+          if (rate !== null) {
+            setCustomComponents(current => {
+              const newComponents = [...current];
+              newComponents[index] = {
+                ...newComponents[index],
+                materialRate: rate
+              };
+              return newComponents;
+            });
+          }
+        });
+      }
       
       // If dimensions or roll width changed, recalculate consumption
       if (['length', 'width', 'roll_width'].includes(field) && 
@@ -293,6 +431,22 @@ const CatalogNew = () => {
       const consumption = comp.consumption ? parseFloat(comp.consumption) : 0;
       return isNaN(consumption) ? total : total + consumption;
     }, 0);
+
+  // Calculate total component costs for display
+  const componentCosts = [...Object.values(components), ...customComponents]
+    .filter(comp => comp.material_id && comp.consumption && materialPrices[comp.material_id])
+    .map(comp => {
+      const consumption = parseFloat(comp.consumption || '0');
+      const rate = materialPrices[comp.material_id || ''] || 0;
+      const cost = consumption * rate;
+      return {
+        name: comp.type === 'custom' ? comp.customName || 'Custom component' : comp.type,
+        consumption,
+        rate,
+        cost,
+        materialId: comp.material_id
+      };
+    });
 
   const validateForm = () => {
     if (!productData.name) {
@@ -360,6 +514,7 @@ const CatalogNew = () => {
         printing_charge: parseFloat(productData.printing_charge) || 0,
         stitching_charge: parseFloat(productData.stitching_charge) || 0,
         transport_charge: parseFloat(productData.transport_charge) || 0,
+        material_cost: parseFloat(productData.material_cost) || 0,
         total_cost: totalCost
       };
       
@@ -609,6 +764,33 @@ const CatalogNew = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+              {/* Material cost breakdown section */}
+              {componentCosts.length > 0 && (
+                <div className="bg-slate-50 p-4 rounded-md border mb-4">
+                  <h3 className="text-sm font-medium mb-2">Material Cost Breakdown</h3>
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-4 gap-2 text-xs font-medium text-muted-foreground">
+                      <div>Component</div>
+                      <div>Consumption (m)</div>
+                      <div>Rate (₹/m)</div>
+                      <div>Cost (₹)</div>
+                    </div>
+                    {componentCosts.map((item, i) => (
+                      <div key={i} className="grid grid-cols-4 gap-2 text-sm">
+                        <div>{item.name}</div>
+                        <div>{item.consumption.toFixed(2)}</div>
+                        <div>₹{item.rate.toFixed(2)}</div>
+                        <div className="font-medium">₹{item.cost.toFixed(2)}</div>
+                      </div>
+                    ))}
+                    <div className="border-t pt-2 grid grid-cols-4 gap-2 text-sm">
+                      <div className="col-span-3 text-right font-medium">Total Material Cost:</div>
+                      <div className="font-bold">₹{parseFloat(productData.material_cost).toFixed(2)}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="cutting_charge">Cutting Charge</Label>
@@ -673,10 +855,13 @@ const CatalogNew = () => {
                     onChange={handleProductChange}
                     placeholder="Material cost"
                     min="0"
-                    readOnly={false} // We'll make this editable for now
+                    className="bg-slate-50 font-medium"
+                    readOnly={componentCosts.length > 0}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Edit this value directly or it will be calculated from linked materials
+                    {componentCosts.length > 0 
+                      ? "Auto-calculated from component materials and consumption"
+                      : "Edit this value directly or link materials to components"}
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -688,7 +873,7 @@ const CatalogNew = () => {
                     step="0.01"
                     value={productData.total_cost}
                     readOnly
-                    className="bg-muted"
+                    className="bg-muted font-medium"
                   />
                   <p className="text-xs text-muted-foreground">
                     Auto-calculated from all cost components
