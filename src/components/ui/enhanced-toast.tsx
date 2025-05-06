@@ -1,3 +1,4 @@
+
 import { toast } from "@/hooks/use-toast";
 import { Check, X, AlertTriangle, Info } from "lucide-react";
 import { ReactNode } from "react";
@@ -8,9 +9,10 @@ interface ShowToastOptions {
   title: string | ReactNode;
   description?: string;
   type?: ToastType;
+  id?: string; // Add support for custom toast ID
 }
 
-export const showToast = ({ title, description, type = "info" }: ShowToastOptions) => {
+export const showToast = ({ title, description, type = "info", id }: ShowToastOptions) => {
   const getToastConfig = (type: ToastType) => {
     switch (type) {
       case "success":
@@ -49,9 +51,16 @@ export const showToast = ({ title, description, type = "info" }: ShowToastOption
       ) 
     : title;
 
-  toast({
-    // @ts-ignore - We know this will work with the toast component
+  const toastOptions = {
     title: titleContent,
     description: description,
-  });
+  };
+
+  // If ID is provided, add it to the options
+  if (id) {
+    // @ts-ignore - We're handling the ID separately since it's not in the standard type
+    toastOptions.id = id;
+  }
+
+  return toast(toastOptions);
 };

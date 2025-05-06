@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/hooks/use-toast";
+import { showToast } from "@/components/ui/enhanced-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 import ProductDetailsForm from "./components/ProductDetailsForm";
@@ -46,28 +46,28 @@ const CatalogNew = () => {
 
   const validateForm = () => {
     if (!productData.name) {
-      toast({
+      showToast({
         title: "Validation Error",
         description: "Product name is required",
-        variant: "destructive"
+        type: "error"
       });
       return false;
     }
     
     if (!productData.bag_length || parseFloat(productData.bag_length) <= 0) {
-      toast({
+      showToast({
         title: "Validation Error",
         description: "Valid bag length is required",
-        variant: "destructive"
+        type: "error"
       });
       return false;
     }
     
     if (!productData.bag_width || parseFloat(productData.bag_width) <= 0) {
-      toast({
+      showToast({
         title: "Validation Error",
         description: "Valid bag width is required",
-        variant: "destructive"
+        type: "error"
       });
       return false;
     }
@@ -86,10 +86,11 @@ const CatalogNew = () => {
     
     try {
       // Show loading toast to indicate progress
-      const loadingToast = toast({
+      const loadingToastId = showToast({
         title: "Creating product...",
-        description: "Please wait while we save your product"
-      });
+        description: "Please wait while we save your product",
+        type: "info"
+      }).id;
       
       // Format the name to include quantity if default_quantity is provided
       let formattedName = productData.name;
@@ -145,10 +146,11 @@ const CatalogNew = () => {
       const productResult = await productPromise;
       
       // Update toast to show progress
-      toast({
-        id: loadingToast.id,
+      showToast({
         title: "Product created, saving components...",
-        description: "Almost done!"
+        description: "Almost done!",
+        type: "info",
+        id: loadingToastId
       });
       
       // Process components
@@ -188,10 +190,11 @@ const CatalogNew = () => {
       }
       
       // Success toast
-      toast({
-        id: loadingToast.id,
+      showToast({
         title: "Product created successfully",
-        description: `${formattedName} has been added to the catalog`
+        description: `${formattedName} has been added to the catalog`,
+        type: "success",
+        id: loadingToastId
       });
       
       // Trigger navigation through state to ensure it happens after state updates
@@ -206,10 +209,10 @@ const CatalogNew = () => {
       
     } catch (error: any) {
       setSubmitting(false);
-      toast({
+      showToast({
         title: "Error creating product",
         description: error.message || "An unexpected error occurred",
-        variant: "destructive"
+        type: "error"
       });
     }
   };
