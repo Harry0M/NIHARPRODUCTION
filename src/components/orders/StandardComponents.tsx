@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { 
   Card, 
   CardContent,
@@ -9,7 +9,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MaterialLinkSelector } from "../inventory/MaterialLinkSelector";
+import { MaterialSelector } from "@/components/inventory/material-selector/MaterialSelector";
 
 interface StandardComponentsProps {
   components: Record<string, any>;
@@ -19,17 +19,13 @@ interface StandardComponentsProps {
   };
   onChange: (type: string, field: string, value: string) => void;
   defaultQuantity?: string;
-  showConsumption?: boolean; // Added prop for showing consumption in real-time
-  inventoryItems?: any[]; // Added prop for inventory items
 }
 
-export const StandardComponents = ({
-  components,
-  componentOptions,
+export const StandardComponents = ({ 
+  components, 
+  componentOptions, 
   onChange,
-  defaultQuantity,
-  showConsumption = false, // Default to false if not provided
-  inventoryItems = [] // Default to empty array if not provided
+  defaultQuantity
 }: StandardComponentsProps) => {
   // Define standard component types with proper capitalization as they appear in UI
   const standardComponents = [
@@ -65,8 +61,6 @@ export const StandardComponents = ({
               onChange={onChange}
               defaultQuantity={defaultQuantity}
               onMaterialSelect={(materialId) => handleMaterialSelect(component.type, materialId)}
-              showConsumption={showConsumption}
-              inventoryItems={inventoryItems}
             />
           );
         })}
@@ -94,8 +88,6 @@ interface ComponentFormProps {
   onChange: (type: string, field: string, value: string) => void;
   defaultQuantity?: string;
   onMaterialSelect: (materialId: string | null) => void;
-  showConsumption?: boolean;
-  inventoryItems?: any[];
 }
 
 const ComponentForm = ({ 
@@ -103,9 +95,7 @@ const ComponentForm = ({
   componentOptions, 
   onChange,
   defaultQuantity,
-  onMaterialSelect,
-  showConsumption = false,
-  inventoryItems = []
+  onMaterialSelect
 }: ComponentFormProps) => {
   const [customColor, setCustomColor] = useState("");
   const [customGSM, setCustomGSM] = useState("");
@@ -247,34 +237,29 @@ const ComponentForm = ({
           </div>
           
           {/* Consumption based on dimensions and default quantity */}
-          {showConsumption && (
-            <div>
-              <Label htmlFor={`${component.type}-consumption`}>Consumption</Label>
-              <Input
-                id={`${component.type}-consumption`}
-                value={consumption}
-                readOnly
-                className="bg-gray-100"
-              />
-              {defaultQuantity && baseConsumption && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Base consumption: {baseConsumption} × Quantity: {defaultQuantity}
-                </p>
-              )}
-            </div>
-          )}
+          <div>
+            <Label htmlFor={`${component.type}-consumption`}>Consumption</Label>
+            <Input
+              id={`${component.type}-consumption`}
+              value={consumption}
+              readOnly
+              className="bg-gray-100"
+            />
+            {defaultQuantity && baseConsumption && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Base consumption: {baseConsumption} × Quantity: {defaultQuantity}
+              </p>
+            )}
+          </div>
           
           {/* Add Material Selector */}
-          <MaterialLinkSelector 
+          <MaterialSelector 
             onMaterialSelect={onMaterialSelect}
             selectedMaterialId={component.material_id || null}
             componentType={component.type}
-            inventoryItems={inventoryItems}
           />
         </div>
       </CardContent>
     </Card>
   );
 };
-
-export default StandardComponents;

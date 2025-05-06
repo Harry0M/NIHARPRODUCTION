@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OrderDetailsForm } from "@/components/orders/OrderDetailsForm";
 import { StandardComponents } from "@/components/orders/StandardComponents";
-import { CustomComponentSection, CustomComponent } from "@/components/orders/CustomComponentSection";
+import { CustomComponentSection } from "@/components/orders/CustomComponentSection";
 import { useOrderForm } from "@/hooks/use-order-form";
 import {
   Card,
@@ -14,7 +14,6 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { useInventoryItems } from "@/hooks/use-catalog-products";
 
 const componentOptions = {
   color: ["Red", "Blue", "Green", "Black", "White", "Yellow", "Brown", "Orange", "Purple", "Gray", "Custom"],
@@ -23,8 +22,6 @@ const componentOptions = {
 
 const OrderNew = () => {
   const navigate = useNavigate();
-  const { data: inventoryItems } = useInventoryItems();
-  
   const {
     orderDetails,
     components,
@@ -41,9 +38,6 @@ const OrderNew = () => {
     validateForm,
     updateConsumptionBasedOnQuantity
   } = useOrderForm();
-  
-  // Cast customComponents to CustomComponent[] to ensure types match
-  const typedCustomComponents = customComponents as unknown as CustomComponent[];
   
   const onSubmit = async (e: React.FormEvent) => {
     if (!validateForm()) {
@@ -97,8 +91,6 @@ const OrderNew = () => {
                 componentOptions={componentOptions}
                 onChange={handleComponentChange}
                 defaultQuantity={orderDetails.quantity}
-                showConsumption={true}
-                inventoryItems={inventoryItems || []}
               />
               
               <div className="space-y-4">
@@ -116,13 +108,11 @@ const OrderNew = () => {
                 </div>
                 
                 <CustomComponentSection
-                  customComponents={typedCustomComponents}
+                  customComponents={customComponents}
                   componentOptions={componentOptions}
                   handleCustomComponentChange={handleCustomComponentChange}
                   removeCustomComponent={removeCustomComponent}
                   defaultQuantity={orderDetails.quantity}
-                  showConsumption={true}
-                  inventoryItems={inventoryItems || []}
                 />
               </div>
             </div>
