@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -135,23 +134,27 @@ const CatalogNew = () => {
     
     // Add costs from standard components
     Object.values(components).forEach((component: any) => {
-      if (component.material_id && component.consumption) {
+      if (component.materialCost) {
+        const componentCost = parseFloat(component.materialCost);
+        if (!isNaN(componentCost)) {
+          totalCost += componentCost;
+        }
+      } else if (component.material_id && component.consumption) {
         const componentCost = calculateComponentMaterialCost(component);
         totalCost += componentCost;
-        
-        // Update the component with its calculated cost
-        component.materialCost = componentCost;
       }
     });
     
     // Add costs from custom components
     customComponents.forEach((component) => {
-      if (component.material_id && component.consumption) {
+      if (component.materialCost) {
+        const componentCost = parseFloat(component.materialCost.toString());
+        if (!isNaN(componentCost)) {
+          totalCost += componentCost;
+        }
+      } else if (component.material_id && component.consumption) {
         const componentCost = calculateComponentMaterialCost(component);
         totalCost += componentCost;
-        
-        // Update the component with its calculated cost
-        component.materialCost = componentCost;
       }
     });
     
@@ -201,13 +204,23 @@ const CatalogNew = () => {
         );
         
         if (baseConsumption) {
+          const consumption = productData.default_quantity 
+            ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
+            : baseConsumption;
+            
           updatedComponents[type] = {
             ...component,
             baseConsumption,
-            consumption: productData.default_quantity 
-              ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
-              : baseConsumption
+            consumption
           };
+          
+          // Also calculate material cost if material_id is present
+          if (component.material_id && materialPrices[component.material_id]) {
+            const materialRate = materialPrices[component.material_id];
+            const materialCost = parseFloat(consumption) * materialRate;
+            updatedComponents[type].materialCost = materialCost.toFixed(2);
+          }
+          
           hasUpdates = true;
         }
       }
@@ -227,13 +240,24 @@ const CatalogNew = () => {
         );
         
         if (baseConsumption) {
-          return {
+          const consumption = productData.default_quantity 
+            ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
+            : baseConsumption;
+            
+          const updatedComponent = {
             ...component,
             baseConsumption,
-            consumption: productData.default_quantity 
-              ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
-              : baseConsumption
+            consumption
           };
+          
+          // Also calculate material cost if material_id is present
+          if (component.material_id && materialPrices[component.material_id]) {
+            const materialRate = materialPrices[component.material_id];
+            const materialCost = parseFloat(consumption) * materialRate;
+            updatedComponent.materialCost = materialCost.toFixed(2);
+          }
+          
+          return updatedComponent;
         }
       }
       return component;
@@ -245,7 +269,7 @@ const CatalogNew = () => {
   // Effect to recalculate consumption when default quantity changes
   useEffect(() => {
     updateConsumptionValues();
-  }, [productData.default_quantity]);
+  }, [productData.default_quantity, materialPrices]);
 
   const handleProductChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -337,6 +361,11 @@ const CatalogNew = () => {
         });
       }
       
+      // If materialCost is directly set, keep it
+      if (field === 'materialCost') {
+        console.log(`Setting material cost for ${type} to ${value}`);
+      }
+      
       // If dimensions or roll width changed, recalculate consumption
       if (['length', 'width', 'roll_width'].includes(field) && 
           updatedComponent.length && 
@@ -354,6 +383,14 @@ const CatalogNew = () => {
           updatedComponent.consumption = productData.default_quantity 
             ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
             : baseConsumption;
+            
+          // Also calculate material cost if material_id and rate are present
+          if (updatedComponent.material_id && materialPrices[updatedComponent.material_id]) {
+            const materialRate = materialPrices[updatedComponent.material_id];
+            const materialCost = parseFloat(updatedComponent.consumption) * materialRate;
+            updatedComponent.materialCost = materialCost.toFixed(2);
+            updatedComponent.materialRate = materialRate;
+          }
         }
       }
       
@@ -379,10 +416,25 @@ const CatalogNew = () => {
                 ...newComponents[index],
                 materialRate: rate
               };
+              
+              // Recalculate material cost if consumption is available
+              if (newComponents[index].consumption) {
+                const consumption = parseFloat(newComponents[index].consumption);
+                if (!isNaN(consumption)) {
+                  const materialCost = consumption * rate;
+                  newComponents[index].materialCost = materialCost.toFixed(2);
+                }
+              }
+              
               return newComponents;
             });
           }
         });
+      }
+      
+      // If materialCost is directly set, keep it
+      if (field === 'materialCost') {
+        console.log(`Setting material cost for custom component ${index} to ${value}`);
       }
       
       // If dimensions or roll width changed, recalculate consumption
@@ -402,6 +454,14 @@ const CatalogNew = () => {
           updatedComponent.consumption = productData.default_quantity 
             ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
             : baseConsumption;
+            
+          // Also calculate material cost if material_id and rate are present
+          if (updatedComponent.material_id && materialPrices[updatedComponent.material_id]) {
+            const materialRate = materialPrices[updatedComponent.material_id];
+            const materialCost = parseFloat(updatedComponent.consumption) * materialRate;
+            updatedComponent.materialCost = materialCost.toFixed(2);
+            updatedComponent.materialRate = materialRate;
+          }
         }
       }
       
@@ -434,16 +494,17 @@ const CatalogNew = () => {
 
   // Calculate total component costs for display
   const componentCosts = [...Object.values(components), ...customComponents]
-    .filter(comp => comp.material_id && comp.consumption && materialPrices[comp.material_id])
+    .filter(comp => comp.materialCost || (comp.material_id && comp.consumption))
     .map(comp => {
       const consumption = parseFloat(comp.consumption || '0');
-      const rate = materialPrices[comp.material_id || ''] || 0;
-      const cost = consumption * rate;
+      const rate = comp.materialRate || materialPrices[comp.material_id || ''] || 0;
+      const cost = comp.materialCost ? parseFloat(comp.materialCost) : (consumption * rate);
+      
       return {
         name: comp.type === 'custom' ? comp.customName || 'Custom component' : comp.type,
         consumption,
         rate,
-        cost,
+        cost: !isNaN(cost) ? cost : 0,
         materialId: comp.material_id
       };
     });

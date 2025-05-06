@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Card, 
   CardContent,
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MaterialSelector } from "@/components/inventory/material-selector/MaterialSelector";
+import { ConsumptionCalculator } from "@/components/production/ConsumptionCalculator";
 
 interface StandardComponentsProps {
   components: Record<string, any>;
@@ -83,6 +84,8 @@ interface ComponentFormProps {
     material_id?: string;
     consumption?: string;
     baseConsumption?: string;
+    materialRate?: number;
+    materialCost?: number;
   };
   componentOptions: {
     color: string[];
@@ -104,8 +107,15 @@ const ComponentForm = ({
 }: ComponentFormProps) => {
   const [customColor, setCustomColor] = useState("");
   const [customGSM, setCustomGSM] = useState("");
+  const [materialRate, setMaterialRate] = useState<number | undefined>(component.materialRate);
   
   console.log("Component Form rendering for:", component.type, "with data:", component);
+  
+  useEffect(() => {
+    if (component.materialRate !== materialRate) {
+      setMaterialRate(component.materialRate);
+    }
+  }, [component.materialRate]);
   
   const handleCustomColorChange = (value: string) => {
     setCustomColor(value);
@@ -127,6 +137,13 @@ const ComponentForm = ({
     }
     onChange(component.type, field, value);
   };
+
+  const handleConsumptionCalculated = (consumption: number, cost?: number) => {
+    onChange(component.type, 'consumption', consumption.toString());
+    if (cost !== undefined) {
+      onChange(component.type, 'materialCost', cost.toString());
+    }
+  };
   
   // Get consumption - it should be already calculated from the parent component
   const consumption = component.consumption || '';
@@ -134,17 +151,27 @@ const ComponentForm = ({
   
   // Check if any dimensions are filled
   const hasDimensions = component.length || component.width || component.roll_width;
+
+  // Get material cost if available
+  const materialCost = component.materialCost;
   
   return (
     <Card className={component.consumption ? "border-blue-200" : ""}>
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex justify-between items-center">
           <span>{component.type}</span>
-          {showConsumption && component.consumption && (
-            <span className="text-sm font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
-              {parseFloat(component.consumption).toFixed(2)} m
-            </span>
-          )}
+          <div className="flex gap-2 items-center">
+            {showConsumption && component.consumption && (
+              <span className="text-sm font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
+                {parseFloat(component.consumption).toFixed(2)} m
+              </span>
+            )}
+            {materialCost && (
+              <span className="text-sm font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                ₹{parseFloat(materialCost.toString()).toFixed(2)}
+              </span>
+            )}
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -251,26 +278,36 @@ const ComponentForm = ({
             </div>
           </div>
           
-          {/* Consumption based on dimensions and default quantity - now with enhanced visibility */}
-          <div>
-            <Label htmlFor={`${component.type}-consumption`} className="flex justify-between">
-              <span>Consumption</span>
-              {hasDimensions && !consumption && (
-                <span className="text-amber-600 text-xs">Enter all dimensions + quantity</span>
-              )}
-            </Label>
-            <Input
-              id={`${component.type}-consumption`}
-              value={consumption}
-              readOnly
-              className={`bg-gray-50 ${consumption ? "border-blue-300 text-blue-800 font-medium" : ""}`}
+          {/* Consumption with integrated material cost calculation */}
+          {hasDimensions && component.length && component.width && component.roll_width && defaultQuantity ? (
+            <ConsumptionCalculator
+              length={parseFloat(component.length)}
+              width={parseFloat(component.width)}
+              quantity={parseFloat(defaultQuantity)}
+              materialRate={materialRate}
+              onConsumptionCalculated={handleConsumptionCalculated}
             />
-            {defaultQuantity && baseConsumption && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Base: {baseConsumption} × Quantity: {defaultQuantity}
-              </p>
-            )}
-          </div>
+          ) : (
+            <div>
+              <Label htmlFor={`${component.type}-consumption`} className="flex justify-between">
+                <span>Consumption</span>
+                {hasDimensions && !consumption && (
+                  <span className="text-amber-600 text-xs">Enter all dimensions + quantity</span>
+                )}
+              </Label>
+              <Input
+                id={`${component.type}-consumption`}
+                value={consumption}
+                readOnly
+                className={`bg-gray-50 ${consumption ? "border-blue-300 text-blue-800 font-medium" : ""}`}
+              />
+              {defaultQuantity && baseConsumption && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Base: {baseConsumption} × Quantity: {defaultQuantity}
+                </p>
+              )}
+            </div>
+          )}
           
           {/* Add Material Selector */}
           <MaterialSelector 

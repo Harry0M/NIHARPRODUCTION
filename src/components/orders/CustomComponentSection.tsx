@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2 } from "lucide-react";
 import { MaterialSelector } from "@/components/inventory/material-selector/MaterialSelector";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { ConsumptionCalculator } from "@/components/production/ConsumptionCalculator";
 
 // Export this interface for external use
 export interface CustomComponent {
@@ -26,6 +27,8 @@ export interface CustomComponent {
   details?: string;
   consumption?: string;
   baseConsumption?: string;
+  materialRate?: number;
+  materialCost?: number;
 }
 
 interface CustomComponentSectionProps {
@@ -86,6 +89,8 @@ interface CustomComponentFormProps {
     details?: string;
     consumption?: string;
     baseConsumption?: string;
+    materialRate?: number;
+    materialCost?: number;
   };
   index: number;
   componentOptions: {
@@ -109,6 +114,13 @@ const CustomComponentForm = ({
 }: CustomComponentFormProps) => {
   const [customColor, setCustomColor] = useState(component.color === "Custom" ? "" : "");
   const [customGSM, setCustomGSM] = useState(component.gsm === "Custom" ? "" : "");
+  const [materialRate, setMaterialRate] = useState<number | undefined>(component.materialRate);
+  
+  useEffect(() => {
+    if (component.materialRate !== materialRate) {
+      setMaterialRate(component.materialRate);
+    }
+  }, [component.materialRate]);
   
   const handleColorChange = (value: string) => {
     handleCustomComponentChange(index, 'color', value);
@@ -137,6 +149,13 @@ const CustomComponentForm = ({
   const handleMaterialSelect = (materialId: string | null) => {
     handleCustomComponentChange(index, 'material_id', materialId || '');
   };
+
+  const handleConsumptionCalculated = (consumption: number, cost?: number) => {
+    handleCustomComponentChange(index, 'consumption', consumption.toString());
+    if (cost !== undefined) {
+      handleCustomComponentChange(index, 'materialCost', cost.toString());
+    }
+  };
   
   const consumption = component.consumption || '';
   const baseConsumption = component.baseConsumption || '';
@@ -145,16 +164,26 @@ const CustomComponentForm = ({
   const hasDimensions = component.length || component.width || component.roll_width;
   const customName = component.customName || `Custom Component ${index + 1}`;
   
+  // Get material cost if available
+  const materialCost = component.materialCost;
+  
   return (
     <Card className={component.consumption ? "border-blue-200" : ""}>
       <CardHeader className="flex flex-row items-center justify-between p-4">
         <div className="flex flex-col">
           <Label className="text-sm font-medium">{customName}</Label>
-          {showConsumption && component.consumption && (
-            <span className="text-xs font-medium text-blue-700">
-              {parseFloat(component.consumption).toFixed(2)} meters
-            </span>
-          )}
+          <div className="flex gap-2">
+            {showConsumption && component.consumption && (
+              <span className="text-xs font-medium text-blue-700">
+                {parseFloat(component.consumption).toFixed(2)} m
+              </span>
+            )}
+            {materialCost && (
+              <span className="text-xs font-medium text-emerald-700">
+                ₹{parseFloat(materialCost.toString()).toFixed(2)}
+              </span>
+            )}
+          </div>
         </div>
         <Button
           type="button"
@@ -279,26 +308,36 @@ const CustomComponentForm = ({
             </div>
           </div>
           
-          {/* Consumption based on dimensions and default quantity - now with enhanced visibility */}
-          <div>
-            <Label htmlFor={`custom-${index}-consumption`} className="flex justify-between">
-              <span>Consumption</span>
-              {hasDimensions && !consumption && (
-                <span className="text-amber-600 text-xs">Enter all dimensions + quantity</span>
-              )}
-            </Label>
-            <Input
-              id={`custom-${index}-consumption`}
-              value={consumption}
-              readOnly
-              className={`bg-gray-50 ${consumption ? "border-blue-300 text-blue-800 font-medium" : ""}`}
+          {/* Consumption with integrated material cost calculation */}
+          {hasDimensions && component.length && component.width && component.roll_width && defaultQuantity ? (
+            <ConsumptionCalculator
+              length={parseFloat(component.length)}
+              width={parseFloat(component.width)}
+              quantity={parseFloat(defaultQuantity)}
+              materialRate={materialRate}
+              onConsumptionCalculated={handleConsumptionCalculated}
             />
-            {defaultQuantity && baseConsumption && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Base: {baseConsumption} × Quantity: {defaultQuantity}
-              </p>
-            )}
-          </div>
+          ) : (
+            <div>
+              <Label htmlFor={`custom-${index}-consumption`} className="flex justify-between">
+                <span>Consumption</span>
+                {hasDimensions && !consumption && (
+                  <span className="text-amber-600 text-xs">Enter all dimensions + quantity</span>
+                )}
+              </Label>
+              <Input
+                id={`custom-${index}-consumption`}
+                value={consumption}
+                readOnly
+                className={`bg-gray-50 ${consumption ? "border-blue-300 text-blue-800 font-medium" : ""}`}
+              />
+              {defaultQuantity && baseConsumption && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Base: {baseConsumption} × Quantity: {defaultQuantity}
+                </p>
+              )}
+            </div>
+          )}
           
           {/* Add Material Selector */}
           <MaterialSelector 
