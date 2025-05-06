@@ -1,42 +1,33 @@
-
-import { 
-  Card, 
-  CardContent,
-  CardHeader 
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
-import { MaterialSelector } from "@/components/inventory/material-selector/MaterialSelector";
-import { useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MaterialLinkSelector } from "@/components/inventory/MaterialLinkSelector";
 
-// Export this interface for external use
+// Update the CustomComponent interface to use number for consumption
 export interface CustomComponent {
   id: string;
   type: string;
   customName?: string;
   color?: string;
-  gsm?: string;
   length?: string;
   width?: string;
   roll_width?: string;
   material_id?: string;
-  details?: string;
-  consumption?: string;
-  baseConsumption?: string;
+  consumption?: number; // Changed to number type
 }
 
 interface CustomComponentSectionProps {
   customComponents: CustomComponent[];
   componentOptions: {
     color: string[];
-    gsm?: string[]; // Make gsm optional
   };
   handleCustomComponentChange: (index: number, field: string, value: string) => void;
   removeCustomComponent: (index: number) => void;
   defaultQuantity?: string;
+  showConsumption?: boolean; // Added prop for showing consumption
+  inventoryItems?: any[]; // Added prop for inventory items
 }
 
 export const CustomComponentSection = ({
@@ -44,249 +35,113 @@ export const CustomComponentSection = ({
   componentOptions,
   handleCustomComponentChange,
   removeCustomComponent,
-  defaultQuantity
+  defaultQuantity,
+  showConsumption = false, // Default to false if not provided
+  inventoryItems = [] // Default to empty array if not provided
 }: CustomComponentSectionProps) => {
   return (
     <div className="space-y-4">
-      {customComponents.length === 0 ? (
-        <div className="text-center p-6 border border-dashed rounded-lg">
-          <p className="text-muted-foreground">No custom components added yet</p>
-        </div>
-      ) : (
-        <div className="grid md:grid-cols-2 gap-4">
-          {customComponents.map((component, index) => (
-            <CustomComponentForm
-              key={`custom-${index}`}
-              component={component}
-              index={index}
-              componentOptions={componentOptions}
-              handleCustomComponentChange={handleCustomComponentChange}
-              removeCustomComponent={removeCustomComponent}
-              defaultQuantity={defaultQuantity}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
+      {customComponents.map((component, index) => (
+        <div key={component.id} className="border rounded-md p-4 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor={`customName-${index}`}>Component Name</Label>
+              <Input
+                type="text"
+                id={`customName-${index}`}
+                value={component.customName || ""}
+                onChange={(e) => handleCustomComponentChange(index, "customName", e.target.value)}
+                placeholder="Enter component name"
+              />
+            </div>
 
-interface CustomComponentFormProps {
-  component: {
-    customName?: string;
-    color?: string;
-    gsm?: string;
-    length?: string;
-    width?: string;
-    roll_width?: string;
-    material_id?: string;
-    details?: string;
-    consumption?: string;
-    baseConsumption?: string;
-  };
-  index: number;
-  componentOptions: {
-    color: string[];
-    gsm?: string[]; // Make gsm optional
-  };
-  handleCustomComponentChange: (index: number, field: string, value: string) => void;
-  removeCustomComponent: (index: number) => void;
-  defaultQuantity?: string;
-}
-
-const CustomComponentForm = ({
-  component,
-  index,
-  componentOptions,
-  handleCustomComponentChange,
-  removeCustomComponent,
-  defaultQuantity
-}: CustomComponentFormProps) => {
-  const [customColor, setCustomColor] = useState(component.color === "Custom" ? "" : "");
-  const [customGSM, setCustomGSM] = useState(component.gsm === "Custom" ? "" : "");
-  
-  const handleColorChange = (value: string) => {
-    handleCustomComponentChange(index, 'color', value);
-    if (value !== "Custom") {
-      setCustomColor("");
-    }
-  };
-  
-  const handleGSMChange = (value: string) => {
-    handleCustomComponentChange(index, 'gsm', value);
-    if (value !== "Custom") {
-      setCustomGSM("");
-    }
-  };
-  
-  const handleCustomColorChange = (value: string) => {
-    setCustomColor(value);
-    handleCustomComponentChange(index, 'color', value);
-  };
-  
-  const handleCustomGSMChange = (value: string) => {
-    setCustomGSM(value);
-    handleCustomComponentChange(index, 'gsm', value);
-  };
-  
-  const handleMaterialSelect = (materialId: string | null) => {
-    handleCustomComponentChange(index, 'material_id', materialId || '');
-  };
-  
-  const consumption = component.consumption || '';
-  const baseConsumption = component.baseConsumption || '';
-  
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between p-4">
-        <Label className="text-sm font-medium">Custom Component {index + 1}</Label>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => removeCustomComponent(index)}
-        >
-          <Trash2 className="h-4 w-4 text-muted-foreground" />
-        </Button>
-      </CardHeader>
-      <CardContent className="p-4 pt-0">
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor={`custom-${index}-name`}>Component Name</Label>
-            <Input
-              id={`custom-${index}-name`}
-              placeholder="Enter component name"
-              value={component.customName || ""}
-              onChange={(e) => handleCustomComponentChange(index, 'customName', e.target.value)}
-            />
-          </div>
-          
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor={`custom-${index}-color`}>Color</Label>
-              <Select 
-                value={component.color || "none"} 
-                onValueChange={handleColorChange}
-              >
-                <SelectTrigger id={`custom-${index}-color`}>
-                  <SelectValue placeholder="Select color" />
+            <div className="space-y-2">
+              <Label htmlFor={`color-${index}`}>Color</Label>
+              <Select onValueChange={(value) => handleCustomComponentChange(index, "color", value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a color" defaultValue={component.color || ""} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {componentOptions.color.map(color => (
-                    <SelectItem key={`custom-${index}-${color}`} value={color}>
+                  {componentOptions.color.map((color) => (
+                    <SelectItem key={color} value={color}>
                       {color}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              
-              {component.color === "Custom" && (
-                <Input
-                  className="mt-2"
-                  placeholder="Enter custom color"
-                  value={customColor}
-                  onChange={(e) => handleCustomColorChange(e.target.value)}
-                />
-              )}
             </div>
-            
-            {/* Only render GSM field if gsm options are provided */}
-            {componentOptions.gsm && (
-              <div>
-                <Label htmlFor={`custom-${index}-gsm`}>GSM</Label>
-                <Select 
-                  value={component.gsm || "none"} 
-                  onValueChange={handleGSMChange}
-                >
-                  <SelectTrigger id={`custom-${index}-gsm`}>
-                    <SelectValue placeholder="Select GSM" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {componentOptions.gsm.map(gsm => (
-                      <SelectItem key={`custom-${index}-${gsm}`} value={gsm}>
-                        {gsm}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                
-                {component.gsm === "Custom" && (
-                  <Input
-                    className="mt-2"
-                    placeholder="Enter custom GSM"
-                    value={customGSM}
-                    onChange={(e) => handleCustomGSMChange(e.target.value)}
-                  />
-                )}
-              </div>
-            )}
           </div>
-          
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <Label htmlFor={`custom-${index}-length`}>Length (inches)</Label>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor={`length-${index}`}>Length (inches)</Label>
               <Input
-                id={`custom-${index}-length`}
                 type="number"
-                step="0.01"
-                min="0"
-                placeholder="Length"
+                id={`length-${index}`}
                 value={component.length || ""}
-                onChange={(e) => handleCustomComponentChange(index, 'length', e.target.value)}
+                onChange={(e) => handleCustomComponentChange(index, "length", e.target.value)}
+                placeholder="Enter length"
+                step="0.01"
               />
             </div>
-            <div>
-              <Label htmlFor={`custom-${index}-width`}>Width (inches)</Label>
+
+            <div className="space-y-2">
+              <Label htmlFor={`width-${index}`}>Width (inches)</Label>
               <Input
-                id={`custom-${index}-width`}
                 type="number"
-                step="0.01"
-                min="0"
-                placeholder="Width"
+                id={`width-${index}`}
                 value={component.width || ""}
-                onChange={(e) => handleCustomComponentChange(index, 'width', e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor={`custom-${index}-roll-width`}>Roll Width (inches)</Label>
-              <Input
-                id={`custom-${index}-roll-width`}
-                type="number"
+                onChange={(e) => handleCustomComponentChange(index, "width", e.target.value)}
+                placeholder="Enter width"
                 step="0.01"
-                min="0"
-                placeholder="Roll width"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor={`roll_width-${index}`}>Roll Width (inches)</Label>
+              <Input
+                type="number"
+                id={`roll_width-${index}`}
                 value={component.roll_width || ""}
-                onChange={(e) => handleCustomComponentChange(index, 'roll_width', e.target.value)}
+                onChange={(e) => handleCustomComponentChange(index, "roll_width", e.target.value)}
+                placeholder="Enter roll width"
+                step="0.01"
               />
             </div>
           </div>
           
-          {/* Consumption based on dimensions and default quantity */}
-          <div>
-            <Label htmlFor={`custom-${index}-consumption`}>Consumption</Label>
-            <Input
-              id={`custom-${index}-consumption`}
-              value={consumption}
-              readOnly
-              className="bg-gray-100"
-            />
-            {defaultQuantity && baseConsumption && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Base consumption: {baseConsumption} × Quantity: {defaultQuantity}
-              </p>
-            )}
-          </div>
+          {showConsumption && component.consumption !== undefined && (
+            <div className="space-y-2">
+              <Label htmlFor={`consumption-${index}`}>Consumption</Label>
+              <Input
+                type="number"
+                id={`consumption-${index}`}
+                value={component.consumption.toFixed(2) || ""}
+                placeholder="Consumption"
+                readOnly
+                className="bg-muted"
+              />
+            </div>
+          )}
           
-          {/* Add Material Selector */}
-          <MaterialSelector 
-            onMaterialSelect={handleMaterialSelect}
-            selectedMaterialId={component.material_id || null}
-            componentType={component.customName || `Custom Component ${index + 1}`}
+          <MaterialLinkSelector
+            inventoryItems={inventoryItems}
+            selectedMaterialId={component.material_id}
+            onMaterialSelect={(materialId) => handleCustomComponentChange(index, "material_id", materialId)}
           />
+
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            className="flex items-center gap-1"
+            onClick={() => removeCustomComponent(index)}
+          >
+            <Trash2 size={16} />
+            Remove
+          </Button>
         </div>
-      </CardContent>
-    </Card>
+      ))}
+    </div>
   );
 };

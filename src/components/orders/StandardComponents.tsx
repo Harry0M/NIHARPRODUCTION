@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Card, 
   CardContent,
@@ -9,23 +8,26 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MaterialSelector } from "@/components/inventory/material-selector/MaterialSelector";
+import { MaterialLinkSelector } from "../inventory/MaterialLinkSelector";
 
 interface StandardComponentsProps {
   components: Record<string, any>;
   componentOptions: {
     color: string[];
-    gsm?: string[]; // Make gsm optional
   };
   onChange: (type: string, field: string, value: string) => void;
   defaultQuantity?: string;
+  showConsumption?: boolean; // Added prop for showing consumption in real-time
+  inventoryItems?: any[]; // Added prop for inventory items
 }
 
-export const StandardComponents = ({ 
-  components, 
-  componentOptions, 
+export const StandardComponents = ({
+  components,
+  componentOptions,
   onChange,
-  defaultQuantity
+  defaultQuantity,
+  showConsumption = false, // Default to false if not provided
+  inventoryItems = [] // Default to empty array if not provided
 }: StandardComponentsProps) => {
   // Define standard component types with proper capitalization as they appear in UI
   const standardComponents = [
@@ -83,7 +85,6 @@ interface ComponentFormProps {
   };
   componentOptions: {
     color: string[];
-    gsm?: string[]; // Make gsm optional
   };
   onChange: (type: string, field: string, value: string) => void;
   defaultQuantity?: string;
@@ -253,7 +254,7 @@ const ComponentForm = ({
           </div>
           
           {/* Add Material Selector */}
-          <MaterialSelector 
+          <MaterialLinkSelector 
             onMaterialSelect={onMaterialSelect}
             selectedMaterialId={component.material_id || null}
             componentType={component.type}
@@ -263,3 +264,5 @@ const ComponentForm = ({
     </Card>
   );
 };
+
+export default StandardComponents;

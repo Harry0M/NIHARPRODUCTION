@@ -15,28 +15,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { StandardComponents } from "@/components/orders/StandardComponents";
-import { CustomComponentSection } from "@/components/orders/CustomComponentSection";
+import StandardComponents from "@/components/orders/StandardComponents";
+import { CustomComponentSection, CustomComponent } from "@/components/orders/CustomComponentSection";
 import { v4 as uuidv4 } from "uuid";
 import { calculateComponentConsumption } from "@/hooks/use-catalog-products";
 import { useInventoryItems } from "@/hooks/use-catalog-products";
 
 const componentOptions = {
   color: ["Red", "Blue", "Green", "Black", "White", "Yellow", "Brown", "Orange", "Purple", "Gray", "Custom"],
-  // GSM has been completely removed
 };
 
-interface ComponentType {
-  id: string;
-  type: string;
-  customName?: string;
-  color?: string;
-  // Removed gsm field
-  length?: string;
-  width?: string;
-  roll_width?: string;
-  material_id?: string;
-  consumption?: number;
+interface ComponentType extends CustomComponent {
+  // Additional fields that might be needed but not in CustomComponent
 }
 
 const CatalogNew = () => {
@@ -64,7 +54,7 @@ const CatalogNew = () => {
   });
   
   const [components, setComponents] = useState<Record<string, any>>({});
-  const [customComponents, setCustomComponents] = useState<ComponentType[]>([]);
+  const [customComponents, setCustomComponents] = useState<CustomComponent[]>([]);
 
   // Function to calculate material cost based on components
   const calculateMaterialCost = () => {
@@ -352,7 +342,7 @@ const CatalogNew = () => {
           material_id: comp.material_id || null,
           material_linked: comp.material_id ? true : false
         }));
-
+        
         // Insert components
         const { error: componentsError } = await supabase
           .from("catalog_components")
@@ -518,10 +508,9 @@ const CatalogNew = () => {
             <div className="space-y-8">
               <StandardComponents 
                 components={components}
-                componentOptions={componentOptions as any} // Type cast to fix TypeScript error
+                componentOptions={componentOptions} 
                 onChange={handleComponentChange}
                 defaultQuantity={productData.default_quantity}
-                // Now shows consumption in real-time
                 showConsumption={true}
                 inventoryItems={inventoryItems || []}
               />
@@ -542,11 +531,10 @@ const CatalogNew = () => {
                 
                 <CustomComponentSection 
                   customComponents={customComponents}
-                  componentOptions={componentOptions as any} // Type cast to fix TypeScript error
+                  componentOptions={componentOptions}
                   handleCustomComponentChange={handleCustomComponentChange}
                   removeCustomComponent={removeCustomComponent}
                   defaultQuantity={productData.default_quantity}
-                  // Now shows consumption in real-time
                   showConsumption={true}
                   inventoryItems={inventoryItems || []}
                 />
@@ -555,7 +543,7 @@ const CatalogNew = () => {
           </CardContent>
         </Card>
         
-        {/* Cost Calculation Card - New section for detailed costs */}
+        {/* Cost Calculation Card */}
         <Card>
           <CardHeader>
             <CardTitle>Cost Calculation</CardTitle>

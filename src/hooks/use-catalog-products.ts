@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -85,7 +86,7 @@ export const useCatalogProducts = () => {
     queryFn: async () => {
       console.log("Fetching catalog products...");
       
-      // Fetch all catalog products
+      // Fetch all catalog products - Making sure to include all cost fields
       const { data: catalogData, error: catalogError } = await supabase
         .from("catalog")
         .select(`
