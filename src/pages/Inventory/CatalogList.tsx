@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
-import { Plus, Package, Trash2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Plus, Package, Trash2, RefreshCw } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -28,8 +28,10 @@ import { showToast } from "@/components/ui/enhanced-toast";
 
 const CatalogList = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data: products, isLoading, refetch, error } = useQuery({
     queryKey: ['catalog'],
@@ -55,21 +57,50 @@ const CatalogList = () => {
     }
   }, [error]);
 
-  // Automatically refetch on component mount to ensure up-to-date data
+  // Force refresh on initial mount and location changes
   useEffect(() => {
-    console.log("CatalogList mounted - refreshing data");
-    refetch();
-    // Show welcome toast when navigated from product creation
-    const hasRedirected = sessionStorage.getItem('productCreated');
-    if (hasRedirected) {
-      sessionStorage.removeItem('productCreated');
-      showToast({
-        title: "Catalog Updated",
-        description: "The product list has been refreshed with your latest changes.",
-        type: "info"
+    console.log("CatalogList mounted or location changed - refreshing data");
+    setIsRefreshing(true);
+    
+    refetch()
+      .then(() => {
+        console.log("Catalog data refreshed successfully");
+        // Show welcome toast when navigated from product creation
+        const hasRedirected = sessionStorage.getItem('productCreated');
+        if (hasRedirected) {
+          sessionStorage.removeItem('productCreated');
+          showToast({
+            title: "Product Created Successfully",
+            description: "Your new product has been added to the catalog.",
+            type: "success"
+          });
+        }
+      })
+      .catch((err) => {
+        console.error("Error refreshing catalog data:", err);
+      })
+      .finally(() => {
+        setIsRefreshing(false);
       });
-    }
-  }, [refetch]);
+  }, [refetch, location.key]); // Add location.key as a dependency to detect navigation
+
+  const handleManualRefresh = () => {
+    setIsRefreshing(true);
+    refetch()
+      .then(() => {
+        showToast({
+          title: "Data Refreshed",
+          description: "The catalog list has been refreshed.",
+          type: "info"
+        });
+      })
+      .catch((error) => {
+        console.error("Manual refresh error:", error);
+      })
+      .finally(() => {
+        setIsRefreshing(false);
+      });
+  };
 
   const handleDeleteProduct = async () => {
     if (!productToDelete) return;
@@ -108,14 +139,24 @@ const CatalogList = () => {
 
   return (
     <Card>
-      <div className="p-4 flex justify-end">
+      <div className="p-4 flex justify-between items-center">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleManualRefresh}
+          disabled={isRefreshing}
+        >
+          <RefreshCw size={16} className={`mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+          {isRefreshing ? 'Refreshing...' : 'Refresh'}
+        </Button>
+        
         <Button onClick={() => navigate('/inventory/catalog/new')}>
           <Plus size={16} className="mr-2" />
           Add Product
         </Button>
       </div>
 
-      {isLoading ? (
+      {isLoading || isRefreshing ? (
         <div className="flex justify-center items-center p-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
@@ -159,6 +158,9 @@ const CatalogNew = () => {
         loadingToast.dismiss();
       }
       
+      // Set flag for successful product creation to trigger refresh
+      sessionStorage.setItem('productCreated', 'true');
+      
       // Show success toast
       showToast({
         title: "Product created successfully",
@@ -166,15 +168,9 @@ const CatalogNew = () => {
         type: "success"
       });
 
-      // Set a timeout to ensure navigation happens even if other processes are slow
+      // Navigate to catalog list with a short delay to allow flag to be set
       setTimeout(() => {
-        // Try React Router navigation first
         navigate("/inventory/catalog");
-        
-        // Use a fallback for navigation after a short delay
-        setTimeout(() => {
-          window.location.href = "/inventory/catalog";
-        }, 500);
       }, 100);
       
     } catch (error: any) {
