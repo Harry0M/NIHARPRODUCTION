@@ -1,3 +1,4 @@
+
 import { toast } from "@/hooks/use-toast";
 import { Check, X, AlertTriangle, Info } from "lucide-react";
 import { ReactNode } from "react";
@@ -8,9 +9,10 @@ interface ShowToastOptions {
   title: string | ReactNode;
   description?: string;
   type?: ToastType;
+  duration?: number;
 }
 
-export const showToast = ({ title, description, type = "info" }: ShowToastOptions) => {
+export const showToast = ({ title, description, type = "info", duration }: ShowToastOptions) => {
   const getToastConfig = (type: ToastType) => {
     switch (type) {
       case "success":
@@ -49,9 +51,9 @@ export const showToast = ({ title, description, type = "info" }: ShowToastOption
       ) 
     : title;
 
-  toast({
-    // @ts-ignore - We know this will work with the toast component
+  return toast({
     title: titleContent,
     description: description,
+    duration: duration
   });
 };

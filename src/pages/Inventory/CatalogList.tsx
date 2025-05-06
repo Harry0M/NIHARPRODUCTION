@@ -23,15 +23,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useState } from "react";
-import { toast } from "sonner";
+import { useState, useEffect } from "react";
+import { showToast } from "@/components/ui/enhanced-toast";
 
 const CatalogList = () => {
   const navigate = useNavigate();
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const { data: products, isLoading, refetch } = useQuery({
+  const { data: products, isLoading, refetch, error } = useQuery({
     queryKey: ['catalog'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -42,6 +42,33 @@ const CatalogList = () => {
       return data;
     },
   });
+
+  // Handle any errors in fetching the catalog
+  useEffect(() => {
+    if (error) {
+      console.error("Error fetching catalog:", error);
+      showToast({
+        title: "Error loading products",
+        description: "Could not load product catalog. Please try again.",
+        type: "error"
+      });
+    }
+  }, [error]);
+
+  // Automatically refetch on component mount to ensure up-to-date data
+  useEffect(() => {
+    refetch();
+    // Show welcome toast when navigated from product creation
+    const hasRedirected = sessionStorage.getItem('productCreated');
+    if (hasRedirected) {
+      sessionStorage.removeItem('productCreated');
+      showToast({
+        title: "Catalog Updated",
+        description: "The product list has been refreshed with your latest changes.",
+        type: "info"
+      });
+    }
+  }, [refetch]);
 
   const handleDeleteProduct = async () => {
     if (!productToDelete) return;
@@ -60,11 +87,18 @@ const CatalogList = () => {
       }
       
       // Success!
-      toast.success("Product deleted successfully");
+      showToast({
+        title: "Product deleted successfully",
+        type: "success"
+      });
       await refetch();
     } catch (error: any) {
       console.error('Error in handleDeleteProduct:', error);
-      toast.error(`Failed to delete product: ${error.message}`);
+      showToast({
+        title: "Failed to delete product",
+        description: error.message || "An unexpected error occurred",
+        type: "error"
+      });
     } finally {
       setProductToDelete(null);
       setIsDeleting(false);

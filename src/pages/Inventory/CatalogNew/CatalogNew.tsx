@@ -1,9 +1,9 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/hooks/use-toast";
+import { showToast } from "@/components/ui/enhanced-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 
@@ -35,28 +35,28 @@ const CatalogNew = () => {
 
   const validateForm = () => {
     if (!productData.name) {
-      toast({
+      showToast({
         title: "Validation Error",
         description: "Product name is required",
-        variant: "destructive"
+        type: "error"
       });
       return false;
     }
     
     if (!productData.bag_length || parseFloat(productData.bag_length) <= 0) {
-      toast({
+      showToast({
         title: "Validation Error",
         description: "Valid bag length is required",
-        variant: "destructive"
+        type: "error"
       });
       return false;
     }
     
     if (!productData.bag_width || parseFloat(productData.bag_width) <= 0) {
-      toast({
+      showToast({
         title: "Validation Error",
         description: "Valid bag width is required",
-        variant: "destructive"
+        type: "error"
       });
       return false;
     }
@@ -72,6 +72,14 @@ const CatalogNew = () => {
     }
     
     setSubmitting(true);
+    
+    // Show a loading toast to indicate the process has started
+    const loadingToast = showToast({
+      title: "Saving product...",
+      description: "Please wait while we create your product",
+      type: "info",
+      duration: 10000 // Long duration while saving
+    });
     
     try {
       // Format the name to include quantity if default_quantity is provided
@@ -146,23 +154,64 @@ const CatalogNew = () => {
         }
       }
       
-      toast({
+      // Clear the previous toast
+      if (loadingToast) {
+        loadingToast.dismiss();
+      }
+      
+      // Show success toast
+      showToast({
         title: "Product created successfully",
-        description: `${formattedName} has been added to the catalog`
+        description: `${formattedName} has been added to the catalog`,
+        type: "success"
       });
 
-      navigate("/inventory/catalog");
+      // Set a timeout to ensure navigation happens even if other processes are slow
+      setTimeout(() => {
+        // Try React Router navigation first
+        navigate("/inventory/catalog");
+        
+        // Use a fallback for navigation after a short delay
+        setTimeout(() => {
+          window.location.href = "/inventory/catalog";
+        }, 500);
+      }, 100);
       
     } catch (error: any) {
-      toast({
+      // Clear the loading toast
+      if (loadingToast) {
+        loadingToast.dismiss();
+      }
+      
+      // Show error toast
+      showToast({
         title: "Error creating product",
         description: error.message || "An unexpected error occurred",
-        variant: "destructive"
+        type: "error"
       });
+      
+      console.error("Product creation error:", error);
     } finally {
       setSubmitting(false);
     }
   };
+
+  // Navigation safety - if the component unmounts during submission,
+  // ensure we redirect to the catalog list
+  useEffect(() => {
+    return () => {
+      if (submitting) {
+        // Attempting to navigate if we're in a submitting state when unmounting
+        try {
+          navigate("/inventory/catalog");
+        } catch (e) {
+          console.error("Navigation failed during cleanup:", e);
+          // Fallback
+          window.location.href = "/inventory/catalog";
+        }
+      }
+    };
+  }, [submitting, navigate]);
 
   return (
     <ComponentProvider 
