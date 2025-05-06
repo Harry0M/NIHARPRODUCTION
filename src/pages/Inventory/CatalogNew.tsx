@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Card, 
@@ -30,11 +30,12 @@ interface ComponentType {
   type: string;
   customName?: string;
   color?: string;
-  // Removed gsm field
   length?: string;
   width?: string;
   roll_width?: string;
   material_id?: string;
+  consumption?: string;
+  baseConsumption?: string;
 }
 
 const CatalogNew = () => {
@@ -62,6 +63,85 @@ const CatalogNew = () => {
   
   const [components, setComponents] = useState<Record<string, any>>({});
   const [customComponents, setCustomComponents] = useState<ComponentType[]>([]);
+  
+  // Function to calculate consumption based on dimensions
+  const calculateConsumption = (length?: string, width?: string, rollWidth?: string): string | undefined => {
+    if (!length || !width || !rollWidth) return undefined;
+    
+    const lengthVal = parseFloat(length);
+    const widthVal = parseFloat(width);
+    const rollWidthVal = parseFloat(rollWidth);
+    
+    if (isNaN(lengthVal) || isNaN(widthVal) || isNaN(rollWidthVal) || rollWidthVal <= 0) {
+      return undefined;
+    }
+    
+    // Formula: (length * width) / (roll_width * 39.39)
+    const consumption = (lengthVal * widthVal) / (rollWidthVal * 39.39);
+    return consumption.toFixed(4);
+  };
+  
+  // Function to update consumption values based on dimensions and default quantity
+  const updateConsumptionValues = () => {
+    // Update standard components
+    const updatedComponents = { ...components };
+    let hasUpdates = false;
+    
+    Object.keys(updatedComponents).forEach(type => {
+      const component = updatedComponents[type];
+      if (component.length && component.width && component.roll_width) {
+        const baseConsumption = calculateConsumption(
+          component.length,
+          component.width,
+          component.roll_width
+        );
+        
+        if (baseConsumption) {
+          updatedComponents[type] = {
+            ...component,
+            baseConsumption,
+            consumption: productData.default_quantity 
+              ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
+              : baseConsumption
+          };
+          hasUpdates = true;
+        }
+      }
+    });
+    
+    if (hasUpdates) {
+      setComponents(updatedComponents);
+    }
+    
+    // Update custom components
+    const updatedCustomComponents = customComponents.map(component => {
+      if (component.length && component.width && component.roll_width) {
+        const baseConsumption = calculateConsumption(
+          component.length,
+          component.width,
+          component.roll_width
+        );
+        
+        if (baseConsumption) {
+          return {
+            ...component,
+            baseConsumption,
+            consumption: productData.default_quantity 
+              ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
+              : baseConsumption
+          };
+        }
+      }
+      return component;
+    });
+    
+    setCustomComponents(updatedCustomComponents);
+  };
+  
+  // Effect to recalculate consumption when default quantity changes
+  useEffect(() => {
+    updateConsumptionValues();
+  }, [productData.default_quantity]);
 
   const handleProductChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -129,12 +209,35 @@ const CatalogNew = () => {
         id: uuidv4(),
         type 
       };
+      
+      const updatedComponent = {
+        ...component,
+        [field]: value
+      };
+      
+      // If dimensions or roll width changed, recalculate consumption
+      if (['length', 'width', 'roll_width'].includes(field) && 
+          updatedComponent.length && 
+          updatedComponent.width && 
+          updatedComponent.roll_width) {
+        
+        const baseConsumption = calculateConsumption(
+          updatedComponent.length,
+          updatedComponent.width,
+          updatedComponent.roll_width
+        );
+        
+        if (baseConsumption) {
+          updatedComponent.baseConsumption = baseConsumption;
+          updatedComponent.consumption = productData.default_quantity 
+            ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
+            : baseConsumption;
+        }
+      }
+      
       return {
         ...prev,
-        [type]: {
-          ...component,
-          [field]: value
-        }
+        [type]: updatedComponent
       };
     });
   };
@@ -142,7 +245,29 @@ const CatalogNew = () => {
   const handleCustomComponentChange = (index: number, field: string, value: string) => {
     setCustomComponents(prev => {
       const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
+      const updatedComponent = { ...updated[index], [field]: value };
+      
+      // If dimensions or roll width changed, recalculate consumption
+      if (['length', 'width', 'roll_width'].includes(field) && 
+          updatedComponent.length && 
+          updatedComponent.width && 
+          updatedComponent.roll_width) {
+        
+        const baseConsumption = calculateConsumption(
+          updatedComponent.length,
+          updatedComponent.width,
+          updatedComponent.roll_width
+        );
+        
+        if (baseConsumption) {
+          updatedComponent.baseConsumption = baseConsumption;
+          updatedComponent.consumption = productData.default_quantity 
+            ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
+            : baseConsumption;
+        }
+      }
+      
+      updated[index] = updatedComponent;
       return updated;
     });
   };
@@ -161,6 +286,13 @@ const CatalogNew = () => {
   const removeCustomComponent = (index: number) => {
     setCustomComponents(prev => prev.filter((_, i) => i !== index));
   };
+
+  // Calculate total consumption for all components
+  const totalConsumption = [...Object.values(components), ...customComponents]
+    .reduce((total, comp) => {
+      const consumption = comp.consumption ? parseFloat(comp.consumption) : 0;
+      return isNaN(consumption) ? total : total + consumption;
+    }, 0);
 
   const validateForm = () => {
     if (!productData.name) {
@@ -260,7 +392,8 @@ const CatalogNew = () => {
           width: comp.width || null,
           custom_name: comp.type === 'custom' ? comp.customName : null,
           material_id: comp.material_id || null,
-          material_linked: comp.material_id ? true : false
+          material_linked: comp.material_id ? true : false,
+          consumption: comp.consumption || null  // Save the calculated consumption
         }));
 
         // Insert components
@@ -422,7 +555,14 @@ const CatalogNew = () => {
         <Card>
           <CardHeader>
             <CardTitle>Bag Components</CardTitle>
-            <CardDescription>Specify the details for each component of the bag</CardDescription>
+            <CardDescription className="flex justify-between items-center">
+              <span>Specify the details for each component of the bag</span>
+              {totalConsumption > 0 && (
+                <span className="font-medium text-sm bg-blue-50 text-blue-800 px-3 py-1 rounded-full">
+                  Total Consumption: {totalConsumption.toFixed(2)} meters
+                </span>
+              )}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-8">
@@ -431,6 +571,7 @@ const CatalogNew = () => {
                 componentOptions={componentOptions as any} // Type cast to fix TypeScript error
                 onChange={handleComponentChange}
                 defaultQuantity={productData.default_quantity}
+                showConsumption={true}
               />
               
               <div className="space-y-4">
@@ -453,6 +594,7 @@ const CatalogNew = () => {
                   handleCustomComponentChange={handleCustomComponentChange}
                   removeCustomComponent={removeCustomComponent}
                   defaultQuantity={productData.default_quantity}
+                  showConsumption={true}
                 />
               </div>
             </div>
