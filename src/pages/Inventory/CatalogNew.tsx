@@ -135,7 +135,7 @@ const CatalogNew = () => {
     // Add costs from standard components
     Object.values(components).forEach((component: any) => {
       if (component.materialCost) {
-        const componentCost = parseFloat(component.materialCost);
+        const componentCost = parseFloat(String(component.materialCost));
         if (!isNaN(componentCost)) {
           totalCost += componentCost;
         }
@@ -148,7 +148,7 @@ const CatalogNew = () => {
     // Add costs from custom components
     customComponents.forEach((component) => {
       if (component.materialCost) {
-        const componentCost = parseFloat(component.materialCost.toString());
+        const componentCost = parseFloat(String(component.materialCost));
         if (!isNaN(componentCost)) {
           totalCost += componentCost;
         }
@@ -218,7 +218,7 @@ const CatalogNew = () => {
           if (component.material_id && materialPrices[component.material_id]) {
             const materialRate = materialPrices[component.material_id];
             const materialCost = parseFloat(consumption) * materialRate;
-            updatedComponents[type].materialCost = materialCost.toFixed(2);
+            updatedComponents[type].materialCost = materialCost;
           }
           
           hasUpdates = true;
@@ -254,7 +254,7 @@ const CatalogNew = () => {
           if (component.material_id && materialPrices[component.material_id]) {
             const materialRate = materialPrices[component.material_id];
             const materialCost = parseFloat(consumption) * materialRate;
-            updatedComponent.materialCost = materialCost.toFixed(2);
+            updatedComponent.materialCost = materialCost;
           }
           
           return updatedComponent;
@@ -361,9 +361,10 @@ const CatalogNew = () => {
         });
       }
       
-      // If materialCost is directly set, keep it
+      // If materialCost is directly set, keep it as number
       if (field === 'materialCost') {
         console.log(`Setting material cost for ${type} to ${value}`);
+        updatedComponent.materialCost = parseFloat(value);
       }
       
       // If dimensions or roll width changed, recalculate consumption
@@ -387,8 +388,9 @@ const CatalogNew = () => {
           // Also calculate material cost if material_id and rate are present
           if (updatedComponent.material_id && materialPrices[updatedComponent.material_id]) {
             const materialRate = materialPrices[updatedComponent.material_id];
-            const materialCost = parseFloat(updatedComponent.consumption) * materialRate;
-            updatedComponent.materialCost = materialCost.toFixed(2);
+            const consumptionValue = parseFloat(updatedComponent.consumption);
+            const materialCost = consumptionValue * materialRate;
+            updatedComponent.materialCost = materialCost;
             updatedComponent.materialRate = materialRate;
           }
         }
@@ -422,7 +424,7 @@ const CatalogNew = () => {
                 const consumption = parseFloat(newComponents[index].consumption);
                 if (!isNaN(consumption)) {
                   const materialCost = consumption * rate;
-                  newComponents[index].materialCost = materialCost.toFixed(2);
+                  newComponents[index].materialCost = materialCost;
                 }
               }
               
@@ -432,9 +434,10 @@ const CatalogNew = () => {
         });
       }
       
-      // If materialCost is directly set, keep it
+      // If materialCost is directly set, keep it as number
       if (field === 'materialCost') {
         console.log(`Setting material cost for custom component ${index} to ${value}`);
+        updatedComponent.materialCost = parseFloat(value);
       }
       
       // If dimensions or roll width changed, recalculate consumption
@@ -458,8 +461,9 @@ const CatalogNew = () => {
           // Also calculate material cost if material_id and rate are present
           if (updatedComponent.material_id && materialPrices[updatedComponent.material_id]) {
             const materialRate = materialPrices[updatedComponent.material_id];
-            const materialCost = parseFloat(updatedComponent.consumption) * materialRate;
-            updatedComponent.materialCost = materialCost.toFixed(2);
+            const consumptionValue = parseFloat(updatedComponent.consumption);
+            const materialCost = consumptionValue * materialRate;
+            updatedComponent.materialCost = materialCost;
             updatedComponent.materialRate = materialRate;
           }
         }
@@ -498,7 +502,7 @@ const CatalogNew = () => {
     .map(comp => {
       const consumption = parseFloat(comp.consumption || '0');
       const rate = comp.materialRate || materialPrices[comp.material_id || ''] || 0;
-      const cost = comp.materialCost ? parseFloat(comp.materialCost) : (consumption * rate);
+      const cost = comp.materialCost ? parseFloat(String(comp.materialCost)) : (consumption * rate);
       
       return {
         name: comp.type === 'custom' ? comp.customName || 'Custom component' : comp.type,
