@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
@@ -166,13 +165,8 @@ const CatalogNew = () => {
         type: "success"
       });
 
-      // MODIFIED: Force a full page refresh with timestamp to prevent caching
-      setTimeout(() => {
-        document.body.style.cursor = 'wait'; // Change cursor to indicate loading
-        window.location.href = `/inventory/catalog?refresh=product-created&t=${Date.now()}`;
-        // Add a complete page reload after setting the location
-        window.location.reload();
-      }, 200);
+      // SIMPLIFIED: Direct navigation to inventory/catalog
+      window.location.href = "/inventory/catalog";
       
     } catch (error: any) {
       // Clear the loading toast
@@ -198,14 +192,8 @@ const CatalogNew = () => {
   useEffect(() => {
     return () => {
       if (submitting) {
-        // Attempting to navigate if we're in a submitting state when unmounting
-        try {
-          // MODIFIED: Force a full page refresh for cleanup scenario too with timestamp
-          window.location.href = `/inventory/catalog?cleanup=true&t=${Date.now()}`;
-          window.location.reload();
-        } catch (e) {
-          console.error("Navigation failed during cleanup:", e);
-        }
+        // SIMPLIFIED: Direct navigation for cleanup scenario too
+        window.location.href = "/inventory/catalog";
       }
     };
   }, [submitting]);
