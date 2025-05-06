@@ -72,6 +72,11 @@ export const OrderDetailsForm = ({
         handleOrderChange({ target: { name: 'border_dimension', value: selectedProduct.border_dimension.toString() } });
       }
       
+      // Set default quantity if available
+      if (selectedProduct.default_quantity) {
+        handleOrderChange({ target: { name: 'quantity', value: selectedProduct.default_quantity.toString() } });
+      }
+      
       // Only set rate from the product if available
       if (selectedProduct.default_rate) {
         handleOrderChange({ target: { name: 'rate', value: selectedProduct.default_rate.toString() } });
@@ -101,12 +106,17 @@ export const OrderDetailsForm = ({
         
         onProductSelect(componentsWithConsumption);
         
-        // If quantity is already set, update consumption values
-        if (formData.quantity && updateConsumptionBasedOnQuantity) {
-          const quantity = parseFloat(formData.quantity);
-          if (!isNaN(quantity) && quantity > 0) {
-            setTimeout(() => updateConsumptionBasedOnQuantity(quantity), 100);
-          }
+        // Use the product's default quantity or the currently set quantity if available
+        const quantity = selectedProduct.default_quantity 
+          ? parseFloat(selectedProduct.default_quantity.toString())
+          : formData.quantity 
+            ? parseFloat(formData.quantity) 
+            : 0;
+        
+        // Always update consumption based on quantity (default or manually entered)
+        if (!isNaN(quantity) && quantity > 0 && updateConsumptionBasedOnQuantity) {
+          console.log("Using quantity for consumption calculation:", quantity);
+          setTimeout(() => updateConsumptionBasedOnQuantity(quantity), 100);
         }
       } else {
         console.log("No components found in the selected product");
