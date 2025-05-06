@@ -85,13 +85,6 @@ export const StockInfoGrid = ({ stockItem, linkedComponents = [] }: StockInfoGri
                 <p className="font-medium">{formatValue(stockItem.roll_width)} inches</p>
               </div>
             )}
-            {/* Added purchase rate display */}
-            {stockItem.purchase_rate !== null && stockItem.purchase_rate !== undefined && (
-              <div>
-                <p className="text-sm text-muted-foreground">Purchase Rate</p>
-                <p className="font-medium">₹{formatValue(stockItem.purchase_rate)} / {formatValue(stockItem.unit)}</p>
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>
