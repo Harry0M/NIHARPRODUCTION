@@ -1,16 +1,10 @@
 
-import React from 'react';
-import { 
-  Card, 
-  CardContent, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription 
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import React from "react";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
 
 interface ComponentCost {
   name: string;
@@ -30,6 +24,7 @@ interface CostCalculationFormProps {
     total_cost: string;
     selling_rate: string;
     margin: string;
+    [key: string]: string;
   };
   componentCosts: ComponentCost[];
   handleProductChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
@@ -210,11 +205,19 @@ const CostCalculationForm: React.FC<CostCalculationFormProps> = ({
             type="button"
             variant="outline"
             onClick={onCancel}
+            disabled={submitting}
           >
             Cancel
           </Button>
           <Button type="submit" disabled={submitting}>
-            {submitting ? "Creating..." : "Create Product"}
+            {submitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                Creating...
+              </>
+            ) : (
+              "Create Product"
+            )}
           </Button>
         </div>
       </CardFooter>

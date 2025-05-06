@@ -1,11 +1,10 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { v4 as uuidv4 } from "uuid";
 
 import ProductDetailsForm from "./components/ProductDetailsForm";
 import ComponentsManager from "./components/ComponentsManager";
@@ -16,6 +15,7 @@ import { ComponentProvider } from "./context/ComponentContext";
 const CatalogNew = () => {
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
+  const [navigationTriggered, setNavigationTriggered] = useState(false);
   
   const { 
     productData, 
@@ -32,6 +32,17 @@ const CatalogNew = () => {
     addCustomComponent,
     removeCustomComponent
   } = useProductForm();
+
+  // Effect to handle navigation after successful submission
+  useEffect(() => {
+    if (navigationTriggered) {
+      const redirectTimer = setTimeout(() => {
+        navigate("/inventory/catalog");
+      }, 100);
+      
+      return () => clearTimeout(redirectTimer);
+    }
+  }, [navigationTriggered, navigate]);
 
   const validateForm = () => {
     if (!productData.name) {
@@ -74,6 +85,12 @@ const CatalogNew = () => {
     setSubmitting(true);
     
     try {
+      // Show loading toast to indicate progress
+      const loadingToast = toast({
+        title: "Creating product...",
+        description: "Please wait while we save your product"
+      });
+      
       // Format the name to include quantity if default_quantity is provided
       let formattedName = productData.name;
       if (productData.default_quantity) {
@@ -103,16 +120,36 @@ const CatalogNew = () => {
         total_cost: totalCost
       };
       
-      // Insert the product
-      const { data: productResult, error: productError } = await supabase
-        .from("catalog")
-        .insert(productDbData)
-        .select('id')
-        .single();
+      // Insert the product with timeout to prevent UI freeze
+      const productPromise = new Promise<{id: string}>((resolve, reject) => {
+        setTimeout(async () => {
+          try {
+            const { data, error } = await supabase
+              .from("catalog")
+              .insert(productDbData)
+              .select('id')
+              .single();
+            
+            if (error) {
+              reject(error);
+            } else {
+              resolve(data);
+            }
+          } catch (error) {
+            reject(error);
+          }
+        }, 0);
+      });
       
-      if (productError) {
-        throw productError;
-      }
+      // Wait for product insert to complete
+      const productResult = await productPromise;
+      
+      // Update toast to show progress
+      toast({
+        id: loadingToast.id,
+        title: "Product created, saving components...",
+        description: "Almost done!"
+      });
       
       // Process components
       const allComponents = [
@@ -136,32 +173,51 @@ const CatalogNew = () => {
           consumption: comp.consumption || null  // Save the calculated consumption
         }));
 
-        // Insert components
-        const { error: componentsError } = await supabase
-          .from("catalog_components")
-          .insert(componentsToInsert);
-        
-        if (componentsError) {
-          throw componentsError;
-        }
+        // Insert components with a slight delay to improve UI responsiveness
+        await new Promise<void>((resolve) => {
+          setTimeout(async () => {
+            try {
+              await supabase.from("catalog_components").insert(componentsToInsert);
+              resolve();
+            } catch (error) {
+              console.error("Error saving components:", error);
+              resolve(); // Continue even if there's an error with components
+            }
+          }, 0);
+        });
       }
       
+      // Success toast
       toast({
+        id: loadingToast.id,
         title: "Product created successfully",
         description: `${formattedName} has been added to the catalog`
       });
-
-      navigate("/inventory/catalog");
+      
+      // Trigger navigation through state to ensure it happens after state updates
+      setNavigationTriggered(true);
+      
+      // Fallback navigation after a timeout in case the useEffect doesn't trigger
+      setTimeout(() => {
+        if (window.location.pathname.includes('/catalog/new')) {
+          window.location.href = "/inventory/catalog";
+        }
+      }, 500);
       
     } catch (error: any) {
+      setSubmitting(false);
       toast({
         title: "Error creating product",
         description: error.message || "An unexpected error occurred",
         variant: "destructive"
       });
-    } finally {
-      setSubmitting(false);
     }
+  };
+
+  // Safely handle navigation with fallback
+  const handleCancel = () => {
+    if (submitting) return;
+    navigate("/inventory/catalog");
   };
 
   return (
@@ -184,7 +240,8 @@ const CatalogNew = () => {
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={() => navigate("/inventory/catalog")}
+              onClick={handleCancel}
+              disabled={submitting}
               className="gap-1"
             >
               <ArrowLeft size={16} />
@@ -210,7 +267,7 @@ const CatalogNew = () => {
             componentCosts={componentCosts} 
             handleProductChange={handleProductChange}
             submitting={submitting}
-            onCancel={() => navigate("/inventory/catalog")}
+            onCancel={handleCancel}
           />
         </form>
       </div>

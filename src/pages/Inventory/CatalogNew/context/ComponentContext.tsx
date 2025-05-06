@@ -1,52 +1,30 @@
 
-import { createContext, useContext, ReactNode } from 'react';
-
-interface ComponentType {
-  id: string;
-  type: string;
-  customName?: string;
-  color?: string;
-  length?: string;
-  width?: string;
-  roll_width?: string;
-  material_id?: string;
-  consumption?: string;
-  baseConsumption?: string;
-  materialRate?: number;
-  materialCost?: number;
-}
+import React, { createContext, useContext } from 'react';
 
 interface ComponentContextType {
   components: Record<string, any>;
-  customComponents: ComponentType[];
+  customComponents: any[];
   materialPrices: Record<string, number>;
   fetchMaterialPrice: (materialId: string) => Promise<number | null>;
   handleComponentChange: (type: string, field: string, value: string) => void;
   handleCustomComponentChange: (index: number, field: string, value: string) => void;
   addCustomComponent: () => void;
   removeCustomComponent: (index: number) => void;
-  defaultQuantity?: string;
+  defaultQuantity: string;
 }
 
 const ComponentContext = createContext<ComponentContextType | undefined>(undefined);
 
-export const ComponentProvider = ({ 
+export const ComponentProvider: React.FC<{ children: React.ReactNode; value: ComponentContextType }> = ({ 
   children, 
   value 
-}: { 
-  children: ReactNode, 
-  value: ComponentContextType 
 }) => {
-  return (
-    <ComponentContext.Provider value={value}>
-      {children}
-    </ComponentContext.Provider>
-  );
+  return <ComponentContext.Provider value={value}>{children}</ComponentContext.Provider>;
 };
 
-export const useComponentContext = () => {
+export const useComponentContext = (): ComponentContextType => {
   const context = useContext(ComponentContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useComponentContext must be used within a ComponentProvider');
   }
   return context;
