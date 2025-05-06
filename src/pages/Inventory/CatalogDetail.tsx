@@ -262,6 +262,9 @@ const CatalogDetail = () => {
           defaultQuantity={product.default_quantity}
           defaultRate={product.default_rate}
           createdAt={product.created_at}
+          sellingRate={product.selling_rate}
+          totalCost={product.total_cost}
+          margin={product.margin}
         />
 
         {/* Components Card */}

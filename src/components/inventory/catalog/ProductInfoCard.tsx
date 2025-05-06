@@ -9,6 +9,9 @@ interface ProductInfoCardProps {
   defaultQuantity: number | null;
   defaultRate: number | null;
   createdAt: string;
+  sellingRate?: number | null;
+  totalCost?: number | null;
+  margin?: number | null;
 }
 
 export const ProductInfoCard = ({
@@ -19,6 +22,9 @@ export const ProductInfoCard = ({
   defaultQuantity,
   defaultRate,
   createdAt,
+  sellingRate,
+  totalCost,
+  margin,
 }: ProductInfoCardProps) => {
   return (
     <Card className="col-span-1">
@@ -43,6 +49,25 @@ export const ProductInfoCard = ({
             <p className="text-sm font-medium text-muted-foreground">Default Rate</p>
             <p className="font-medium">{defaultRate ? `₹${defaultRate}` : 'N/A'}</p>
           </div>
+          {/* Added selling rate, cost, and margin */}
+          {sellingRate !== undefined && sellingRate !== null && (
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Selling Rate</p>
+              <p className="font-medium">₹{sellingRate}</p>
+            </div>
+          )}
+          {totalCost !== undefined && totalCost !== null && (
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Total Cost</p>
+              <p className="font-medium">₹{totalCost}</p>
+            </div>
+          )}
+          {margin !== undefined && margin !== null && (
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Margin</p>
+              <p className="font-medium">{margin}%</p>
+            </div>
+          )}
           <div className="col-span-2 space-y-1">
             <p className="text-sm font-medium text-muted-foreground">Created On</p>
             <p className="font-medium">{new Date(createdAt).toLocaleDateString()}</p>
