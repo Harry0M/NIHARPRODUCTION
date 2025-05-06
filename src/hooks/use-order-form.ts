@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -44,7 +43,6 @@ interface UseOrderFormReturn {
   handleSubmit: (e: React.FormEvent) => Promise<string | undefined>;
   validateForm: () => boolean;
   updateConsumptionBasedOnQuantity: (quantity: number) => void;
-  productPopulatedFields: boolean;
 }
 
 export function useOrderForm(): UseOrderFormReturn {
@@ -66,7 +64,6 @@ export function useOrderForm(): UseOrderFormReturn {
   const [components, setComponents] = useState<Record<string, any>>({});
   const [customComponents, setCustomComponents] = useState<Component[]>([]);
   const [baseConsumptions, setBaseConsumptions] = useState<Record<string, number>>({});
-  const [productPopulatedFields, setProductPopulatedFields] = useState<boolean>(false);
 
   const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 
     target: { name: string; value: string | null } 
@@ -187,9 +184,6 @@ export function useOrderForm(): UseOrderFormReturn {
   const handleProductSelect = async (components: any[]) => {
     console.log("Selected product components:", components);
     
-    // Set flag that fields were populated from a product
-    setProductPopulatedFields(true);
-    
     if (!components || components.length === 0) {
       console.log("No components to process");
       return;
@@ -308,18 +302,7 @@ export function useOrderForm(): UseOrderFormReturn {
       const componentTypeLower = component.component_type.toLowerCase();
       
       // Extract the base consumption value (before multiplication)
-      let baseConsumption = undefined;
-      if (consumption) {
-        baseConsumption = parseFloat(consumption);
-        // If we have a quantity set in orderDetails, we need to divide the consumption by quantity
-        // to get the base consumption per unit
-        if (orderDetails.quantity) {
-          const qty = parseFloat(orderDetails.quantity);
-          if (!isNaN(qty) && qty > 0) {
-            baseConsumption = baseConsumption / qty;
-          }
-        }
-      }
+      const baseConsumption = consumption ? parseFloat(consumption) : undefined;
       
       if (componentTypeLower === 'custom') {
         const customIndex = newCustomComponents.length;
@@ -680,7 +663,6 @@ export function useOrderForm(): UseOrderFormReturn {
     handleProductSelect,
     handleSubmit,
     validateForm,
-    updateConsumptionBasedOnQuantity,
-    productPopulatedFields
+    updateConsumptionBasedOnQuantity
   };
 }

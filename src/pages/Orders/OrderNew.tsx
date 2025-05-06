@@ -36,8 +36,7 @@ const OrderNew = () => {
     handleProductSelect,
     handleSubmit,
     validateForm,
-    updateConsumptionBasedOnQuantity,
-    productPopulatedFields
+    updateConsumptionBasedOnQuantity
   } = useOrderForm();
   
   const onSubmit = async (e: React.FormEvent) => {
@@ -85,7 +84,6 @@ const OrderNew = () => {
           onProductSelect={handleProductSelect}
           formErrors={formErrors}
           updateConsumptionBasedOnQuantity={updateConsumptionBasedOnQuantity}
-          productPopulatedFields={productPopulatedFields}
         />
         
         <Card>
