@@ -1,4 +1,3 @@
-
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -39,7 +38,8 @@ export interface CatalogProduct {
   default_quantity?: number | null;
   default_rate?: number | null;
   selling_rate?: number | null; // Added selling_rate property
-  margin?: number | null; // Added margin property
+  total_cost?: number | null; // Added total_cost property
+  margin?: number | null; // Added margin property 
   created_at: string;
   updated_at: string;
   created_by?: string | null;
@@ -68,6 +68,7 @@ export const useCatalogProducts = () => {
           default_rate,
           selling_rate, 
           margin,
+          total_cost,
           created_at,
           updated_at,
           created_by
@@ -195,7 +196,7 @@ export const useCatalogProducts = () => {
       });
       
       console.log("Final catalog products with components:", typedProducts);
-      return typedProducts;
+      return catalogData as CatalogProduct[];
     },
     staleTime: 5000, // Reduce stale time to 5 seconds for more frequent updates
   });
