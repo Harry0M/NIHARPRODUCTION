@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
@@ -169,6 +170,8 @@ const CatalogNew = () => {
       setTimeout(() => {
         document.body.style.cursor = 'wait'; // Change cursor to indicate loading
         window.location.href = `/inventory/catalog?refresh=product-created&t=${Date.now()}`;
+        // Add a complete page reload after setting the location
+        window.location.reload(true);
       }, 200);
       
     } catch (error: any) {
@@ -199,6 +202,7 @@ const CatalogNew = () => {
         try {
           // MODIFIED: Force a full page refresh for cleanup scenario too with timestamp
           window.location.href = `/inventory/catalog?cleanup=true&t=${Date.now()}`;
+          window.location.reload(true);
         } catch (e) {
           console.error("Navigation failed during cleanup:", e);
         }
