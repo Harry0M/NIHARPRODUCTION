@@ -50,6 +50,13 @@ const OrderNew = () => {
     }
   };
   
+  // Calculate total consumption for all components
+  const totalConsumption = [...Object.values(components), ...customComponents]
+    .reduce((total, comp) => {
+      const consumption = comp.consumption ? parseFloat(comp.consumption) : 0;
+      return isNaN(consumption) ? total : total + consumption;
+    }, 0);
+  
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -82,7 +89,14 @@ const OrderNew = () => {
         <Card>
           <CardHeader>
             <CardTitle>Bag Components</CardTitle>
-            <CardDescription>Specify the details for each component of the bag</CardDescription>
+            <CardDescription className="flex justify-between items-center">
+              <span>Specify the details for each component of the bag</span>
+              {totalConsumption > 0 && (
+                <span className="font-medium text-sm bg-blue-50 text-blue-800 px-3 py-1 rounded-full">
+                  Total Consumption: {totalConsumption.toFixed(2)} meters
+                </span>
+              )}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-8">
@@ -91,6 +105,7 @@ const OrderNew = () => {
                 componentOptions={componentOptions}
                 onChange={handleComponentChange}
                 defaultQuantity={orderDetails.quantity}
+                showConsumption={true}
               />
               
               <div className="space-y-4">
@@ -113,6 +128,7 @@ const OrderNew = () => {
                   handleCustomComponentChange={handleCustomComponentChange}
                   removeCustomComponent={removeCustomComponent}
                   defaultQuantity={orderDetails.quantity}
+                  showConsumption={true}
                 />
               </div>
             </div>

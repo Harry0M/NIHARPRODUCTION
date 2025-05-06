@@ -19,13 +19,15 @@ interface StandardComponentsProps {
   };
   onChange: (type: string, field: string, value: string) => void;
   defaultQuantity?: string;
+  showConsumption?: boolean;
 }
 
 export const StandardComponents = ({ 
   components, 
   componentOptions, 
   onChange,
-  defaultQuantity
+  defaultQuantity,
+  showConsumption = false
 }: StandardComponentsProps) => {
   // Define standard component types with proper capitalization as they appear in UI
   const standardComponents = [
@@ -61,6 +63,7 @@ export const StandardComponents = ({
               onChange={onChange}
               defaultQuantity={defaultQuantity}
               onMaterialSelect={(materialId) => handleMaterialSelect(component.type, materialId)}
+              showConsumption={showConsumption}
             />
           );
         })}
@@ -88,6 +91,7 @@ interface ComponentFormProps {
   onChange: (type: string, field: string, value: string) => void;
   defaultQuantity?: string;
   onMaterialSelect: (materialId: string | null) => void;
+  showConsumption?: boolean;
 }
 
 const ComponentForm = ({ 
@@ -95,7 +99,8 @@ const ComponentForm = ({
   componentOptions, 
   onChange,
   defaultQuantity,
-  onMaterialSelect
+  onMaterialSelect,
+  showConsumption = false
 }: ComponentFormProps) => {
   const [customColor, setCustomColor] = useState("");
   const [customGSM, setCustomGSM] = useState("");
@@ -127,10 +132,20 @@ const ComponentForm = ({
   const consumption = component.consumption || '';
   const baseConsumption = component.baseConsumption || '';
   
+  // Check if any dimensions are filled
+  const hasDimensions = component.length || component.width || component.roll_width;
+  
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{component.type}</CardTitle>
+    <Card className={component.consumption ? "border-blue-200" : ""}>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex justify-between items-center">
+          <span>{component.type}</span>
+          {showConsumption && component.consumption && (
+            <span className="text-sm font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
+              {parseFloat(component.consumption).toFixed(2)} m
+            </span>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -236,18 +251,23 @@ const ComponentForm = ({
             </div>
           </div>
           
-          {/* Consumption based on dimensions and default quantity */}
+          {/* Consumption based on dimensions and default quantity - now with enhanced visibility */}
           <div>
-            <Label htmlFor={`${component.type}-consumption`}>Consumption</Label>
+            <Label htmlFor={`${component.type}-consumption`} className="flex justify-between">
+              <span>Consumption</span>
+              {hasDimensions && !consumption && (
+                <span className="text-amber-600 text-xs">Enter all dimensions + quantity</span>
+              )}
+            </Label>
             <Input
               id={`${component.type}-consumption`}
               value={consumption}
               readOnly
-              className="bg-gray-100"
+              className={`bg-gray-50 ${consumption ? "border-blue-300 text-blue-800 font-medium" : ""}`}
             />
             {defaultQuantity && baseConsumption && (
               <p className="text-xs text-muted-foreground mt-1">
-                Base consumption: {baseConsumption} × Quantity: {defaultQuantity}
+                Base: {baseConsumption} × Quantity: {defaultQuantity}
               </p>
             )}
           </div>

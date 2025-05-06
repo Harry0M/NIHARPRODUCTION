@@ -37,6 +37,7 @@ interface CustomComponentSectionProps {
   handleCustomComponentChange: (index: number, field: string, value: string) => void;
   removeCustomComponent: (index: number) => void;
   defaultQuantity?: string;
+  showConsumption?: boolean;
 }
 
 export const CustomComponentSection = ({
@@ -44,7 +45,8 @@ export const CustomComponentSection = ({
   componentOptions,
   handleCustomComponentChange,
   removeCustomComponent,
-  defaultQuantity
+  defaultQuantity,
+  showConsumption = false
 }: CustomComponentSectionProps) => {
   return (
     <div className="space-y-4">
@@ -63,6 +65,7 @@ export const CustomComponentSection = ({
               handleCustomComponentChange={handleCustomComponentChange}
               removeCustomComponent={removeCustomComponent}
               defaultQuantity={defaultQuantity}
+              showConsumption={showConsumption}
             />
           ))}
         </div>
@@ -92,6 +95,7 @@ interface CustomComponentFormProps {
   handleCustomComponentChange: (index: number, field: string, value: string) => void;
   removeCustomComponent: (index: number) => void;
   defaultQuantity?: string;
+  showConsumption?: boolean;
 }
 
 const CustomComponentForm = ({
@@ -100,7 +104,8 @@ const CustomComponentForm = ({
   componentOptions,
   handleCustomComponentChange,
   removeCustomComponent,
-  defaultQuantity
+  defaultQuantity,
+  showConsumption = false
 }: CustomComponentFormProps) => {
   const [customColor, setCustomColor] = useState(component.color === "Custom" ? "" : "");
   const [customGSM, setCustomGSM] = useState(component.gsm === "Custom" ? "" : "");
@@ -136,10 +141,21 @@ const CustomComponentForm = ({
   const consumption = component.consumption || '';
   const baseConsumption = component.baseConsumption || '';
   
+  // Check if any dimensions are filled
+  const hasDimensions = component.length || component.width || component.roll_width;
+  const customName = component.customName || `Custom Component ${index + 1}`;
+  
   return (
-    <Card>
+    <Card className={component.consumption ? "border-blue-200" : ""}>
       <CardHeader className="flex flex-row items-center justify-between p-4">
-        <Label className="text-sm font-medium">Custom Component {index + 1}</Label>
+        <div className="flex flex-col">
+          <Label className="text-sm font-medium">{customName}</Label>
+          {showConsumption && component.consumption && (
+            <span className="text-xs font-medium text-blue-700">
+              {parseFloat(component.consumption).toFixed(2)} meters
+            </span>
+          )}
+        </div>
         <Button
           type="button"
           variant="ghost"
@@ -263,18 +279,23 @@ const CustomComponentForm = ({
             </div>
           </div>
           
-          {/* Consumption based on dimensions and default quantity */}
+          {/* Consumption based on dimensions and default quantity - now with enhanced visibility */}
           <div>
-            <Label htmlFor={`custom-${index}-consumption`}>Consumption</Label>
+            <Label htmlFor={`custom-${index}-consumption`} className="flex justify-between">
+              <span>Consumption</span>
+              {hasDimensions && !consumption && (
+                <span className="text-amber-600 text-xs">Enter all dimensions + quantity</span>
+              )}
+            </Label>
             <Input
               id={`custom-${index}-consumption`}
               value={consumption}
               readOnly
-              className="bg-gray-100"
+              className={`bg-gray-50 ${consumption ? "border-blue-300 text-blue-800 font-medium" : ""}`}
             />
             {defaultQuantity && baseConsumption && (
               <p className="text-xs text-muted-foreground mt-1">
-                Base consumption: {baseConsumption} × Quantity: {defaultQuantity}
+                Base: {baseConsumption} × Quantity: {defaultQuantity}
               </p>
             )}
           </div>
@@ -283,7 +304,7 @@ const CustomComponentForm = ({
           <MaterialSelector 
             onMaterialSelect={handleMaterialSelect}
             selectedMaterialId={component.material_id || null}
-            componentType={component.customName || `Custom Component ${index + 1}`}
+            componentType={customName}
           />
         </div>
       </CardContent>
