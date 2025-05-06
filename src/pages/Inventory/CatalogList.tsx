@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { Plus, Package, Trash2, RefreshCw } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Table,
@@ -29,6 +29,7 @@ import { showToast } from "@/components/ui/enhanced-toast";
 const CatalogList = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -65,15 +66,21 @@ const CatalogList = () => {
     refetch()
       .then(() => {
         console.log("Catalog data refreshed successfully");
-        // Show welcome toast when navigated from product creation
-        const hasRedirected = sessionStorage.getItem('productCreated');
-        if (hasRedirected) {
-          sessionStorage.removeItem('productCreated');
+        
+        // Check URL parameters for any refresh flags
+        const urlParams = new URLSearchParams(window.location.search);
+        const refreshTrigger = urlParams.get('refresh');
+        
+        // Show welcome toast when product created flag is present
+        if (refreshTrigger === 'product-created') {
           showToast({
             title: "Product Created Successfully",
             description: "Your new product has been added to the catalog.",
             type: "success"
           });
+          
+          // Clean URL by removing the query parameter
+          window.history.replaceState({}, '', location.pathname);
         }
       })
       .catch((err) => {
@@ -86,6 +93,7 @@ const CatalogList = () => {
 
   const handleManualRefresh = () => {
     setIsRefreshing(true);
+    queryClient.invalidateQueries({ queryKey: ['catalog'] });
     refetch()
       .then(() => {
         showToast({
@@ -123,6 +131,9 @@ const CatalogList = () => {
         title: "Product deleted successfully",
         type: "success"
       });
+      
+      // Invalidate the catalog query to force a refresh
+      queryClient.invalidateQueries({ queryKey: ['catalog'] });
       await refetch();
     } catch (error: any) {
       console.error('Error in handleDeleteProduct:', error);

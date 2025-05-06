@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
@@ -158,9 +159,6 @@ const CatalogNew = () => {
         loadingToast.dismiss();
       }
       
-      // Set flag for successful product creation to trigger refresh
-      sessionStorage.setItem('productCreated', 'true');
-      
       // Show success toast
       showToast({
         title: "Product created successfully",
@@ -168,10 +166,8 @@ const CatalogNew = () => {
         type: "success"
       });
 
-      // Navigate to catalog list with a short delay to allow flag to be set
-      setTimeout(() => {
-        navigate("/inventory/catalog");
-      }, 100);
+      // Force a full page refresh by using window.location.href instead of navigate()
+      window.location.href = "/inventory/catalog";
       
     } catch (error: any) {
       // Clear the loading toast
@@ -199,15 +195,14 @@ const CatalogNew = () => {
       if (submitting) {
         // Attempting to navigate if we're in a submitting state when unmounting
         try {
-          navigate("/inventory/catalog");
+          // Force a full page refresh for cleanup scenario too
+          window.location.href = "/inventory/catalog";
         } catch (e) {
           console.error("Navigation failed during cleanup:", e);
-          // Fallback
-          window.location.href = "/inventory/catalog";
         }
       }
     };
-  }, [submitting, navigate]);
+  }, [submitting]);
 
   return (
     <ComponentProvider 
