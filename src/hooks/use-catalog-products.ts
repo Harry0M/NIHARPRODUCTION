@@ -1,4 +1,3 @@
-
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -10,6 +9,7 @@ interface Material {
   gsm?: string | null;
   quantity?: number;
   unit?: string;
+  purchase_rate?: number | null; // Added purchase_rate for cost calculation
 }
 
 interface CatalogComponent {
@@ -45,13 +45,37 @@ export interface CatalogProduct {
   updated_at: string;
   created_by?: string | null;
   catalog_components?: CatalogComponent[];
-  // New cost fields added
+  // Cost fields 
   cutting_charge?: number | null;
   printing_charge?: number | null;
   stitching_charge?: number | null;
   transport_charge?: number | null;
+  material_cost?: number | null; // New field to store material cost
   height?: number | null;
 }
+
+// Function to calculate consumption based on dimensions and roll width
+export const calculateComponentConsumption = (
+  length?: number | null,
+  width?: number | null,
+  rollWidth?: number | null
+): number | null => {
+  if (!length || !width || !rollWidth || rollWidth <= 0) {
+    return null;
+  }
+  return ((length * width) / (rollWidth * 39.39));
+};
+
+// Function to calculate material cost based on material and consumption
+export const calculateMaterialCost = (
+  material?: Material | null, 
+  consumption?: number | null
+): number => {
+  if (!material || !consumption || consumption <= 0 || !material.purchase_rate) {
+    return 0;
+  }
+  return material.purchase_rate * consumption;
+};
 
 export const useCatalogProducts = () => {
   const queryClient = useQueryClient();
@@ -83,6 +107,7 @@ export const useCatalogProducts = () => {
           printing_charge,
           stitching_charge,
           transport_charge,
+          material_cost,
           height
         `)
         .order('name');
@@ -156,7 +181,8 @@ export const useCatalogProducts = () => {
             color, 
             gsm,
             quantity,
-            unit
+            unit,
+            purchase_rate
           `)
           .in('id', materialIdsArray);
         

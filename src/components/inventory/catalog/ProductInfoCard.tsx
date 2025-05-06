@@ -13,11 +13,12 @@ interface ProductInfoCardProps {
   totalCost?: number | null;
   margin?: number | null;
   description?: string | null;
-  // Add new cost fields
+  // Cost fields
   cuttingCharge?: number | null;
   printingCharge?: number | null;
   stitchingCharge?: number | null;
   transportCharge?: number | null;
+  materialCost?: number | null;
 }
 
 export const ProductInfoCard = ({
@@ -36,6 +37,7 @@ export const ProductInfoCard = ({
   printingCharge, 
   stitchingCharge,
   transportCharge,
+  materialCost,
 }: ProductInfoCardProps) => {
   return (
     <Card className="col-span-1">
@@ -92,6 +94,13 @@ export const ProductInfoCard = ({
             <div className="space-y-1">
               <p className="text-sm font-medium text-muted-foreground">Transport Charge</p>
               <p className="font-medium">{transportCharge ? `₹${transportCharge}` : 'N/A'}</p>
+            </div>
+          )}
+          
+          {materialCost !== undefined && (
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Material Cost</p>
+              <p className="font-medium">{materialCost ? `₹${materialCost}` : 'N/A'}</p>
             </div>
           )}
           
