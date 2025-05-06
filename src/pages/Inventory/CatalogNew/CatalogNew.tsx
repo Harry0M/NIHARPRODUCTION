@@ -166,8 +166,12 @@ const CatalogNew = () => {
         type: "success"
       });
 
-      // Force a full page refresh by using window.location.href instead of navigate()
-      window.location.href = "/inventory/catalog";
+      // Force a full page refresh by directly setting window.location.href
+      // This is a more definitive way to ensure the browser loads a fresh page
+      setTimeout(() => {
+        document.body.style.cursor = 'wait'; // Change cursor to indicate loading
+        window.location.replace("/inventory/catalog?refresh=product-created");
+      }, 200);
       
     } catch (error: any) {
       // Clear the loading toast
@@ -196,7 +200,7 @@ const CatalogNew = () => {
         // Attempting to navigate if we're in a submitting state when unmounting
         try {
           // Force a full page refresh for cleanup scenario too
-          window.location.href = "/inventory/catalog";
+          window.location.replace("/inventory/catalog");
         } catch (e) {
           console.error("Navigation failed during cleanup:", e);
         }
