@@ -23,6 +23,7 @@ export type Database = {
           height: number | null
           id: string
           margin: number | null
+          material_cost: number | null
           name: string
           printing_charge: number | null
           selling_rate: number | null
@@ -44,6 +45,7 @@ export type Database = {
           height?: number | null
           id?: string
           margin?: number | null
+          material_cost?: number | null
           name: string
           printing_charge?: number | null
           selling_rate?: number | null
@@ -65,6 +67,7 @@ export type Database = {
           height?: number | null
           id?: string
           margin?: number | null
+          material_cost?: number | null
           name?: string
           printing_charge?: number | null
           selling_rate?: number | null
