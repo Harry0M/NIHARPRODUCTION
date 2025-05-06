@@ -38,12 +38,19 @@ export interface CatalogProduct {
   border_dimension?: number | null;
   default_quantity?: number | null;
   default_rate?: number | null;
-  selling_rate?: number | null; // Added selling_rate property
-  margin?: number | null; // Added margin property
+  selling_rate?: number | null;
+  total_cost?: number | null;
+  margin?: number | null;
   created_at: string;
   updated_at: string;
   created_by?: string | null;
   catalog_components?: CatalogComponent[];
+  // Additional form fields
+  cutting_charge?: number | null;
+  printing_charge?: number | null;
+  stitching_charge?: number | null;
+  transport_charge?: number | null;
+  height?: number | null;
 }
 
 export const useCatalogProducts = () => {
@@ -68,9 +75,15 @@ export const useCatalogProducts = () => {
           default_rate,
           selling_rate, 
           margin,
+          total_cost,
           created_at,
           updated_at,
-          created_by
+          created_by,
+          cutting_charge,
+          printing_charge,
+          stitching_charge,
+          transport_charge,
+          height
         `)
         .order('name');
 
@@ -219,10 +232,16 @@ export const useInventoryItems = () => {
           conversion_rate,
           track_cost,
           purchase_price,
+          purchase_rate,
           selling_price,
           suppliers (
             id,
-            name
+            name,
+            contact_person,
+            email,
+            phone,
+            address,
+            payment_terms
           )
         `);
 

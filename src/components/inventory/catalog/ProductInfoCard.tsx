@@ -9,6 +9,10 @@ interface ProductInfoCardProps {
   defaultQuantity: number | null;
   defaultRate: number | null;
   createdAt: string;
+  sellingRate?: number | null;
+  totalCost?: number | null;
+  margin?: number | null;
+  description?: string | null;
 }
 
 export const ProductInfoCard = ({
@@ -19,6 +23,10 @@ export const ProductInfoCard = ({
   defaultQuantity,
   defaultRate,
   createdAt,
+  sellingRate,
+  totalCost,
+  margin,
+  description,
 }: ProductInfoCardProps) => {
   return (
     <Card className="col-span-1">
@@ -43,10 +51,34 @@ export const ProductInfoCard = ({
             <p className="text-sm font-medium text-muted-foreground">Default Rate</p>
             <p className="font-medium">{defaultRate ? `₹${defaultRate}` : 'N/A'}</p>
           </div>
+          {sellingRate !== undefined && (
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Selling Rate</p>
+              <p className="font-medium">{sellingRate ? `₹${sellingRate}` : 'N/A'}</p>
+            </div>
+          )}
+          {totalCost !== undefined && (
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Total Cost</p>
+              <p className="font-medium">{totalCost ? `₹${totalCost}` : 'N/A'}</p>
+            </div>
+          )}
+          {margin !== undefined && (
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Margin</p>
+              <p className="font-medium">{margin ? `${margin}%` : 'N/A'}</p>
+            </div>
+          )}
           <div className="col-span-2 space-y-1">
             <p className="text-sm font-medium text-muted-foreground">Created On</p>
             <p className="font-medium">{new Date(createdAt).toLocaleDateString()}</p>
           </div>
+          {description && (
+            <div className="col-span-2 space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Description</p>
+              <p className="font-medium">{description}</p>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -1,6 +1,6 @@
 
 import { useParams, useNavigate } from "react-router-dom";
-import { useCatalogProducts, useInventoryItems } from "@/hooks/use-catalog-products";
+import { useCatalogProducts, useInventoryItems, CatalogProduct } from "@/hooks/use-catalog-products";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Package, Pencil, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,21 +10,6 @@ import { ComponentsTable, CatalogComponent } from "@/components/inventory/catalo
 import { ComponentDetailsDialog } from "@/components/inventory/catalog/ComponentDetailsDialog";
 import { showToast } from "@/components/ui/enhanced-toast";
 import { useQueryClient } from "@tanstack/react-query";
-
-interface CatalogProduct {
-  id: string;
-  name: string;
-  description?: string | null;
-  bag_length: number;
-  bag_width: number;
-  border_dimension?: number | null;
-  default_quantity?: number | null;
-  default_rate?: number | null;
-  created_at: string;
-  updated_at: string;
-  created_by?: string | null;
-  catalog_components?: CatalogComponent[];
-}
 
 // Update Material interface to match the changes in ComponentsTable.tsx
 interface Material {
@@ -48,7 +33,7 @@ const CatalogDetail = () => {
   const { data: inventoryItems, isLoading: isLoadingInventory } = useInventoryItems();
   
   // Explicitly cast the product as CatalogProduct
-  const product = products?.find((p) => p.id === id) as unknown as CatalogProduct | undefined;
+  const product = products?.find((p) => p.id === id) as CatalogProduct | undefined;
   const components = product?.catalog_components || [];
 
   // Enhanced debugging information
@@ -262,6 +247,10 @@ const CatalogDetail = () => {
           defaultQuantity={product.default_quantity}
           defaultRate={product.default_rate}
           createdAt={product.created_at}
+          sellingRate={product.selling_rate}
+          totalCost={product.total_cost}
+          margin={product.margin}
+          description={product.description}
         />
 
         {/* Components Card */}

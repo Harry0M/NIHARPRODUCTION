@@ -18,10 +18,14 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
       
       console.log("Fetching stock details for ID:", stockId);
       
-      // Modified query to remove the vendors relationship that doesn't exist
+      // Modified query to include all fields
       const { data, error } = await supabase
         .from("inventory")
-        .select("*, suppliers(name)")
+        .select(`
+          *,
+          suppliers(id, name, contact_person, email, phone, address, payment_terms),
+          material_categories(id, name)
+        `)
         .eq("id", stockId)
         .single();
         
