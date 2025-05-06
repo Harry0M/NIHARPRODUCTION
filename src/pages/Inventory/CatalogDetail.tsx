@@ -52,13 +52,47 @@ const CatalogDetail = () => {
   );
   console.log("CatalogDetail - Available inventory items:", inventoryItems?.length);
 
-  // Force refresh on initial load
+  // Force refresh on initial load and also check for new product notification
   useEffect(() => {
     if (id) {
       console.log("Initial data load - forcing refresh");
-      refetch();
+      setIsRefreshing(true);
+      
+      // Invalidate queries to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ["catalog-products"] });
+      
+      refetch()
+        .then((result) => {
+          if (result.isSuccess) {
+            console.log("Data refreshed successfully");
+          } else if (result.isError) {
+            console.error("Error refreshing data:", result.error);
+            showToast({
+              title: "Error loading product data",
+              description: "Please try refreshing the page",
+              type: "error"
+            });
+          }
+        })
+        .catch(error => {
+          console.error("Error during refetch:", error);
+        })
+        .finally(() => {
+          setIsRefreshing(false);
+        });
+      
+      // Check for product created notification
+      const hasRedirected = sessionStorage.getItem('productCreated');
+      if (hasRedirected) {
+        sessionStorage.removeItem('productCreated');
+        showToast({
+          title: "Product viewed successfully",
+          description: "You are now viewing the newly created product",
+          type: "success"
+        });
+      }
     }
-  }, [id, refetch]);
+  }, [id, refetch, queryClient]);
 
   useEffect(() => {
     // Detect if we have components with material_id but no materials

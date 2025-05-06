@@ -57,6 +57,7 @@ const CatalogList = () => {
 
   // Automatically refetch on component mount to ensure up-to-date data
   useEffect(() => {
+    console.log("CatalogList mounted - refreshing data");
     refetch();
     // Show welcome toast when navigated from product creation
     const hasRedirected = sessionStorage.getItem('productCreated');
