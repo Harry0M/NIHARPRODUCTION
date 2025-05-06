@@ -51,14 +51,15 @@ export const showToast = ({ title, description, type = "info", id }: ShowToastOp
       ) 
     : title;
 
-  const toastOptions = {
+  // Create the toast options object, explicitly typing it as any to bypass type checking
+  // since we know the structure is compatible with what the toast function expects
+  const toastOptions: any = {
     title: titleContent,
     description: description,
   };
 
   // If ID is provided, add it to the options
   if (id) {
-    // @ts-ignore - We're handling the ID separately since it's not in the standard type
     toastOptions.id = id;
   }
 
