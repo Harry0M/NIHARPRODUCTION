@@ -1,9 +1,15 @@
 
-import React from "react";
-import { Label } from "@/components/ui/label";
+import React from 'react';
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription 
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 interface ProductDetailsFormProps {
   productData: {
@@ -14,15 +20,11 @@ interface ProductDetailsFormProps {
     border_dimension: string;
     default_quantity: string;
     default_rate: string;
-    [key: string]: string;
   };
   handleProductChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
 }
 
-const ProductDetailsForm: React.FC<ProductDetailsFormProps> = ({ 
-  productData, 
-  handleProductChange 
-}) => {
+const ProductDetailsForm: React.FC<ProductDetailsFormProps> = ({ productData, handleProductChange }) => {
   return (
     <Card>
       <CardHeader>

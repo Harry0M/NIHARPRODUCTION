@@ -1,4 +1,3 @@
-
 import { toast } from "@/hooks/use-toast";
 import { Check, X, AlertTriangle, Info } from "lucide-react";
 import { ReactNode } from "react";
@@ -9,10 +8,9 @@ interface ShowToastOptions {
   title: string | ReactNode;
   description?: string;
   type?: ToastType;
-  id?: string; // Add support for custom toast ID
 }
 
-export const showToast = ({ title, description, type = "info", id }: ShowToastOptions) => {
+export const showToast = ({ title, description, type = "info" }: ShowToastOptions) => {
   const getToastConfig = (type: ToastType) => {
     switch (type) {
       case "success":
@@ -51,17 +49,9 @@ export const showToast = ({ title, description, type = "info", id }: ShowToastOp
       ) 
     : title;
 
-  // Create the toast options object, explicitly typing it as any to bypass type checking
-  // since we know the structure is compatible with what the toast function expects
-  const toastOptions: any = {
+  toast({
+    // @ts-ignore - We know this will work with the toast component
     title: titleContent,
     description: description,
-  };
-
-  // If ID is provided, add it to the options
-  if (id) {
-    toastOptions.id = id;
-  }
-
-  return toast(toastOptions);
+  });
 };

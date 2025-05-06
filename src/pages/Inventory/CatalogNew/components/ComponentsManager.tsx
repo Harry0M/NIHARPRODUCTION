@@ -1,10 +1,16 @@
 
-import React from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import React from 'react';
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription 
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StandardComponentsSection } from "./StandardComponentsSection";
-import { CustomComponentsSection } from "./CustomComponentsSection";
-import { useComponentContext } from "../context/ComponentContext";
+import { StandardComponentsSection } from './StandardComponentsSection';
+import { CustomComponentsSection } from './CustomComponentsSection';
+import { useComponentContext } from '../context/ComponentContext';
 
 interface ComponentsManagerProps {
   totalConsumption: number;
