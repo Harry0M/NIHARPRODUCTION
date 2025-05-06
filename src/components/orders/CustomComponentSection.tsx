@@ -1,3 +1,4 @@
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -127,7 +128,7 @@ export const CustomComponentSection = ({
           <MaterialLinkSelector
             inventoryItems={inventoryItems}
             selectedMaterialId={component.material_id}
-            onMaterialSelect={(materialId) => handleCustomComponentChange(index, "material_id", materialId)}
+            onMaterialSelect={(materialId) => handleCustomComponentChange(index, "material_id", materialId || "")}
           />
 
           <Button

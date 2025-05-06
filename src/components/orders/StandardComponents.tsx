@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { 
   Card, 
@@ -14,6 +15,7 @@ interface StandardComponentsProps {
   components: Record<string, any>;
   componentOptions: {
     color: string[];
+    gsm?: string[]; // Make gsm optional
   };
   onChange: (type: string, field: string, value: string) => void;
   defaultQuantity?: string;
@@ -63,6 +65,8 @@ export const StandardComponents = ({
               onChange={onChange}
               defaultQuantity={defaultQuantity}
               onMaterialSelect={(materialId) => handleMaterialSelect(component.type, materialId)}
+              showConsumption={showConsumption}
+              inventoryItems={inventoryItems}
             />
           );
         })}
@@ -85,10 +89,13 @@ interface ComponentFormProps {
   };
   componentOptions: {
     color: string[];
+    gsm?: string[]; // Make gsm optional
   };
   onChange: (type: string, field: string, value: string) => void;
   defaultQuantity?: string;
   onMaterialSelect: (materialId: string | null) => void;
+  showConsumption?: boolean;
+  inventoryItems?: any[];
 }
 
 const ComponentForm = ({ 
@@ -96,7 +103,9 @@ const ComponentForm = ({
   componentOptions, 
   onChange,
   defaultQuantity,
-  onMaterialSelect
+  onMaterialSelect,
+  showConsumption = false,
+  inventoryItems = []
 }: ComponentFormProps) => {
   const [customColor, setCustomColor] = useState("");
   const [customGSM, setCustomGSM] = useState("");
@@ -238,26 +247,29 @@ const ComponentForm = ({
           </div>
           
           {/* Consumption based on dimensions and default quantity */}
-          <div>
-            <Label htmlFor={`${component.type}-consumption`}>Consumption</Label>
-            <Input
-              id={`${component.type}-consumption`}
-              value={consumption}
-              readOnly
-              className="bg-gray-100"
-            />
-            {defaultQuantity && baseConsumption && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Base consumption: {baseConsumption} × Quantity: {defaultQuantity}
-              </p>
-            )}
-          </div>
+          {showConsumption && (
+            <div>
+              <Label htmlFor={`${component.type}-consumption`}>Consumption</Label>
+              <Input
+                id={`${component.type}-consumption`}
+                value={consumption}
+                readOnly
+                className="bg-gray-100"
+              />
+              {defaultQuantity && baseConsumption && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Base consumption: {baseConsumption} × Quantity: {defaultQuantity}
+                </p>
+              )}
+            </div>
+          )}
           
           {/* Add Material Selector */}
           <MaterialLinkSelector 
             onMaterialSelect={onMaterialSelect}
             selectedMaterialId={component.material_id || null}
             componentType={component.type}
+            inventoryItems={inventoryItems}
           />
         </div>
       </CardContent>

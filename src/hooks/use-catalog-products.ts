@@ -86,156 +86,161 @@ export const useCatalogProducts = () => {
     queryFn: async () => {
       console.log("Fetching catalog products...");
       
-      // Fetch all catalog products - Making sure to include all cost fields
-      const { data: catalogData, error: catalogError } = await supabase
-        .from("catalog")
-        .select(`
-          id,
-          name,
-          description,
-          bag_length,
-          bag_width,
-          border_dimension,
-          default_quantity,
-          default_rate,
-          selling_rate, 
-          margin,
-          total_cost,
-          created_at,
-          updated_at,
-          created_by,
-          cutting_charge,
-          printing_charge,
-          stitching_charge,
-          transport_charge,
-          material_cost,
-          height
-        `)
-        .order('name');
+      try {
+        // Fetch all catalog products - Making sure to include all cost fields
+        const { data, error } = await supabase
+          .from("catalog")
+          .select(`
+            id,
+            name,
+            description,
+            bag_length,
+            bag_width,
+            border_dimension,
+            default_quantity,
+            default_rate,
+            selling_rate, 
+            margin,
+            total_cost,
+            created_at,
+            updated_at,
+            created_by,
+            cutting_charge,
+            printing_charge,
+            stitching_charge,
+            transport_charge,
+            material_cost,
+            height
+          `)
+          .order('name');
 
-      if (catalogError) {
-        console.error("Error fetching catalog products:", catalogError);
-        throw catalogError;
-      }
-      
-      console.log("Raw catalog data:", catalogData);
-      
-      // If no products, return empty array
-      if (!catalogData || catalogData.length === 0) {
+        if (error) {
+          console.error("Error fetching catalog products:", error);
+          throw error;
+        }
+        
+        console.log("Raw catalog data:", data);
+        
+        // If no products, return empty array
+        if (!data || data.length === 0) {
+          return [] as CatalogProduct[];
+        }
+        
+        // Ensure data is cast to the proper type
+        const catalogData = data as CatalogProduct[];
+        
+        // Get all product IDs for fetching components
+        const productIds = catalogData.map(product => product.id);
+        
+        // Fetch all components for these products in a single query
+        // Include material_linked field in the query
+        const { data: componentsData, error: componentsError } = await supabase
+          .from("catalog_components")
+          .select(`
+            id,
+            catalog_id,
+            component_type,
+            size,
+            color,
+            gsm,
+            custom_name,
+            roll_width,
+            length,
+            width,
+            consumption,
+            material_id,
+            material_linked
+          `)
+          .in('catalog_id', productIds);
+          
+        if (componentsError) {
+          console.error("Error fetching catalog components:", componentsError);
+          throw componentsError;
+        }
+        
+        console.log("Catalog components data:", componentsData);
+        
+        // Get all unique material IDs from components
+        const materialIds = new Set<string>();
+        componentsData?.forEach(component => {
+          if (component.material_id) {
+            materialIds.add(component.material_id);
+          }
+        });
+        
+        console.log("Material IDs from components:", Array.from(materialIds));
+        
+        // Create a map to store material data
+        const materialsMap: Record<string, Material> = {};
+        
+        // If there are material IDs, fetch their data
+        if (materialIds.size > 0) {
+          const materialIdsArray = Array.from(materialIds);
+          console.log("Fetching materials with IDs:", materialIdsArray);
+          
+          const { data: materialsData, error: materialsError } = await supabase
+            .from("inventory")
+            .select(`
+              id, 
+              material_name, 
+              color, 
+              gsm,
+              quantity,
+              unit,
+              purchase_rate
+            `)
+            .in('id', materialIdsArray);
+          
+          if (materialsError) {
+            console.error("Error fetching materials:", materialsError);
+            throw materialsError;
+          }
+          
+          console.log("Materials data fetched successfully:", materialsData);
+          
+          // Store materials by ID for easy lookup
+          if (materialsData) {
+            materialsData.forEach(material => {
+              if (material && typeof material === 'object' && 'id' in material) {
+                materialsMap[material.id] = material as Material;
+              }
+            });
+          }
+        }
+        
+        // Group components by catalog_id
+        const componentsByProduct: Record<string, CatalogComponent[]> = {};
+        componentsData?.forEach(component => {
+          if (!componentsByProduct[component.catalog_id]) {
+            componentsByProduct[component.catalog_id] = [];
+          }
+          
+          // Add material data to the component if available and material_linked is true
+          const componentWithMaterial = {
+            ...component,
+            material: (component.material_id && component.material_linked) 
+              ? materialsMap[component.material_id] || null 
+              : null
+          } as CatalogComponent;
+          
+          console.log(`Component ${component.id} has material_id:`, component.material_id);
+          console.log(`Component ${component.id} material_linked:`, component.material_linked);
+          console.log(`Associated material:`, componentWithMaterial.material);
+          
+          componentsByProduct[component.catalog_id].push(componentWithMaterial);
+        });
+        
+        // Attach components to their respective products
+        catalogData.forEach(product => {
+          product.catalog_components = componentsByProduct[product.id] || [];
+        });
+        
+        console.log("Final catalog products with components:", catalogData);
+        return catalogData;
+      } catch (error) {
+        console.error("Error in catalog products query:", error);
         return [] as CatalogProduct[];
       }
-      
-      // Get all product IDs for fetching components
-      const productIds = catalogData.map(product => product.id);
-      
-      // Fetch all components for these products in a single query
-      // Include material_linked field in the query
-      const { data: componentsData, error: componentsError } = await supabase
-        .from("catalog_components")
-        .select(`
-          id,
-          catalog_id,
-          component_type,
-          size,
-          color,
-          gsm,
-          custom_name,
-          roll_width,
-          length,
-          width,
-          consumption,
-          material_id,
-          material_linked
-        `)
-        .in('catalog_id', productIds);
-        
-      if (componentsError) {
-        console.error("Error fetching catalog components:", componentsError);
-        throw componentsError;
-      }
-      
-      console.log("Catalog components data:", componentsData);
-      
-      // Get all unique material IDs from components
-      const materialIds = new Set<string>();
-      componentsData?.forEach(component => {
-        if (component.material_id) {
-          materialIds.add(component.material_id);
-        }
-      });
-      
-      console.log("Material IDs from components:", Array.from(materialIds));
-      
-      // Create a map to store material data
-      const materialsMap: Record<string, Material> = {};
-      
-      // If there are material IDs, fetch their data
-      if (materialIds.size > 0) {
-        const materialIdsArray = Array.from(materialIds);
-        console.log("Fetching materials with IDs:", materialIdsArray);
-        
-        const { data: materialsData, error: materialsError } = await supabase
-          .from("inventory")
-          .select(`
-            id, 
-            material_name, 
-            color, 
-            gsm,
-            quantity,
-            unit,
-            purchase_rate
-          `)
-          .in('id', materialIdsArray);
-        
-        if (materialsError) {
-          console.error("Error fetching materials:", materialsError);
-          throw materialsError;
-        }
-        
-        console.log("Materials data fetched successfully:", materialsData);
-        
-        // Store materials by ID for easy lookup
-        if (materialsData) {
-          materialsData.forEach(material => {
-            if (material && typeof material === 'object' && 'id' in material) {
-              materialsMap[material.id] = material as Material;
-            }
-          });
-        }
-      }
-      
-      // Create typed catalog products with associated components
-      const typedProducts = catalogData as CatalogProduct[];
-      
-      // Group components by catalog_id
-      const componentsByProduct: Record<string, CatalogComponent[]> = {};
-      componentsData?.forEach(component => {
-        if (!componentsByProduct[component.catalog_id]) {
-          componentsByProduct[component.catalog_id] = [];
-        }
-        
-        // Add material data to the component if available and material_linked is true
-        const componentWithMaterial = {
-          ...component,
-          material: (component.material_id && component.material_linked) 
-            ? materialsMap[component.material_id] || null 
-            : null
-        } as CatalogComponent;
-        
-        console.log(`Component ${component.id} has material_id:`, component.material_id);
-        console.log(`Component ${component.id} material_linked:`, component.material_linked);
-        console.log(`Associated material:`, componentWithMaterial.material);
-        
-        componentsByProduct[component.catalog_id].push(componentWithMaterial);
-      });
-      
-      // Attach components to their respective products
-      typedProducts.forEach(product => {
-        product.catalog_components = componentsByProduct[product.id] || [];
-      });
-      
-      console.log("Final catalog products with components:", typedProducts);
-      return typedProducts;
     },
     staleTime: 5000, // Reduce stale time to 5 seconds for more frequent updates
   });

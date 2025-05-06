@@ -13,11 +13,15 @@ import { MaterialGrid } from "./material-selector/MaterialGrid";
 import { DebugPanel } from "./material-selector/DebugPanel";
 
 interface MaterialLinkSelectorProps {
-  componentId: string;
-  materials: Material[];
-  onSuccess: () => void;
-  onCancel: () => void;
-  isLoading: boolean;
+  componentId?: string;
+  selectedMaterialId?: string | null;
+  onMaterialSelect?: (materialId: string | null) => void;
+  materials?: Material[];
+  onSuccess?: () => void;
+  onCancel?: () => void;
+  isLoading?: boolean;
+  componentType?: string;
+  inventoryItems?: any[];
 }
 
 export const MaterialLinkSelector = ({
@@ -25,25 +29,39 @@ export const MaterialLinkSelector = ({
   materials,
   onSuccess,
   onCancel,
-  isLoading
+  isLoading = false,
+  selectedMaterialId = null,
+  onMaterialSelect,
+  componentType,
+  inventoryItems = []
 }: MaterialLinkSelectorProps) => {
-  const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
+  const [localSelectedMaterialId, setLocalSelectedMaterialId] = useState<string | null>(selectedMaterialId);
   const [isUpdating, setIsUpdating] = useState(false);
   const [debugMode, setDebugMode] = useState(false);
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
-
-  const filteredMaterials = materials.filter(material => {
+  
+  // Use either provided materials or inventoryItems
+  const itemsToDisplay = materials || inventoryItems;
+  
+  const filteredMaterials = itemsToDisplay.filter(material => {
     const searchLower = searchQuery.toLowerCase();
     return (
       material.material_name.toLowerCase().includes(searchLower) || 
       (material.color && material.color.toLowerCase().includes(searchLower)) ||
-      (material.gsm && material.gsm.toLowerCase().includes(searchLower))
+      (material.gsm && material.gsm.toString().toLowerCase().includes(searchLower))
     );
   });
 
+  const handleMaterialSelect = (materialId: string | null) => {
+    setLocalSelectedMaterialId(materialId);
+    if (onMaterialSelect) {
+      onMaterialSelect(materialId);
+    }
+  };
+
   const handleUpdateMaterial = async () => {
-    if (!selectedMaterialId || !componentId) {
+    if (!componentId || !localSelectedMaterialId) {
       showToast({
         title: "Selection required",
         description: "Please select a material to link",
@@ -56,7 +74,7 @@ export const MaterialLinkSelector = ({
     setDebugInfo(null);
     
     try {
-      console.log("Linking material ID:", selectedMaterialId, "to component:", componentId);
+      console.log("Linking material ID:", localSelectedMaterialId, "to component:", componentId);
       
       // First, verify the component exists
       const { data: componentCheck, error: componentCheckError } = await supabase
@@ -73,7 +91,7 @@ export const MaterialLinkSelector = ({
       const { data: updateResult, error: rpcError } = await supabase
         .rpc('update_component_material', {
           component_id: componentId,
-          material_id: selectedMaterialId
+          material_id: localSelectedMaterialId
         });
       
       if (rpcError) {
@@ -102,7 +120,7 @@ export const MaterialLinkSelector = ({
           throw new Error("Material linking failed - verification check failed");
         }
         
-        if (verifyData.material_id !== selectedMaterialId || !verifyData.material_linked) {
+        if (verifyData.material_id !== localSelectedMaterialId || !verifyData.material_linked) {
           throw new Error("Material was not properly linked after retry");
         }
         
@@ -119,7 +137,9 @@ export const MaterialLinkSelector = ({
         type: "success"
       });
       
-      onSuccess();
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error: any) {
       console.error("Error linking material:", error);
       showToast({
@@ -131,6 +151,29 @@ export const MaterialLinkSelector = ({
       setIsUpdating(false);
     }
   };
+
+  // Simple selector mode - just display materials for selection
+  if (onMaterialSelect !== undefined && !componentId) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-100">
+          <h3 className="text-sm font-medium text-blue-800 mb-2">
+            {componentType ? `Link Material for ${componentType}` : 'Link Material'}
+          </h3>
+          <MaterialSearchBar 
+            searchQuery={searchQuery} 
+            setSearchQuery={setSearchQuery} 
+          />
+          <MaterialGrid 
+            isLoading={isLoading}
+            filteredMaterials={filteredMaterials}
+            selectedMaterialId={localSelectedMaterialId}
+            setSelectedMaterialId={handleMaterialSelect}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -148,8 +191,8 @@ export const MaterialLinkSelector = ({
         <MaterialGrid 
           isLoading={isLoading}
           filteredMaterials={filteredMaterials}
-          selectedMaterialId={selectedMaterialId}
-          setSelectedMaterialId={setSelectedMaterialId}
+          selectedMaterialId={localSelectedMaterialId}
+          setSelectedMaterialId={handleMaterialSelect}
         />
       </div>
 
@@ -159,7 +202,7 @@ export const MaterialLinkSelector = ({
         onCancel={onCancel}
         handleUpdateMaterial={handleUpdateMaterial}
         isUpdating={isUpdating}
-        selectedMaterialId={selectedMaterialId}
+        selectedMaterialId={localSelectedMaterialId}
       />
       
       <DebugPanel 
@@ -181,7 +224,7 @@ const ActionButtons = ({
 }: {
   debugMode: boolean;
   setDebugMode: (mode: boolean) => void;
-  onCancel: () => void;
+  onCancel?: () => void;
   handleUpdateMaterial: () => Promise<void>;
   isUpdating: boolean;
   selectedMaterialId: string | null;
@@ -197,13 +240,15 @@ const ActionButtons = ({
     </Button>
     
     <div className="flex gap-2">
-      <Button 
-        variant="outline" 
-        onClick={onCancel}
-        size="sm"
-      >
-        Cancel
-      </Button>
+      {onCancel && (
+        <Button 
+          variant="outline" 
+          onClick={onCancel}
+          size="sm"
+        >
+          Cancel
+        </Button>
+      )}
       <Button 
         onClick={handleUpdateMaterial} 
         disabled={!selectedMaterialId || isUpdating}
