@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -49,7 +50,14 @@ const CatalogNew = () => {
     default_quantity: "",
     default_rate: "",
     selling_rate: "",
-    margin: ""
+    margin: "",
+    // New cost fields
+    cutting_charge: "0",
+    printing_charge: "0",
+    stitching_charge: "0",
+    transport_charge: "0",
+    material_cost: "0", // This will be calculated based on components
+    total_cost: "0"     // This will be the sum of all costs
   });
   
   const [components, setComponents] = useState<Record<string, any>>({});
@@ -57,38 +65,62 @@ const CatalogNew = () => {
 
   const handleProductChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setProductData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setProductData(prev => {
+      const updatedData = {
+        ...prev,
+        [name]: value
+      };
+      
+      // Calculate total cost whenever cost-related fields change
+      if (['cutting_charge', 'printing_charge', 'stitching_charge', 'transport_charge', 'material_cost'].includes(name)) {
+        const totalCost = calculateTotalCost({
+          ...updatedData
+        });
+        
+        updatedData.total_cost = totalCost.toString();
+        
+        // If selling_rate exists, update margin
+        if (updatedData.selling_rate && parseFloat(updatedData.selling_rate) > 0 && totalCost > 0) {
+          const calculatedMargin = ((parseFloat(updatedData.selling_rate) - totalCost) / totalCost) * 100;
+          updatedData.margin = calculatedMargin.toFixed(2);
+        }
+      }
 
-    // Calculate margin when selling_rate or default_rate changes
-    if (name === "selling_rate" || name === "default_rate") {
-      const costRate = parseFloat(name === "default_rate" ? value : productData.default_rate);
-      const sellingRate = parseFloat(name === "selling_rate" ? value : productData.selling_rate);
-      
-      if (!isNaN(costRate) && !isNaN(sellingRate) && costRate > 0) {
-        const calculatedMargin = ((sellingRate - costRate) / costRate) * 100;
-        setProductData(prev => ({
-          ...prev,
-          margin: calculatedMargin.toFixed(2)
-        }));
+      // Calculate margin when selling_rate changes
+      if (name === "selling_rate") {
+        const totalCost = parseFloat(updatedData.total_cost);
+        const sellingRate = parseFloat(value);
+        
+        if (!isNaN(totalCost) && !isNaN(sellingRate) && totalCost > 0) {
+          const calculatedMargin = ((sellingRate - totalCost) / totalCost) * 100;
+          updatedData.margin = calculatedMargin.toFixed(2);
+        }
       }
-    }
+      
+      // Update selling_rate when margin changes
+      if (name === "margin") {
+        const totalCost = parseFloat(updatedData.total_cost);
+        const marginValue = parseFloat(value);
+        
+        if (!isNaN(totalCost) && !isNaN(marginValue) && totalCost > 0) {
+          const calculatedSellingRate = totalCost * (1 + (marginValue / 100));
+          updatedData.selling_rate = calculatedSellingRate.toFixed(2);
+        }
+      }
+      
+      return updatedData;
+    });
+  };
+  
+  // Function to calculate total cost
+  const calculateTotalCost = (data: typeof productData) => {
+    const cuttingCharge = parseFloat(data.cutting_charge) || 0;
+    const printingCharge = parseFloat(data.printing_charge) || 0;
+    const stitchingCharge = parseFloat(data.stitching_charge) || 0;
+    const transportCharge = parseFloat(data.transport_charge) || 0;
+    const materialCost = parseFloat(data.material_cost) || 0;
     
-    // Update selling_rate when margin changes
-    if (name === "margin") {
-      const costRate = parseFloat(productData.default_rate);
-      const marginValue = parseFloat(value);
-      
-      if (!isNaN(costRate) && !isNaN(marginValue) && costRate > 0) {
-        const calculatedSellingRate = costRate * (1 + (marginValue / 100));
-        setProductData(prev => ({
-          ...prev,
-          selling_rate: calculatedSellingRate.toFixed(2)
-        }));
-      }
-    }
+    return cuttingCharge + printingCharge + stitchingCharge + transportCharge + materialCost;
   };
 
   const handleComponentChange = (type: string, field: string, value: string) => {
@@ -177,7 +209,10 @@ const CatalogNew = () => {
         formattedName = `${productData.name}*${productData.default_quantity}`;
       }
       
-      // Prepare product data with formatted name and new fields
+      // Calculate the final total cost
+      const totalCost = calculateTotalCost(productData);
+      
+      // Prepare product data with formatted name and all cost fields
       const productDbData = {
         name: formattedName,
         description: productData.description || null,
@@ -187,7 +222,13 @@ const CatalogNew = () => {
         default_quantity: productData.default_quantity ? parseInt(productData.default_quantity) : null,
         default_rate: productData.default_rate ? parseFloat(productData.default_rate) : null,
         selling_rate: productData.selling_rate ? parseFloat(productData.selling_rate) : null,
-        margin: productData.margin ? parseFloat(productData.margin) : null
+        margin: productData.margin ? parseFloat(productData.margin) : null,
+        // Add all the new cost fields
+        cutting_charge: parseFloat(productData.cutting_charge) || 0,
+        printing_charge: parseFloat(productData.printing_charge) || 0,
+        stitching_charge: parseFloat(productData.stitching_charge) || 0,
+        transport_charge: parseFloat(productData.transport_charge) || 0,
+        total_cost: totalCost
       };
       
       // Insert the product
@@ -271,6 +312,7 @@ const CatalogNew = () => {
       </div>
       
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Basic Product Details Card */}
         <Card>
           <CardHeader>
             <CardTitle>Product Details</CardTitle>
@@ -372,53 +414,11 @@ const CatalogNew = () => {
                   Will be shown in product name as "Product Name*Quantity"
                 </p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="default_rate">Cost Rate</Label>
-                <Input 
-                  id="default_rate" 
-                  name="default_rate"
-                  type="number"
-                  step="0.01"
-                  value={productData.default_rate}
-                  onChange={handleProductChange}
-                  placeholder="Cost price per bag"
-                  min="0"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="selling_rate">Selling Rate</Label>
-                <Input 
-                  id="selling_rate" 
-                  name="selling_rate"
-                  type="number"
-                  step="0.01"
-                  value={productData.selling_rate}
-                  onChange={handleProductChange}
-                  placeholder="Selling price per bag"
-                  min="0"
-                />
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="margin">Margin (%)</Label>
-              <Input 
-                id="margin" 
-                name="margin"
-                type="number"
-                step="0.01"
-                value={productData.margin}
-                onChange={handleProductChange}
-                placeholder="Profit margin percentage"
-                min="0"
-              />
-              <p className="text-xs text-muted-foreground">
-                Margin is calculated as ((Selling Rate - Cost Rate) / Cost Rate) × 100
-              </p>
             </div>
           </CardContent>
         </Card>
         
+        {/* Bag Components Card */}
         <Card>
           <CardHeader>
             <CardTitle>Bag Components</CardTitle>
@@ -454,6 +454,138 @@ const CatalogNew = () => {
                   removeCustomComponent={removeCustomComponent}
                   defaultQuantity={productData.default_quantity}
                 />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Cost Calculation Card - New section for detailed costs */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Cost Calculation</CardTitle>
+            <CardDescription>Specify all costs associated with this product</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cutting_charge">Cutting Charge</Label>
+                  <Input 
+                    id="cutting_charge" 
+                    name="cutting_charge"
+                    type="number"
+                    step="0.01"
+                    value={productData.cutting_charge}
+                    onChange={handleProductChange}
+                    placeholder="Cutting charge"
+                    min="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="printing_charge">Printing Charge</Label>
+                  <Input 
+                    id="printing_charge" 
+                    name="printing_charge"
+                    type="number"
+                    step="0.01"
+                    value={productData.printing_charge}
+                    onChange={handleProductChange}
+                    placeholder="Printing charge"
+                    min="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="stitching_charge">Stitching Charge</Label>
+                  <Input 
+                    id="stitching_charge" 
+                    name="stitching_charge"
+                    type="number"
+                    step="0.01"
+                    value={productData.stitching_charge}
+                    onChange={handleProductChange}
+                    placeholder="Stitching charge"
+                    min="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="transport_charge">Transport Charge</Label>
+                  <Input 
+                    id="transport_charge" 
+                    name="transport_charge"
+                    type="number"
+                    step="0.01"
+                    value={productData.transport_charge}
+                    onChange={handleProductChange}
+                    placeholder="Transport charge"
+                    min="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="material_cost">Material Cost</Label>
+                  <Input 
+                    id="material_cost" 
+                    name="material_cost"
+                    type="number"
+                    step="0.01"
+                    value={productData.material_cost}
+                    onChange={handleProductChange}
+                    placeholder="Material cost"
+                    min="0"
+                    readOnly={false} // We'll make this editable for now
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Edit this value directly or it will be calculated from linked materials
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="total_cost">Total Cost</Label>
+                  <Input 
+                    id="total_cost" 
+                    name="total_cost"
+                    type="number"
+                    step="0.01"
+                    value={productData.total_cost}
+                    readOnly
+                    className="bg-muted"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Auto-calculated from all cost components
+                  </p>
+                </div>
+              </div>
+              
+              <div className="border-t pt-4 mt-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="selling_rate">Selling Rate</Label>
+                    <Input 
+                      id="selling_rate" 
+                      name="selling_rate"
+                      type="number"
+                      step="0.01"
+                      value={productData.selling_rate}
+                      onChange={handleProductChange}
+                      placeholder="Selling price per bag"
+                      min="0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="margin">Margin (%)</Label>
+                    <Input 
+                      id="margin" 
+                      name="margin"
+                      type="number"
+                      step="0.01"
+                      value={productData.margin}
+                      onChange={handleProductChange}
+                      placeholder="Profit margin percentage"
+                      min="0"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Margin is calculated as ((Selling Rate - Total Cost) / Total Cost) × 100
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>

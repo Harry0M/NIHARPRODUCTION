@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 // Define proper types for our data structures
 interface Material {
   id: string;
-  material_name: string;  // Changed from material_type to material_name
+  material_name: string;
   color?: string | null;
   gsm?: string | null;
   quantity?: number;
@@ -45,7 +45,7 @@ export interface CatalogProduct {
   updated_at: string;
   created_by?: string | null;
   catalog_components?: CatalogComponent[];
-  // Additional form fields
+  // New cost fields added
   cutting_charge?: number | null;
   printing_charge?: number | null;
   stitching_charge?: number | null;

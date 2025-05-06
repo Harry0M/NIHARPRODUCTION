@@ -13,6 +13,11 @@ interface ProductInfoCardProps {
   totalCost?: number | null;
   margin?: number | null;
   description?: string | null;
+  // Add new cost fields
+  cuttingCharge?: number | null;
+  printingCharge?: number | null;
+  stitchingCharge?: number | null;
+  transportCharge?: number | null;
 }
 
 export const ProductInfoCard = ({
@@ -27,6 +32,10 @@ export const ProductInfoCard = ({
   totalCost,
   margin,
   description,
+  cuttingCharge,
+  printingCharge, 
+  stitchingCharge,
+  transportCharge,
 }: ProductInfoCardProps) => {
   return (
     <Card className="col-span-1">
@@ -35,6 +44,7 @@ export const ProductInfoCard = ({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
+          {/* Basic Information */}
           <div className="space-y-1">
             <p className="text-sm font-medium text-muted-foreground">Size (L×W)</p>
             <p className="font-medium">{bagLength} × {bagWidth} inches</p>
@@ -51,28 +61,71 @@ export const ProductInfoCard = ({
             <p className="text-sm font-medium text-muted-foreground">Default Rate</p>
             <p className="font-medium">{defaultRate ? `₹${defaultRate}` : 'N/A'}</p>
           </div>
-          {sellingRate !== undefined && (
+
+          {/* Cost Information */}
+          <div className="col-span-2">
+            <h3 className="font-medium mb-2 border-b pb-1">Cost Information</h3>
+          </div>
+          
+          {cuttingCharge !== undefined && (
             <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">Selling Rate</p>
-              <p className="font-medium">{sellingRate ? `₹${sellingRate}` : 'N/A'}</p>
+              <p className="text-sm font-medium text-muted-foreground">Cutting Charge</p>
+              <p className="font-medium">{cuttingCharge ? `₹${cuttingCharge}` : 'N/A'}</p>
             </div>
           )}
+          
+          {printingCharge !== undefined && (
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Printing Charge</p>
+              <p className="font-medium">{printingCharge ? `₹${printingCharge}` : 'N/A'}</p>
+            </div>
+          )}
+          
+          {stitchingCharge !== undefined && (
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Stitching Charge</p>
+              <p className="font-medium">{stitchingCharge ? `₹${stitchingCharge}` : 'N/A'}</p>
+            </div>
+          )}
+          
+          {transportCharge !== undefined && (
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Transport Charge</p>
+              <p className="font-medium">{transportCharge ? `₹${transportCharge}` : 'N/A'}</p>
+            </div>
+          )}
+          
           {totalCost !== undefined && (
             <div className="space-y-1">
               <p className="text-sm font-medium text-muted-foreground">Total Cost</p>
               <p className="font-medium">{totalCost ? `₹${totalCost}` : 'N/A'}</p>
             </div>
           )}
+
+          {/* Pricing Information */}
+          <div className="col-span-2">
+            <h3 className="font-medium mb-2 border-b pb-1">Pricing Information</h3>
+          </div>
+          
+          {sellingRate !== undefined && (
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Selling Rate</p>
+              <p className="font-medium">{sellingRate ? `₹${sellingRate}` : 'N/A'}</p>
+            </div>
+          )}
+          
           {margin !== undefined && (
             <div className="space-y-1">
               <p className="text-sm font-medium text-muted-foreground">Margin</p>
               <p className="font-medium">{margin ? `${margin}%` : 'N/A'}</p>
             </div>
           )}
+          
           <div className="col-span-2 space-y-1">
             <p className="text-sm font-medium text-muted-foreground">Created On</p>
             <p className="font-medium">{new Date(createdAt).toLocaleDateString()}</p>
           </div>
+          
           {description && (
             <div className="col-span-2 space-y-1">
               <p className="text-sm font-medium text-muted-foreground">Description</p>
