@@ -7,6 +7,7 @@ interface ConsumptionCalculatorProps {
   length: number;
   width: number;
   quantity: number;
+  rollWidth: number; // Added roll width as a required parameter
   materialRate?: number;
   onConsumptionCalculated: (meters: number, cost?: number) => void;
 }
@@ -15,20 +16,22 @@ export const ConsumptionCalculator = ({
   length, 
   width, 
   quantity,
+  rollWidth, // Add roll width to destructuring
   materialRate,
   onConsumptionCalculated
 }: ConsumptionCalculatorProps) => {
   const [consumption, setConsumption] = useState<number>(0);
   const [materialCost, setMaterialCost] = useState<number | undefined>(undefined);
 
-  // Calculate consumption in meters based on formula: [(length*width)/(6339.39)]*quantity
+  // Calculate consumption in meters based on formula: [(length*width)/(roll_width*39.39)]*quantity
   useEffect(() => {
-    if (length && width && quantity) {
+    if (length && width && quantity && rollWidth) {
       try {
-        const calculatedConsumption = ((length * width) / 6339.39) * quantity;
+        // Updated formula: (length * width) / (roll_width * 39.39) * quantity
+        const calculatedConsumption = ((length * width) / (rollWidth * 39.39)) * quantity;
         const roundedConsumption = Math.round(calculatedConsumption * 100) / 100;
         
-        console.log("Calculated consumption:", roundedConsumption, "for length:", length, "width:", width, "quantity:", quantity);
+        console.log("Calculated consumption:", roundedConsumption, "for length:", length, "width:", width, "roll width:", rollWidth, "quantity:", quantity);
         
         // Calculate material cost if rate is provided
         let cost: number | undefined = undefined;
@@ -48,12 +51,12 @@ export const ConsumptionCalculator = ({
         onConsumptionCalculated(0);
       }
     } else {
-      console.log("Missing values for consumption calculation:", { length, width, quantity });
+      console.log("Missing values for consumption calculation:", { length, width, rollWidth, quantity });
       setConsumption(0);
       setMaterialCost(undefined);
       onConsumptionCalculated(0);
     }
-  }, [length, width, quantity, materialRate, onConsumptionCalculated]);
+  }, [length, width, rollWidth, quantity, materialRate, onConsumptionCalculated]);
 
   return (
     <div className="space-y-2">
@@ -76,7 +79,7 @@ export const ConsumptionCalculator = ({
         </div>
       )}
       <p className="text-xs text-muted-foreground">
-        Calculated using formula: [(length×width)÷6339.39]×quantity
+        Calculated using formula: [(length×width)÷(roll width×39.39)]×quantity
       </p>
     </div>
   );

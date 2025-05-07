@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { 
   Card, 
@@ -278,11 +277,12 @@ const ComponentForm = ({
             </div>
           </div>
           
-          {/* Consumption with integrated material cost calculation */}
+          {/* Consumption with integrated material cost calculation - Updated to pass rollWidth */}
           {hasDimensions && component.length && component.width && component.roll_width && defaultQuantity ? (
             <ConsumptionCalculator
               length={parseFloat(component.length)}
               width={parseFloat(component.width)}
+              rollWidth={parseFloat(component.roll_width)}
               quantity={parseFloat(defaultQuantity)}
               materialRate={materialRate}
               onConsumptionCalculated={handleConsumptionCalculated}
