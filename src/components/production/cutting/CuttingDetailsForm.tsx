@@ -137,6 +137,7 @@ export function CuttingDetailsForm({
               length={orderInfo.bag_length}
               width={orderInfo.bag_width}
               quantity={orderInfo.quantity}
+              rollWidth={cuttingData.roll_width ? parseFloat(cuttingData.roll_width) : 0}
               onConsumptionCalculated={onConsumptionCalculated}
             />
           </div>
