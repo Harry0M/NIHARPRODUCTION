@@ -35,9 +35,15 @@ interface ComponentsTableProps {
   components: CatalogComponent[];
   onViewComponent: (id: string) => void;
   onLinkMaterial: (id: string) => void;
+  defaultQuantity?: number | null;
 }
 
-export const ComponentsTable = ({ components, onViewComponent, onLinkMaterial }: ComponentsTableProps) => {
+export const ComponentsTable = ({ 
+  components, 
+  onViewComponent, 
+  onLinkMaterial,
+  defaultQuantity = 1
+}: ComponentsTableProps) => {
   if (!components || components.length === 0) {
     return <p className="text-muted-foreground text-sm my-4">No components have been added to this product.</p>;
   }
@@ -102,9 +108,18 @@ export const ComponentsTable = ({ components, onViewComponent, onLinkMaterial }:
                       <span className="font-medium">GSM:</span> {component.gsm}
                     </span>
                   )}
-                  {component.consumption && (
+                  {component.consumption !== null && component.consumption !== undefined && (
                     <span className="text-xs flex items-center gap-1">
-                      <span className="font-medium">Consumption:</span> {component.consumption}
+                      <span className="font-medium">Total Consumption:</span> 
+                      {defaultQuantity && defaultQuantity > 1 
+                        ? (component.consumption * defaultQuantity).toFixed(2)
+                        : component.consumption.toFixed(2)
+                      }
+                      {defaultQuantity && defaultQuantity > 1 && (
+                        <span className="text-xs text-muted-foreground ml-1">
+                          ({component.consumption.toFixed(2)} × {defaultQuantity})
+                        </span>
+                      )}
                     </span>
                   )}
                   {component.roll_width && (

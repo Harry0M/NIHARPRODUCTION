@@ -1,4 +1,3 @@
-
 import { useParams, useNavigate } from "react-router-dom";
 import { useCatalogProducts, useInventoryItems, CatalogProduct } from "@/hooks/use-catalog-products";
 import { Button } from "@/components/ui/button";
@@ -297,6 +296,7 @@ const CatalogDetail = () => {
               components={components} 
               onViewComponent={handleViewComponent} 
               onLinkMaterial={handleViewComponent}
+              defaultQuantity={product.default_quantity}
             />
           </CardContent>
         </Card>
