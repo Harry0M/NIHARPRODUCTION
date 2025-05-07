@@ -712,6 +712,7 @@ export type Database = {
           id: string
           job_name: string
           job_number: string | null
+          notes: string | null
           order_id: string
           status: Database["public"]["Enums"]["job_status"] | null
           updated_at: string
@@ -722,6 +723,7 @@ export type Database = {
           id?: string
           job_name: string
           job_number?: string | null
+          notes?: string | null
           order_id: string
           status?: Database["public"]["Enums"]["job_status"] | null
           updated_at?: string
@@ -732,6 +734,7 @@ export type Database = {
           id?: string
           job_name?: string
           job_number?: string | null
+          notes?: string | null
           order_id?: string
           status?: Database["public"]["Enums"]["job_status"] | null
           updated_at?: string
