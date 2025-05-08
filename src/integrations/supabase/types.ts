@@ -124,6 +124,20 @@ export type Database = {
             referencedRelation: "inventory"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "catalog_component_materials_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_consumption_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "catalog_component_materials_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_usage_summary"
+            referencedColumns: ["material_id"]
+          },
         ]
       }
       catalog_components: {
@@ -262,6 +276,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "components_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_material_breakdown"
+            referencedColumns: ["order_id"]
+          },
           {
             foreignKeyName: "components_order_id_fkey"
             columns: ["order_id"]
@@ -573,6 +594,20 @@ export type Database = {
             referencedRelation: "inventory"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "inventory_batches_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_consumption_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "inventory_batches_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_usage_summary"
+            referencedColumns: ["material_id"]
+          },
         ]
       }
       inventory_locations: {
@@ -697,6 +732,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "inventory_transactions_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_consumption_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_usage_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
             foreignKeyName: "inventory_transactions_transaction_type_id_fkey"
             columns: ["transaction_type_id"]
             isOneToOne: false
@@ -744,6 +793,13 @@ export type Database = {
             foreignKeyName: "job_cards_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_material_breakdown"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "job_cards_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -772,6 +828,92 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      material_order_usage: {
+        Row: {
+          component_id: string | null
+          id: string
+          job_card_id: string | null
+          material_id: string
+          notes: string | null
+          order_id: string
+          unit: string
+          usage_date: string
+          usage_quantity: number
+        }
+        Insert: {
+          component_id?: string | null
+          id?: string
+          job_card_id?: string | null
+          material_id: string
+          notes?: string | null
+          order_id: string
+          unit: string
+          usage_date?: string
+          usage_quantity: number
+        }
+        Update: {
+          component_id?: string | null
+          id?: string
+          job_card_id?: string | null
+          material_id?: string
+          notes?: string | null
+          order_id?: string
+          unit?: string
+          usage_date?: string
+          usage_quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_order_usage_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "order_components"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_order_usage_job_card_id_fkey"
+            columns: ["job_card_id"]
+            isOneToOne: false
+            referencedRelation: "job_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_order_usage_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_order_usage_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_consumption_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "material_order_usage_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_usage_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "material_order_usage_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_material_breakdown"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "material_order_usage_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_components: {
         Row: {
@@ -825,6 +967,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fk_order_components_material_id"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_consumption_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "fk_order_components_material_id"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_usage_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "order_components_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_material_breakdown"
+            referencedColumns: ["order_id"]
+          },
+          {
             foreignKeyName: "order_components_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
@@ -874,6 +1037,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "order_dispatches_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_material_breakdown"
+            referencedColumns: ["order_id"]
+          },
           {
             foreignKeyName: "order_dispatches_order_id_fkey"
             columns: ["order_id"]
@@ -1070,6 +1240,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "inventory"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_materials_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_consumption_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "product_materials_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_usage_summary"
+            referencedColumns: ["material_id"]
           },
           {
             foreignKeyName: "product_materials_product_id_fkey"
@@ -1316,6 +1500,13 @@ export type Database = {
             foreignKeyName: "transactions_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_material_breakdown"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -1382,10 +1573,85 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      material_consumption_summary: {
+        Row: {
+          color: string | null
+          consumption_percentage: number | null
+          current_stock: number | null
+          gsm: string | null
+          job_count: number | null
+          material_id: string | null
+          material_name: string | null
+          total_consumption: number | null
+          unit: string | null
+        }
+        Relationships: []
+      }
+      material_usage_summary: {
+        Row: {
+          color: string | null
+          first_usage_date: string | null
+          gsm: string | null
+          last_usage_date: string | null
+          material_id: string | null
+          material_name: string | null
+          orders_count: number | null
+          total_usage: number | null
+          unit: string | null
+        }
+        Relationships: []
+      }
+      order_material_breakdown: {
+        Row: {
+          color: string | null
+          company_name: string | null
+          component_type: string | null
+          gsm: string | null
+          material_id: string | null
+          material_name: string | null
+          order_id: string | null
+          order_number: string | null
+          order_quantity: number | null
+          total_material_used: number | null
+          unit: string | null
+          usage_date: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_order_usage_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_order_usage_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_consumption_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "material_order_usage_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_usage_summary"
+            referencedColumns: ["material_id"]
+          },
+        ]
+      }
     }
     Functions: {
       calculate_consumption: {
+        Args: {
+          p_length: number
+          p_width: number
+          p_roll_width: number
+          p_quantity?: number
+        }
+        Returns: number
+      }
+      calculate_material_consumption: {
         Args: {
           p_length: number
           p_width: number
@@ -1417,6 +1683,18 @@ export type Database = {
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      record_material_usage: {
+        Args: {
+          p_material_id: string
+          p_order_id: string
+          p_job_card_id: string
+          p_component_id: string
+          p_quantity: number
+          p_unit: string
+          p_notes?: string
+        }
+        Returns: string
       }
       update_component_material: {
         Args: { component_id: string; material_id: string }
