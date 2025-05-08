@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StockTransaction } from "@/types/inventory";
@@ -107,52 +106,6 @@ export const StockTransactionHistory = ({
     }
   };
 
-  const effectiveTransactions = localTransactions || transactions || [];
-  const isEmpty = !effectiveTransactions.length;
-
-  if (isEmpty) {
-    return (
-      <Card className="mt-6">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <History className="h-5 w-5" />
-            Transaction History
-          </CardTitle>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleRefresh} 
-            disabled={localLoading || isLoading}
-            className="flex items-center gap-1"
-          >
-            <RefreshCcw className={`h-4 w-4 ${(localLoading || isLoading) ? 'animate-spin' : ''}`} />
-            {(localLoading || isLoading) ? "Refreshing..." : "Refresh Transactions"}
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-10 space-y-2">
-            <AlertCircle className="h-10 w-10 text-muted-foreground" />
-            <p className="text-muted-foreground text-center">No transaction history found</p>
-            <p className="text-sm text-muted-foreground text-center max-w-md">
-              When materials are used in orders or new stock is added, transactions will appear here.
-              {(localLoading || isLoading) ? " Checking for latest transactions..." : ""}
-            </p>
-            {!localLoading && !isLoading && (
-              <Button 
-                variant="default" 
-                onClick={handleRefresh} 
-                className="mt-4"
-              >
-                <RefreshCcw className="h-4 w-4 mr-2" />
-                Check for New Transactions
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), "dd MMM yyyy, h:mm a");
@@ -232,6 +185,52 @@ export const StockTransactionHistory = ({
       return 'unknown date';
     }
   };
+
+  const effectiveTransactions = localTransactions || transactions || [];
+  const isEmpty = !effectiveTransactions.length;
+
+  if (isEmpty) {
+    return (
+      <Card className="mt-6">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <History className="h-5 w-5" />
+            Transaction History
+          </CardTitle>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh} 
+            disabled={localLoading || isLoading}
+            className="flex items-center gap-1"
+          >
+            <RefreshCcw className={`h-4 w-4 ${(localLoading || isLoading) ? 'animate-spin' : ''}`} />
+            {(localLoading || isLoading) ? "Refreshing..." : "Refresh Transactions"}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-10 space-y-2">
+            <AlertCircle className="h-10 w-10 text-muted-foreground" />
+            <p className="text-muted-foreground text-center">No transaction history found</p>
+            <p className="text-sm text-muted-foreground text-center max-w-md">
+              When materials are used in orders or new stock is added, transactions will appear here.
+              {(localLoading || isLoading) ? " Checking for latest transactions..." : ""}
+            </p>
+            {!localLoading && !isLoading && (
+              <Button 
+                variant="default" 
+                onClick={handleRefresh} 
+                className="mt-4"
+              >
+                <RefreshCcw className="h-4 w-4 mr-2" />
+                Check for New Transactions
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="mt-4">
