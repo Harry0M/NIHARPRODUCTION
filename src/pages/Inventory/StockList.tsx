@@ -1,7 +1,6 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, History, Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +17,8 @@ import { EmptyStockState } from "@/components/inventory/EmptyStockState";
 import { StockDetailDialog } from "@/components/inventory/StockDetailDialog";
 import { DeleteStockDialog } from "@/components/inventory/dialogs/DeleteStockDialog";
 import { showToast } from "@/components/ui/enhanced-toast";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const StockList = () => {
   const navigate = useNavigate();
@@ -29,27 +30,132 @@ const StockList = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [hasTransactions, setHasTransactions] = useState(false);
   const [deleteWithTransactions, setDeleteWithTransactions] = useState(false);
+  const [recentlyUpdatedItems, setRecentlyUpdatedItems] = useState<string[]>([]);
 
-  const { data: stock, isLoading } = useQuery({
+  // Track materials with recent updates
+  useEffect(() => {
+    try {
+      const updatedMaterialIds = localStorage.getItem('updated_material_ids');
+      const lastUpdate = localStorage.getItem('last_inventory_update');
+      
+      if (updatedMaterialIds && lastUpdate) {
+        const materialIds = JSON.parse(updatedMaterialIds);
+        const updateTime = new Date(lastUpdate).getTime();
+        const currentTime = new Date().getTime();
+        const isRecent = (currentTime - updateTime) < 300000; // Within last 5 minutes
+        
+        if (isRecent) {
+          console.log("Recently updated materials detected:", materialIds);
+          setRecentlyUpdatedItems(materialIds);
+        }
+      }
+    } catch (e) {
+      console.error("Error checking for recently updated items:", e);
+    }
+  }, []);
+
+  const { data: stock, isLoading, refetch } = useQuery({
     queryKey: ['inventory'],
     queryFn: async () => {
+      console.log("Fetching inventory data...");
       const { data, error } = await supabase
         .from('inventory')
         .select('*, suppliers(name)');
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching inventory:", error);
+        throw error;
+      }
+      
+      console.log(`Fetched ${data?.length || 0} inventory items`);
       return data;
     },
   });
 
+  // Also fetch transaction counts for each material
+  const { data: transactionCounts } = useQuery({
+    queryKey: ['inventory-transactions-count'],
+    queryFn: async () => {
+      console.log("Fetching transaction counts...");
+      const { data, error } = await supabase
+        .from('inventory_transactions')
+        .select('material_id, count')
+        .eq('created_at', '>', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .then(({ data, error }) => {
+          if (error) {
+            console.error("Error fetching transaction counts:", error);
+            return { data: [], error };
+          }
+          
+          // Process data to get counts by material_id
+          const counts: Record<string, number> = {};
+          data?.forEach(item => {
+            if (counts[item.material_id]) {
+              counts[item.material_id]++;
+            } else {
+              counts[item.material_id] = 1;
+            }
+          });
+          
+          console.log("Transaction counts:", counts);
+          return { data: counts, error: null };
+        });
+      
+      return data || {};
+    },
+  });
+
+  // Refresh data when storage events occur
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'last_inventory_update') {
+        console.log("Storage event detected, refreshing inventory...");
+        refetch();
+        
+        // Update recently updated items
+        try {
+          const updatedMaterialIds = localStorage.getItem('updated_material_ids');
+          if (updatedMaterialIds) {
+            const materialIds = JSON.parse(updatedMaterialIds);
+            console.log("Setting recently updated items:", materialIds);
+            setRecentlyUpdatedItems(materialIds);
+            
+            // Show toast for updates
+            if (materialIds.length > 0) {
+              showToast({
+                title: `${materialIds.length} material(s) updated`,
+                description: "Click on any highlighted material to view details",
+                type: "info"
+              });
+            }
+          }
+        } catch (e) {
+          console.error("Error handling storage event:", e);
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [refetch]);
+
   const handleStockClick = (id: string) => {
+    console.log(`Selecting stock item: ${id}`);
     setSelectedStockId(id);
     setIsDetailDialogOpen(true);
+    
+    // If this was a recently updated item, we want to default to the transactions tab
+    if (recentlyUpdatedItems.includes(id)) {
+      // We'll pass this information via localStorage for the dialog to pick up
+      localStorage.setItem('view_transactions_for_material', id);
+    }
   };
 
   const handleCloseDialog = () => {
     setIsDetailDialogOpen(false);
     setSelectedStockId(null);
+    // Clear the view transactions flag
+    localStorage.removeItem('view_transactions_for_material');
   };
 
   const checkForTransactions = async (stockId: string) => {
@@ -176,7 +282,7 @@ const StockList = () => {
 
       {isLoading ? (
         <div className="flex justify-center items-center p-8">
-          <div className="rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <div className="rounded-full h-8 w-8 border-b-2 border-primary animate-spin"></div>
         </div>
       ) : stock?.length === 0 ? (
         <EmptyStockState />
@@ -200,47 +306,91 @@ const StockList = () => {
                   </>
                 )}
                 <TableHead>Supplier</TableHead>
+                <TableHead>Activity</TableHead>
                 <TableHead className="w-[80px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {stock?.map((item) => (
-                <TableRow 
-                  key={item.id}
-                  className="cursor-pointer hover:bg-muted"
-                  onClick={() => handleStockClick(item.id)}
-                >
-                  <TableCell>{item.material_name}</TableCell>
-                  <TableCell>{item.color || 'N/A'}</TableCell>
-                  <TableCell>{item.gsm || 'N/A'}</TableCell>
-                  <TableCell>{item.quantity} {item.unit}</TableCell>
-                  {stock?.some(i => i.alternate_unit) && (
+              {stock?.map((item) => {
+                const hasRecentUpdate = recentlyUpdatedItems.includes(item.id);
+                const transactionCount = transactionCounts?.[item.id] || 0;
+                
+                return (
+                  <TableRow 
+                    key={item.id}
+                    className={`cursor-pointer hover:bg-muted ${hasRecentUpdate ? 'bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/20 dark:hover:bg-amber-900/30' : ''}`}
+                    onClick={() => handleStockClick(item.id)}
+                  >
                     <TableCell>
-                      {item.alternate_unit ? 
-                        `${(item.quantity * (item.conversion_rate || 0)).toFixed(2)} ${item.alternate_unit}` : 
-                        'N/A'}
+                      <div className="flex items-center gap-2">
+                        {hasRecentUpdate && (
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                          </span>
+                        )}
+                        {item.material_name}
+                      </div>
                     </TableCell>
-                  )}
-                  {stock?.some(i => i.track_cost) && (
-                    <>
-                      <TableCell>{item.track_cost && item.purchase_price ? `₹${item.purchase_price}` : 'N/A'}</TableCell>
-                      <TableCell>{item.track_cost && item.selling_price ? `₹${item.selling_price}` : 'N/A'}</TableCell>
-                    </>
-                  )}
-                  <TableCell>{item.suppliers?.name || 'N/A'}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={(e) => handleDeleteClick(e, item.id, item.material_name)}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">Delete</span>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    <TableCell>{item.color || 'N/A'}</TableCell>
+                    <TableCell>{item.gsm || 'N/A'}</TableCell>
+                    <TableCell>{item.quantity} {item.unit}</TableCell>
+                    {stock?.some(i => i.alternate_unit) && (
+                      <TableCell>
+                        {item.alternate_unit ? 
+                          `${(item.quantity * (item.conversion_rate || 0)).toFixed(2)} ${item.alternate_unit}` : 
+                          'N/A'}
+                      </TableCell>
+                    )}
+                    {stock?.some(i => i.track_cost) && (
+                      <>
+                        <TableCell>{item.track_cost && item.purchase_price ? `₹${item.purchase_price}` : 'N/A'}</TableCell>
+                        <TableCell>{item.track_cost && item.selling_price ? `₹${item.selling_price}` : 'N/A'}</TableCell>
+                      </>
+                    )}
+                    <TableCell>{item.suppliers?.name || 'N/A'}</TableCell>
+                    <TableCell>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            {transactionCount > 0 ? (
+                              <Badge variant="secondary" className="flex items-center gap-1">
+                                <History className="h-3 w-3" />
+                                {transactionCount}
+                              </Badge>
+                            ) : hasRecentUpdate ? (
+                              <Badge variant="outline" className="flex items-center gap-1">
+                                <Bell className="h-3 w-3" />
+                                Updated
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">None</span>
+                            )}
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {transactionCount > 0
+                              ? `${transactionCount} recent transactions`
+                              : hasRecentUpdate
+                                ? "Recently updated"
+                                : "No recent activity"}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={(e) => handleDeleteClick(e, item.id, item.material_name)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Delete</span>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
@@ -261,6 +411,7 @@ const StockList = () => {
             handleInitiateDelete(selectedStockId);
           }
         }}
+        initialTab={recentlyUpdatedItems.includes(selectedStockId || '') ? "transactions" : "details"}
       />
 
       <DeleteStockDialog

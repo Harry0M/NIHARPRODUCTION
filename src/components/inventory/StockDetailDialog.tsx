@@ -8,7 +8,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, AlertCircle, RefreshCcw, History } from "lucide-react";
+import { Edit, Trash2, AlertCircle, RefreshCcw, History, Bell } from "lucide-react";
 import { StockInfoGrid } from "./stock-detail/StockInfoGrid";
 import { useStockDetail } from "@/hooks/inventory/useStockDetail";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -52,6 +52,17 @@ export const StockDetailDialog = ({
   // Check for any recent inventory updates when dialog opens
   useEffect(() => {
     if (open && stockId) {
+      console.log(`StockDetailDialog opened for item: ${stockId}`);
+      
+      // Check if we should view transactions for this material
+      const viewTransactionsFor = localStorage.getItem('view_transactions_for_material');
+      if (viewTransactionsFor === stockId) {
+        console.log("Auto-switching to transactions tab due to view_transactions_for_material flag");
+        setActiveTab("transactions");
+        localStorage.removeItem('view_transactions_for_material');
+      }
+      
+      // Check if this material had recent updates
       const checkForInventoryUpdate = () => {
         try {
           const lastUpdate = localStorage.getItem('last_inventory_update');
@@ -69,15 +80,34 @@ export const StockDetailDialog = ({
               refreshTransactions();
               setActiveTab("transactions");
               
-              // Clear the localStorage values to avoid repeated refreshing
-              localStorage.removeItem('last_inventory_update');
-              localStorage.removeItem('updated_material_ids');
+              // Get specific details about this update if available
+              const materialUpdateKey = `material_update_${stockId}`;
+              const materialUpdateDetails = localStorage.getItem(materialUpdateKey);
               
-              showToast({
-                title: "Inventory Updated",
-                description: "This material was recently used in an order. Showing transaction history.",
-                type: "info"
-              });
+              if (materialUpdateDetails) {
+                try {
+                  const details = JSON.parse(materialUpdateDetails);
+                  const changeAmount = Math.abs(details.previous - details.new).toFixed(2);
+                  const changeDirection = details.new > details.previous ? "increased" : "decreased";
+                  
+                  showToast({
+                    title: "Inventory Updated",
+                    description: `Quantity ${changeDirection} by ${changeAmount} units. Check transaction history for details.`,
+                    type: "info"
+                  });
+                  
+                  // Clear this specific update after showing
+                  localStorage.removeItem(materialUpdateKey);
+                } catch (e) {
+                  console.error("Error parsing material update details:", e);
+                }
+              } else {
+                showToast({
+                  title: "Inventory Updated",
+                  description: "This material was recently updated. Showing transaction history.",
+                  type: "info"
+                });
+              }
             }
           }
         } catch (e) {
@@ -85,10 +115,8 @@ export const StockDetailDialog = ({
         }
       };
       
-      // Check immediately and also after a short delay to ensure any new localStorage values are captured
+      // Check immediately and after a short delay
       checkForInventoryUpdate();
-      
-      // Check again after 500ms for any updates that might have happened right before opening
       const timer = setTimeout(() => {
         refreshTransactions();
         checkForInventoryUpdate();
@@ -97,6 +125,15 @@ export const StockDetailDialog = ({
       return () => clearTimeout(timer);
     }
   }, [open, stockId, refreshTransactions]);
+
+  useEffect(() => {
+    // Auto-switch to transactions tab when this dialog opens if that tab was specified
+    if (open && initialTab === "transactions") {
+      console.log("Auto-switching to transactions tab based on initialTab prop");
+      setActiveTab("transactions");
+      refreshTransactions();
+    }
+  }, [open, initialTab, refreshTransactions]);
   
   // Handle manual refresh with toast feedback
   const handleRefresh = async () => {
@@ -142,7 +179,15 @@ export const StockDetailDialog = ({
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center justify-between">
-            <span>{stockItem?.material_name || "Stock Details"}</span>
+            <div className="flex items-center">
+              <span>{stockItem?.material_name || "Stock Details"}</span>
+              {hasTransactions && (
+                <span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-2 py-1 text-xs text-primary">
+                  <History className="mr-1 h-3 w-3" />
+                  {transactions?.length} transactions
+                </span>
+              )}
+            </div>
             <div className="flex space-x-2">
               <Button
                 variant="outline"
@@ -220,26 +265,33 @@ export const StockDetailDialog = ({
               />
               
               {/* Make the button to view transactions more prominent when transactions exist */}
-              <div className="mt-8 flex justify-center">
-                <Button
-                  variant={hasTransactions ? "default" : "outline"}
-                  onClick={() => {
-                    setActiveTab("transactions");
-                    if (!hasTransactions) handleRefresh();
-                  }}
-                  className="flex items-center gap-2"
-                  size="lg"
-                >
-                  <History className="h-5 w-5" />
-                  {hasTransactions 
-                    ? `View ${transactions.length} Transaction${transactions.length !== 1 ? 's' : ''}`
-                    : "Check Transaction History"}
-                </Button>
-              </div>
+              {hasTransactions && (
+                <div className="mt-8 flex justify-center">
+                  <Button
+                    variant="default"
+                    onClick={() => setActiveTab("transactions")}
+                    className="flex items-center gap-2"
+                    size="lg"
+                  >
+                    <History className="h-5 w-5" />
+                    View {transactions.length} Transaction{transactions.length !== 1 ? 's' : ''}
+                  </Button>
+                </div>
+              )}
             </TabsContent>
             
             <TabsContent value="transactions">
-              <div className="mb-4 flex justify-end">
+              <div className="mb-4 flex justify-between">
+                <div className="text-sm text-muted-foreground">
+                  {hasTransactions ? (
+                    <span className="flex items-center gap-1">
+                      <Bell className="h-4 w-4" />
+                      Showing {transactions.length} transaction{transactions.length !== 1 ? 's' : ''}
+                    </span>
+                  ) : (
+                    <span>No transactions found</span>
+                  )}
+                </div>
                 <Button 
                   size="sm" 
                   variant="outline" 
@@ -248,7 +300,7 @@ export const StockDetailDialog = ({
                   className="flex items-center gap-1"
                 >
                   <RefreshCcw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  {isRefreshing ? 'Refreshing...' : 'Refresh Transactions'}
+                  {isRefreshing ? 'Refreshing...' : 'Refresh'}
                 </Button>
               </div>
               <StockTransactionHistory 

@@ -38,15 +38,26 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
   useEffect(() => {
     if (!stockId) return;
     
+    console.log(`Setting up local storage monitoring for material ${stockId}`);
+    
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === 'last_inventory_update') {
         try {
+          console.log("Storage event detected for inventory update");
           const updatedMaterialIds = localStorage.getItem('updated_material_ids');
           if (updatedMaterialIds) {
             const materialIds = JSON.parse(updatedMaterialIds);
             if (materialIds.includes(stockId)) {
               console.log("Local storage update detected for this material, refreshing");
               queryClient.invalidateQueries({ queryKey: ["stock-transactions", stockId] });
+              queryClient.invalidateQueries({ queryKey: ["stock-detail", stockId] });
+              
+              // Show notification
+              showToast({
+                title: "Material updated",
+                description: "Refreshing transaction history",
+                type: "info"
+              });
             }
           }
         } catch (e) {
@@ -70,9 +81,19 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
           if (isRecent && materialIds.includes(stockId)) {
             console.log("Recent local storage update detected for this material, refreshing");
             queryClient.invalidateQueries({ queryKey: ["stock-transactions", stockId] });
-            
-            // Also invalidate stock detail to refresh quantities
             queryClient.invalidateQueries({ queryKey: ["stock-detail", stockId] });
+            
+            // Try to get material update details
+            const materialUpdateKey = `material_update_${stockId}`;
+            const materialUpdateDetails = localStorage.getItem(materialUpdateKey);
+            if (materialUpdateDetails) {
+              try {
+                const details = JSON.parse(materialUpdateDetails);
+                console.log(`Material update details: previous=${details.previous}, new=${details.new}, consumed=${details.consumed || "N/A"}`);
+              } catch (e) {
+                console.error("Error parsing material update details:", e);
+              }
+            }
           }
         }
       } catch (e) {
@@ -95,24 +116,34 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
       
       console.log("Fetching stock details for ID:", stockId);
       
-      // Modified query to include all fields
-      const { data, error } = await supabase
-        .from("inventory")
-        .select(`
-          *,
-          suppliers(id, name, contact_person, email, phone, address, payment_terms),
-          material_categories(id, name)
-        `)
-        .eq("id", stockId)
-        .single();
+      try {
+        // Modified query to include all fields
+        const { data, error } = await supabase
+          .from("inventory")
+          .select(`
+            *,
+            suppliers(id, name, contact_person, email, phone, address, payment_terms),
+            material_categories(id, name)
+          `)
+          .eq("id", stockId)
+          .single();
+          
+        if (error) {
+          console.error("Error fetching stock details:", error);
+          throw error;
+        }
         
-      if (error) {
-        console.error("Error fetching stock details:", error);
-        throw error;
+        console.log("Stock details fetched:", data);
+        return data;
+      } catch (err) {
+        console.error("Error in stock detail fetch:", err);
+        showToast({
+          title: "Error loading stock details",
+          description: "Could not load stock information. Please try again.",
+          type: "error"
+        });
+        throw err;
       }
-      
-      console.log("Stock details fetched:", data);
-      return data;
     },
     enabled: !!stockId,
   });
@@ -122,16 +153,22 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     queryFn: async () => {
       if (!stockId) return [];
       
-      const { data, error } = await supabase
-        .from("catalog_components")
-        .select("*, catalog(name)")
-        .eq("material_id", stockId);
-        
-      if (error) {
-        console.error("Error fetching linked components:", error);
-        throw error;
+      try {
+        const { data, error } = await supabase
+          .from("catalog_components")
+          .select("*, catalog(name)")
+          .eq("material_id", stockId);
+          
+        if (error) {
+          console.error("Error fetching linked components:", error);
+          throw error;
+        }
+        console.log(`Fetched ${data?.length || 0} linked components`);
+        return data || [];
+      } catch (err) {
+        console.error("Error in linked components fetch:", err);
+        return [];
       }
-      return data || [];
     },
     enabled: !!stockId,
   });

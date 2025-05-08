@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { StockForm } from "@/components/inventory/StockForm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SkeletonForm } from "@/components/ui/skeleton-loader";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, History } from "lucide-react";
 import { useStockDetail } from "@/hooks/inventory/useStockDetail";
 import { StockInfoGrid } from "@/components/inventory/stock-detail/StockInfoGrid";
 import { Card } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StockTransactionHistory } from "@/components/inventory/stock-detail/StockTransactionHistory";
 import { useEffect, useState } from "react";
 import { showToast } from "@/components/ui/enhanced-toast";
+import { Badge } from "@/components/ui/badge";
 
 const StockDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -45,15 +46,36 @@ const StockDetail = () => {
           const currentTime = new Date().getTime();
           const isRecent = (currentTime - updateTime) < 60000; // Within last minute
           
-          if (isRecent && materialIds.includes(id)) {
+          if (isRecent && id && materialIds.includes(id)) {
             console.log("Recent material update detected, switching to view tab");
             setActiveTab("view");
             
-            showToast({
-              title: "Transaction history available",
-              description: "This material has recent transaction history",
-              type: "info"
-            });
+            // Get specific details about this update if available
+            const materialUpdateKey = `material_update_${id}`;
+            const materialUpdateDetails = localStorage.getItem(materialUpdateKey);
+            
+            if (materialUpdateDetails) {
+              try {
+                const details = JSON.parse(materialUpdateDetails);
+                const changeAmount = Math.abs(details.previous - details.new).toFixed(2);
+                const changeDirection = details.new > details.previous ? "increased" : "decreased";
+                
+                showToast({
+                  title: "Inventory Updated",
+                  description: `Quantity ${changeDirection} by ${changeAmount} units. Transaction history available.`,
+                  type: "info"
+                });
+                
+              } catch (e) {
+                console.error("Error parsing material update details:", e);
+              }
+            } else {
+              showToast({
+                title: "Transaction history available",
+                description: "This material has recent transaction history",
+                type: "info"
+              });
+            }
           }
         }
       } catch (e) {
@@ -62,11 +84,42 @@ const StockDetail = () => {
     }
   }, [id, transactions, isLoading]);
 
+  // Function to handle manual refresh
+  const handleRefreshTransactions = async () => {
+    console.log("Manually refreshing transactions");
+    try {
+      showToast({
+        title: "Refreshing transactions",
+        description: "Checking for latest transaction data",
+        type: "info"
+      });
+      
+      await refreshTransactions();
+    } catch (error) {
+      console.error("Error refreshing transactions manually:", error);
+    }
+  };
+
+  const hasTransactions = transactions && transactions.length > 0;
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Edit Stock Item</h1>
-        <p className="text-muted-foreground">Modify inventory stock details</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Edit Stock Item</h1>
+          <p className="text-muted-foreground">Modify inventory stock details</p>
+        </div>
+        
+        {hasTransactions && (
+          <Badge 
+            variant="outline" 
+            className="flex items-center gap-1 px-3 py-1 cursor-pointer hover:bg-muted"
+            onClick={() => setActiveTab("view")}
+          >
+            <History className="h-4 w-4" />
+            {transactions.length} Transaction{transactions.length !== 1 ? 's' : ''}
+          </Badge>
+        )}
       </div>
       
       {isLoading ? (
@@ -97,11 +150,20 @@ const StockDetail = () => {
                     linkedComponents={linkedComponents}
                   />
                   
-                  <StockTransactionHistory 
-                    transactions={transactions || []}
-                    onRefresh={refreshTransactions}
-                    isLoading={isRefreshing || isTransactionsLoading}
-                  />
+                  <div className="border-t pt-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-medium flex items-center gap-2">
+                        <History className="h-5 w-5" />
+                        Transaction History
+                      </h3>
+                    </div>
+                    
+                    <StockTransactionHistory 
+                      transactions={transactions || []}
+                      onRefresh={handleRefreshTransactions}
+                      isLoading={isRefreshing || isTransactionsLoading}
+                    />
+                  </div>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center p-12 space-y-4">
