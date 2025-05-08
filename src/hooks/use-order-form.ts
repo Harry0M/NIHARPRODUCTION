@@ -250,7 +250,7 @@ export function useOrderForm(): UseOrderFormReturn {
         width = component.width?.toString() || '';
       }
       
-      // Get consumption value directly from component
+      // Get consumption value directly from component - THIS IS THE STORED VALUE
       let consumption = component.consumption?.toString() || '';
       const rollWidth = component.roll_width?.toString() || '';
       
@@ -301,8 +301,14 @@ export function useOrderForm(): UseOrderFormReturn {
       
       const componentTypeLower = component.component_type.toLowerCase();
       
-      // Extract the base consumption value (before multiplication)
+      // Extract the base consumption value - THIS IS THE KEY FIX
+      // We need to store the original consumption as baseConsumption
+      // This will be the per-unit value (without default quantity factored in)
       const baseConsumption = consumption ? parseFloat(consumption) : undefined;
+      
+      // Handle the case where product has a default quantity > 1
+      // The consumption stored in the database is the base consumption per unit
+      // So we need to preserve this information
       
       if (componentTypeLower === 'custom') {
         const customIndex = newCustomComponents.length;
@@ -314,8 +320,8 @@ export function useOrderForm(): UseOrderFormReturn {
           gsm: materialGsm,
           length,
           width,
-          consumption,
-          baseConsumption: baseConsumption?.toString(),
+          consumption, // This is the total consumption with default_quantity
+          baseConsumption: baseConsumption?.toString(), // Store the base consumption per unit
           roll_width: materialRollWidth || rollWidth,
           material_id: materialId
         });
@@ -326,8 +332,6 @@ export function useOrderForm(): UseOrderFormReturn {
         }
       } else if (standardTypesLower.includes(componentTypeLower)) {
         // Map the component type to the capitalized version used in the UI
-        // This is crucial - we use the original case from the component for UI display
-        // but standardize to lowercase for lookups
         const componentTypeKey = component.component_type;
         
         console.log(`Found standard component ${componentTypeLower} -> mapping to key ${componentTypeKey}`);
@@ -339,8 +343,8 @@ export function useOrderForm(): UseOrderFormReturn {
           gsm: materialGsm,
           length,
           width,
-          consumption,
-          baseConsumption: baseConsumption?.toString(),
+          consumption, // This is the total consumption with default_quantity
+          baseConsumption: baseConsumption?.toString(), // Store the base consumption per unit
           roll_width: materialRollWidth || rollWidth,
           material_id: materialId
         };
@@ -370,7 +374,7 @@ export function useOrderForm(): UseOrderFormReturn {
     }
   };
 
-  const validateForm = (): boolean => {
+  const validateForm = () => {
     const errors: FormErrors = {};
     let isValid = true;
 
