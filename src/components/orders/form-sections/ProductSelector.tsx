@@ -9,6 +9,7 @@ interface Product {
   bag_width?: number;
   border_dimension?: number;
   default_rate?: number;
+  default_quantity?: number;
   catalog_components?: Array<{
     id: string;
     component_type: string;
@@ -61,6 +62,9 @@ export const ProductSelector = ({
             catalogProducts?.map((product) => (
               <SelectItem key={product.id} value={product.id}>
                 {product.name} ({product.bag_length}" × {product.bag_width}")
+                {product.default_quantity && product.default_quantity > 1 ? 
+                  ` - ${product.default_quantity} units` : 
+                  ''}
               </SelectItem>
             ))
           )}

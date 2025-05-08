@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCatalogProducts } from "@/hooks/use-catalog-products";
 import { OrderFormData } from "@/types/order";
 
-// Import new component sections
+// Import component sections
 import { ProductSelector } from "./form-sections/ProductSelector";
 import { CompanySection } from "./form-sections/CompanySection";
 import { OrderDetailsSection } from "./form-sections/OrderDetailsSection";
@@ -21,6 +21,8 @@ interface OrderDetailsFormProps {
   formErrors: {
     company?: string;
     quantity?: string;
+    product_quantity?: string;
+    total_quantity?: string;
     bag_length?: string;
     bag_width?: string;
     order_date?: string;
@@ -72,6 +74,34 @@ export const OrderDetailsForm = ({
         handleOrderChange({ target: { name: 'border_dimension', value: selectedProduct.border_dimension.toString() } });
       }
       
+      // Set product_quantity from default_quantity if available
+      if (selectedProduct.default_quantity) {
+        handleOrderChange({ 
+          target: { 
+            name: 'product_quantity', 
+            value: selectedProduct.default_quantity.toString() 
+          } 
+        });
+        
+        // If order quantity is already set, update total_quantity
+        if (formData.quantity) {
+          const orderQty = parseFloat(formData.quantity);
+          const productQty = parseFloat(selectedProduct.default_quantity.toString());
+          
+          if (!isNaN(orderQty) && !isNaN(productQty)) {
+            handleOrderChange({ 
+              target: { 
+                name: 'total_quantity', 
+                value: (orderQty * productQty).toString() 
+              } 
+            });
+          }
+        }
+      } else {
+        // Default to 1 if not specified
+        handleOrderChange({ target: { name: 'product_quantity', value: "1" } });
+      }
+      
       // Only set rate from the product if available
       if (selectedProduct.default_rate) {
         handleOrderChange({ target: { name: 'rate', value: selectedProduct.default_rate.toString() } });
@@ -79,33 +109,22 @@ export const OrderDetailsForm = ({
       
       // Pass components to parent component with complete material data
       if (onProductSelect && selectedProduct.catalog_components && selectedProduct.catalog_components.length > 0) {
-        console.log("Passing components with material data:", selectedProduct.catalog_components);
+        // Add default_quantity to each component for reference
+        const componentsWithQuantity = selectedProduct.catalog_components.map(component => ({
+          ...component,
+          default_quantity: selectedProduct.default_quantity || 1
+        }));
         
-        // Make sure each component has consumption data
-        const componentsWithConsumption = selectedProduct.catalog_components.map(component => {
-          // Ensure each component has a consumption value
-          if (!component.consumption && component.length && component.width && component.roll_width) {
-            // Calculate consumption if not already set
-            const length = parseFloat(component.length.toString());
-            const width = parseFloat(component.width.toString());
-            const rollWidth = parseFloat(component.roll_width.toString());
-            
-            if (!isNaN(length) && !isNaN(width) && !isNaN(rollWidth) && rollWidth > 0) {
-              // Formula: (length * width) / (roll_width * 39.39)
-              const consumption = (length * width) / (rollWidth * 39.39);
-              component.consumption = consumption;
-            }
-          }
-          return component;
-        });
+        console.log("Passing components with material data and default quantity:", componentsWithQuantity);
+        onProductSelect(componentsWithQuantity);
         
-        onProductSelect(componentsWithConsumption);
-        
-        // If quantity is already set, update consumption values
+        // If quantity is already set, update consumption values based on total quantity
         if (formData.quantity && updateConsumptionBasedOnQuantity) {
           const quantity = parseFloat(formData.quantity);
+          const productQty = selectedProduct.default_quantity || 1;
+          
           if (!isNaN(quantity) && quantity > 0) {
-            setTimeout(() => updateConsumptionBasedOnQuantity(quantity), 100);
+            setTimeout(() => updateConsumptionBasedOnQuantity(quantity * productQty), 100);
           }
         }
       } else {

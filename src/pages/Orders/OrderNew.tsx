@@ -104,7 +104,7 @@ const OrderNew = () => {
                 components={components}
                 componentOptions={componentOptions}
                 onChange={handleComponentChange}
-                defaultQuantity={orderDetails.quantity}
+                defaultQuantity={orderDetails.total_quantity || orderDetails.quantity}
                 showConsumption={true}
               />
               
@@ -127,7 +127,7 @@ const OrderNew = () => {
                   componentOptions={componentOptions}
                   handleCustomComponentChange={handleCustomComponentChange}
                   removeCustomComponent={removeCustomComponent}
-                  defaultQuantity={orderDetails.quantity}
+                  defaultQuantity={orderDetails.total_quantity || orderDetails.quantity}
                   showConsumption={true}
                 />
               </div>

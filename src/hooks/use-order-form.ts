@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -25,6 +24,8 @@ interface FormErrors {
   bag_length?: string;
   bag_width?: string;
   order_date?: string;
+  product_quantity?: string;
+  total_quantity?: string;
 }
 
 interface UseOrderFormReturn {
@@ -52,6 +53,8 @@ export function useOrderForm(): UseOrderFormReturn {
     company_name: "",
     company_id: null,
     quantity: "",
+    product_quantity: "1", // Default to 1 for product quantity
+    total_quantity: "", // Will be calculated as product_quantity * quantity
     bag_length: "",
     bag_width: "",
     border_dimension: "",
@@ -83,11 +86,24 @@ export function useOrderForm(): UseOrderFormReturn {
         [name]: value
       }));
 
-      // If quantity changed, update consumption values
-      if (name === 'quantity' && value) {
-        const quantity = parseFloat(value as string);
-        if (!isNaN(quantity)) {
-          updateConsumptionBasedOnQuantity(quantity);
+      // If quantity or product_quantity changed, calculate total quantity and update consumption
+      if ((name === 'quantity' || name === 'product_quantity') && value) {
+        const orderQty = name === 'quantity' ? parseFloat(value as string) : parseFloat(orderDetails.quantity || "1");
+        const productQty = name === 'product_quantity' ? parseFloat(value as string) : parseFloat(orderDetails.product_quantity || "1");
+        
+        if (!isNaN(orderQty) && !isNaN(productQty)) {
+          const totalQty = orderQty * productQty;
+          
+          // Update total_quantity in orderDetails
+          setOrderDetails(prev => ({
+            ...prev,
+            total_quantity: totalQty.toString()
+          }));
+          
+          // Update consumption values based on total quantity
+          if (!isNaN(totalQty) && totalQty > 0) {
+            updateConsumptionBasedOnQuantity(totalQty);
+          }
         }
       }
     }
@@ -189,6 +205,29 @@ export function useOrderForm(): UseOrderFormReturn {
       console.log("No components to process");
       return;
     }
+    
+    // Get product default quantity if available from first component
+    // This assumes all components from the same product have the same default_quantity
+    const productQuantity = components[0]?.default_quantity || 1;
+    console.log(`Product default quantity: ${productQuantity}`);
+    
+    // Update product_quantity in orderDetails
+    setOrderDetails(prev => {
+      const newDetails = {
+        ...prev,
+        product_quantity: productQuantity.toString()
+      };
+      
+      // Calculate total quantity if order quantity is already set
+      if (prev.quantity) {
+        const orderQty = parseFloat(prev.quantity);
+        if (!isNaN(orderQty)) {
+          newDetails.total_quantity = (orderQty * productQuantity).toString();
+        }
+      }
+      
+      return newDetails;
+    });
     
     // Clear existing components first
     // Define standard types in lowercase for case-insensitive comparison
@@ -303,19 +342,16 @@ export function useOrderForm(): UseOrderFormReturn {
       
       const componentTypeLower = component.component_type.toLowerCase();
       
-      // FIXED: Calculate the base consumption (per unit) from the total consumption
-      // The consumption stored in catalog is the TOTAL consumption with default_quantity already applied
-      // So for our internal tracking, we need to extract the base consumption per unit
+      // Calculate the base consumption (per unit) from the total consumption
+      // Divide by product default quantity to get the base consumption per unit
       let baseConsumption: number | undefined;
       
       if (totalConsumption) {
         const totalConsumptionVal = parseFloat(totalConsumption);
         if (!isNaN(totalConsumptionVal)) {
-          // Use the real saved consumption from catalog as our total consumption
-          baseConsumption = totalConsumptionVal;
-          
-          // No need to divide by default_quantity - this is already the correct value to use
-          console.log(`Using catalog consumption value directly: ${totalConsumptionVal}`);
+          // Calculate base consumption per unit from total consumption
+          baseConsumption = totalConsumptionVal / productQuantity;
+          console.log(`Calculated base consumption: ${baseConsumption} (total: ${totalConsumptionVal} / product qty: ${productQuantity})`);
         }
       }
       
@@ -330,7 +366,7 @@ export function useOrderForm(): UseOrderFormReturn {
           length,
           width,
           consumption: totalConsumption, // Use the actual saved total consumption
-          baseConsumption: baseConsumption?.toString(), // Store the total as base too since we don't divide
+          baseConsumption: baseConsumption?.toString(), // Store the base consumption per unit
           roll_width: materialRollWidth || rollWidth,
           material_id: materialId
         });
@@ -353,7 +389,7 @@ export function useOrderForm(): UseOrderFormReturn {
           length,
           width,
           consumption: totalConsumption, // Use the actual saved total consumption 
-          baseConsumption: baseConsumption?.toString(), // Store the total as base too since we don't divide
+          baseConsumption: baseConsumption?.toString(), // Store the base consumption per unit
           roll_width: materialRollWidth || rollWidth,
           material_id: materialId
         };
@@ -374,12 +410,20 @@ export function useOrderForm(): UseOrderFormReturn {
     setCustomComponents(newCustomComponents);
     setBaseConsumptions(newBaseConsumptions);
 
-    // If quantity already entered, update consumption values to reflect the actual order quantity
-    // instead of the product's default quantity
+    // If quantity already entered, recalculate total quantity and update consumption
     if (orderDetails.quantity) {
-      const quantity = parseFloat(orderDetails.quantity);
-      if (!isNaN(quantity) && quantity > 0) {
-        setTimeout(() => updateConsumptionBasedOnQuantity(quantity), 100);
+      const orderQty = parseFloat(orderDetails.quantity);
+      if (!isNaN(orderQty) && orderQty > 0) {
+        const totalQty = orderQty * productQuantity;
+        
+        // Update total quantity
+        setOrderDetails(prev => ({
+          ...prev,
+          total_quantity: totalQty.toString()
+        }));
+        
+        // Update consumptions with total quantity
+        setTimeout(() => updateConsumptionBasedOnQuantity(totalQty), 100);
       }
     }
   };
@@ -397,6 +441,18 @@ export function useOrderForm(): UseOrderFormReturn {
     // Validate quantity
     if (!orderDetails.quantity || parseFloat(orderDetails.quantity) <= 0) {
       errors.quantity = "Valid quantity is required";
+      isValid = false;
+    }
+
+    // Validate product quantity
+    if (!orderDetails.product_quantity || parseFloat(orderDetails.product_quantity) <= 0) {
+      errors.product_quantity = "Valid product quantity is required";
+      isValid = false;
+    }
+
+    // Validate total quantity
+    if (!orderDetails.total_quantity || parseFloat(orderDetails.total_quantity) <= 0) {
+      errors.total_quantity = "Valid total quantity is required";
       isValid = false;
     }
 
@@ -493,7 +549,7 @@ export function useOrderForm(): UseOrderFormReturn {
       const orderData = {
         company_name: orderDetails.company_id ? null : orderDetails.company_name,
         company_id: orderDetails.company_id,
-        quantity: parseInt(orderDetails.quantity),
+        quantity: parseInt(orderDetails.total_quantity), // Use total quantity for the order
         bag_length: parseFloat(orderDetails.bag_length),
         bag_width: parseFloat(orderDetails.bag_width),
         border_dimension: orderDetails.border_dimension ? parseFloat(orderDetails.border_dimension) : null,

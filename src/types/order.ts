@@ -24,6 +24,8 @@ export interface OrderFormData {
   company_name: string;
   company_id: string | null;
   quantity: string;
+  product_quantity: string;
+  total_quantity: string;
   bag_length: string;
   bag_width: string;
   border_dimension?: string;
