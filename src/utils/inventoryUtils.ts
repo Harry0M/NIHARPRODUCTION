@@ -81,6 +81,7 @@ export const updateInventoryForOrderComponents = async (
   const transactions = [];
   const inventoryUpdates = [];
   const errors = [];
+  const updatedMaterials = [];
   
   // Process each material
   for (const materialId of Object.keys(materialConsumption)) {
@@ -135,6 +136,14 @@ export const updateInventoryForOrderComponents = async (
         updated_at: timestamp
       });
       
+      updatedMaterials.push({
+        name: materialData.material_name,
+        previous: materialData.quantity,
+        new: newQuantity,
+        unit: materialData.unit,
+        consumed: consumption
+      });
+      
       console.log(`Updating ${materialData.material_name} quantity to ${newQuantity} ${materialData.unit} (consumed ${consumption})`);
     } catch (err) {
       console.error(`Error processing material ${materialId}:`, err);
@@ -142,7 +151,7 @@ export const updateInventoryForOrderComponents = async (
     }
   }
   
-  // Record transactions
+  // Record transactions - use single insert for better atomicity
   if (transactions.length > 0) {
     console.log("Recording inventory transactions:", transactions);
     try {
@@ -163,7 +172,7 @@ export const updateInventoryForOrderComponents = async (
     }
   }
   
-  // Update inventory quantities
+  // Update inventory quantities - do all updates in sequence
   for (const update of inventoryUpdates) {
     try {
       const { error: updateError } = await supabase
@@ -183,16 +192,31 @@ export const updateInventoryForOrderComponents = async (
     }
   }
   
+  // Prepare summary message for toast
+  let summaryMessage = "Updated inventory for ";
+  if (updatedMaterials.length > 0) {
+    if (updatedMaterials.length === 1) {
+      const material = updatedMaterials[0];
+      summaryMessage += `${material.name} (${material.consumed.toFixed(2)} ${material.unit})`;
+    } else {
+      summaryMessage += `${updatedMaterials.length} materials`;
+    }
+  } else {
+    summaryMessage = "No inventory updated";
+  }
+  
   if (errors.length > 0) {
     return { 
       success: false, 
-      message: `Updated inventory with ${errors.length} errors. Check console for details.`,
-      errors
+      message: `${summaryMessage} with ${errors.length} errors. Check console for details.`,
+      errors,
+      updatedMaterials
     };
   }
   
   return { 
     success: true, 
-    message: `Updated inventory for ${inventoryUpdates.length} materials`
+    message: summaryMessage,
+    updatedMaterials
   };
 };

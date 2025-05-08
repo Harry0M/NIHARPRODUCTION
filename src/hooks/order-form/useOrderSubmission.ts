@@ -28,9 +28,27 @@ export function useOrderSubmission({
     if (!validateForm()) {
       showToast({
         title: "Form validation failed",
-        description: "Please correct the highlighted fields"
+        description: "Please correct the highlighted fields",
+        type: "error"
       });
       return;
+    }
+    
+    // Check if any components have materials selected
+    const allComponents = [
+      ...Object.values(components).filter(Boolean),
+      ...customComponents
+    ].filter(Boolean);
+    
+    const componentsWithMaterials = allComponents.filter(comp => comp.material_id);
+    
+    if (componentsWithMaterials.length === 0 && allComponents.length > 0) {
+      showToast({
+        title: "Missing material selection",
+        description: "Please select materials for at least one component for inventory tracking",
+        type: "warning"
+      });
+      // Allow submission to continue, but warn user about missing material selection
     }
     
     setSubmitting(true);
@@ -172,7 +190,8 @@ export function useOrderSubmission({
             
             showToast({
               title: "Error saving components",
-              description: componentsError.message
+              description: componentsError.message,
+              type: "error"
             });
           } else {
             console.log("Components saved successfully:", insertedComponents);
@@ -180,7 +199,8 @@ export function useOrderSubmission({
             // Success toast for components
             showToast({
               title: "Components saved successfully",
-              description: `${insertedComponents?.length || 0} components saved`
+              description: `${insertedComponents?.length || 0} components saved`,
+              type: "success"
             });
             
             // Update inventory based on component consumption
@@ -197,20 +217,45 @@ export function useOrderSubmission({
                 console.log("Inventory update successful:", inventoryResult.message);
                 showToast({
                   title: "Inventory updated",
-                  description: inventoryResult.message
+                  description: inventoryResult.message,
+                  type: "success"
                 });
+                
+                // Force invalidate any transaction queries to ensure fresh data
+                // This will help show the new transactions in the stock detail dialog
+                setTimeout(() => {
+                  // We don't have direct access to queryClient here, so we'll use localStorage
+                  // as a communication channel to tell other components to refresh
+                  try {
+                    // Store the timestamp of the update
+                    localStorage.setItem('last_inventory_update', new Date().toISOString());
+                    // Store affected material IDs if available
+                    if (inventoryResult.updatedMaterials && inventoryResult.updatedMaterials.length > 0) {
+                      const materialIds = componentsToInsert
+                        .filter(c => c.material_id)
+                        .map(c => c.material_id);
+                      localStorage.setItem('updated_material_ids', JSON.stringify(materialIds));
+                    }
+                  } catch (e) {
+                    // Ignore localStorage errors
+                    console.warn("Could not store inventory update info in localStorage", e);
+                  }
+                }, 100);
+                
               } else {
                 console.error("Inventory update failed:", inventoryResult.errors);
                 showToast({
                   title: "Inventory update failed",
-                  description: inventoryResult.message || "An error occurred updating inventory"
+                  description: inventoryResult.message || "An error occurred updating inventory",
+                  type: "error"
                 });
               }
             } catch (inventoryError: any) {
               console.error("Error updating inventory:", inventoryError);
               showToast({
                 title: "Error updating inventory",
-                description: inventoryError.message || "An error occurred updating inventory"
+                description: inventoryError.message || "An error occurred updating inventory",
+                type: "error"
               });
             }
           }
@@ -223,7 +268,8 @@ export function useOrderSubmission({
       
       showToast({
         title: "Order created successfully",
-        description: `Order number: ${orderResult.order_number}`
+        description: `Order number: ${orderResult.order_number}`,
+        type: "success"
       });
 
       return orderResult.id;
@@ -232,7 +278,8 @@ export function useOrderSubmission({
       console.error("Error creating order:", error);
       showToast({
         title: "Error creating order",
-        description: error.message || "An unexpected error occurred"
+        description: error.message || "An unexpected error occurred",
+        type: "error"
       });
     } finally {
       setSubmitting(false);

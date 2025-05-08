@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -52,7 +52,8 @@ export const StockDetailDialog = ({
     try {
       showToast({
         title: "Refreshing transactions",
-        description: "Checking for latest transaction data"
+        description: "Checking for latest transaction data",
+        type: "info" // Use 'type' instead of 'variant'
       });
       
       await refreshTransactions();
@@ -61,14 +62,15 @@ export const StockDetailDialog = ({
         title: "Refreshed",
         description: transactions && transactions.length > 0 
           ? `Found ${transactions.length} transactions` 
-          : "No transactions found"
+          : "No transactions found",
+        type: "info" // Use 'type' instead of 'variant'  
       });
     } catch (error) {
       console.error("Error refreshing transactions:", error);
       showToast({
         title: "Refresh failed",
         description: "Could not refresh transaction data",
-        variant: "destructive"
+        type: "error" // Use 'type' instead of 'variant'
       });
     }
   };
@@ -77,7 +79,7 @@ export const StockDetailDialog = ({
   const hasTransactions = transactions && transactions.length > 0;
 
   // Auto-switch to transactions tab if transactions appear after refresh
-  React.useEffect(() => {
+  useEffect(() => {
     if (hasTransactions && isRefreshing === false && activeTab === "details") {
       // Only switch if we just finished refreshing and found transactions
       setActiveTab("transactions");
@@ -136,7 +138,7 @@ export const StockDetailDialog = ({
               <TabsTrigger value="details">Details</TabsTrigger>
               <TabsTrigger 
                 value="transactions" 
-                className="relative"
+                className={`relative ${hasTransactions ? 'font-medium text-primary' : ''}`}
                 onClick={() => hasTransactions === false && handleRefresh()}
               >
                 Transactions
@@ -157,22 +159,22 @@ export const StockDetailDialog = ({
                 linkedComponents={linkedComponents} 
               />
               
-              {/* Add a button to view transactions */}
-              {!hasTransactions && (
-                <div className="mt-4 flex justify-center">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setActiveTab("transactions");
-                      handleRefresh();
-                    }}
-                    className="flex items-center gap-1"
-                  >
-                    <RefreshCcw className="h-4 w-4" />
-                    Check for Transactions
-                  </Button>
-                </div>
-              )}
+              {/* Make the button to view transactions more prominent when transactions exist */}
+              <div className="mt-6 flex justify-center">
+                <Button
+                  variant={hasTransactions ? "default" : "outline"}
+                  onClick={() => {
+                    setActiveTab("transactions");
+                    if (!hasTransactions) handleRefresh();
+                  }}
+                  className="flex items-center gap-1"
+                >
+                  <RefreshCcw className="h-4 w-4" />
+                  {hasTransactions 
+                    ? `View ${transactions.length} Transaction${transactions.length !== 1 ? 's' : ''}`
+                    : "Check for Transactions"}
+                </Button>
+              </div>
             </TabsContent>
             
             <TabsContent value="transactions">
