@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { 
@@ -13,7 +14,8 @@ import {
   Factory,
   FileText,
   ShoppingCart,
-  Building
+  Building,
+  BarChart
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -27,6 +29,7 @@ const navItems = [
   { name: "Suppliers", path: "/suppliers", icon: ShoppingCart },
   { name: "Dispatch", path: "/dispatch", icon: Truck },
   { name: "Inventory", path: "/inventory", icon: Database },
+  { name: "Analysis", path: "/analysis", icon: BarChart },
   { name: "Settings", path: "/settings", icon: Settings },
   { name: "Companies", path: "/companies", icon: Building },
 ];

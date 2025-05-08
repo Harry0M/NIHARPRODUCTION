@@ -1,3 +1,4 @@
+
 import { Navigate } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import AuthLayout from "@/components/layout/AuthLayout";
@@ -35,6 +36,11 @@ import VendorList from "@/pages/VendorList";
 import VendorNew from "@/pages/VendorNew";
 import Index from "@/pages/Index";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import AnalysisDashboard from "@/pages/Analysis/AnalysisDashboard";
+import MaterialConsumption from "@/pages/Analysis/MaterialConsumption";
+import OrderConsumption from "@/pages/Analysis/OrderConsumption";
+import InventoryValue from "@/pages/Analysis/InventoryValue";
+import RefillAnalysis from "@/pages/Analysis/RefillAnalysis";
 
 const routes = [
   {
@@ -89,6 +95,16 @@ const routes = [
             children: [
               { path: "", element: <Dispatch /> },
               { path: ":id", element: <DispatchDetail /> },
+            ],
+          },
+          {
+            path: "analysis",
+            children: [
+              { path: "", element: <AnalysisDashboard /> },
+              { path: "materials", element: <MaterialConsumption /> },
+              { path: "orders", element: <OrderConsumption /> },
+              { path: "value", element: <InventoryValue /> },
+              { path: "refill", element: <RefillAnalysis /> },
             ],
           },
           {
