@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, History, Bell } from "lucide-react";
@@ -80,7 +81,7 @@ const StockList = () => {
       const { data, error } = await supabase
         .from('inventory_transactions')
         .select('material_id')
-        .eq('created_at', '>', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
         .then(({ data, error }) => {
           if (error) {
             console.error("Error fetching transaction counts:", error);
