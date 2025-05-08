@@ -31,7 +31,7 @@ export const StockTransactionHistory = ({
               disabled={isLoading}
               className="flex items-center gap-1"
             >
-              <RefreshCcw className="h-4 w-4" />
+              <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
               {isLoading ? "Refreshing..." : "Refresh"}
             </Button>
           )}
@@ -42,6 +42,7 @@ export const StockTransactionHistory = ({
             <p className="text-muted-foreground text-center">No transaction history found</p>
             <p className="text-sm text-muted-foreground text-center max-w-md">
               When materials are used in orders or new stock is added, transactions will appear here.
+              {isLoading ? " Checking for latest transactions..." : ""}
             </p>
           </div>
         </CardContent>
@@ -84,7 +85,7 @@ export const StockTransactionHistory = ({
             disabled={isLoading}
             className="flex items-center gap-1"
           >
-            <RefreshCcw className="h-4 w-4" />
+            <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             {isLoading ? "Refreshing..." : "Refresh"}
           </Button>
         )}

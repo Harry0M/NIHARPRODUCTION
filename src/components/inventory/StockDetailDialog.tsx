@@ -8,12 +8,13 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, AlertCircle } from "lucide-react";
+import { Edit, Trash2, AlertCircle, RefreshCcw } from "lucide-react";
 import { StockInfoGrid } from "./stock-detail/StockInfoGrid";
 import { useStockDetail } from "@/hooks/inventory/useStockDetail";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StockTransactionHistory } from "./stock-detail/StockTransactionHistory";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { showToast } from "@/components/ui/enhanced-toast";
 
 interface StockDetailDialogProps {
   stockId: string | null;
@@ -44,6 +45,22 @@ export const StockDetailDialog = ({
     stockId,
     onClose: handleClose,
   });
+  
+  // Handle manual refresh with toast feedback
+  const handleRefresh = async () => {
+    try {
+      await refreshTransactions();
+      showToast({
+        title: "Refreshed",
+        description: "Transaction data has been updated"
+      });
+    } catch (error) {
+      console.error("Error refreshing transactions:", error);
+    }
+  };
+
+  // Calculate if there are any transactions to show
+  const hasTransactions = transactions && transactions.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -91,7 +108,14 @@ export const StockDetailDialog = ({
           <Tabs defaultValue="details">
             <TabsList className="grid grid-cols-2 mb-4">
               <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="transactions">Transactions</TabsTrigger>
+              <TabsTrigger value="transactions" className="relative">
+                Transactions
+                {hasTransactions && (
+                  <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-primary w-5 h-5 text-[10px] text-primary-foreground">
+                    {transactions.length}
+                  </span>
+                )}
+              </TabsTrigger>
             </TabsList>
             
             <TabsContent value="details">
@@ -102,6 +126,18 @@ export const StockDetailDialog = ({
             </TabsContent>
             
             <TabsContent value="transactions">
+              <div className="mb-4 flex justify-end">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="flex items-center gap-1"
+                >
+                  <RefreshCcw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                </Button>
+              </div>
               <StockTransactionHistory 
                 transactions={transactions || []} 
                 onRefresh={refreshTransactions}

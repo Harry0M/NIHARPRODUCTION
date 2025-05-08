@@ -144,7 +144,7 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     },
     enabled: !!stockId,
     // Add more frequent refetching to ensure we get the latest data
-    refetchInterval: 5000, // Refetch every 5 seconds
+    refetchInterval: 3000, // Refetch every 3 seconds while visible
     refetchOnWindowFocus: true, // Refetch when window regains focus
     staleTime: 1000, // Data becomes stale after 1 second
   });
@@ -156,16 +156,11 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     setIsRefreshing(true);
     try {
       await refetchTransactions();
-      showToast({
-        title: "Transactions refreshed",
-        description: "The latest transaction data has been loaded"
-      });
+      // No toast here - the caller can decide to show feedback
+      return true;
     } catch (error) {
       console.error("Error refreshing transactions:", error);
-      showToast({
-        title: "Error refreshing transactions",
-        description: "There was a problem loading the latest transaction data"
-      });
+      return false;
     } finally {
       setIsRefreshing(false);
     }

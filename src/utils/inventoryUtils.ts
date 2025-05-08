@@ -53,84 +53,109 @@ export const updateInventoryForOrderComponents = async (
   
   const transactions = [];
   const inventoryUpdates = [];
+  const errors = [];
   
   // Process each material
   for (const materialId of Object.keys(materialConsumption)) {
     const consumption = materialConsumption[materialId];
     
-    // Get current material info
-    const { data: materialData, error: materialError } = await supabase
-      .from("inventory")
-      .select("id, material_name, quantity, unit")
-      .eq("id", materialId)
-      .single();
-    
-    if (materialError) {
-      console.error(`Error fetching material ${materialId}:`, materialError);
-      continue;
+    try {
+      // Get current material info
+      const { data: materialData, error: materialError } = await supabase
+        .from("inventory")
+        .select("id, material_name, quantity, unit")
+        .eq("id", materialId)
+        .single();
+      
+      if (materialError) {
+        console.error(`Error fetching material ${materialId}:`, materialError);
+        errors.push(`Error fetching material ${materialId}: ${materialError.message}`);
+        continue;
+      }
+      
+      console.log(`Current material ${materialData.material_name} quantity: ${materialData.quantity} ${materialData.unit}`);
+      
+      const timestamp = new Date().toISOString();
+      
+      // Create negative transaction for material consumption
+      const transaction = {
+        material_id: materialId,
+        inventory_id: materialId,
+        quantity: -consumption, // Negative since we're consuming material
+        transaction_type: "order",
+        reference_id: orderId,
+        reference_number: orderNumber,
+        reference_type: "Order",
+        notes: `Material used in order #${orderNumber}`,
+        created_at: timestamp,
+        updated_at: timestamp
+      };
+      
+      transactions.push(transaction);
+      console.log(`Creating transaction for ${materialData.material_name}:`, transaction);
+      
+      // Update inventory quantity
+      const newQuantity = Math.max(0, materialData.quantity - consumption);
+      inventoryUpdates.push({
+        id: materialId,
+        quantity: newQuantity,
+        updated_at: timestamp
+      });
+      
+      console.log(`Updating ${materialData.material_name} quantity to ${newQuantity} ${materialData.unit} (consumed ${consumption})`);
+    } catch (err) {
+      console.error(`Error processing material ${materialId}:`, err);
+      errors.push(`Error processing material ${materialId}: ${err}`);
     }
-    
-    console.log(`Current material ${materialData.material_name} quantity: ${materialData.quantity} ${materialData.unit}`);
-    
-    const timestamp = new Date().toISOString();
-    
-    // Create negative transaction for material consumption
-    const transaction = {
-      material_id: materialId,
-      inventory_id: materialId,
-      quantity: -consumption, // Negative since we're consuming material
-      transaction_type: "order",
-      reference_id: orderId,
-      reference_number: orderNumber,
-      reference_type: "Order",
-      notes: `Material used in order #${orderNumber}`,
-      created_at: timestamp,
-      updated_at: timestamp
-    };
-    
-    transactions.push(transaction);
-    console.log(`Creating transaction for ${materialData.material_name}:`, transaction);
-    
-    // Update inventory quantity
-    const newQuantity = Math.max(0, materialData.quantity - consumption);
-    inventoryUpdates.push({
-      id: materialId,
-      quantity: newQuantity,
-      updated_at: timestamp
-    });
-    
-    console.log(`Updating ${materialData.material_name} quantity to ${newQuantity} ${materialData.unit} (consumed ${consumption})`);
   }
   
   // Record transactions
   if (transactions.length > 0) {
     console.log("Recording inventory transactions:", transactions);
-    const { data: transactionData, error: transactionError } = await supabase
-      .from("inventory_transactions")
-      .insert(transactions)
-      .select();
-    
-    if (transactionError) {
-      console.error("Error recording inventory transactions:", transactionError);
-      return { success: false, error: transactionError };
+    try {
+      const { data: transactionData, error: transactionError } = await supabase
+        .from("inventory_transactions")
+        .insert(transactions)
+        .select();
+      
+      if (transactionError) {
+        console.error("Error recording inventory transactions:", transactionError);
+        errors.push(`Error recording inventory transactions: ${transactionError.message}`);
+      } else {
+        console.log("Successfully recorded inventory transactions:", transactionData);
+      }
+    } catch (err: any) {
+      console.error("Error inserting transactions:", err);
+      errors.push(`Error inserting transactions: ${err.message}`);
     }
-    
-    console.log("Successfully recorded inventory transactions:", transactionData);
   }
   
   // Update inventory quantities
   for (const update of inventoryUpdates) {
-    const { error: updateError } = await supabase
-      .from("inventory")
-      .update({ quantity: update.quantity, updated_at: update.updated_at })
-      .eq("id", update.id);
-    
-    if (updateError) {
-      console.error(`Error updating inventory ${update.id}:`, updateError);
-      return { success: false, error: updateError };
+    try {
+      const { error: updateError } = await supabase
+        .from("inventory")
+        .update({ quantity: update.quantity, updated_at: update.updated_at })
+        .eq("id", update.id);
+      
+      if (updateError) {
+        console.error(`Error updating inventory ${update.id}:`, updateError);
+        errors.push(`Error updating inventory ${update.id}: ${updateError.message}`);
+      } else {
+        console.log(`Successfully updated inventory ${update.id} to quantity ${update.quantity}`);
+      }
+    } catch (err: any) {
+      console.error(`Error updating inventory ${update.id}:`, err);
+      errors.push(`Error updating inventory ${update.id}: ${err.message}`);
     }
-    
-    console.log(`Successfully updated inventory ${update.id} to quantity ${update.quantity}`);
+  }
+  
+  if (errors.length > 0) {
+    return { 
+      success: false, 
+      message: `Updated inventory with some errors. Check console for details.`,
+      errors
+    };
   }
   
   return { 
