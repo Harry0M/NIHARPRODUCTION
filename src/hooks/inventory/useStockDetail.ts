@@ -11,7 +11,8 @@ interface UseStockDetailProps {
 export interface StockTransaction {
   id: string;
   created_at: string;
-  inventory_id: string;
+  inventory_id?: string;  // Made optional
+  material_id?: string;   // Added this field to match DB schema
   transaction_type: string;
   quantity: number;
   reference_type: string | null;
@@ -70,7 +71,7 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     enabled: !!stockId,
   });
 
-  // New query to fetch transaction history
+  // Query to fetch transaction history
   const { data: transactions, isLoading: isLoadingTransactions } = useQuery({
     queryKey: ["stock-transactions", stockId],
     queryFn: async () => {
@@ -79,14 +80,26 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
       const { data, error } = await supabase
         .from("inventory_transactions")
         .select("*")
-        .eq("inventory_id", stockId)
+        .eq("material_id", stockId)
         .order("created_at", { ascending: false });
         
       if (error) {
         console.error("Error fetching transactions:", error);
         throw error;
       }
-      return data as StockTransaction[] || [];
+      
+      // Transform data to match StockTransaction interface
+      const transformedData = (data || []).map(transaction => {
+        return {
+          ...transaction,
+          inventory_id: transaction.material_id, // Map material_id to inventory_id
+          reference_type: transaction.reference_type || null,
+          reference_id: transaction.reference_id || null,
+          notes: transaction.notes || null
+        } as StockTransaction;
+      });
+      
+      return transformedData;
     },
     enabled: !!stockId,
   });

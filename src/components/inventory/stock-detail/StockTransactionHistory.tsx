@@ -9,20 +9,10 @@ import {
   CardTitle,
   CardContent
 } from "@/components/ui/card";
-
-interface Transaction {
-  id: string;
-  created_at: string;
-  inventory_id: string;
-  transaction_type: string;
-  quantity: number;
-  reference_type: string | null;
-  reference_id: string | null;
-  notes: string | null;
-}
+import { StockTransaction } from "@/hooks/inventory/useStockDetail";
 
 interface StockTransactionHistoryProps {
-  transactions: Transaction[] | undefined;
+  transactions: StockTransaction[] | undefined;
   isLoading: boolean;
 }
 
