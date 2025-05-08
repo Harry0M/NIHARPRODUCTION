@@ -12,6 +12,8 @@ import { Edit, Trash2, AlertCircle } from "lucide-react";
 import { StockInfoGrid } from "./stock-detail/StockInfoGrid";
 import { useStockDetail } from "@/hooks/inventory/useStockDetail";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StockTransactionHistory } from "./stock-detail/StockTransactionHistory";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface StockDetailDialogProps {
   stockId: string | null;
@@ -30,7 +32,15 @@ export const StockDetailDialog = ({
 }: StockDetailDialogProps) => {
   const handleClose = () => onOpenChange(false);
 
-  const { stockItem, linkedComponents, transactions, isLoading } = useStockDetail({
+  const { 
+    stockItem, 
+    linkedComponents, 
+    transactions, 
+    isLoading, 
+    refreshTransactions,
+    isRefreshing,
+    isTransactionsLoading
+  } = useStockDetail({
     stockId,
     onClose: handleClose,
   });
@@ -78,11 +88,27 @@ export const StockDetailDialog = ({
             <Skeleton className="h-24 w-full" />
           </div>
         ) : stockItem ? (
-          <StockInfoGrid 
-            stockItem={stockItem} 
-            linkedComponents={linkedComponents} 
-            transactions={transactions} 
-          />
+          <Tabs defaultValue="details">
+            <TabsList className="grid grid-cols-2 mb-4">
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="transactions">Transactions</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="details">
+              <StockInfoGrid 
+                stockItem={stockItem} 
+                linkedComponents={linkedComponents} 
+              />
+            </TabsContent>
+            
+            <TabsContent value="transactions">
+              <StockTransactionHistory 
+                transactions={transactions || []} 
+                onRefresh={refreshTransactions}
+                isLoading={isRefreshing || isTransactionsLoading}
+              />
+            </TabsContent>
+          </Tabs>
         ) : (
           <div className="py-8 text-center flex flex-col items-center gap-2">
             <AlertCircle className="h-10 w-10 text-muted-foreground" />

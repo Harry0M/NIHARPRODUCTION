@@ -72,8 +72,10 @@ export const updateInventoryForOrderComponents = async (
     
     console.log(`Current material ${materialData.material_name} quantity: ${materialData.quantity} ${materialData.unit}`);
     
+    const timestamp = new Date().toISOString();
+    
     // Create negative transaction for material consumption
-    transactions.push({
+    const transaction = {
       material_id: materialId,
       inventory_id: materialId,
       quantity: -consumption, // Negative since we're consuming material
@@ -82,16 +84,19 @@ export const updateInventoryForOrderComponents = async (
       reference_number: orderNumber,
       reference_type: "Order",
       notes: `Material used in order #${orderNumber}`,
-      created_at: new Date().toISOString(), // Add created_at field explicitly 
-      updated_at: new Date().toISOString() // Add updated_at field
-    });
+      created_at: timestamp,
+      updated_at: timestamp
+    };
+    
+    transactions.push(transaction);
+    console.log(`Creating transaction for ${materialData.material_name}:`, transaction);
     
     // Update inventory quantity
     const newQuantity = Math.max(0, materialData.quantity - consumption);
     inventoryUpdates.push({
       id: materialId,
       quantity: newQuantity,
-      updated_at: new Date().toISOString() // Add updated_at field to inventory update
+      updated_at: timestamp
     });
     
     console.log(`Updating ${materialData.material_name} quantity to ${newQuantity} ${materialData.unit} (consumed ${consumption})`);

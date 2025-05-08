@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { showToast } from "@/components/ui/enhanced-toast";
 import { StockTransaction } from "@/types/inventory";
+import { useState } from "react";
 
 interface UseStockDetailProps {
   stockId: string | null;
@@ -31,6 +32,7 @@ interface RawTransactionData {
 
 export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
   const queryClient = useQueryClient();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data: stockItem, isLoading } = useQuery({
     queryKey: ["stock-detail", stockId],
@@ -80,7 +82,7 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     enabled: !!stockId,
   });
 
-  const { data: transactions } = useQuery({
+  const { data: transactions, isLoading: isTransactionsLoading, refetch: refetchTransactions } = useQuery({
     queryKey: ["stock-transactions", stockId],
     queryFn: async () => {
       if (!stockId) return [];
@@ -142,18 +144,40 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     },
     enabled: !!stockId,
     // Add more frequent refetching to ensure we get the latest data
-    refetchInterval: 10000, // Refetch every 10 seconds
+    refetchInterval: 5000, // Refetch every 5 seconds
     refetchOnWindowFocus: true, // Refetch when window regains focus
+    staleTime: 1000, // Data becomes stale after 1 second
   });
+
+  // Function to manually refresh transactions
+  const handleRefreshTransactions = async () => {
+    if (isRefreshing) return;
+    
+    setIsRefreshing(true);
+    try {
+      await refetchTransactions();
+      showToast({
+        title: "Transactions refreshed",
+        description: "The latest transaction data has been loaded"
+      });
+    } catch (error) {
+      console.error("Error refreshing transactions:", error);
+      showToast({
+        title: "Error refreshing transactions",
+        description: "There was a problem loading the latest transaction data"
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   return {
     stockItem,
     linkedComponents,
     transactions,
     isLoading,
-    // Add a method to manually refetch transactions
-    refetchTransactions: () => queryClient.invalidateQueries({
-      queryKey: ["stock-transactions", stockId]
-    })
+    isRefreshing,
+    isTransactionsLoading,
+    refreshTransactions: handleRefreshTransactions
   };
 };

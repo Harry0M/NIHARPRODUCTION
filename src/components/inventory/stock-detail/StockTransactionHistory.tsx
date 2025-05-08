@@ -4,18 +4,37 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StockTransaction } from "@/types/inventory";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { AlertCircle, ArrowDownRight, ArrowUpRight, RefreshCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface StockTransactionHistoryProps {
   transactions: StockTransaction[];
+  onRefresh?: () => void;
+  isLoading?: boolean;
 }
 
-export const StockTransactionHistory = ({ transactions }: StockTransactionHistoryProps) => {
+export const StockTransactionHistory = ({ 
+  transactions,
+  onRefresh,
+  isLoading = false
+}: StockTransactionHistoryProps) => {
   if (!transactions || transactions.length === 0) {
     return (
-      <Card>
-        <CardHeader>
+      <Card className="mt-6">
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Transaction History</CardTitle>
+          {onRefresh && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onRefresh} 
+              disabled={isLoading}
+              className="flex items-center gap-1"
+            >
+              <RefreshCcw className="h-4 w-4" />
+              {isLoading ? "Refreshing..." : "Refresh"}
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-10 space-y-2">
@@ -54,9 +73,21 @@ export const StockTransactionHistory = ({ transactions }: StockTransactionHistor
   };
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="mt-6">
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Transaction History ({transactions.length})</CardTitle>
+        {onRefresh && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={onRefresh} 
+            disabled={isLoading}
+            className="flex items-center gap-1"
+          >
+            <RefreshCcw className="h-4 w-4" />
+            {isLoading ? "Refreshing..." : "Refresh"}
+          </Button>
+        )}
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
