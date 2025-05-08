@@ -2,33 +2,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { showToast } from "@/components/ui/enhanced-toast";
-import { StockTransaction } from "@/types/inventory";
+import { StockTransaction, TransactionLog } from "@/types/inventory";
 import { useState, useEffect } from "react";
 import { manuallyCreateInventoryTransaction } from "@/utils/inventoryUtils";
 
 interface UseStockDetailProps {
   stockId: string | null;
   onClose: () => void;
-}
-
-// Define an interface to represent what we actually receive from the database
-interface RawTransactionData {
-  id: string;
-  material_id: string;
-  quantity: number;
-  created_at: string;
-  transaction_type: string;
-  // Fields that might be missing in some database records
-  inventory_id?: string | null;
-  reference_id?: string | null;
-  reference_number?: string | null;
-  reference_type?: string | null;
-  notes?: string | null;
-  unit_price?: number | null;
-  location_id?: string | null;
-  batch_id?: string | null;
-  roll_width?: number | null;
-  updated_at?: string | null;
 }
 
 export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
@@ -52,6 +32,7 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
             if (materialIds.includes(stockId)) {
               console.log("Local storage update detected for this material, refreshing");
               queryClient.invalidateQueries({ queryKey: ["stock-transactions", stockId] });
+              queryClient.invalidateQueries({ queryKey: ["stock-transaction-logs", stockId] });
               queryClient.invalidateQueries({ queryKey: ["stock-detail", stockId] });
               
               // Show notification
@@ -68,7 +49,7 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
       }
     };
     
-    // Also check for direct updates in this window (not just from other windows)
+    // Check for direct updates in this window
     const checkLocalStorage = () => {
       try {
         const updatedMaterialIds = localStorage.getItem('updated_material_ids');
@@ -83,6 +64,7 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
           if (isRecent && materialIds.includes(stockId)) {
             console.log("Recent local storage update detected for this material, refreshing");
             queryClient.invalidateQueries({ queryKey: ["stock-transactions", stockId] });
+            queryClient.invalidateQueries({ queryKey: ["stock-transaction-logs", stockId] });
             queryClient.invalidateQueries({ queryKey: ["stock-detail", stockId] });
             
             // Try to get material update details
@@ -228,26 +210,16 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     enabled: !!stockId,
   });
 
-  const { 
-    data: transactions, 
-    isLoading: isTransactionsLoading,
-    isError: isTransactionsError, 
-    error: transactionsError, 
-    refetch: refetchTransactions 
-  } = useQuery({
+  // Fetch from both transaction sources to ensure complete history
+  const { data: transactions, isLoading: isTransactionsLoading, refetch: refetchTransactions } = useQuery({
     queryKey: ["stock-transactions", stockId],
     queryFn: async () => {
       if (!stockId) return [];
       
       setErrorMessage(null);
-      
-      // Added logging to track the query execution
       console.log(`Fetching transactions for material ID: ${stockId}`);
       
       try {
-        // More explicit query with detailed logging
-        console.log(`Running transaction query for material_id = ${stockId}`);
-        
         const { data, error } = await supabase
           .from("inventory_transactions")
           .select("*")
@@ -260,46 +232,29 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
           throw error;
         }
         
-        // Log the raw data from database to inspect its structure
-        console.log("Raw transaction data:", data);
         console.log("Transaction count:", data?.length || 0);
         
-        // If no transactions, return empty array early
-        if (!data || data.length === 0) {
-          return [];
-        }
+        // Map the data to the StockTransaction interface
+        const transactions: StockTransaction[] = (data || []).map(item => ({
+          id: item.id,
+          material_id: item.material_id,
+          inventory_id: item.inventory_id || stockId || item.material_id,
+          quantity: item.quantity,
+          created_at: item.created_at,
+          reference_id: item.reference_id || null,
+          reference_number: item.reference_number || null,
+          reference_type: item.reference_type || null,
+          notes: item.notes || null,
+          unit_price: item.unit_price || null,
+          transaction_type: item.transaction_type,
+          location_id: item.location_id || null,
+          batch_id: item.batch_id || null,
+          roll_width: item.roll_width || null,
+          updated_at: item.updated_at || item.created_at || null,
+          unit: item.unit || null
+        }));
         
-        // Explicitly cast the data to RawTransactionData array for better type safety
-        const rawData = data as RawTransactionData[];
-        
-        // Map raw transaction data to match the StockTransaction interface
-        const mappedTransactions: StockTransaction[] = rawData.map(item => {
-          // Create a properly typed transaction object with fallbacks for missing properties
-          const transaction: StockTransaction = {
-            id: item.id,
-            material_id: item.material_id,
-            // This field might be missing in the database, use stockId as fallback
-            inventory_id: item.inventory_id ?? stockId ?? item.material_id,
-            quantity: item.quantity,
-            created_at: item.created_at,
-            reference_id: item.reference_id ?? null,
-            reference_number: item.reference_number ?? null,
-            // These fields might be missing, use null as fallback
-            reference_type: item.reference_type ?? null,
-            notes: item.notes ?? null,
-            unit_price: item.unit_price ?? null,
-            transaction_type: item.transaction_type,
-            location_id: item.location_id ?? null,
-            batch_id: item.batch_id ?? null,
-            roll_width: item.roll_width ?? null,
-            // This field might be missing, use created_at or null as fallback
-            updated_at: item.updated_at ?? item.created_at ?? null
-          };
-          
-          return transaction;
-        });
-        
-        return mappedTransactions;
+        return transactions;
       } catch (error: any) {
         console.error("Error in transaction fetch:", error);
         setErrorMessage(`Error loading transactions: ${error.message || "Unknown error"}`);
@@ -312,10 +267,42 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
       }
     },
     enabled: !!stockId,
-    // More frequent refetching to ensure we get the latest data
-    refetchInterval: 10000, // Refresh every 10 seconds while the component is visible
-    refetchOnWindowFocus: true, // Refetch when window regains focus
-    staleTime: 5000, // Data becomes stale after 5 seconds - fetch fresh data more often
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
+    staleTime: 5000,
+  });
+
+  // Fetch from the new transaction log table
+  const { data: transactionLogs, isLoading: isTransactionLogsLoading, refetch: refetchTransactionLogs } = useQuery({
+    queryKey: ["stock-transaction-logs", stockId],
+    queryFn: async () => {
+      if (!stockId) return [];
+      
+      console.log(`Fetching transaction logs for material ID: ${stockId}`);
+      
+      try {
+        const { data, error } = await supabase
+          .from("inventory_transaction_log")
+          .select("*")
+          .eq("material_id", stockId)
+          .order("transaction_date", { ascending: false });
+          
+        if (error) {
+          console.error("Error fetching transaction logs:", error);
+          throw error;
+        }
+        
+        console.log("Transaction logs count:", data?.length || 0);
+        return data || [];
+      } catch (error: any) {
+        console.error("Error in transaction logs fetch:", error);
+        return [];
+      }
+    },
+    enabled: !!stockId,
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
+    staleTime: 5000,
   });
 
   // Function to manually refresh transactions
@@ -328,25 +315,30 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     try {
       // Force clear the cache first to ensure a fresh fetch
       queryClient.removeQueries({ queryKey: ["stock-transactions", stockId] });
+      queryClient.removeQueries({ queryKey: ["stock-transaction-logs", stockId] });
       
       // Invalidate the query cache to force a fresh fetch
       queryClient.invalidateQueries({ queryKey: ["stock-transactions", stockId] });
+      queryClient.invalidateQueries({ queryKey: ["stock-transaction-logs", stockId] });
       
       // Wait for the refetch to complete
-      const result = await refetchTransactions();
+      const [txResult, logResult] = await Promise.all([
+        refetchTransactions(),
+        refetchTransactionLogs()
+      ]);
       
       console.log("Transactions refresh complete:", {
-        success: !result.error,
-        count: result.data?.length || 0,
-        data: result.data
+        transactions: txResult.data?.length || 0,
+        logs: logResult.data?.length || 0
       });
       
       // Show toast with results
-      if (!result.error) {
+      if (!txResult.error && !logResult.error) {
+        const totalCount = (txResult.data?.length || 0) + (logResult.data?.length || 0);
         showToast({
           title: "Transactions refreshed",
-          description: result.data && result.data.length > 0 
-            ? `Found ${result.data.length} transaction(s)` 
+          description: totalCount > 0 
+            ? `Found ${totalCount} transaction records` 
             : "No transactions found for this material",
           type: "info"
         });
@@ -366,7 +358,7 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     }
   };
   
-  // Function to create a test transaction (for debugging)
+  // Function to create a test transaction
   const createTestTransaction = async () => {
     if (!stockId) return;
     
@@ -413,11 +405,11 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     stockItem,
     linkedComponents,
     transactions,
+    transactionLogs,
     isLoading,
     isRefreshing,
     isTransactionsLoading,
-    isTransactionsError,
-    transactionsError,
+    isTransactionLogsLoading,
     errorMessage,
     refreshTransactions: handleRefreshTransactions,
     createTestTransaction

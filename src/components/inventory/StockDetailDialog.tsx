@@ -8,7 +8,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, AlertCircle, RefreshCcw, History, Bell, Plus } from "lucide-react";
+import { Edit, Trash2, AlertCircle, RefreshCcw, History, Bell, Plus, Database } from "lucide-react";
 import { StockInfoGrid } from "./stock-detail/StockInfoGrid";
 import { useStockDetail } from "@/hooks/inventory/useStockDetail";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -40,7 +40,8 @@ export const StockDetailDialog = ({
   const { 
     stockItem, 
     linkedComponents, 
-    transactions, 
+    transactions,
+    transactionLogs,
     isLoading, 
     refreshTransactions,
     isRefreshing,
@@ -149,10 +150,11 @@ export const StockDetailDialog = ({
       
       await refreshTransactions();
       
+      const totalCount = (transactions?.length || 0) + (transactionLogs?.length || 0);
       showToast({
         title: "Refreshed",
-        description: transactions && transactions.length > 0 
-          ? `Found ${transactions.length} transactions` 
+        description: totalCount > 0 
+          ? `Found ${totalCount} transaction records` 
           : "No transactions found",
         type: "info"
       });
@@ -178,7 +180,9 @@ export const StockDetailDialog = ({
   };
 
   // Calculate if there are any transactions to show
-  const hasTransactions = transactions && transactions.length > 0;
+  const hasTransactions = (transactions && transactions.length > 0) ||
+                         (transactionLogs && transactionLogs.length > 0);
+  const transactionCount = (transactions?.length || 0) + (transactionLogs?.length || 0);
 
   // Auto-switch to transactions tab if transactions appear after refresh
   useEffect(() => {
@@ -198,7 +202,7 @@ export const StockDetailDialog = ({
               {hasTransactions && (
                 <span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-2 py-1 text-xs text-primary">
                   <History className="mr-1 h-3 w-3" />
-                  {transactions?.length} transactions
+                  {transactionCount} transactions
                 </span>
               )}
             </div>
@@ -252,11 +256,11 @@ export const StockDetailDialog = ({
                 onClick={() => hasTransactions === false && handleRefresh()}
               >
                 <div className="flex items-center gap-1.5">
-                  <History className="h-4 w-4" />
+                  <Database className="h-4 w-4" />
                   Transactions
                   {hasTransactions && (
                     <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary w-5 h-5 text-[10px] text-primary-foreground">
-                      {transactions.length}
+                      {transactionCount}
                     </span>
                   )}
                   {hasTransactions && (
@@ -288,7 +292,7 @@ export const StockDetailDialog = ({
                     size="lg"
                   >
                     <History className="h-5 w-5" />
-                    View {transactions.length} Transaction{transactions.length !== 1 ? 's' : ''}
+                    View {transactionCount} Transaction{transactionCount !== 1 ? 's' : ''}
                   </Button>
                 </div>
               )}
@@ -316,7 +320,7 @@ export const StockDetailDialog = ({
                     <>
                       <Badge variant="outline" className="flex items-center gap-1">
                         <Bell className="h-3.5 w-3.5" />
-                        {transactions.length} transaction{transactions.length !== 1 ? 's' : ''}
+                        {transactionCount} transaction{transactionCount !== 1 ? 's' : ''}
                       </Badge>
                       {errorMessage && (
                         <span className="text-destructive flex items-center gap-1">
@@ -362,6 +366,7 @@ export const StockDetailDialog = ({
               </div>
               <StockTransactionHistory 
                 transactions={transactions || []} 
+                transactionLogs={transactionLogs || []}
                 onRefresh={refreshTransactions}
                 isLoading={isRefreshing || isTransactionsLoading}
                 materialId={stockId || undefined}

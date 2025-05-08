@@ -128,6 +128,13 @@ export type Database = {
             foreignKeyName: "catalog_component_materials_material_id_fkey"
             columns: ["material_id"]
             isOneToOne: false
+            referencedRelation: "material_consumption_analysis"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "catalog_component_materials_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
             referencedRelation: "material_consumption_summary"
             referencedColumns: ["material_id"]
           },
@@ -598,6 +605,13 @@ export type Database = {
             foreignKeyName: "inventory_batches_material_id_fkey"
             columns: ["material_id"]
             isOneToOne: false
+            referencedRelation: "material_consumption_analysis"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "inventory_batches_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
             referencedRelation: "material_consumption_summary"
             referencedColumns: ["material_id"]
           },
@@ -633,6 +647,83 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      inventory_transaction_log: {
+        Row: {
+          created_by: string | null
+          id: string
+          material_id: string
+          metadata: Json | null
+          new_quantity: number
+          notes: string | null
+          previous_quantity: number
+          quantity: number
+          reference_id: string | null
+          reference_number: string | null
+          reference_type: string | null
+          transaction_date: string | null
+          transaction_type: string
+        }
+        Insert: {
+          created_by?: string | null
+          id?: string
+          material_id: string
+          metadata?: Json | null
+          new_quantity: number
+          notes?: string | null
+          previous_quantity: number
+          quantity: number
+          reference_id?: string | null
+          reference_number?: string | null
+          reference_type?: string | null
+          transaction_date?: string | null
+          transaction_type: string
+        }
+        Update: {
+          created_by?: string | null
+          id?: string
+          material_id?: string
+          metadata?: Json | null
+          new_quantity?: number
+          notes?: string | null
+          previous_quantity?: number
+          quantity?: number
+          reference_id?: string | null
+          reference_number?: string | null
+          reference_type?: string | null
+          transaction_date?: string | null
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_transaction_log_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transaction_log_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_consumption_analysis"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "inventory_transaction_log_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_consumption_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "inventory_transaction_log_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_usage_summary"
+            referencedColumns: ["material_id"]
+          },
+        ]
       }
       inventory_transaction_types: {
         Row: {
@@ -734,6 +825,13 @@ export type Database = {
             foreignKeyName: "inventory_transactions_inventory_id_fkey"
             columns: ["inventory_id"]
             isOneToOne: false
+            referencedRelation: "material_consumption_analysis"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
             referencedRelation: "material_consumption_summary"
             referencedColumns: ["material_id"]
           },
@@ -757,6 +855,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "inventory"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_consumption_analysis"
+            referencedColumns: ["material_id"]
           },
           {
             foreignKeyName: "inventory_transactions_material_id_fkey"
@@ -916,6 +1021,13 @@ export type Database = {
             foreignKeyName: "material_order_usage_material_id_fkey"
             columns: ["material_id"]
             isOneToOne: false
+            referencedRelation: "material_consumption_analysis"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "material_order_usage_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
             referencedRelation: "material_consumption_summary"
             referencedColumns: ["material_id"]
           },
@@ -992,6 +1104,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "inventory"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_order_components_material_id"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_consumption_analysis"
+            referencedColumns: ["material_id"]
           },
           {
             foreignKeyName: "fk_order_components_material_id"
@@ -1267,6 +1386,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "inventory"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_materials_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_consumption_analysis"
+            referencedColumns: ["material_id"]
           },
           {
             foreignKeyName: "product_materials_material_id_fkey"
@@ -1600,6 +1726,20 @@ export type Database = {
       }
     }
     Views: {
+      material_consumption_analysis: {
+        Row: {
+          color: string | null
+          first_usage_date: string | null
+          gsm: string | null
+          last_usage_date: string | null
+          material_id: string | null
+          material_name: string | null
+          orders_count: number | null
+          total_consumption: number | null
+          unit: string | null
+        }
+        Relationships: []
+      }
       material_consumption_summary: {
         Row: {
           color: string | null
@@ -1650,6 +1790,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "inventory"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_order_usage_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_consumption_analysis"
+            referencedColumns: ["material_id"]
           },
           {
             foreignKeyName: "material_order_usage_material_id_fkey"
@@ -1722,6 +1869,16 @@ export type Database = {
           p_notes?: string
         }
         Returns: string
+      }
+      record_order_material_usage: {
+        Args: {
+          p_order_id: string
+          p_order_number: string
+          p_material_id: string
+          p_quantity: number
+          p_notes?: string
+        }
+        Returns: boolean
       }
       update_component_material: {
         Args: { component_id: string; material_id: string }

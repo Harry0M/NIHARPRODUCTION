@@ -15,4 +15,20 @@ export interface StockTransaction {
   batch_id: string | null;
   roll_width: number | null;
   updated_at: string | null;
+  unit?: string | null;
+}
+
+export interface TransactionLog {
+  id: string;
+  material_id: string;
+  transaction_type: string;
+  quantity: number;
+  previous_quantity: number;
+  new_quantity: number;
+  reference_id: string | null;
+  reference_number: string | null;
+  reference_type: string | null;
+  transaction_date: string;
+  notes: string | null;
+  metadata: any | null;
 }

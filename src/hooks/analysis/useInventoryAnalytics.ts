@@ -27,9 +27,11 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
   const { data: consumptionData, isLoading: loadingConsumption } = useQuery({
     queryKey: ['material-consumption', currentFilters],
     queryFn: async () => {
-      // Build the query with filters
+      console.log("Fetching material consumption data with filters:", currentFilters);
+      
+      // Use the material_consumption_analysis view created in the SQL migration
       let query = supabase
-        .from('material_usage_summary')
+        .from('material_consumption_analysis')
         .select('*');
 
       // Apply material filter if specified
@@ -45,7 +47,17 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
         throw error;
       }
       
-      return data || [];
+      // Format the data for display
+      const formattedData = data.map(item => ({
+        ...item,
+        total_usage: item.total_consumption || 0,
+        orders_count: item.orders_count || 0,
+        first_usage_date: item.first_usage_date || null,
+        last_usage_date: item.last_usage_date || null
+      }));
+      
+      console.log(`Fetched ${formattedData.length} consumption records`);
+      return formattedData || [];
     },
   });
 
@@ -53,6 +65,9 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
   const { data: orderConsumptionData, isLoading: loadingOrderConsumption } = useQuery({
     queryKey: ['order-consumption', currentFilters],
     queryFn: async () => {
+      console.log("Fetching order consumption data with filters:", currentFilters);
+      
+      // Build base query
       let query = supabase
         .from('order_material_breakdown')
         .select('*');
@@ -76,11 +91,53 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
         query = query.lte('usage_date', currentFilters.dateRange.endDate.toISOString());
       }
       
+      // Execute the query
       const { data, error } = await query;
       
       if (error) {
         console.error("Error fetching order consumption data:", error);
         throw error;
+      }
+      
+      console.log(`Fetched ${data?.length || 0} order consumption records`);
+      
+      // If no data yet or missing data, try to fetch from transaction logs
+      if (!data || data.length === 0) {
+        const { data: transactionData, error: txError } = await supabase
+          .from('inventory_transaction_log')
+          .select('*')
+          .eq('reference_type', 'Order')
+          .not('reference_id', 'is', null);
+        
+        if (txError) {
+          console.error("Error fetching order transactions from logs:", txError);
+          return data || [];
+        }
+        
+        if (transactionData && transactionData.length > 0) {
+          console.log(`Found ${transactionData.length} order transactions in logs`);
+          
+          // Map log data to order consumption format
+          const mappedData = [];
+          for (const tx of transactionData) {
+            if (tx.metadata && tx.reference_id && tx.reference_number) {
+              mappedData.push({
+                order_id: tx.reference_id,
+                order_number: tx.reference_number,
+                company_name: tx.metadata.company_name || 'Unknown',
+                material_id: tx.material_id,
+                material_name: tx.metadata.material_name || 'Unknown Material',
+                total_material_used: Math.abs(tx.quantity),
+                unit: tx.metadata.unit || 'units',
+                usage_date: tx.transaction_date,
+                component_type: tx.metadata.component_type || 'Unknown'
+              });
+            }
+          }
+          
+          console.log(`Mapped ${mappedData.length} transactions to order consumption format`);
+          return mappedData;
+        }
       }
       
       return data || [];
@@ -179,24 +236,57 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
   const { data: recentTransactions, isLoading: loadingTransactions } = useQuery({
     queryKey: ['recent-transactions', currentFilters],
     queryFn: async () => {
-      let query = supabase
-        .from('inventory_transactions')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100);
+      // Using both transaction tables for a comprehensive history
+      const queriesPromises = [
+        // Traditional transactions
+        supabase
+          .from('inventory_transactions')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50),
+          
+        // New transaction logs  
+        supabase
+          .from('inventory_transaction_log')
+          .select('*')
+          .order('transaction_date', { ascending: false })
+          .limit(50)
+      ];
       
       if (currentFilters.materialId) {
-        query = query.eq('material_id', currentFilters.materialId);
+        queriesPromises[0] = supabase
+          .from('inventory_transactions')
+          .select('*')
+          .eq('material_id', currentFilters.materialId)
+          .order('created_at', { ascending: false })
+          .limit(50);
+          
+        queriesPromises[1] = supabase
+          .from('inventory_transaction_log')
+          .select('*')
+          .eq('material_id', currentFilters.materialId)
+          .order('transaction_date', { ascending: false })
+          .limit(50);
       }
       
-      const { data, error } = await query;
-      
-      if (error) {
+      try {
+        const [txResult, logResult] = await Promise.all(queriesPromises);
+        
+        if (txResult.error) throw txResult.error;
+        if (logResult.error) throw logResult.error;
+        
+        // Combine the results
+        const combinedResults = {
+          transactions: txResult.data || [],
+          transactionLogs: logResult.data || []
+        };
+        
+        console.log(`Fetched ${combinedResults.transactions.length} transactions and ${combinedResults.transactionLogs.length} transaction logs`);
+        return combinedResults;
+      } catch (error) {
         console.error("Error fetching recent transactions:", error);
-        throw error;
+        return { transactions: [], transactionLogs: [] };
       }
-      
-      return data || [];
     },
   });
 

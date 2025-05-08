@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { StockForm } from "@/components/inventory/StockForm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SkeletonForm } from "@/components/ui/skeleton-loader";
-import { AlertCircle, History, Plus } from "lucide-react";
+import { AlertCircle, History, Plus, Database } from "lucide-react";
 import { useStockDetail } from "@/hooks/inventory/useStockDetail";
 import { StockInfoGrid } from "@/components/inventory/stock-detail/StockInfoGrid";
 import { Card } from "@/components/ui/card";
@@ -24,6 +24,7 @@ const StockDetail = () => {
     stockItem, 
     linkedComponents, 
     transactions, 
+    transactionLogs,
     isLoading, 
     refreshTransactions, 
     isRefreshing, 
@@ -37,7 +38,7 @@ const StockDetail = () => {
 
   // Auto-switch to view tab if transactions are detected on load
   useEffect(() => {
-    if (!isLoading && transactions && transactions.length > 0) {
+    if (!isLoading && (transactions?.length > 0 || transactionLogs?.length > 0)) {
       // Check if there's a recent update in localStorage
       try {
         const lastUpdate = localStorage.getItem('last_inventory_update');
@@ -85,7 +86,7 @@ const StockDetail = () => {
         console.error("Error checking local storage:", e);
       }
     }
-  }, [id, transactions, isLoading]);
+  }, [id, transactions, transactionLogs, isLoading]);
 
   // Function to handle manual refresh
   const handleRefreshTransactions = async () => {
@@ -117,7 +118,10 @@ const StockDetail = () => {
     }
   };
 
-  const hasTransactions = transactions && transactions.length > 0;
+  // Calculate if we have any transactions
+  const hasTransactions = (transactions && transactions.length > 0) || 
+                         (transactionLogs && transactionLogs.length > 0);
+  const transactionCount = (transactions?.length || 0) + (transactionLogs?.length || 0);
 
   return (
     <div className="space-y-6">
@@ -147,7 +151,7 @@ const StockDetail = () => {
               onClick={() => setActiveTab("view")}
             >
               <History className="h-4 w-4" />
-              {transactions.length} Transaction{transactions.length !== 1 ? 's' : ''}
+              {transactionCount} Transaction{transactionCount !== 1 ? 's' : ''}
             </Badge>
           )}
         </div>
@@ -161,7 +165,7 @@ const StockDetail = () => {
             <TabsTrigger value="edit">Edit Details</TabsTrigger>
             <TabsTrigger value="view" className="relative">
               View Details
-              {transactions && transactions.length > 0 && (
+              {hasTransactions && (
                 <span className="absolute -top-1 -right-1 flex h-3 w-3">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
@@ -184,8 +188,8 @@ const StockDetail = () => {
                   <div className="border-t pt-6">
                     <div className="flex justify-between items-center mb-4">
                       <h3 className="text-lg font-medium flex items-center gap-2">
-                        <History className="h-5 w-5" />
-                        Transaction History
+                        <Database className="h-5 w-5" />
+                        Inventory History
                       </h3>
                       {errorMessage && (
                         <p className="text-sm text-destructive flex items-center gap-1">
@@ -197,6 +201,7 @@ const StockDetail = () => {
                     
                     <StockTransactionHistory 
                       transactions={transactions || []}
+                      transactionLogs={transactionLogs || []}
                       onRefresh={handleRefreshTransactions}
                       isLoading={isRefreshing || isTransactionsLoading}
                       materialId={id}
