@@ -183,6 +183,9 @@ export function useOrderSubmission({
               title: "Components saved successfully",
               description: `${insertedComponents?.length || 0} components saved`
             });
+            
+            // NEW CODE: Update inventory based on consumed materials
+            await updateInventoryForComponents(insertedComponents, orderResult.order_number);
           }
         } else {
           console.warn("No valid components to insert after validation");
@@ -207,6 +210,98 @@ export function useOrderSubmission({
       });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // NEW FUNCTION: Update inventory for consumed materials
+  const updateInventoryForComponents = async (components: any[], orderNumber: string) => {
+    try {
+      // Filter components that have material_id and consumption
+      const materialsToUpdate = components.filter(
+        comp => comp.material_id && comp.consumption
+      );
+
+      if (materialsToUpdate.length === 0) {
+        console.log("No materials to update in inventory");
+        return;
+      }
+      
+      console.log("Updating inventory for materials:", materialsToUpdate);
+      
+      // Process each material
+      for (const component of materialsToUpdate) {
+        // Get current stock information
+        const { data: stockData, error: stockError } = await supabase
+          .from("inventory")
+          .select("id, material_name, quantity")
+          .eq("id", component.material_id)
+          .single();
+          
+        if (stockError) {
+          console.error(`Error fetching stock for material ${component.material_id}:`, stockError);
+          continue;
+        }
+        
+        if (!stockData) {
+          console.warn(`Material ${component.material_id} not found in inventory`);
+          continue;
+        }
+        
+        // Calculate new stock level
+        const currentStock = stockData.quantity || 0;
+        const consumedAmount = parseFloat(component.consumption);
+        const newStock = Math.max(0, currentStock - consumedAmount);
+        
+        console.log(`Updating stock for ${stockData.material_name} (${component.material_id}):`, {
+          currentStock,
+          consumed: consumedAmount,
+          newStock
+        });
+        
+        // Update the stock level
+        const { error: updateError } = await supabase
+          .from("inventory")
+          .update({ quantity: newStock })
+          .eq("id", component.material_id);
+          
+        if (updateError) {
+          console.error(`Error updating stock for material ${component.material_id}:`, updateError);
+          continue;
+        }
+        
+        // Create inventory transaction record
+        const transactionData = {
+          inventory_id: component.material_id,
+          transaction_type: 'consumption',
+          quantity: -consumedAmount, // Negative for consumption
+          reference_type: 'order',
+          reference_id: orderNumber,
+          notes: `Consumed for Order #${orderNumber} - Component: ${component.component_type}`
+        };
+        
+        const { error: transactionError } = await supabase
+          .from("inventory_transactions")
+          .insert(transactionData);
+          
+        if (transactionError) {
+          console.error(`Error recording transaction for material ${component.material_id}:`, transactionError);
+        } else {
+          console.log(`Transaction recorded for material ${component.material_id}`);
+        }
+      }
+      
+      toast({
+        title: "Inventory updated",
+        description: `Stock levels updated for ${materialsToUpdate.length} materials`
+      });
+      
+    } catch (error: any) {
+      console.error("Error updating inventory:", error);
+      toast({
+        title: "Warning",
+        description: "Failed to update some inventory items",
+        variant: "destructive"
+      });
     }
   };
 

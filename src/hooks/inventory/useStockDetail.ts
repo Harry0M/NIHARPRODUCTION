@@ -59,9 +59,32 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     enabled: !!stockId,
   });
 
+  // New query to fetch transaction history
+  const { data: transactions, isLoading: isLoadingTransactions } = useQuery({
+    queryKey: ["stock-transactions", stockId],
+    queryFn: async () => {
+      if (!stockId) return [];
+      
+      const { data, error } = await supabase
+        .from("inventory_transactions")
+        .select("*")
+        .eq("inventory_id", stockId)
+        .order("created_at", { ascending: false });
+        
+      if (error) {
+        console.error("Error fetching transactions:", error);
+        throw error;
+      }
+      return data || [];
+    },
+    enabled: !!stockId,
+  });
+
   return {
     stockItem,
     linkedComponents,
-    isLoading
+    transactions,
+    isLoading,
+    isLoadingTransactions
   };
 };
