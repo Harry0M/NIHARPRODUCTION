@@ -1,7 +1,7 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
+import { calculateRefillUrgency } from "@/utils/analysisUtils";
 
 export type DateFilter = {
   startDate: Date | null;
@@ -213,27 +213,6 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
       return items;
     },
   });
-
-  // Calculate refill urgency level
-  const calculateRefillUrgency = (
-    currentQuantity: number, 
-    reorderLevel: number | null,
-    minStockLevel: number | null
-  ): 'critical' | 'warning' | 'normal' => {
-    if (reorderLevel === null) return 'normal';
-    
-    // If below minimum stock level, it's critical
-    if (minStockLevel !== null && currentQuantity < minStockLevel) {
-      return 'critical';
-    }
-    
-    // If below reorder level, it's a warning
-    if (currentQuantity < reorderLevel) {
-      return 'warning';
-    }
-    
-    return 'normal';
-  };
 
   // Fetch recent transactions for tracking consumption over time
   const { data: recentTransactions, isLoading: loadingTransactions } = useQuery({

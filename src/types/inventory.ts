@@ -18,6 +18,7 @@ export interface StockTransaction {
   unit?: string | null;
 }
 
+// Updated TransactionLog interface with proper metadata typing
 export interface TransactionLog {
   id: string;
   material_id: string;
@@ -30,6 +31,7 @@ export interface TransactionLog {
   reference_type: string | null;
   transaction_date: string;
   notes: string | null;
+  // Modified to accept both Json type from database and our specific structure
   metadata: {
     material_name?: string;
     unit?: string;
@@ -40,5 +42,5 @@ export interface TransactionLog {
     manual?: boolean;
     update_source?: string;
     [key: string]: any;
-  } | null;
+  } | null | any; // Added any to handle Json type from the database
 }

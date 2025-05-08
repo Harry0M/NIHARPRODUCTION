@@ -1,4 +1,3 @@
-
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { showToast } from "@/components/ui/enhanced-toast";
@@ -210,7 +209,7 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     enabled: !!stockId,
   });
 
-  // Fetch from both transaction sources to ensure complete history
+  // Update the transactions query to ensure proper typing
   const { data: transactions, isLoading: isTransactionsLoading, refetch: refetchTransactions } = useQuery({
     queryKey: ["stock-transactions", stockId],
     queryFn: async () => {
@@ -272,7 +271,7 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     staleTime: 5000,
   });
 
-  // Fetch from the new transaction log table
+  // Fetch from the new transaction log table with proper typing for the metadata field
   const { data: transactionLogs, isLoading: isTransactionLogsLoading, refetch: refetchTransactionLogs } = useQuery({
     queryKey: ["stock-transaction-logs", stockId],
     queryFn: async () => {
@@ -293,6 +292,8 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
         }
         
         console.log("Transaction logs count:", data?.length || 0);
+        
+        // Return the data directly, our TransactionLog interface now handles the Json type
         return data || [];
       } catch (error: any) {
         console.error("Error in transaction logs fetch:", error);

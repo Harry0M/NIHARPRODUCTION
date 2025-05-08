@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StockTransaction, TransactionLog } from "@/types/inventory";
@@ -402,10 +401,10 @@ export const StockTransactionHistory = ({
                         <div className="col-span-2 bg-muted/30 p-2 rounded-md mt-1">
                           <p className="text-muted-foreground text-xs mb-1">Additional information</p>
                           <div className="text-xs">
-                            {Object.entries(log.metadata).map(([key, value]) => (
+                            {Object.entries(log.metadata || {}).map(([key, value]) => (
                               <div key={key} className="grid grid-cols-2">
                                 <span className="font-medium">{key}:</span>
-                                <span>{String(value)}</span>
+                                <span>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
                               </div>
                             ))}
                           </div>
