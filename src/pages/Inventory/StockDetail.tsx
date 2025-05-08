@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { StockForm } from "@/components/inventory/StockForm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SkeletonForm } from "@/components/ui/skeleton-loader";
-import { AlertCircle, History } from "lucide-react";
+import { AlertCircle, History, Plus } from "lucide-react";
 import { useStockDetail } from "@/hooks/inventory/useStockDetail";
 import { StockInfoGrid } from "@/components/inventory/stock-detail/StockInfoGrid";
 import { Card } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { StockTransactionHistory } from "@/components/inventory/stock-detail/Sto
 import { useEffect, useState } from "react";
 import { showToast } from "@/components/ui/enhanced-toast";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 const StockDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -26,7 +27,9 @@ const StockDetail = () => {
     isLoading, 
     refreshTransactions, 
     isRefreshing, 
-    isTransactionsLoading 
+    isTransactionsLoading,
+    createTestTransaction,
+    errorMessage
   } = useStockDetail({
     stockId: id || null,
     onClose: () => {} // Not used in this context
@@ -99,6 +102,20 @@ const StockDetail = () => {
       console.error("Error refreshing transactions manually:", error);
     }
   };
+  
+  // Function to create a test transaction (for debugging)
+  const handleCreateTestTransaction = async () => {
+    if (!id) return;
+    
+    try {
+      const result = await createTestTransaction();
+      if (result) {
+        setActiveTab("view");
+      }
+    } catch (error) {
+      console.error("Error creating test transaction:", error);
+    }
+  };
 
   const hasTransactions = transactions && transactions.length > 0;
 
@@ -110,16 +127,30 @@ const StockDetail = () => {
           <p className="text-muted-foreground">Modify inventory stock details</p>
         </div>
         
-        {hasTransactions && (
-          <Badge 
-            variant="outline" 
-            className="flex items-center gap-1 px-3 py-1 cursor-pointer hover:bg-muted"
-            onClick={() => setActiveTab("view")}
-          >
-            <History className="h-4 w-4" />
-            {transactions.length} Transaction{transactions.length !== 1 ? 's' : ''}
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {!hasTransactions && id && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCreateTestTransaction}
+              className="flex items-center gap-1"
+            >
+              <Plus className="h-4 w-4" />
+              Test Transaction
+            </Button>
+          )}
+          
+          {hasTransactions && (
+            <Badge 
+              variant="outline" 
+              className="flex items-center gap-1 px-3 py-1 cursor-pointer hover:bg-muted"
+              onClick={() => setActiveTab("view")}
+            >
+              <History className="h-4 w-4" />
+              {transactions.length} Transaction{transactions.length !== 1 ? 's' : ''}
+            </Badge>
+          )}
+        </div>
       </div>
       
       {isLoading ? (
@@ -156,12 +187,19 @@ const StockDetail = () => {
                         <History className="h-5 w-5" />
                         Transaction History
                       </h3>
+                      {errorMessage && (
+                        <p className="text-sm text-destructive flex items-center gap-1">
+                          <AlertCircle className="h-4 w-4" />
+                          {errorMessage}
+                        </p>
+                      )}
                     </div>
                     
                     <StockTransactionHistory 
                       transactions={transactions || []}
                       onRefresh={handleRefreshTransactions}
                       isLoading={isRefreshing || isTransactionsLoading}
+                      materialId={id}
                     />
                   </div>
                 </div>

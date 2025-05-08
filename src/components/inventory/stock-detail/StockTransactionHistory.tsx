@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StockTransaction } from "@/types/inventory";
 import { format } from "date-fns";
@@ -7,19 +7,86 @@ import { Badge } from "@/components/ui/badge";
 import { AlertCircle, ArrowDownRight, ArrowUpRight, RefreshCcw, History, Info, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { showToast } from "@/components/ui/enhanced-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface StockTransactionHistoryProps {
   transactions: StockTransaction[];
   onRefresh?: () => void;
   isLoading?: boolean;
+  materialId?: string;
 }
 
 export const StockTransactionHistory = ({ 
   transactions,
   onRefresh,
-  isLoading = false
+  isLoading = false,
+  materialId
 }: StockTransactionHistoryProps) => {
-  if (!transactions || transactions.length === 0) {
+  const [localTransactions, setLocalTransactions] = useState<StockTransaction[]>(transactions || []);
+  const [localLoading, setLocalLoading] = useState<boolean>(isLoading);
+
+  // Sync with prop changes
+  useEffect(() => {
+    if (transactions) {
+      setLocalTransactions(transactions);
+    }
+  }, [transactions]);
+
+  // Local refresh function for when no parent refresh is provided
+  const handleLocalRefresh = async () => {
+    if (!materialId) return;
+    
+    setLocalLoading(true);
+    try {
+      console.log(`Manually refreshing transactions for material ID: ${materialId}`);
+      
+      const { data, error } = await supabase
+        .from("inventory_transactions")
+        .select("*")
+        .eq("material_id", materialId)
+        .order("created_at", { ascending: false });
+      
+      if (error) {
+        console.error("Error fetching transactions:", error);
+        showToast({
+          title: "Error refreshing transactions",
+          description: error.message,
+          type: "error"
+        });
+        throw error;
+      }
+      
+      console.log(`Fetched ${data?.length || 0} transactions`, data);
+      
+      if (data) {
+        setLocalTransactions(data as StockTransaction[]);
+        showToast({
+          title: "Transactions refreshed",
+          description: `Found ${data.length} transaction(s)`,
+          type: "info"
+        });
+      }
+    } catch (error: any) {
+      console.error("Error in local transaction refresh:", error);
+    } finally {
+      setLocalLoading(false);
+    }
+  };
+
+  // Use the appropriate refresh function
+  const handleRefresh = () => {
+    if (onRefresh) {
+      onRefresh();
+    } else if (materialId) {
+      handleLocalRefresh();
+    }
+  };
+
+  const effectiveTransactions = localTransactions || transactions || [];
+  const isEmpty = !effectiveTransactions.length;
+
+  if (isEmpty) {
     return (
       <Card className="mt-6">
         <CardHeader className="flex flex-row items-center justify-between">
@@ -27,18 +94,16 @@ export const StockTransactionHistory = ({
             <History className="h-5 w-5" />
             Transaction History
           </CardTitle>
-          {onRefresh && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={onRefresh} 
-              disabled={isLoading}
-              className="flex items-center gap-1"
-            >
-              <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              {isLoading ? "Refreshing..." : "Refresh Transactions"}
-            </Button>
-          )}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh} 
+            disabled={localLoading || isLoading}
+            className="flex items-center gap-1"
+          >
+            <RefreshCcw className={`h-4 w-4 ${(localLoading || isLoading) ? 'animate-spin' : ''}`} />
+            {(localLoading || isLoading) ? "Refreshing..." : "Refresh Transactions"}
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-10 space-y-2">
@@ -46,12 +111,12 @@ export const StockTransactionHistory = ({
             <p className="text-muted-foreground text-center">No transaction history found</p>
             <p className="text-sm text-muted-foreground text-center max-w-md">
               When materials are used in orders or new stock is added, transactions will appear here.
-              {isLoading ? " Checking for latest transactions..." : ""}
+              {(localLoading || isLoading) ? " Checking for latest transactions..." : ""}
             </p>
-            {onRefresh && !isLoading && (
+            {!localLoading && !isLoading && (
               <Button 
                 variant="default" 
-                onClick={onRefresh} 
+                onClick={handleRefresh} 
                 className="mt-4"
               >
                 <RefreshCcw className="h-4 w-4 mr-2" />
@@ -151,25 +216,23 @@ export const StockTransactionHistory = ({
           <History className="h-5 w-5" />
           <span>Transaction History</span>
           <Badge variant="outline" className="ml-2">
-            {transactions.length} {transactions.length === 1 ? 'transaction' : 'transactions'}
+            {effectiveTransactions.length} {effectiveTransactions.length === 1 ? 'transaction' : 'transactions'}
           </Badge>
         </CardTitle>
-        {onRefresh && (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={onRefresh} 
-            disabled={isLoading}
-            className="flex items-center gap-1"
-          >
-            <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            {isLoading ? "Refreshing..." : "Refresh"}
-          </Button>
-        )}
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleRefresh} 
+          disabled={localLoading || isLoading}
+          className="flex items-center gap-1"
+        >
+          <RefreshCcw className={`h-4 w-4 ${(localLoading || isLoading) ? 'animate-spin' : ''}`} />
+          {(localLoading || isLoading) ? "Refreshing..." : "Refresh"}
+        </Button>
       </CardHeader>
       <CardContent className="p-4">
         <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-          {transactions.map((transaction) => {
+          {effectiveTransactions.map((transaction) => {
             const typeInfo = getTransactionTypeLabel(transaction.transaction_type);
             const isNegative = transaction.quantity < 0;
             const Icon = typeInfo.icon;

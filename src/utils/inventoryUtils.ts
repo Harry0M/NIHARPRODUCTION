@@ -17,6 +17,85 @@ export const calculateConsumption = (
 };
 
 /**
+ * Create a single inventory transaction with error handling
+ */
+export const createInventoryTransaction = async (
+  supabase: any,
+  transaction: {
+    material_id: string;
+    quantity: number;
+    transaction_type: string;
+    reference_id?: string | null;
+    reference_number?: string | null;
+    reference_type?: string | null;
+    notes?: string | null;
+    unit_price?: number | null;
+    roll_width?: number | null;
+  }
+) => {
+  console.log("Creating inventory transaction:", transaction);
+  
+  if (!transaction.material_id) {
+    console.error("Cannot create transaction: Missing material_id");
+    return { error: "Missing material_id", success: false };
+  }
+  
+  if (transaction.quantity === undefined || transaction.quantity === null) {
+    console.error("Cannot create transaction: Missing quantity");
+    return { error: "Missing quantity", success: false };
+  }
+  
+  try {
+    const timestamp = new Date().toISOString();
+    
+    const transactionData = {
+      material_id: transaction.material_id,
+      inventory_id: transaction.material_id, // Ensure inventory_id field is set
+      quantity: transaction.quantity,
+      transaction_type: transaction.transaction_type,
+      reference_id: transaction.reference_id || null,
+      reference_number: transaction.reference_number || null,
+      reference_type: transaction.reference_type || null,
+      notes: transaction.notes || null,
+      unit_price: transaction.unit_price || null,
+      roll_width: transaction.roll_width || null,
+      created_at: timestamp,
+      updated_at: timestamp
+    };
+    
+    // Insert the transaction with detailed error handling
+    const { data, error } = await supabase
+      .from("inventory_transactions")
+      .insert(transactionData)
+      .select();
+    
+    if (error) {
+      console.error("Error creating inventory transaction:", error);
+      console.error("Failed transaction data:", transactionData);
+      
+      // Log more details about the error for debugging
+      if (error.code === '42501') {
+        console.error("Permission denied error. This could be an RLS policy issue.");
+      } else if (error.code === '23505') {
+        console.error("Unique constraint violation. This transaction may already exist.");
+      }
+      
+      return { 
+        error: error.message || "Failed to create transaction", 
+        code: error.code,
+        success: false 
+      };
+    }
+    
+    console.log("Transaction created successfully:", data);
+    return { data, success: true };
+  } catch (err: any) {
+    console.error("Unexpected error creating transaction:", err);
+    return { error: err.message || "Unexpected error", success: false };
+  }
+};
+
+/**
  * Updates inventory based on material consumption
  */
 export const updateInventoryForOrderComponents = async (
@@ -82,6 +161,7 @@ export const updateInventoryForOrderComponents = async (
   const inventoryUpdates = [];
   const errors = [];
   const updatedMaterials = [];
+  const transactionResults = [];
   
   // Process each material
   for (const materialId of Object.keys(materialConsumption)) {
@@ -109,26 +189,30 @@ export const updateInventoryForOrderComponents = async (
       
       console.log(`Current material ${materialData.material_name} quantity: ${materialData.quantity} ${materialData.unit}`);
       
-      const timestamp = new Date().toISOString();
-      
-      // Create negative transaction for material consumption
-      const transaction = {
+      // Create negative transaction for material consumption with improved error handling
+      const transactionResult = await createInventoryTransaction(supabase, {
         material_id: materialId,
-        inventory_id: materialId, // Ensure the inventory_id field is set
         quantity: -consumption, // Negative since we're consuming material
         transaction_type: "order",
         reference_id: orderId,
         reference_number: orderNumber,
         reference_type: "Order",
-        notes: `Material used in order #${orderNumber}`,
-        created_at: timestamp,
-        updated_at: timestamp // Ensure the updated_at field is set
-      };
+        notes: `Material used in order #${orderNumber}`
+      });
       
-      transactions.push(transaction);
-      console.log(`Creating transaction for ${materialData.material_name}:`, transaction);
+      transactionResults.push(transactionResult);
       
-      // Update inventory quantity
+      if (!transactionResult.success) {
+        console.error(`Error creating transaction for material ${materialId}:`, transactionResult.error);
+        errors.push(`Error creating transaction: ${transactionResult.error}`);
+      } else {
+        console.log(`Successfully created transaction for material ${materialId}`);
+        transactions.push(transactionResult.data);
+      }
+      
+      // Update inventory quantity regardless of transaction success
+      // This ensures inventory is accurate even if transaction logging fails
+      const timestamp = new Date().toISOString();
       const newQuantity = Math.max(0, materialData.quantity - consumption);
       inventoryUpdates.push({
         id: materialId,
@@ -146,30 +230,9 @@ export const updateInventoryForOrderComponents = async (
       });
       
       console.log(`Updating ${materialData.material_name} quantity to ${newQuantity} ${materialData.unit} (consumed ${consumption})`);
-    } catch (err) {
-      console.error(`Error processing material ${materialId}:`, err);
-      errors.push(`Error processing material ${materialId}: ${err}`);
-    }
-  }
-  
-  // Record transactions - use single insert for better atomicity
-  if (transactions.length > 0) {
-    console.log("Recording inventory transactions:", transactions);
-    try {
-      const { data: transactionData, error: transactionError } = await supabase
-        .from("inventory_transactions")
-        .insert(transactions)
-        .select();
-      
-      if (transactionError) {
-        console.error("Error recording inventory transactions:", transactionError);
-        errors.push(`Error recording inventory transactions: ${transactionError.message}`);
-      } else {
-        console.log("Successfully recorded inventory transactions:", transactionData);
-      }
     } catch (err: any) {
-      console.error("Error inserting transactions:", err);
-      errors.push(`Error inserting transactions: ${err.message}`);
+      console.error(`Error processing material ${materialId}:`, err);
+      errors.push(`Error processing material ${materialId}: ${err.message}`);
     }
   }
   
@@ -207,7 +270,8 @@ export const updateInventoryForOrderComponents = async (
           timestamp: new Date().toISOString(),
           previous: material.previous,
           new: material.new,
-          consumed: material.consumed
+          consumed: material.consumed,
+          transactionSuccess: transactionResults.some(tr => tr.success)
         }));
       }
       
@@ -248,18 +312,122 @@ export const updateInventoryForOrderComponents = async (
     summaryMessage = "No inventory updated";
   }
   
+  // If there were transaction errors but inventory updates succeeded, include that in the message
+  if (transactionResults.some(result => !result.success) && updatedMaterials.length > 0) {
+    summaryMessage += ". Note: Some transaction records might not be visible immediately.";
+  }
+  
   if (errors.length > 0) {
     return { 
       success: false, 
       message: `${summaryMessage} with ${errors.length} errors. Check console for details.`,
       errors,
-      updatedMaterials
+      updatedMaterials,
+      transactionResults
     };
   }
   
   return { 
     success: true, 
     message: summaryMessage,
-    updatedMaterials
+    updatedMaterials,
+    transactionResults
   };
+};
+
+/**
+ * Helper function to manually create an inventory transaction
+ * This can be used for testing or manually creating transactions
+ */
+export const manuallyCreateInventoryTransaction = async (
+  supabase: any,
+  materialId: string, 
+  quantity: number,
+  transactionType: string = 'adjustment',
+  notes: string = 'Manual adjustment'
+) => {
+  if (!materialId) {
+    console.error("Cannot create transaction: Missing material ID");
+    return { success: false, error: "Missing material ID" };
+  }
+
+  try {
+    // First get the current material info for validation
+    const { data: materialData, error: materialError } = await supabase
+      .from("inventory")
+      .select("id, material_name, quantity, unit")
+      .eq("id", materialId)
+      .single();
+    
+    if (materialError) {
+      console.error("Error fetching material:", materialError);
+      return { success: false, error: materialError.message };
+    }
+    
+    if (!materialData) {
+      return { success: false, error: "Material not found" };
+    }
+
+    // Create the transaction
+    const result = await createInventoryTransaction(supabase, {
+      material_id: materialId,
+      quantity: quantity,
+      transaction_type: transactionType,
+      notes: notes
+    });
+    
+    if (!result.success) {
+      return result;
+    }
+    
+    // Update inventory quantity if needed
+    if (transactionType !== 'view') {  // 'view' type doesn't affect quantity
+      const newQuantity = materialData.quantity + quantity;
+      
+      const { error: updateError } = await supabase
+        .from("inventory")
+        .update({ 
+          quantity: Math.max(0, newQuantity),  // Prevent negative quantities
+          updated_at: new Date().toISOString() 
+        })
+        .eq("id", materialId);
+      
+      if (updateError) {
+        console.error("Error updating inventory quantity:", updateError);
+        return { success: false, error: updateError.message, transactionCreated: true };
+      }
+
+      // Trigger storage event to notify other components
+      try {
+        localStorage.setItem('updated_material_ids', JSON.stringify([materialId]));
+        localStorage.setItem('last_inventory_update', new Date().toISOString());
+        localStorage.setItem(`material_update_${materialId}`, JSON.stringify({
+          timestamp: new Date().toISOString(),
+          previous: materialData.quantity,
+          new: newQuantity,
+          adjusted: quantity,
+          transactionSuccess: true
+        }));
+        
+        // Create and dispatch a storage event
+        const storageEvent = new StorageEvent('storage', {
+          key: 'last_inventory_update',
+          newValue: new Date().toISOString(),
+          url: window.location.href
+        });
+        window.dispatchEvent(storageEvent);
+      } catch (e) {
+        console.warn("Could not dispatch storage event:", e);
+      }
+    }
+    
+    return { 
+      success: true, 
+      message: `${transactionType === 'purchase' ? 'Added' : 'Adjusted'} ${Math.abs(quantity)} ${materialData.unit} for ${materialData.material_name}`,
+      transaction: result.data
+    };
+  } catch (err: any) {
+    console.error("Unexpected error in manuallyCreateInventoryTransaction:", err);
+    return { success: false, error: err.message || "Unexpected error" };
+  }
 };

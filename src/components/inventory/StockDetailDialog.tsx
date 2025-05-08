@@ -8,13 +8,14 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, AlertCircle, RefreshCcw, History, Bell } from "lucide-react";
+import { Edit, Trash2, AlertCircle, RefreshCcw, History, Bell, Plus } from "lucide-react";
 import { StockInfoGrid } from "./stock-detail/StockInfoGrid";
 import { useStockDetail } from "@/hooks/inventory/useStockDetail";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StockTransactionHistory } from "./stock-detail/StockTransactionHistory";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { showToast } from "@/components/ui/enhanced-toast";
+import { Badge } from "@/components/ui/badge";
 
 interface StockDetailDialogProps {
   stockId: string | null;
@@ -43,7 +44,9 @@ export const StockDetailDialog = ({
     isLoading, 
     refreshTransactions,
     isRefreshing,
-    isTransactionsLoading
+    isTransactionsLoading,
+    errorMessage,
+    createTestTransaction
   } = useStockDetail({
     stockId,
     onClose: handleClose,
@@ -163,6 +166,17 @@ export const StockDetailDialog = ({
     }
   };
 
+  // Function to handle creating a test transaction for debugging
+  const handleCreateTestTransaction = async () => {
+    if (!stockId) return;
+    
+    try {
+      await createTestTransaction();
+    } catch (error) {
+      console.error("Error in handleCreateTestTransaction:", error);
+    }
+  };
+
   // Calculate if there are any transactions to show
   const hasTransactions = transactions && transactions.length > 0;
 
@@ -278,35 +292,79 @@ export const StockDetailDialog = ({
                   </Button>
                 </div>
               )}
+              
+              {/* Add option to manually create test transaction if no transactions found */}
+              {!hasTransactions && stockItem && (
+                <div className="mt-8 flex justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={handleCreateTestTransaction}
+                    className="flex items-center gap-2"
+                    size="sm"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create Test Transaction
+                  </Button>
+                </div>
+              )}
             </TabsContent>
             
             <TabsContent value="transactions">
-              <div className="mb-4 flex justify-between">
-                <div className="text-sm text-muted-foreground">
+              <div className="mb-4 flex justify-between items-center">
+                <div className="text-sm text-muted-foreground flex items-center gap-2">
                   {hasTransactions ? (
-                    <span className="flex items-center gap-1">
-                      <Bell className="h-4 w-4" />
-                      Showing {transactions.length} transaction{transactions.length !== 1 ? 's' : ''}
-                    </span>
+                    <>
+                      <Badge variant="outline" className="flex items-center gap-1">
+                        <Bell className="h-3.5 w-3.5" />
+                        {transactions.length} transaction{transactions.length !== 1 ? 's' : ''}
+                      </Badge>
+                      {errorMessage && (
+                        <span className="text-destructive flex items-center gap-1">
+                          <AlertCircle className="h-3.5 w-3.5" />
+                          {errorMessage}
+                        </span>
+                      )}
+                    </>
                   ) : (
-                    <span>No transactions found</span>
+                    <span className="flex items-center gap-1">
+                      {errorMessage ? (
+                        <>
+                          <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+                          <span className="text-destructive">{errorMessage}</span>
+                        </>
+                      ) : (
+                        "No transactions found"
+                      )}
+                    </span>
                   )}
                 </div>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={handleRefresh}
-                  disabled={isRefreshing}
-                  className="flex items-center gap-1"
-                >
-                  <RefreshCcw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  {isRefreshing ? 'Refreshing...' : 'Refresh'}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={handleCreateTestTransaction}
+                    className="flex items-center gap-1"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Test Transaction
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    className="flex items-center gap-1"
+                  >
+                    <RefreshCcw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                  </Button>
+                </div>
               </div>
               <StockTransactionHistory 
                 transactions={transactions || []} 
                 onRefresh={refreshTransactions}
                 isLoading={isRefreshing || isTransactionsLoading}
+                materialId={stockId || undefined}
               />
             </TabsContent>
           </Tabs>
