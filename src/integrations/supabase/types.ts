@@ -669,12 +669,14 @@ export type Database = {
           batch_id: string | null
           created_at: string
           id: string
+          inventory_id: string | null
           location_id: string | null
           material_id: string
           notes: string | null
           quantity: number
           reference_id: string | null
           reference_number: string | null
+          reference_type: string | null
           roll_width: number | null
           total_price: number | null
           transaction_type: string
@@ -686,12 +688,14 @@ export type Database = {
           batch_id?: string | null
           created_at?: string
           id?: string
+          inventory_id?: string | null
           location_id?: string | null
           material_id: string
           notes?: string | null
           quantity: number
           reference_id?: string | null
           reference_number?: string | null
+          reference_type?: string | null
           roll_width?: number | null
           total_price?: number | null
           transaction_type: string
@@ -703,12 +707,14 @@ export type Database = {
           batch_id?: string | null
           created_at?: string
           id?: string
+          inventory_id?: string | null
           location_id?: string | null
           material_id?: string
           notes?: string | null
           quantity?: number
           reference_id?: string | null
           reference_number?: string | null
+          reference_type?: string | null
           roll_width?: number | null
           total_price?: number | null
           transaction_type?: string
@@ -717,6 +723,27 @@ export type Database = {
           unit_price?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "inventory_transactions_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "material_consumption_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "material_usage_summary"
+            referencedColumns: ["material_id"]
+          },
           {
             foreignKeyName: "inventory_transactions_location_id_fkey"
             columns: ["location_id"]

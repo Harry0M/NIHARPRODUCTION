@@ -50,7 +50,7 @@ export const createInventoryTransaction = async (
     
     const transactionData = {
       material_id: transaction.material_id,
-      inventory_id: transaction.material_id, // Ensure inventory_id field is set
+      inventory_id: transaction.material_id, // Set inventory_id to match material_id
       quantity: transaction.quantity,
       transaction_type: transaction.transaction_type,
       reference_id: transaction.reference_id || null,
