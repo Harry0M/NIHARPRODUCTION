@@ -5,7 +5,6 @@ import { useOrderFormValidation } from "./order-form/useOrderFormValidation";
 import { useProductSelection } from "./order-form/useProductSelection";
 import { useOrderSubmission } from "./order-form/useOrderSubmission";
 import { UseOrderFormReturn } from "@/types/order-form";
-import { FormEvent } from "react";
 
 export function useOrderForm(): UseOrderFormReturn {
   // Use individual hooks
@@ -57,32 +56,12 @@ export function useOrderForm(): UseOrderFormReturn {
   const {
     submitting,
     handleSubmit
-  } = useOrderSubmission();
-  
-  const submitForm = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!validateForm()) {
-      return undefined;
-    }
-    
-    // Create the order values object from orderDetails and components
-    const orderValues = {
-      ...orderDetails,
-      order_number: `ORD-${new Date().getTime().toString().substring(5)}`,
-      orderComponents: [
-        ...Object.values(components).filter(c => c && c.type),
-        ...customComponents.filter(c => c.type === 'custom' && c.customName)
-      ]
-    };
-    
-    // Pass this to handleSubmit
-    try {
-      return await handleSubmit(e);
-    } catch (error) {
-      console.error("Error submitting form:", error);
-      return undefined;
-    }
-  };
+  } = useOrderSubmission({
+    orderDetails,
+    components,
+    customComponents,
+    validateForm
+  });
   
   // Return a unified API that matches the original hook
   return {
@@ -97,7 +76,7 @@ export function useOrderForm(): UseOrderFormReturn {
     addCustomComponent,
     removeCustomComponent,
     handleProductSelect,
-    handleSubmit: submitForm,
+    handleSubmit,
     validateForm,
     updateConsumptionBasedOnQuantity
   };

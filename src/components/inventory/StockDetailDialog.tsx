@@ -10,10 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Edit, Trash2, AlertCircle } from "lucide-react";
 import { StockInfoGrid } from "./stock-detail/StockInfoGrid";
-import { StockTransactionHistory } from "./stock-detail/StockTransactionHistory";
 import { useStockDetail } from "@/hooks/inventory/useStockDetail";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface StockDetailDialogProps {
   stockId: string | null;
@@ -32,7 +30,7 @@ export const StockDetailDialog = ({
 }: StockDetailDialogProps) => {
   const handleClose = () => onOpenChange(false);
 
-  const { stockItem, linkedComponents, transactions, isLoading, isLoadingTransactions } = useStockDetail({
+  const { stockItem, linkedComponents, isLoading } = useStockDetail({
     stockId,
     onClose: handleClose,
   });
@@ -80,21 +78,7 @@ export const StockDetailDialog = ({
             <Skeleton className="h-24 w-full" />
           </div>
         ) : stockItem ? (
-          <Tabs defaultValue="details" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="transactions">Transactions</TabsTrigger>
-            </TabsList>
-            <TabsContent value="details" className="pt-4">
-              <StockInfoGrid stockItem={stockItem} linkedComponents={linkedComponents} />
-            </TabsContent>
-            <TabsContent value="transactions" className="pt-4">
-              <StockTransactionHistory 
-                transactions={transactions} 
-                isLoading={isLoadingTransactions} 
-              />
-            </TabsContent>
-          </Tabs>
+          <StockInfoGrid stockItem={stockItem} linkedComponents={linkedComponents} />
         ) : (
           <div className="py-8 text-center flex flex-col items-center gap-2">
             <AlertCircle className="h-10 w-10 text-muted-foreground" />
