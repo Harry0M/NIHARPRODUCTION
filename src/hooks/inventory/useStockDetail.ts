@@ -77,22 +77,24 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
       }
       
       // Map raw transaction data to match the StockTransaction interface
+      // Use type assertion and provide default values for potentially missing properties
       const mappedTransactions: StockTransaction[] = (data || []).map(item => ({
         id: item.id,
         material_id: item.material_id,
+        // Use optional chaining and nullish coalescing for potentially missing properties
         inventory_id: item.inventory_id || stockId, // Use stockId as fallback
         quantity: item.quantity,
         created_at: item.created_at,
-        reference_id: item.reference_id,
-        reference_number: item.reference_number,
-        reference_type: item.reference_type || null,
-        notes: item.notes,
-        unit_price: item.unit_price,
+        reference_id: item.reference_id ?? null,
+        reference_number: item.reference_number ?? null,
+        reference_type: item.reference_type ?? null,
+        notes: item.notes ?? null,
+        unit_price: item.unit_price ?? null,
         transaction_type: item.transaction_type,
-        location_id: item.location_id,
-        batch_id: item.batch_id,
-        roll_width: item.roll_width,
-        updated_at: item.updated_at || null
+        location_id: item.location_id ?? null,
+        batch_id: item.batch_id ?? null,
+        roll_width: item.roll_width ?? null,
+        updated_at: item.updated_at ?? null
       }));
       
       return mappedTransactions;
