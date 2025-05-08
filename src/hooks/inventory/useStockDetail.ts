@@ -76,26 +76,36 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
         throw error;
       }
       
+      // Log the raw data from database to inspect its structure
+      console.log("Raw transaction data:", data);
+      
       // Map raw transaction data to match the StockTransaction interface
-      // Use type assertion and provide default values for potentially missing properties
-      const mappedTransactions: StockTransaction[] = (data || []).map(item => ({
-        id: item.id,
-        material_id: item.material_id,
-        // Use optional chaining and nullish coalescing for potentially missing properties
-        inventory_id: item.inventory_id || stockId, // Use stockId as fallback
-        quantity: item.quantity,
-        created_at: item.created_at,
-        reference_id: item.reference_id ?? null,
-        reference_number: item.reference_number ?? null,
-        reference_type: item.reference_type ?? null,
-        notes: item.notes ?? null,
-        unit_price: item.unit_price ?? null,
-        transaction_type: item.transaction_type,
-        location_id: item.location_id ?? null,
-        batch_id: item.batch_id ?? null,
-        roll_width: item.roll_width ?? null,
-        updated_at: item.updated_at ?? null
-      }));
+      // Use type assertion and provide fallbacks for all potentially missing properties
+      const mappedTransactions: StockTransaction[] = (data || []).map(item => {
+        // Create a properly typed transaction object with fallbacks for missing properties
+        const transaction: StockTransaction = {
+          id: item.id,
+          material_id: item.material_id,
+          // This field might be missing in the database, use stockId as fallback
+          inventory_id: item.inventory_id || stockId || item.material_id,
+          quantity: item.quantity,
+          created_at: item.created_at,
+          reference_id: item.reference_id ?? null,
+          reference_number: item.reference_number ?? null,
+          // These fields might be missing, use null as fallback
+          reference_type: item.reference_type ?? null,
+          notes: item.notes ?? null,
+          unit_price: item.unit_price ?? null,
+          transaction_type: item.transaction_type,
+          location_id: item.location_id ?? null,
+          batch_id: item.batch_id ?? null,
+          roll_width: item.roll_width ?? null,
+          // This field might be missing, use null or created_at as fallback
+          updated_at: item.updated_at ?? item.created_at ?? null
+        };
+        
+        return transaction;
+      });
       
       return mappedTransactions;
     },
