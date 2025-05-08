@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -250,12 +251,13 @@ export function useOrderForm(): UseOrderFormReturn {
         width = component.width?.toString() || '';
       }
       
-      // Get consumption value directly from component - THIS IS THE STORED VALUE
-      let consumption = component.consumption?.toString() || '';
+      // Get consumption value directly from component - THIS IS THE TOTAL SAVED CONSUMPTION
+      // This value already includes the default quantity factor from when it was created
+      let totalConsumption = component.consumption?.toString() || '';
       const rollWidth = component.roll_width?.toString() || '';
       
       // If consumption isn't available, calculate it
-      if (!consumption && length && width && rollWidth) {
+      if (!totalConsumption && length && width && rollWidth) {
         const lengthVal = parseFloat(length);
         const widthVal = parseFloat(width);
         const rollWidthVal = parseFloat(rollWidth);
@@ -263,7 +265,7 @@ export function useOrderForm(): UseOrderFormReturn {
         if (!isNaN(lengthVal) && !isNaN(widthVal) && !isNaN(rollWidthVal) && rollWidthVal > 0) {
           // Formula: (length * width) / (roll_width * 39.39)
           const calculatedConsumption = (lengthVal * widthVal) / (rollWidthVal * 39.39);
-          consumption = calculatedConsumption.toFixed(2);
+          totalConsumption = calculatedConsumption.toFixed(2);
         }
       }
       
@@ -301,14 +303,21 @@ export function useOrderForm(): UseOrderFormReturn {
       
       const componentTypeLower = component.component_type.toLowerCase();
       
-      // Extract the base consumption value - THIS IS THE KEY FIX
-      // We need to store the original consumption as baseConsumption
-      // This will be the per-unit value (without default quantity factored in)
-      const baseConsumption = consumption ? parseFloat(consumption) : undefined;
+      // FIXED: Calculate the base consumption (per unit) from the total consumption
+      // The consumption stored in catalog is the TOTAL consumption with default_quantity already applied
+      // So for our internal tracking, we need to extract the base consumption per unit
+      let baseConsumption: number | undefined;
       
-      // Handle the case where product has a default quantity > 1
-      // The consumption stored in the database is the base consumption per unit
-      // So we need to preserve this information
+      if (totalConsumption) {
+        const totalConsumptionVal = parseFloat(totalConsumption);
+        if (!isNaN(totalConsumptionVal)) {
+          // Use the real saved consumption from catalog as our total consumption
+          baseConsumption = totalConsumptionVal;
+          
+          // No need to divide by default_quantity - this is already the correct value to use
+          console.log(`Using catalog consumption value directly: ${totalConsumptionVal}`);
+        }
+      }
       
       if (componentTypeLower === 'custom') {
         const customIndex = newCustomComponents.length;
@@ -320,8 +329,8 @@ export function useOrderForm(): UseOrderFormReturn {
           gsm: materialGsm,
           length,
           width,
-          consumption, // This is the total consumption with default_quantity
-          baseConsumption: baseConsumption?.toString(), // Store the base consumption per unit
+          consumption: totalConsumption, // Use the actual saved total consumption
+          baseConsumption: baseConsumption?.toString(), // Store the total as base too since we don't divide
           roll_width: materialRollWidth || rollWidth,
           material_id: materialId
         });
@@ -343,8 +352,8 @@ export function useOrderForm(): UseOrderFormReturn {
           gsm: materialGsm,
           length,
           width,
-          consumption, // This is the total consumption with default_quantity
-          baseConsumption: baseConsumption?.toString(), // Store the base consumption per unit
+          consumption: totalConsumption, // Use the actual saved total consumption 
+          baseConsumption: baseConsumption?.toString(), // Store the total as base too since we don't divide
           roll_width: materialRollWidth || rollWidth,
           material_id: materialId
         };
@@ -365,7 +374,8 @@ export function useOrderForm(): UseOrderFormReturn {
     setCustomComponents(newCustomComponents);
     setBaseConsumptions(newBaseConsumptions);
 
-    // If quantity already entered, update consumption values
+    // If quantity already entered, update consumption values to reflect the actual order quantity
+    // instead of the product's default quantity
     if (orderDetails.quantity) {
       const quantity = parseFloat(orderDetails.quantity);
       if (!isNaN(quantity) && quantity > 0) {
