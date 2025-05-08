@@ -49,7 +49,7 @@ export const StockDetailDialog = ({
     onClose: handleClose,
   });
   
-  // Check for any recent inventory updates
+  // Check for any recent inventory updates when dialog opens
   useEffect(() => {
     if (open && stockId) {
       const checkForInventoryUpdate = () => {
@@ -64,7 +64,7 @@ export const StockDetailDialog = ({
             const timeDiff = currentTime - updateTime;
             
             // If update is less than 10 seconds ago and affects this material
-            if (timeDiff < 10000 && materialIds.includes(stockId)) {
+            if (timeDiff < 30000 && materialIds.includes(stockId)) {
               console.log("Recent inventory update detected for this material, refreshing transactions");
               refreshTransactions();
               setActiveTab("transactions");
@@ -87,7 +87,13 @@ export const StockDetailDialog = ({
       
       // Check immediately and also after a short delay to ensure any new localStorage values are captured
       checkForInventoryUpdate();
-      const timer = setTimeout(checkForInventoryUpdate, 500);
+      
+      // Check again after 500ms for any updates that might have happened right before opening
+      const timer = setTimeout(() => {
+        refreshTransactions();
+        checkForInventoryUpdate();
+      }, 500);
+      
       return () => clearTimeout(timer);
     }
   }, [open, stockId, refreshTransactions]);
@@ -192,6 +198,12 @@ export const StockDetailDialog = ({
                   {hasTransactions && (
                     <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary w-5 h-5 text-[10px] text-primary-foreground">
                       {transactions.length}
+                    </span>
+                  )}
+                  {hasTransactions && (
+                    <span className="absolute -right-1 -top-1 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                     </span>
                   )}
                   {(isRefreshing || isTransactionsLoading) && (

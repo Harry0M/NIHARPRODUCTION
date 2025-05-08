@@ -114,7 +114,7 @@ export const updateInventoryForOrderComponents = async (
       // Create negative transaction for material consumption
       const transaction = {
         material_id: materialId,
-        inventory_id: materialId,
+        inventory_id: materialId, // Ensure the inventory_id field is set
         quantity: -consumption, // Negative since we're consuming material
         transaction_type: "order",
         reference_id: orderId,
@@ -122,7 +122,7 @@ export const updateInventoryForOrderComponents = async (
         reference_type: "Order",
         notes: `Material used in order #${orderNumber}`,
         created_at: timestamp,
-        updated_at: timestamp
+        updated_at: timestamp // Ensure the updated_at field is set
       };
       
       transactions.push(transaction);
@@ -209,6 +209,26 @@ export const updateInventoryForOrderComponents = async (
           new: material.new,
           consumed: material.consumed
         }));
+      }
+      
+      // Add a debugging log to check localStorage after setting
+      console.log("Updated localStorage with material IDs:", {
+        materialIds,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Manually trigger a storage event for components in the same window
+      try {
+        // Create and dispatch a fake storage event
+        const storageEvent = new StorageEvent('storage', {
+          key: 'last_inventory_update',
+          newValue: new Date().toISOString(),
+          url: window.location.href
+        });
+        window.dispatchEvent(storageEvent);
+        console.log("Dispatched storage event to notify other components");
+      } catch (e) {
+        console.warn("Could not dispatch storage event:", e);
       }
     } catch (err) {
       console.warn("Could not store updated material IDs in localStorage:", err);

@@ -55,7 +55,35 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
       }
     };
     
-    // Add event listener
+    // Also check for direct updates in this window (not just from other windows)
+    const checkLocalStorage = () => {
+      try {
+        const updatedMaterialIds = localStorage.getItem('updated_material_ids');
+        const lastUpdate = localStorage.getItem('last_inventory_update');
+        
+        if (updatedMaterialIds && lastUpdate) {
+          const materialIds = JSON.parse(updatedMaterialIds);
+          const updateTime = new Date(lastUpdate).getTime();
+          const currentTime = new Date().getTime();
+          const isRecent = (currentTime - updateTime) < 30000; // Within last 30 seconds
+          
+          if (isRecent && materialIds.includes(stockId)) {
+            console.log("Recent local storage update detected for this material, refreshing");
+            queryClient.invalidateQueries({ queryKey: ["stock-transactions", stockId] });
+            
+            // Also invalidate stock detail to refresh quantities
+            queryClient.invalidateQueries({ queryKey: ["stock-detail", stockId] });
+          }
+        }
+      } catch (e) {
+        console.error("Error checking local storage:", e);
+      }
+    };
+    
+    // Check immediately when the component mounts
+    checkLocalStorage();
+    
+    // Add event listener for storage changes from other windows/tabs
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [stockId, queryClient]);
@@ -121,6 +149,9 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
       console.log(`Fetching transactions for material ID: ${stockId}`);
       
       try {
+        // More explicit query with detailed logging
+        console.log(`Running transaction query for material_id = ${stockId}`);
+        
         const { data, error } = await supabase
           .from("inventory_transactions")
           .select("*")
@@ -197,6 +228,9 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     console.log("Manually refreshing transactions for stock:", stockId);
     
     try {
+      // Force clear the cache first to ensure a fresh fetch
+      queryClient.removeQueries({ queryKey: ["stock-transactions", stockId] });
+      
       // Invalidate the query cache to force a fresh fetch
       queryClient.invalidateQueries({ queryKey: ["stock-transactions", stockId] });
       
@@ -209,9 +243,25 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
         data: result.data
       });
       
+      // Show toast with results
+      if (!result.error) {
+        showToast({
+          title: "Transactions refreshed",
+          description: result.data && result.data.length > 0 
+            ? `Found ${result.data.length} transaction(s)` 
+            : "No transactions found for this material",
+          type: "info"
+        });
+      }
+      
       return true;
     } catch (error) {
       console.error("Error refreshing transactions:", error);
+      showToast({
+        title: "Error refreshing transactions",
+        description: "Could not refresh transaction history. Please try again.",
+        type: "error"
+      });
       return false;
     } finally {
       setIsRefreshing(false);
