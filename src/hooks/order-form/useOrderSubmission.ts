@@ -200,10 +200,10 @@ export function useOrderSubmission({
                   description: inventoryResult.message
                 });
               } else {
-                console.error("Inventory update failed:", inventoryResult.error);
+                console.error("Inventory update failed:", inventoryResult.errors);
                 showToast({
                   title: "Inventory update failed",
-                  description: inventoryResult.error?.message || "An error occurred updating inventory"
+                  description: inventoryResult.message || "An error occurred updating inventory"
                 });
               }
             } catch (inventoryError: any) {
