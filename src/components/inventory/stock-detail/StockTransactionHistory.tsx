@@ -61,23 +61,28 @@ export const StockTransactionHistory = ({
       
       if (data) {
         // Transform the data to match the StockTransaction interface
-        const mappedTransactions: StockTransaction[] = data.map(item => ({
-          id: item.id,
-          material_id: item.material_id,
-          inventory_id: item.inventory_id || materialId || item.material_id,  // Provide fallback
-          quantity: item.quantity,
-          created_at: item.created_at,
-          reference_id: item.reference_id || null,
-          reference_number: item.reference_number || null,
-          reference_type: item.reference_type || null,  // This was missing in the original
-          notes: item.notes || null,
-          unit_price: item.unit_price || null,
-          transaction_type: item.transaction_type,
-          location_id: item.location_id || null,
-          batch_id: item.batch_id || null,
-          roll_width: item.roll_width || null,
-          updated_at: item.updated_at || item.created_at || null  // This was missing in the original
-        }));
+        const mappedTransactions: StockTransaction[] = data.map(item => {
+          // Create a properly typed StockTransaction object
+          const transaction: StockTransaction = {
+            id: item.id,
+            material_id: item.material_id,
+            inventory_id: materialId || item.material_id, // Use materialId as fallback
+            quantity: item.quantity,
+            created_at: item.created_at,
+            reference_id: item.reference_id || null,
+            reference_number: item.reference_number || null,
+            reference_type: null, // Default value since it's not in the response
+            notes: item.notes || null,
+            unit_price: item.unit_price || null,
+            transaction_type: item.transaction_type,
+            location_id: item.location_id || null,
+            batch_id: item.batch_id || null,
+            roll_width: item.roll_width || null,
+            updated_at: item.created_at || null // Use created_at as fallback
+          };
+          
+          return transaction;
+        });
         
         setLocalTransactions(mappedTransactions);
         showToast({
