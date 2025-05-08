@@ -93,7 +93,7 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('inventory')
-        .select('id, material_name, quantity, unit, purchase_rate');
+        .select('id, material_name, quantity, unit, purchase_rate, reorder_level, min_stock_level');
       
       if (error) {
         console.error("Error fetching inventory value data:", error);
@@ -101,9 +101,18 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
       }
       
       // Calculate total value for each material
-      return (data || []).map(item => ({
+      const items = (data || []).map(item => ({
         ...item,
         totalValue: (item.quantity || 0) * (item.purchase_rate || 0)
+      }));
+      
+      // Calculate total value of all inventory
+      const totalInventoryValue = items.reduce((sum, item) => sum + item.totalValue, 0);
+      
+      // Add percentage of total for each item
+      return items.map(item => ({
+        ...item,
+        percentage: totalInventoryValue > 0 ? (item.totalValue / totalInventoryValue) * 100 : 0
       }));
     },
   });
@@ -114,17 +123,57 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('inventory')
-        .select('*')
-        .lt('quantity', supabase.raw('coalesce(reorder_level, 0)'));
+        .select('id, material_name, quantity, unit, purchase_rate, reorder_level, min_stock_level');
       
       if (error) {
         console.error("Error fetching refill needs data:", error);
         throw error;
       }
       
-      return data || [];
+      const items = (data || []).map(item => {
+        // Calculate value
+        const totalValue = (item.quantity || 0) * (item.purchase_rate || 0);
+        
+        // Determine if refill is needed and urgency level
+        const needsRefill = item.reorder_level && item.quantity < item.reorder_level;
+        const urgency = calculateRefillUrgency(
+          item.quantity,
+          item.reorder_level,
+          item.min_stock_level
+        );
+        
+        return {
+          ...item,
+          totalValue,
+          needsRefill: !!needsRefill,
+          urgency
+        };
+      });
+      
+      return items;
     },
   });
+
+  // Calculate refill urgency level
+  const calculateRefillUrgency = (
+    currentQuantity: number, 
+    reorderLevel: number | null,
+    minStockLevel: number | null
+  ): 'critical' | 'warning' | 'normal' => {
+    if (reorderLevel === null) return 'normal';
+    
+    // If below minimum stock level, it's critical
+    if (minStockLevel !== null && currentQuantity < minStockLevel) {
+      return 'critical';
+    }
+    
+    // If below reorder level, it's a warning
+    if (currentQuantity < reorderLevel) {
+      return 'warning';
+    }
+    
+    return 'normal';
+  };
 
   // Fetch recent transactions for tracking consumption over time
   const { data: recentTransactions, isLoading: loadingTransactions } = useQuery({
