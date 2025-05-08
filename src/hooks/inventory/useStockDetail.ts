@@ -9,6 +9,26 @@ interface UseStockDetailProps {
   onClose: () => void;
 }
 
+// Define an interface to represent what we actually receive from the database
+interface RawTransactionData {
+  id: string;
+  material_id: string;
+  quantity: number;
+  created_at: string;
+  transaction_type: string;
+  // Fields that might be missing in some database records
+  inventory_id?: string;
+  reference_id?: string | null;
+  reference_number?: string | null;
+  reference_type?: string | null;
+  notes?: string | null;
+  unit_price?: number | null;
+  location_id?: string | null;
+  batch_id?: string | null;
+  roll_width?: number | null;
+  updated_at?: string | null;
+}
+
 export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
   const queryClient = useQueryClient();
 
@@ -79,15 +99,17 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
       // Log the raw data from database to inspect its structure
       console.log("Raw transaction data:", data);
       
+      // Explicitly cast the data to RawTransactionData array for better type safety
+      const rawData = (data || []) as RawTransactionData[];
+      
       // Map raw transaction data to match the StockTransaction interface
-      // Use type assertion and provide fallbacks for all potentially missing properties
-      const mappedTransactions: StockTransaction[] = (data || []).map(item => {
+      const mappedTransactions: StockTransaction[] = rawData.map(item => {
         // Create a properly typed transaction object with fallbacks for missing properties
         const transaction: StockTransaction = {
           id: item.id,
           material_id: item.material_id,
           // This field might be missing in the database, use stockId as fallback
-          inventory_id: item.inventory_id || stockId || item.material_id,
+          inventory_id: item.inventory_id ?? stockId ?? item.material_id,
           quantity: item.quantity,
           created_at: item.created_at,
           reference_id: item.reference_id ?? null,
