@@ -8,6 +8,17 @@ interface UseStockDetailProps {
   onClose: () => void;
 }
 
+export interface StockTransaction {
+  id: string;
+  created_at: string;
+  inventory_id: string;
+  transaction_type: string;
+  quantity: number;
+  reference_type: string | null;
+  reference_id: string | null;
+  notes: string | null;
+}
+
 export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
   const queryClient = useQueryClient();
 
@@ -75,7 +86,7 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
         console.error("Error fetching transactions:", error);
         throw error;
       }
-      return data || [];
+      return data as StockTransaction[] || [];
     },
     enabled: !!stockId,
   });

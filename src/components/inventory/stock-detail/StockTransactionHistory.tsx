@@ -13,11 +13,12 @@ import {
 interface Transaction {
   id: string;
   created_at: string;
+  inventory_id: string;
   transaction_type: string;
   quantity: number;
-  reference_type: string;
-  reference_id: string;
-  notes: string;
+  reference_type: string | null;
+  reference_id: string | null;
+  notes: string | null;
 }
 
 interface StockTransactionHistoryProps {
@@ -82,7 +83,10 @@ export const StockTransactionHistory: React.FC<StockTransactionHistoryProps> = (
                      transaction.transaction_type === 'adjustment' ? 'Adjusted' : 'Other'}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {transaction.notes || `${transaction.reference_type}: ${transaction.reference_id}`}
+                    {transaction.notes || 
+                      (transaction.reference_type && transaction.reference_id 
+                        ? `${transaction.reference_type}: ${transaction.reference_id}` 
+                        : 'No reference provided')}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {format(new Date(transaction.created_at), "MMM d, yyyy - h:mm a")}

@@ -107,4 +107,4 @@ export const StockDetailDialog = ({
       </DialogContent>
     </Dialog>
   );
-};
+}

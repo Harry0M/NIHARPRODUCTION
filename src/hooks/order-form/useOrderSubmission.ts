@@ -271,7 +271,8 @@ export function useOrderSubmission({
         
         // Create inventory transaction record
         const transactionData = {
-          inventory_id: component.material_id,
+          material_id: component.material_id,
+          inventory_id: component.material_id, // Use material_id as inventory_id for compatibility
           transaction_type: 'consumption',
           quantity: -consumedAmount, // Negative for consumption
           reference_type: 'order',
