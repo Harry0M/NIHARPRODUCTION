@@ -79,7 +79,7 @@ const StockList = () => {
       console.log("Fetching transaction counts...");
       const { data, error } = await supabase
         .from('inventory_transactions')
-        .select('material_id, count')
+        .select('material_id')
         .eq('created_at', '>', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
         .then(({ data, error }) => {
           if (error) {
