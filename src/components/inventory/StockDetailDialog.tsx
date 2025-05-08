@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +32,7 @@ export const StockDetailDialog = ({
   onDelete = () => {},
 }: StockDetailDialogProps) => {
   const handleClose = () => onOpenChange(false);
+  const [activeTab, setActiveTab] = useState<string>("details");
 
   const { 
     stockItem, 
@@ -49,18 +50,39 @@ export const StockDetailDialog = ({
   // Handle manual refresh with toast feedback
   const handleRefresh = async () => {
     try {
+      showToast({
+        title: "Refreshing transactions",
+        description: "Checking for latest transaction data"
+      });
+      
       await refreshTransactions();
+      
       showToast({
         title: "Refreshed",
-        description: "Transaction data has been updated"
+        description: transactions && transactions.length > 0 
+          ? `Found ${transactions.length} transactions` 
+          : "No transactions found"
       });
     } catch (error) {
       console.error("Error refreshing transactions:", error);
+      showToast({
+        title: "Refresh failed",
+        description: "Could not refresh transaction data",
+        variant: "destructive"
+      });
     }
   };
 
   // Calculate if there are any transactions to show
   const hasTransactions = transactions && transactions.length > 0;
+
+  // Auto-switch to transactions tab if transactions appear after refresh
+  React.useEffect(() => {
+    if (hasTransactions && isRefreshing === false && activeTab === "details") {
+      // Only switch if we just finished refreshing and found transactions
+      setActiveTab("transactions");
+    }
+  }, [hasTransactions, isRefreshing, activeTab]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -105,15 +127,26 @@ export const StockDetailDialog = ({
             <Skeleton className="h-24 w-full" />
           </div>
         ) : stockItem ? (
-          <Tabs defaultValue="details">
+          <Tabs 
+            value={activeTab} 
+            onValueChange={setActiveTab} 
+            defaultValue="details"
+          >
             <TabsList className="grid grid-cols-2 mb-4">
               <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="transactions" className="relative">
+              <TabsTrigger 
+                value="transactions" 
+                className="relative"
+                onClick={() => hasTransactions === false && handleRefresh()}
+              >
                 Transactions
                 {hasTransactions && (
                   <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-primary w-5 h-5 text-[10px] text-primary-foreground">
                     {transactions.length}
                   </span>
+                )}
+                {(isRefreshing || isTransactionsLoading) && (
+                  <RefreshCcw className="ml-2 h-3 w-3 animate-spin" />
                 )}
               </TabsTrigger>
             </TabsList>
@@ -123,6 +156,23 @@ export const StockDetailDialog = ({
                 stockItem={stockItem} 
                 linkedComponents={linkedComponents} 
               />
+              
+              {/* Add a button to view transactions */}
+              {!hasTransactions && (
+                <div className="mt-4 flex justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setActiveTab("transactions");
+                      handleRefresh();
+                    }}
+                    className="flex items-center gap-1"
+                  >
+                    <RefreshCcw className="h-4 w-4" />
+                    Check for Transactions
+                  </Button>
+                </div>
+              )}
             </TabsContent>
             
             <TabsContent value="transactions">
@@ -135,7 +185,7 @@ export const StockDetailDialog = ({
                   className="flex items-center gap-1"
                 >
                   <RefreshCcw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                  {isRefreshing ? 'Refreshing...' : 'Refresh Transactions'}
                 </Button>
               </div>
               <StockTransactionHistory 

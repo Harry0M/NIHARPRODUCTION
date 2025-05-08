@@ -30,24 +30,51 @@ export const updateInventoryForOrderComponents = async (
   // Group components by material_id and sum up their consumption
   const materialConsumption: Record<string, number> = {};
   
-  components.forEach(component => {
-    if (component.material_id && component.consumption) {
-      const materialId = component.material_id;
-      const consumption = typeof component.consumption === 'string' 
-        ? parseFloat(component.consumption) 
-        : component.consumption;
-      
-      if (!isNaN(consumption) && consumption > 0) {
-        materialConsumption[materialId] = (materialConsumption[materialId] || 0) + consumption;
-      }
+  // Log initial component data for debugging
+  components.forEach((component, index) => {
+    console.log(`Component ${index + 1}:`, {
+      type: component.component_type,
+      materialId: component.material_id,
+      consumption: component.consumption,
+      valid: !!component.material_id && !!component.consumption
+    });
+  });
+  
+  // Filter components with both material_id and consumption > 0
+  const validComponents = components.filter(component => {
+    const hasValidMaterialId = !!component.material_id;
+    const consumption = typeof component.consumption === 'string' 
+      ? parseFloat(component.consumption) 
+      : component.consumption;
+    const hasValidConsumption = !isNaN(consumption) && consumption > 0;
+    
+    if (!hasValidMaterialId) {
+      console.warn(`Component missing material_id:`, component);
     }
+    if (!hasValidConsumption) {
+      console.warn(`Component has invalid consumption:`, component);
+    }
+    
+    return hasValidMaterialId && hasValidConsumption;
+  });
+  
+  console.log(`Found ${validComponents.length} of ${components.length} components with valid material_id and consumption`);
+  
+  // Calculate total consumption per material
+  validComponents.forEach(component => {
+    const materialId = component.material_id;
+    const consumption = typeof component.consumption === 'string' 
+      ? parseFloat(component.consumption) 
+      : component.consumption;
+    
+    materialConsumption[materialId] = (materialConsumption[materialId] || 0) + consumption;
   });
   
   console.log("Calculated material consumption:", materialConsumption);
   
   // No materials to update
   if (Object.keys(materialConsumption).length === 0) {
-    console.log("No materials with consumption found for inventory update");
+    console.warn("No materials with consumption found for inventory update");
     return { success: true, message: "No materials to update" };
   }
   
@@ -70,6 +97,12 @@ export const updateInventoryForOrderComponents = async (
       if (materialError) {
         console.error(`Error fetching material ${materialId}:`, materialError);
         errors.push(`Error fetching material ${materialId}: ${materialError.message}`);
+        continue;
+      }
+      
+      if (!materialData) {
+        console.error(`Material ${materialId} not found in inventory`);
+        errors.push(`Material ${materialId} not found in inventory`);
         continue;
       }
       
@@ -153,7 +186,7 @@ export const updateInventoryForOrderComponents = async (
   if (errors.length > 0) {
     return { 
       success: false, 
-      message: `Updated inventory with some errors. Check console for details.`,
+      message: `Updated inventory with ${errors.length} errors. Check console for details.`,
       errors
     };
   }

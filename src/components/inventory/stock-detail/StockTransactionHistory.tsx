@@ -22,7 +22,7 @@ export const StockTransactionHistory = ({
     return (
       <Card className="mt-6">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Transaction History</CardTitle>
+          <CardTitle className="flex items-center gap-2">Transaction History</CardTitle>
           {onRefresh && (
             <Button 
               variant="outline" 
@@ -32,7 +32,7 @@ export const StockTransactionHistory = ({
               className="flex items-center gap-1"
             >
               <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              {isLoading ? "Refreshing..." : "Refresh"}
+              {isLoading ? "Refreshing..." : "Refresh Transactions"}
             </Button>
           )}
         </CardHeader>
@@ -44,6 +44,16 @@ export const StockTransactionHistory = ({
               When materials are used in orders or new stock is added, transactions will appear here.
               {isLoading ? " Checking for latest transactions..." : ""}
             </p>
+            {onRefresh && !isLoading && (
+              <Button 
+                variant="outline" 
+                onClick={onRefresh} 
+                className="mt-2"
+                size="sm"
+              >
+                Check for New Transactions
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -76,7 +86,12 @@ export const StockTransactionHistory = ({
   return (
     <Card className="mt-6">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Transaction History ({transactions.length})</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <span>Transaction History</span>
+          <Badge variant="outline" className="ml-2">
+            {transactions.length} {transactions.length === 1 ? 'transaction' : 'transactions'}
+          </Badge>
+        </CardTitle>
         {onRefresh && (
           <Button 
             variant="outline" 

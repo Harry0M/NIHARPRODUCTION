@@ -82,7 +82,11 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     enabled: !!stockId,
   });
 
-  const { data: transactions, isLoading: isTransactionsLoading, refetch: refetchTransactions } = useQuery({
+  const { 
+    data: transactions, 
+    isLoading: isTransactionsLoading, 
+    refetch: refetchTransactions 
+  } = useQuery({
     queryKey: ["stock-transactions", stockId],
     queryFn: async () => {
       if (!stockId) return [];
@@ -144,19 +148,31 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     },
     enabled: !!stockId,
     // Add more frequent refetching to ensure we get the latest data
-    refetchInterval: 3000, // Refetch every 3 seconds while visible
+    refetchInterval: 0, // Disable auto-refetch to avoid rate limits
     refetchOnWindowFocus: true, // Refetch when window regains focus
-    staleTime: 1000, // Data becomes stale after 1 second
+    staleTime: 10000, // Data becomes stale after 10 seconds - only fetch fresh data when needed
   });
 
   // Function to manually refresh transactions
   const handleRefreshTransactions = async () => {
-    if (isRefreshing) return;
+    if (isRefreshing) return Promise.resolve(false);
     
     setIsRefreshing(true);
+    console.log("Manually refreshing transactions for stock:", stockId);
+    
     try {
-      await refetchTransactions();
-      // No toast here - the caller can decide to show feedback
+      // Invalidate the query cache to force a fresh fetch
+      queryClient.invalidateQueries({ queryKey: ["stock-transactions", stockId] });
+      
+      // Wait for the refetch to complete
+      const result = await refetchTransactions();
+      
+      console.log("Transactions refresh complete:", {
+        success: !result.error,
+        count: result.data?.length || 0,
+        data: result.data
+      });
+      
       return true;
     } catch (error) {
       console.error("Error refreshing transactions:", error);
