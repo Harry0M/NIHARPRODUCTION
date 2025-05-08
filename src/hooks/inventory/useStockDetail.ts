@@ -85,6 +85,9 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     queryFn: async () => {
       if (!stockId) return [];
       
+      // Added logging to track the query execution
+      console.log(`Fetching transactions for material ID: ${stockId}`);
+      
       const { data, error } = await supabase
         .from("inventory_transactions")
         .select("*")
@@ -98,9 +101,15 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
       
       // Log the raw data from database to inspect its structure
       console.log("Raw transaction data:", data);
+      console.log("Transaction count:", data?.length || 0);
+      
+      // If no transactions, return empty array early
+      if (!data || data.length === 0) {
+        return [];
+      }
       
       // Explicitly cast the data to RawTransactionData array for better type safety
-      const rawData = (data || []) as RawTransactionData[];
+      const rawData = data as RawTransactionData[];
       
       // Map raw transaction data to match the StockTransaction interface
       const mappedTransactions: StockTransaction[] = rawData.map(item => {
@@ -132,12 +141,19 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
       return mappedTransactions;
     },
     enabled: !!stockId,
+    // Add more frequent refetching to ensure we get the latest data
+    refetchInterval: 10000, // Refetch every 10 seconds
+    refetchOnWindowFocus: true, // Refetch when window regains focus
   });
 
   return {
     stockItem,
     linkedComponents,
     transactions,
-    isLoading
+    isLoading,
+    // Add a method to manually refetch transactions
+    refetchTransactions: () => queryClient.invalidateQueries({
+      queryKey: ["stock-transactions", stockId]
+    })
   };
 };

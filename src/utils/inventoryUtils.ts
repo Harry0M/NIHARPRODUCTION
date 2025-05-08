@@ -82,6 +82,7 @@ export const updateInventoryForOrderComponents = async (
       reference_number: orderNumber,
       reference_type: "Order",
       notes: `Material used in order #${orderNumber}`,
+      created_at: new Date().toISOString(), // Add created_at field explicitly 
       updated_at: new Date().toISOString() // Add updated_at field
     });
     
@@ -89,7 +90,8 @@ export const updateInventoryForOrderComponents = async (
     const newQuantity = Math.max(0, materialData.quantity - consumption);
     inventoryUpdates.push({
       id: materialId,
-      quantity: newQuantity
+      quantity: newQuantity,
+      updated_at: new Date().toISOString() // Add updated_at field to inventory update
     });
     
     console.log(`Updating ${materialData.material_name} quantity to ${newQuantity} ${materialData.unit} (consumed ${consumption})`);
@@ -97,23 +99,25 @@ export const updateInventoryForOrderComponents = async (
   
   // Record transactions
   if (transactions.length > 0) {
-    const { error: transactionError } = await supabase
+    console.log("Recording inventory transactions:", transactions);
+    const { data: transactionData, error: transactionError } = await supabase
       .from("inventory_transactions")
-      .insert(transactions);
+      .insert(transactions)
+      .select();
     
     if (transactionError) {
       console.error("Error recording inventory transactions:", transactionError);
       return { success: false, error: transactionError };
     }
     
-    console.log("Successfully recorded inventory transactions:", transactions.length);
+    console.log("Successfully recorded inventory transactions:", transactionData);
   }
   
   // Update inventory quantities
   for (const update of inventoryUpdates) {
     const { error: updateError } = await supabase
       .from("inventory")
-      .update({ quantity: update.quantity })
+      .update({ quantity: update.quantity, updated_at: update.updated_at })
       .eq("id", update.id);
     
     if (updateError) {
