@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { 
@@ -10,17 +9,18 @@ import {
   CardDescription 
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { OrderDetailsForm } from "@/components/orders/OrderDetailsForm";
 import { StandardComponents } from "@/components/orders/StandardComponents";
 import { CustomComponentSection } from "@/components/orders/CustomComponentSection";
 import { v4 as uuidv4 } from "uuid";
+import { OrderFormData } from "@/types/order";
+import { validateComponentData, convertStringToNumeric } from "@/utils/orderFormUtils";
 
 const componentOptions = {
   color: ["Red", "Blue", "Green", "Black", "White", "Yellow", "Brown", "Orange", "Purple", "Gray", "Custom"],
-  // gsm has been removed as requested
 };
 
 interface FormErrors {
@@ -29,6 +29,8 @@ interface FormErrors {
   bag_length?: string;
   bag_width?: string;
   order_date?: string;
+  product_quantity?: string;
+  total_quantity?: string;
 }
 
 const OrderEdit = () => {
@@ -37,17 +39,19 @@ const OrderEdit = () => {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<OrderFormData>({
     company_name: "",
-    company_id: null as string | null,
+    company_id: null,
     quantity: "",
+    product_quantity: "1", // Default to 1
+    total_quantity: "", // Will be calculated
     bag_length: "",
     bag_width: "",
     border_dimension: "",
     rate: "",
     special_instructions: "",
     order_date: "",
-    sales_account_id: null as string | null
+    sales_account_id: null
   });
   
   const [formErrors, setFormErrors] = useState<FormErrors>({});
@@ -73,6 +77,8 @@ const OrderEdit = () => {
           company_name: orderData.company_name || "",
           company_id: orderData.company_id,
           quantity: orderData.quantity?.toString() || "",
+          product_quantity: "1", // Default to 1 initially
+          total_quantity: orderData.quantity?.toString() || "", // Initially same as quantity
           bag_length: orderData.bag_length?.toString() || "",
           bag_width: orderData.bag_width?.toString() || "",
           border_dimension: orderData.border_dimension?.toString() || "",
@@ -196,11 +202,27 @@ const OrderEdit = () => {
       }));
     }
     
-    // If quantity changed, update consumption values
-    if (name === 'quantity' && value) {
-      const quantity = parseFloat(value as string);
-      if (!isNaN(quantity)) {
-        updateConsumptionBasedOnQuantity(quantity);
+    // If quantity or product_quantity changed, calculate total quantity and update consumption
+    if ((name === 'quantity' || name === 'product_quantity') && value) {
+      const orderQty = name === 'quantity' 
+        ? parseFloat(value as string) 
+        : parseFloat(formData.quantity || "1");
+      
+      const productQty = name === 'product_quantity' 
+        ? parseFloat(value as string) 
+        : parseFloat(formData.product_quantity || "1");
+      
+      if (!isNaN(orderQty) && !isNaN(productQty)) {
+        const totalQty = orderQty * productQty;
+        
+        // Update total quantity
+        setFormData(prev => ({
+          ...prev,
+          total_quantity: totalQty.toString()
+        }));
+        
+        // Update consumption based on total quantity
+        updateConsumptionBasedOnQuantity(totalQty);
       }
     }
   };
@@ -297,6 +319,18 @@ const OrderEdit = () => {
       isValid = false;
     }
 
+    // Validate product quantity
+    if (!formData.product_quantity || parseFloat(formData.product_quantity) <= 0) {
+      errors.product_quantity = "Valid product quantity is required";
+      isValid = false;
+    }
+
+    // Validate total quantity
+    if (!formData.total_quantity || parseFloat(formData.total_quantity) <= 0) {
+      errors.total_quantity = "Valid total quantity is required";
+      isValid = false;
+    }
+
     // Validate bag length
     if (!formData.bag_length || parseFloat(formData.bag_length) <= 0) {
       errors.bag_length = "Valid bag length is required";
@@ -381,7 +415,7 @@ const OrderEdit = () => {
         .update({
           company_name: formData.company_id ? null : formData.company_name,
           company_id: formData.company_id,
-          quantity: parseInt(formData.quantity),
+          quantity: parseInt(formData.total_quantity), // Use total quantity instead of order quantity
           bag_length: parseFloat(formData.bag_length),
           bag_width: parseFloat(formData.bag_width),
           border_dimension: formData.border_dimension ? parseFloat(formData.border_dimension) : null,
@@ -542,6 +576,29 @@ const OrderEdit = () => {
       }
     }
 
+    // Get product default quantity if available from first component
+    // This assumes all components from the same product have the same default_quantity
+    const productQuantity = components[0]?.default_quantity || 1;
+    console.log(`Product default quantity: ${productQuantity}`);
+    
+    // Update product_quantity in formData
+    setFormData(prev => {
+      const newDetails = {
+        ...prev,
+        product_quantity: productQuantity.toString()
+      };
+      
+      // Calculate total quantity if order quantity is already set
+      if (prev.quantity) {
+        const orderQty = parseFloat(prev.quantity);
+        if (!isNaN(orderQty)) {
+          newDetails.total_quantity = (orderQty * productQuantity).toString();
+        }
+      }
+      
+      return newDetails;
+    });
+
     components.forEach(component => {
       if (!component) return;
       
@@ -603,7 +660,7 @@ const OrderEdit = () => {
       const componentTypeLower = component.component_type.toLowerCase();
       
       // Extract the base consumption value (before multiplication)
-      const baseConsumption = consumption ? parseFloat(consumption) : undefined;
+      const baseConsumption = consumption ? parseFloat(consumption) / productQuantity : undefined;
       
       if (componentTypeLower === 'custom') {
         const customIndex = newCustomComponents.length;
@@ -658,7 +715,12 @@ const OrderEdit = () => {
     if (formData.quantity) {
       const quantity = parseFloat(formData.quantity);
       if (!isNaN(quantity) && quantity > 0) {
-        setTimeout(() => updateConsumptionBasedOnQuantity(quantity), 100);
+        const totalQty = quantity * productQuantity;
+        setFormData(prev => ({
+          ...prev,
+          total_quantity: totalQty.toString()
+        }));
+        setTimeout(() => updateConsumptionBasedOnQuantity(totalQty), 100);
       }
     }
   };
@@ -709,7 +771,7 @@ const OrderEdit = () => {
                 components={components}
                 componentOptions={componentOptions}
                 onChange={handleComponentChange}
-                defaultQuantity={formData.quantity}
+                defaultQuantity={formData.total_quantity || formData.quantity}
               />
               
               <div className="space-y-4">
@@ -731,7 +793,7 @@ const OrderEdit = () => {
                   componentOptions={componentOptions}
                   handleCustomComponentChange={handleCustomComponentChange}
                   removeCustomComponent={removeCustomComponent}
-                  defaultQuantity={formData.quantity}
+                  defaultQuantity={formData.total_quantity || formData.quantity}
                 />
               </div>
             </div>
