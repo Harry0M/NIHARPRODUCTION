@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { showToast } from "@/components/ui/enhanced-toast";
 import { StockTransaction } from "@/types/inventory";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface UseStockDetailProps {
   stockId: string | null;
@@ -33,6 +33,32 @@ interface RawTransactionData {
 export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Monitor local storage for inventory updates
+  useEffect(() => {
+    if (!stockId) return;
+    
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'last_inventory_update') {
+        try {
+          const updatedMaterialIds = localStorage.getItem('updated_material_ids');
+          if (updatedMaterialIds) {
+            const materialIds = JSON.parse(updatedMaterialIds);
+            if (materialIds.includes(stockId)) {
+              console.log("Local storage update detected for this material, refreshing");
+              queryClient.invalidateQueries({ queryKey: ["stock-transactions", stockId] });
+            }
+          }
+        } catch (e) {
+          console.error("Error handling storage change:", e);
+        }
+      }
+    };
+    
+    // Add event listener
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [stockId, queryClient]);
 
   const { data: stockItem, isLoading } = useQuery({
     queryKey: ["stock-detail", stockId],
@@ -157,10 +183,10 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
       }
     },
     enabled: !!stockId,
-    // Add more frequent refetching to ensure we get the latest data
-    refetchInterval: 30000, // Refresh every 30 seconds while the component is visible
+    // More frequent refetching to ensure we get the latest data
+    refetchInterval: 10000, // Refresh every 10 seconds while the component is visible
     refetchOnWindowFocus: true, // Refetch when window regains focus
-    staleTime: 10000, // Data becomes stale after 10 seconds - only fetch fresh data when needed
+    staleTime: 5000, // Data becomes stale after 5 seconds - fetch fresh data more often
   });
 
   // Function to manually refresh transactions

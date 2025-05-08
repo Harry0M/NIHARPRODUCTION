@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StockTransaction } from "@/types/inventory";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, ArrowDownRight, ArrowUpRight, RefreshCcw } from "lucide-react";
+import { AlertCircle, ArrowDownRight, ArrowUpRight, RefreshCcw, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface StockTransactionHistoryProps {
@@ -22,7 +22,10 @@ export const StockTransactionHistory = ({
     return (
       <Card className="mt-6">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">Transaction History</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <History className="h-5 w-5" />
+            Transaction History
+          </CardTitle>
           {onRefresh && (
             <Button 
               variant="outline" 
@@ -46,11 +49,11 @@ export const StockTransactionHistory = ({
             </p>
             {onRefresh && !isLoading && (
               <Button 
-                variant="outline" 
+                variant="default" 
                 onClick={onRefresh} 
-                className="mt-2"
-                size="sm"
+                className="mt-4"
               >
+                <RefreshCcw className="h-4 w-4 mr-2" />
                 Check for New Transactions
               </Button>
             )}
@@ -85,8 +88,9 @@ export const StockTransactionHistory = ({
 
   return (
     <Card className="mt-6">
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between bg-muted/20">
         <CardTitle className="flex items-center gap-2">
+          <History className="h-5 w-5" />
           <span>Transaction History</span>
           <Badge variant="outline" className="ml-2">
             {transactions.length} {transactions.length === 1 ? 'transaction' : 'transactions'}
@@ -105,8 +109,8 @@ export const StockTransactionHistory = ({
           </Button>
         )}
       </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
+      <CardContent className="p-4">
+        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
           {transactions.map((transaction) => {
             const typeInfo = getTransactionTypeLabel(transaction.transaction_type);
             const isNegative = transaction.quantity < 0;
@@ -115,30 +119,33 @@ export const StockTransactionHistory = ({
             return (
               <div 
                 key={transaction.id} 
-                className="border rounded-md p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-muted/50 transition-colors"
+                className="border rounded-md p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-muted/50 transition-colors"
               >
                 <div>
                   <div className="flex items-center gap-2">
-                    <Badge variant={typeInfo.variant as any}>{typeInfo.label}</Badge>
+                    <Badge variant={typeInfo.variant as any} className="px-2 py-1">
+                      {Icon && <Icon className="h-3.5 w-3.5 mr-1" />}
+                      {typeInfo.label}
+                    </Badge>
                     <span className="text-sm font-medium">
                       {formatDate(transaction.created_at)}
                     </span>
                   </div>
                   
                   {transaction.notes && (
-                    <p className="text-sm text-muted-foreground mt-1">{transaction.notes}</p>
+                    <p className="text-sm text-muted-foreground mt-2">{transaction.notes}</p>
                   )}
                   
                   {transaction.reference_number && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Ref: {transaction.reference_type || 'Order'} #{transaction.reference_number}
+                    <p className="text-xs bg-muted/50 px-2 py-0.5 rounded mt-1 inline-block">
+                      {transaction.reference_type || 'Order'} #{transaction.reference_number}
                     </p>
                   )}
                 </div>
                 
-                <div className="flex items-center gap-2">
-                  <span className={`font-semibold flex items-center ${isNegative ? 'text-red-500' : 'text-green-500'}`}>
-                    {Icon && <Icon className="h-4 w-4 mr-1" />}
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`text-lg font-semibold flex items-center ${isNegative ? 'text-red-500' : 'text-green-500'}`}>
+                    {Icon && <Icon className="h-5 w-5 mr-1" />}
                     {isNegative ? '' : '+'}{transaction.quantity.toFixed(2)}
                   </span>
                   

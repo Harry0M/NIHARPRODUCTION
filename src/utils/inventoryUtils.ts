@@ -137,6 +137,7 @@ export const updateInventoryForOrderComponents = async (
       });
       
       updatedMaterials.push({
+        id: materialId,
         name: materialData.material_name,
         previous: materialData.quantity,
         new: newQuantity,
@@ -189,6 +190,28 @@ export const updateInventoryForOrderComponents = async (
     } catch (err: any) {
       console.error(`Error updating inventory ${update.id}:`, err);
       errors.push(`Error updating inventory ${update.id}: ${err.message}`);
+    }
+  }
+  
+  // Store updated material IDs in localStorage for other components to detect
+  if (updatedMaterials.length > 0) {
+    try {
+      // Store updated material IDs and timestamp
+      const materialIds = updatedMaterials.map(m => m.id);
+      localStorage.setItem('updated_material_ids', JSON.stringify(materialIds));
+      localStorage.setItem('last_inventory_update', new Date().toISOString());
+      
+      // Also store individual material details for more specific updates
+      for (const material of updatedMaterials) {
+        localStorage.setItem(`material_update_${material.id}`, JSON.stringify({
+          timestamp: new Date().toISOString(),
+          previous: material.previous,
+          new: material.new,
+          consumed: material.consumed
+        }));
+      }
+    } catch (err) {
+      console.warn("Could not store updated material IDs in localStorage:", err);
     }
   }
   

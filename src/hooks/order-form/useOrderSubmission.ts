@@ -215,11 +215,25 @@ export function useOrderSubmission({
               
               if (inventoryResult.success) {
                 console.log("Inventory update successful:", inventoryResult.message);
-                showToast({
-                  title: "Inventory updated",
-                  description: inventoryResult.message,
-                  type: "success"
-                });
+                
+                // Show more visible toast about inventory changes
+                if (inventoryResult.updatedMaterials && inventoryResult.updatedMaterials.length > 0) {
+                  const materialDetails = inventoryResult.updatedMaterials.map(
+                    m => `${m.name}: ${m.previous.toFixed(2)} → ${m.new.toFixed(2)} ${m.unit} (-${m.consumed.toFixed(2)})`
+                  ).join('\n');
+                  
+                  showToast({
+                    title: "Inventory Updated",
+                    description: `${inventoryResult.message}. Material transactions have been recorded.`,
+                    type: "success"
+                  });
+                } else {
+                  showToast({
+                    title: "Inventory updated",
+                    description: inventoryResult.message,
+                    type: "success"
+                  });
+                }
                 
                 // Force invalidate any transaction queries to ensure fresh data
                 // This will help show the new transactions in the stock detail dialog
@@ -235,6 +249,13 @@ export function useOrderSubmission({
                         .filter(c => c.material_id)
                         .map(c => c.material_id);
                       localStorage.setItem('updated_material_ids', JSON.stringify(materialIds));
+                      
+                      // Notify the user about where to find the transactions
+                      showToast({
+                        title: "Transaction History Updated",
+                        description: "Go to Inventory > Stock > View Details > Transactions to see material usage history",
+                        type: "info"
+                      });
                     }
                   } catch (e) {
                     // Ignore localStorage errors
