@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { showToast } from "@/components/ui/enhanced-toast";
@@ -291,7 +292,7 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
             location_id: item.location_id ?? null,
             batch_id: item.batch_id ?? null,
             roll_width: item.roll_width ?? null,
-            // This field might be missing, use null or created_at as fallback
+            // This field might be missing, use created_at or null as fallback
             updated_at: item.updated_at ?? item.created_at ?? null
           };
           
