@@ -94,3 +94,26 @@ export const calculateTotalConsumptionByMaterial = (data: any[]) => {
   
   return Object.values(materialMap);
 };
+
+/**
+ * Calculate refill urgency level
+ */
+export const calculateRefillUrgency = (
+  currentQuantity: number, 
+  reorderLevel: number | null,
+  minStockLevel: number | null
+): 'critical' | 'warning' | 'normal' => {
+  if (reorderLevel === null) return 'normal';
+  
+  // If below minimum stock level, it's critical
+  if (minStockLevel !== null && currentQuantity < minStockLevel) {
+    return 'critical';
+  }
+  
+  // If below reorder level, it's a warning
+  if (currentQuantity < reorderLevel) {
+    return 'warning';
+  }
+  
+  return 'normal';
+};

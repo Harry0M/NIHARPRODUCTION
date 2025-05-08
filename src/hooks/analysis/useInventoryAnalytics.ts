@@ -121,16 +121,19 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
           const mappedData = [];
           for (const tx of transactionData) {
             if (tx.metadata && tx.reference_id && tx.reference_number) {
+              // Type-check the metadata object properly
+              const metadata = tx.metadata as Record<string, any>;
+              
               mappedData.push({
                 order_id: tx.reference_id,
                 order_number: tx.reference_number,
-                company_name: tx.metadata.company_name || 'Unknown',
+                company_name: metadata.company_name || 'Unknown',
                 material_id: tx.material_id,
-                material_name: tx.metadata.material_name || 'Unknown Material',
+                material_name: metadata.material_name || 'Unknown Material',
                 total_material_used: Math.abs(tx.quantity),
-                unit: tx.metadata.unit || 'units',
+                unit: metadata.unit || 'units',
                 usage_date: tx.transaction_date,
-                component_type: tx.metadata.component_type || 'Unknown'
+                component_type: metadata.component_type || 'Unknown'
               });
             }
           }

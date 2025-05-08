@@ -171,3 +171,93 @@ export const recordOrderMaterialUsage = async (
     };
   }
 };
+
+/**
+ * Update inventory for order components
+ */
+export const updateInventoryForOrderComponents = async (
+  supabaseClient: any,
+  orderId: string,
+  orderNumber: string,
+  components: any[]
+) => {
+  try {
+    let successCount = 0;
+    let errorCount = 0;
+    const errors: string[] = [];
+    const updatedMaterials: any[] = [];
+    
+    // Process each component with a material_id
+    for (const component of components) {
+      if (!component.material_id || !component.consumption) {
+        continue; // Skip components without material or consumption value
+      }
+      
+      const materialId = component.material_id;
+      const consumption = parseFloat(component.consumption);
+      
+      if (isNaN(consumption) || consumption <= 0) {
+        continue; // Skip invalid consumption values
+      }
+      
+      // Get current material data
+      const { data: materialData, error: materialError } = await supabaseClient
+        .from("inventory")
+        .select("id, material_name, quantity, unit")
+        .eq("id", materialId)
+        .single();
+        
+      if (materialError) {
+        console.error(`Error fetching material ${materialId}:`, materialError);
+        errors.push(`Failed to fetch material ${materialId}: ${materialError.message}`);
+        errorCount++;
+        continue;
+      }
+      
+      const previousQuantity = materialData.quantity;
+      const newQuantity = Math.max(0, previousQuantity - consumption);
+      
+      // Call the RPC function to record the usage
+      const { error: rpcError } = await supabaseClient.rpc(
+        'record_order_material_usage',
+        {
+          p_order_id: orderId,
+          p_order_number: orderNumber,
+          p_material_id: materialId,
+          p_quantity: consumption,
+          p_notes: `Material used for ${component.component_type} component`
+        }
+      );
+      
+      if (rpcError) {
+        console.error(`Error recording material usage for ${materialId}:`, rpcError);
+        errors.push(`Failed to record usage for ${materialData.material_name}: ${rpcError.message}`);
+        errorCount++;
+      } else {
+        successCount++;
+        updatedMaterials.push({
+          id: materialId,
+          name: materialData.material_name,
+          previous: previousQuantity,
+          new: newQuantity,
+          consumed: consumption,
+          unit: materialData.unit
+        });
+      }
+    }
+    
+    return {
+      success: successCount > 0,
+      message: `Updated ${successCount} material(s)${errorCount > 0 ? ` with ${errorCount} error(s)` : ''}`,
+      errors: errors.length > 0 ? errors : null,
+      updatedMaterials
+    };
+  } catch (error: any) {
+    console.error("Error updating inventory for order components:", error);
+    return {
+      success: false,
+      message: "Failed to update inventory",
+      errors: [error.message || "An unexpected error occurred"]
+    };
+  }
+};

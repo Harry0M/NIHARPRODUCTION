@@ -30,5 +30,15 @@ export interface TransactionLog {
   reference_type: string | null;
   transaction_date: string;
   notes: string | null;
-  metadata: any | null;
+  metadata: {
+    material_name?: string;
+    unit?: string;
+    company_name?: string;
+    component_type?: string;
+    order_id?: string;
+    order_number?: string;
+    manual?: boolean;
+    update_source?: string;
+    [key: string]: any;
+  } | null;
 }

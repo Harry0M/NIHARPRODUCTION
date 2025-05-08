@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useInventoryAnalytics } from "@/hooks/analysis/useInventoryAnalytics";
-import { formatCurrency, calculatePercentage, formatQuantity } from "@/utils/analysisUtils";
+import { formatCurrency, calculatePercentageChange, formatQuantity } from "@/utils/analysisUtils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart";

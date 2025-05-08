@@ -250,7 +250,7 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
           location_id: item.location_id || null,
           batch_id: item.batch_id || null,
           roll_width: item.roll_width || null,
-          updated_at: item.updated_at || item.created_at || null,
+          updated_at: item.created_at || null, // Use created_at as updated_at if it doesn't exist
           unit: item.unit || null
         }));
         
