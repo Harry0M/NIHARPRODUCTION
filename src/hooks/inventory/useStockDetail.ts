@@ -76,11 +76,23 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
         throw error;
       }
       
-      // Ensure all required fields from StockTransaction interface are present
+      // Map raw transaction data to match the StockTransaction interface
       const mappedTransactions: StockTransaction[] = (data || []).map(item => ({
-        ...item,
+        id: item.id,
+        material_id: item.material_id,
         inventory_id: item.inventory_id || stockId, // Use stockId as fallback
-        reference_type: item.reference_type || null
+        quantity: item.quantity,
+        created_at: item.created_at,
+        reference_id: item.reference_id,
+        reference_number: item.reference_number,
+        reference_type: item.reference_type || null,
+        notes: item.notes,
+        unit_price: item.unit_price,
+        transaction_type: item.transaction_type,
+        location_id: item.location_id,
+        batch_id: item.batch_id,
+        roll_width: item.roll_width,
+        updated_at: item.updated_at || null
       }));
       
       return mappedTransactions;

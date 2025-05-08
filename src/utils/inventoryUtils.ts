@@ -81,7 +81,8 @@ export const updateInventoryForOrderComponents = async (
       reference_id: orderId,
       reference_number: orderNumber,
       reference_type: "Order",
-      notes: `Material used in order #${orderNumber}`
+      notes: `Material used in order #${orderNumber}`,
+      updated_at: new Date().toISOString() // Add updated_at field
     });
     
     // Update inventory quantity
