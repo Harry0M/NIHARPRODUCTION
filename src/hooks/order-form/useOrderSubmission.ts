@@ -1,16 +1,32 @@
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { OrderFormValues } from "@/components/orders/OrderForm";
 import { supabase } from "@/integrations/supabase/client";
 import { showToast } from "@/components/ui/enhanced-toast";
 import { useNavigate } from "react-router-dom";
-import { calculateConsumption } from "@/lib/utils";
+import { calculateConsumption, convertStringToNumeric, validateComponentData } from "@/utils/orderFormUtils";
+import { OrderFormData } from "@/types/order";
+
+export interface OrderFormValues {
+  company_name: string;
+  company_id: string | null;
+  order_number: string;
+  quantity: string;
+  bag_length: string;
+  bag_width: string;
+  border_dimension?: string;
+  rate?: string;
+  order_date: string;
+  sales_account_id?: string | null;
+  special_instructions?: string;
+  orderComponents: any[];
+}
 
 export const useOrderSubmission = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const mutation = useMutation(
-    async (values: OrderFormValues) => {
+  const mutation = useMutation({
+    mutationFn: async (values: OrderFormValues) => {
       // Destructure the values object
       const { orderComponents, ...orderData } = values;
 
@@ -67,7 +83,9 @@ export const useOrderSubmission = () => {
             // Skip if no material linked or consumption is zero/undefined
             if (!component.material_id || !component.consumption) continue;
 
-            const consumedAmount = calculateConsumption(component);
+            const consumedAmount = parseFloat(component.consumption);
+            if (isNaN(consumedAmount) || consumedAmount <= 0) continue;
+            
             console.log(`Recording usage for material ${component.material_id}, amount: ${consumedAmount}`);
             
             // Create inventory transaction record
@@ -109,25 +127,36 @@ export const useOrderSubmission = () => {
 
       return orderResult;
     },
-    {
-      onSuccess: (data, variables, context) => {
-        queryClient.invalidateQueries({ queryKey: ["orders"] });
-        showToast({
-          title: "Order created successfully!",
-          description: `Order ${data.order_number} has been created.`,
-        });
-        navigate("/orders");
-      },
-      onError: (error, variables, context) => {
-        console.error("Error submitting order:", error);
-        showToast({
-          title: "Error submitting order",
-          description: "Failed to create the order. Please try again.",
-          variant: "destructive",
-        });
-      },
-    }
-  );
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      showToast({
+        title: "Order created successfully!",
+        description: `Order ${data.order_number} has been created.`,
+      });
+      navigate("/orders");
+      return data.id;
+    },
+    onError: (error: Error) => {
+      console.error("Error submitting order:", error);
+      showToast({
+        title: "Error submitting order",
+        description: "Failed to create the order. Please try again.",
+        variant: "destructive",
+      });
+      return undefined;
+    },
+  });
 
-  return mutation;
+  return {
+    submitting: mutation.isPending,
+    handleSubmit: async (e: React.FormEvent): Promise<string | undefined> => {
+      e.preventDefault();
+      try {
+        const result = await mutation.mutateAsync() as any;
+        return result?.id;
+      } catch (error) {
+        return undefined;
+      }
+    }
+  };
 };

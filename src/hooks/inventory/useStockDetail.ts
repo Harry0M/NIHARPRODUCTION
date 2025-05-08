@@ -11,13 +11,17 @@ interface UseStockDetailProps {
 export interface StockTransaction {
   id: string;
   created_at: string;
-  inventory_id?: string;  // Made optional
-  material_id?: string;   // Added this field to match DB schema
+  material_id: string;
   transaction_type: string;
   quantity: number;
   reference_type: string | null;
   reference_id: string | null;
   notes: string | null;
+  batch_id?: string;
+  location_id?: string;
+  reference_number?: string;
+  roll_width?: number;
+  unit_price?: number;
 }
 
 export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
@@ -88,18 +92,9 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
         throw error;
       }
       
-      // Transform data to match StockTransaction interface
-      const transformedData = (data || []).map(transaction => {
-        return {
-          ...transaction,
-          inventory_id: transaction.material_id, // Map material_id to inventory_id
-          reference_type: transaction.reference_type || null,
-          reference_id: transaction.reference_id || null,
-          notes: transaction.notes || null
-        } as StockTransaction;
-      });
-      
-      return transformedData;
+      // Map the data directly to StockTransaction interface
+      const transactions: StockTransaction[] = data || [];
+      return transactions;
     },
     enabled: !!stockId,
   });
