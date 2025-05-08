@@ -3,13 +3,16 @@ import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { StockTransaction } from "@/types/inventory";
+import { StockTransactionHistory } from "./StockTransactionHistory";
 
 interface StockInfoGridProps {
   stockItem: any;
   linkedComponents?: any[];
+  transactions?: StockTransaction[];
 }
 
-export const StockInfoGrid = ({ stockItem, linkedComponents = [] }: StockInfoGridProps) => {
+export const StockInfoGrid = ({ stockItem, linkedComponents = [], transactions = [] }: StockInfoGridProps) => {
   if (!stockItem) return null;
   
   const formatValue = (value: any) => {
@@ -41,6 +44,7 @@ export const StockInfoGrid = ({ stockItem, linkedComponents = [] }: StockInfoGri
 
   return (
     <div className="space-y-6">
+      {/* Basic Information Card */}
       <Card>
         <CardContent className="p-6">
           <h3 className="text-lg font-medium mb-4">Basic Information</h3>
@@ -85,6 +89,7 @@ export const StockInfoGrid = ({ stockItem, linkedComponents = [] }: StockInfoGri
         </CardContent>
       </Card>
       
+      {/* Unit Information Card */}
       <Card>
         <CardContent className="p-6">
           <h3 className="text-lg font-medium mb-4">Unit Information</h3>
@@ -117,6 +122,7 @@ export const StockInfoGrid = ({ stockItem, linkedComponents = [] }: StockInfoGri
         </CardContent>
       </Card>
       
+      {/* Cost Information Card */}
       <Card>
         <CardContent className="p-6">
           <h3 className="text-lg font-medium mb-4">Cost Information</h3>
@@ -145,6 +151,7 @@ export const StockInfoGrid = ({ stockItem, linkedComponents = [] }: StockInfoGri
         </CardContent>
       </Card>
       
+      {/* Inventory Management Card */}
       <Card>
         <CardContent className="p-6">
           <h3 className="text-lg font-medium mb-4">Inventory Management</h3>
@@ -177,6 +184,7 @@ export const StockInfoGrid = ({ stockItem, linkedComponents = [] }: StockInfoGri
         </CardContent>
       </Card>
       
+      {/* Supplier Information Card */}
       {stockItem.suppliers && (
         <Card>
           <CardContent className="p-6">
@@ -221,6 +229,12 @@ export const StockInfoGrid = ({ stockItem, linkedComponents = [] }: StockInfoGri
         </Card>
       )}
       
+      {/* Transaction History Card */}
+      {transactions && transactions.length > 0 && (
+        <StockTransactionHistory transactions={transactions} />
+      )}
+      
+      {/* Linked Components Card */}
       {linkedComponents && linkedComponents.length > 0 && (
         <Card>
           <CardContent className="p-6">

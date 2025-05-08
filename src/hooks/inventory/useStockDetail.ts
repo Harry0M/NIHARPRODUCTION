@@ -2,6 +2,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { showToast } from "@/components/ui/enhanced-toast";
+import { StockTransaction } from "@/types/inventory";
 
 interface UseStockDetailProps {
   stockId: string | null;
@@ -59,9 +60,38 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     enabled: !!stockId,
   });
 
+  const { data: transactions } = useQuery({
+    queryKey: ["stock-transactions", stockId],
+    queryFn: async () => {
+      if (!stockId) return [];
+      
+      const { data, error } = await supabase
+        .from("inventory_transactions")
+        .select("*")
+        .eq("material_id", stockId)
+        .order("created_at", { ascending: false });
+        
+      if (error) {
+        console.error("Error fetching transactions:", error);
+        throw error;
+      }
+      
+      // Ensure all required fields from StockTransaction interface are present
+      const mappedTransactions: StockTransaction[] = (data || []).map(item => ({
+        ...item,
+        inventory_id: item.inventory_id || stockId, // Use stockId as fallback
+        reference_type: item.reference_type || null
+      }));
+      
+      return mappedTransactions;
+    },
+    enabled: !!stockId,
+  });
+
   return {
     stockItem,
     linkedComponents,
+    transactions,
     isLoading
   };
 };

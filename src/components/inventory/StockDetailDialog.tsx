@@ -30,7 +30,7 @@ export const StockDetailDialog = ({
 }: StockDetailDialogProps) => {
   const handleClose = () => onOpenChange(false);
 
-  const { stockItem, linkedComponents, isLoading } = useStockDetail({
+  const { stockItem, linkedComponents, transactions, isLoading } = useStockDetail({
     stockId,
     onClose: handleClose,
   });
@@ -78,7 +78,11 @@ export const StockDetailDialog = ({
             <Skeleton className="h-24 w-full" />
           </div>
         ) : stockItem ? (
-          <StockInfoGrid stockItem={stockItem} linkedComponents={linkedComponents} />
+          <StockInfoGrid 
+            stockItem={stockItem} 
+            linkedComponents={linkedComponents} 
+            transactions={transactions} 
+          />
         ) : (
           <div className="py-8 text-center flex flex-col items-center gap-2">
             <AlertCircle className="h-10 w-10 text-muted-foreground" />
