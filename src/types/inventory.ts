@@ -1,4 +1,5 @@
 
+
 export interface StockTransaction {
   id: string;
   material_id: string;
@@ -16,3 +17,4 @@ export interface StockTransaction {
   roll_width: number | null;
   updated_at: string | null;
 }
+
