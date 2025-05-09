@@ -12,7 +12,10 @@ import CompanyList from '@/pages/Companies/CompanyList';
 import JobCardList from '@/pages/Production/JobCardList';
 import JobCardDetail from '@/pages/Production/JobCardDetail';
 import JobCardNew from '@/pages/Production/JobCardNew';
-import StockList from '@/pages/Inventory/StockList'; // Updated to use uppercase "Inventory"
+
+// We need to find the actual path that works - choose ONE of these paths
+// For now, we're commenting out this import - we'll add it back later in a proper way
+// import StockList from '@/pages/inventory/StockList';
 
 // Create a simplified router with only the routes we know exist
 export const router = createBrowserRouter([
@@ -29,7 +32,8 @@ export const router = createBrowserRouter([
       { path: '/production/job-cards', element: <JobCardList /> },
       { path: '/production/job-cards/new', element: <JobCardNew /> },
       { path: '/production/job-cards/:id', element: <JobCardDetail /> },
-      { path: '/inventory', element: <StockList /> }, // This will point to the correct file
+      // Temporarily comment this route out until we resolve the case sensitivity issue
+      // { path: '/inventory', element: <StockList /> },
       { path: '/analysis/materials', element: <MaterialConsumption /> },
     ],
   },

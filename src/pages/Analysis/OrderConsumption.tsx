@@ -1,9 +1,7 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useInventoryAnalytics } from "@/hooks/analysis/useInventoryAnalytics";
 import { formatCurrency, formatQuantity, formatAnalysisDate } from "@/utils/analysisUtils";
-import { calculateProductionCosts, calculateProfitUsingMargin } from "@/utils/costCalculationUtils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -34,6 +32,60 @@ import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { exportToCSV, prepareOrderConsumptionDataForExport, prepareDetailedConsumptionDataForExport } from "@/utils/exportUtils";
+import { format } from "date-fns";
+
+// Define the return type for calculateProductionCosts to fix TypeScript error
+interface ProductionCosts {
+  cuttingCost: number;
+  printingCost: number;
+  stitchingCost: number;
+  transportCost: number;
+  totalProductionCost: number;
+}
+
+// Fixed version of calculateProductionCosts with corrected property names
+const calculateProductionCosts = (
+  catalogData: {
+    cutting_charge?: number;
+    printing_charge?: number;
+    stitching_charge?: number;
+    transport_charge?: number;
+  },
+  orderQuantity: number
+): ProductionCosts => {
+  // Get individual costs from catalog data or default to 0
+  const cuttingCost = (catalogData.cutting_charge || 0) * orderQuantity;
+  const printingCost = (catalogData.printing_charge || 0) * orderQuantity;
+  const stitchingCost = (catalogData.stitching_charge || 0) * orderQuantity;
+  const transportCost = (catalogData.transport_charge || 0);
+  
+  // Sum all production costs
+  const totalProductionCost = 
+    cuttingCost + 
+    printingCost + 
+    stitchingCost + 
+    transportCost;
+  
+  return {
+    cuttingCost,
+    printingCost,
+    stitchingCost, 
+    transportCost,
+    totalProductionCost
+  };
+};
+
+// Enhanced version of calculateProfitUsingMargin that includes profitMargin
+const calculateProfitUsingMargin = (cost: number, marginPercent: number) => {
+  if (isNaN(cost) || isNaN(marginPercent)) return { profit: 0, revenue: 0, profitMargin: 0 };
+  
+  const margin = marginPercent / 100;
+  const revenue = cost / (1 - margin);
+  const profit = revenue - cost;
+  const profitMargin = marginPercent;
+  
+  return { profit, revenue, profitMargin };
+};
 
 const OrderConsumption = () => {
   const navigate = useNavigate();
@@ -393,9 +445,9 @@ const OrderConsumption = () => {
                           <div className="font-medium truncate flex items-center gap-2">
                             {order.name}
                             {order.profit > 0 ? (
-                              <Badge variant="success" className="text-xs">+{order.profitMargin.toFixed(1)}%</Badge>
+                              <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">+{order.profitMargin.toFixed(1)}%</Badge>
                             ) : (
-                              <Badge variant="destructive" className="text-xs">{order.profitMargin.toFixed(1)}%</Badge>
+                              <Badge variant="secondary" className="text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100">{order.profitMargin.toFixed(1)}%</Badge>
                             )}
                           </div>
                           <div className="text-sm text-muted-foreground flex items-center gap-1">
@@ -704,7 +756,7 @@ const OrderConsumption = () => {
                                   ))}
                                 </Pie>
                                 <Tooltip 
-                                  formatter={(value: any) => [`₹${formatCurrency(value)}`, "Cost"]}
+                                  formatter={(value: any) => [`₹${formatCurrency(value as number)}`, "Cost"]}
                                 />
                                 <Legend />
                               </RechartsPieChart>
@@ -786,7 +838,7 @@ const OrderConsumption = () => {
                                   ))}
                                 </Pie>
                                 <Tooltip 
-                                  formatter={(value: any) => [`₹${formatCurrency(value)}`, "Cost"]}
+                                  formatter={(value: any) => [`₹${formatCurrency(value as number)}`, "Cost"]}
                                 />
                                 <Legend />
                               </RechartsPieChart>
