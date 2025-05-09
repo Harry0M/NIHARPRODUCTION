@@ -12,6 +12,7 @@ import CompanyList from '@/pages/Companies/CompanyList';
 import JobCardList from '@/pages/Production/JobCardList';
 import JobCardDetail from '@/pages/Production/JobCardDetail';
 import JobCardNew from '@/pages/Production/JobCardNew';
+import StockList from '@/pages/Inventory/StockList'; // Updated to use uppercase "Inventory"
 
 // Create a simplified router with only the routes we know exist
 export const router = createBrowserRouter([
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
       { path: '/production/job-cards', element: <JobCardList /> },
       { path: '/production/job-cards/new', element: <JobCardNew /> },
       { path: '/production/job-cards/:id', element: <JobCardDetail /> },
+      { path: '/inventory', element: <StockList /> }, // This will point to the correct file
       { path: '/analysis/materials', element: <MaterialConsumption /> },
     ],
   },
