@@ -23,129 +23,380 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
     }
   );
 
-  // Fetch material consumption data
+  // Fetch material consumption data with advanced deduplication
   const { data: consumptionData, isLoading: loadingConsumption } = useQuery({
     queryKey: ['material-consumption', currentFilters],
     queryFn: async () => {
       console.log("Fetching material consumption data with filters:", currentFilters);
       
-      // Use the material_consumption_analysis view created in the SQL migration
-      let query = supabase
-        .from('material_consumption_analysis')
-        .select('*');
-
-      // Apply material filter if specified
-      if (currentFilters.materialId) {
-        query = query.eq('material_id', currentFilters.materialId);
-      }
-
-      // Execute the query
-      const { data, error } = await query;
+      // Instead of using the view directly, we'll fetch and process the raw data
+      // to handle proper deduplication of transaction pairs
+      const materialTransactions = await fetchAllMaterialTransactions(currentFilters);
       
-      if (error) {
-        console.error("Error fetching consumption data:", error);
-        throw error;
-      }
+      // Group and aggregate the transactions by material
+      const consumptionByMaterial = consolidateMaterialConsumption(materialTransactions);
       
-      // Format the data for display
-      const formattedData = data.map(item => ({
-        ...item,
-        total_usage: item.total_consumption || 0,
-        orders_count: item.orders_count || 0,
-        first_usage_date: item.first_usage_date || null,
-        last_usage_date: item.last_usage_date || null
-      }));
-      
-      console.log(`Fetched ${formattedData.length} consumption records`);
-      return formattedData || [];
+      console.log(`Processed ${consumptionByMaterial.length} material consumption records after deduplication`);
+      return consumptionByMaterial;
     },
   });
 
-  // Fetch order consumption breakdown
+  // Fetch order consumption breakdown with advanced deduplication
   const { data: orderConsumptionData, isLoading: loadingOrderConsumption } = useQuery({
     queryKey: ['order-consumption', currentFilters],
     queryFn: async () => {
       console.log("Fetching order consumption data with filters:", currentFilters);
       
-      // Build base query
+      // Get consolidated transaction data from both sources
+      const materialTransactions = await fetchAllMaterialTransactions(currentFilters);
+      
+      // Process and organize by order
+      const orderConsumption = consolidateOrderConsumption(materialTransactions);
+      
+      console.log(`Processed ${orderConsumption.length} order consumption records after deduplication`);
+      return orderConsumption;
+    },
+  });
+  
+  // Helper function to fetch all transaction data from both tables
+  const fetchAllMaterialTransactions = async (filters: InventoryAnalyticsFilters) => {
+    // First fetch from order_material_breakdown (if available)
+    let baseRecords: any[] = [];
+    try {
       let query = supabase
         .from('order_material_breakdown')
         .select('*');
       
-      // Apply material filter
-      if (currentFilters.materialId) {
-        query = query.eq('material_id', currentFilters.materialId);
+      // Apply filters
+      if (filters.materialId) {
+        query = query.eq('material_id', filters.materialId);
       }
       
-      // Apply order filter
-      if (currentFilters.orderIds && currentFilters.orderIds.length > 0) {
-        query = query.in('order_id', currentFilters.orderIds);
+      if (filters.orderIds && filters.orderIds.length > 0) {
+        query = query.in('order_id', filters.orderIds);
       }
       
-      // Apply date filter
-      if (currentFilters.dateRange.startDate) {
-        query = query.gte('usage_date', currentFilters.dateRange.startDate.toISOString());
+      if (filters.dateRange.startDate) {
+        query = query.gte('usage_date', filters.dateRange.startDate.toISOString());
       }
       
-      if (currentFilters.dateRange.endDate) {
-        query = query.lte('usage_date', currentFilters.dateRange.endDate.toISOString());
+      if (filters.dateRange.endDate) {
+        query = query.lte('usage_date', filters.dateRange.endDate.toISOString());
       }
       
-      // Execute the query
       const { data, error } = await query;
       
       if (error) {
-        console.error("Error fetching order consumption data:", error);
-        throw error;
+        console.error("Error fetching order_material_breakdown data:", error);
+      } else if (data && data.length > 0) {
+        baseRecords = data.map(item => ({
+          ...item,
+          source: 'breakdown',
+          transaction_type: 'Consumption' // Assuming all records here are consumption
+        }));
+      }
+    } catch (error) {
+      console.error("Error in breakdown query:", error);
+    }
+    
+    // Now fetch from inventory_transaction_log
+    let logRecords: any[] = [];
+    try {
+      let logQuery = supabase
+        .from('inventory_transaction_log')
+        .select('*');
+      
+      // Apply similar filters
+      if (filters.materialId) {
+        logQuery = logQuery.eq('material_id', filters.materialId);
       }
       
-      console.log(`Fetched ${data?.length || 0} order consumption records`);
+      // If order IDs filter exists
+      if (filters.orderIds && filters.orderIds.length > 0) {
+        logQuery = logQuery.in('reference_id', filters.orderIds);
+      } else {
+        // Otherwise just get order-related transactions
+        logQuery = logQuery.eq('reference_type', 'Order');
+      }
       
-      // If no data yet or missing data, try to fetch from transaction logs
-      if (!data || data.length === 0) {
-        const { data: transactionData, error: txError } = await supabase
-          .from('inventory_transaction_log')
-          .select('*')
-          .eq('reference_type', 'Order')
-          .not('reference_id', 'is', null);
+      // Date filters
+      if (filters.dateRange.startDate) {
+        logQuery = logQuery.gte('transaction_date', filters.dateRange.startDate.toISOString());
+      }
+      
+      if (filters.dateRange.endDate) {
+        logQuery = logQuery.lte('transaction_date', filters.dateRange.endDate.toISOString());
+      }
+      
+      const { data: logData, error: logError } = await logQuery;
+      
+      if (logError) {
+        console.error("Error fetching transaction log data:", logError);
+      } else if (logData && logData.length > 0) {
+        logRecords = logData.map(log => {
+          // Extract metadata or provide defaults
+          const metadata = log.metadata || {};
+          
+          return {
+            // Map to a consistent format
+            order_id: log.reference_id,
+            order_number: log.reference_number,
+            material_id: log.material_id,
+            material_name: metadata.material_name || 'Unknown',
+            // Important: We're using the raw quantity here and will process it properly later
+            // to avoid double-counting decreases
+            quantity: log.quantity,
+            unit: metadata.unit || 'units',
+            usage_date: log.transaction_date,
+            company_name: metadata.company_name || 'Unknown',
+            component_type: metadata.component_type || 'Unknown',
+            purchase_price: metadata.purchase_price || 0,
+            transaction_type: log.transaction_type,
+            source: 'transaction_log',
+            log_id: log.id,
+            notes: log.notes
+          };
+        });
+      }
+    } catch (error) {
+      console.error("Error in transaction log query:", error);
+    }
+    
+    // Fetch from inventory_transactions as well
+    let txRecords: any[] = [];
+    try {
+      let txQuery = supabase
+        .from('inventory_transactions')
+        .select('*');
+      
+      // Apply filters
+      if (filters.materialId) {
+        txQuery = txQuery.eq('material_id', filters.materialId);
+      }
+      
+      // Date filters - field name may differ
+      if (filters.dateRange.startDate) {
+        txQuery = txQuery.gte('created_at', filters.dateRange.startDate.toISOString());
+      }
+      
+      if (filters.dateRange.endDate) {
+        txQuery = txQuery.lte('created_at', filters.dateRange.endDate.toISOString());
+      }
+      
+      const { data: txData, error: txError } = await txQuery;
+      
+      if (txError) {
+        console.error("Error fetching inventory transactions data:", txError);
+      } else if (txData && txData.length > 0) {
+        txRecords = txData.map(tx => {
+          return {
+            // Map to our consistent format
+            order_id: tx.reference_id || '',
+            order_number: tx.reference_number || '',
+            material_id: tx.material_id,
+            material_name: tx.material_name || 'Unknown',
+            // Again, using raw quantity to process properly
+            quantity: tx.quantity,
+            unit: tx.unit || 'units',
+            usage_date: tx.created_at,
+            company_name: tx.company_name || 'Unknown',
+            component_type: tx.component_type || 'Unknown',
+            purchase_price: tx.purchase_price || 0,
+            transaction_type: tx.transaction_type,
+            source: 'inventory_transactions',
+            notes: tx.notes
+          };
+        });
+      }
+    } catch (error) {
+      console.error("Error in inventory transactions query:", error);
+    }
+    
+    // Combine all records but we will deduplicate them later
+    return [...baseRecords, ...logRecords, ...txRecords];
+  };
+  
+  // Function to consolidate material consumption from transaction records
+  const consolidateMaterialConsumption = (transactions: any[]) => {
+    // Group transactions by material
+    const materialMap = new Map();
+    
+    // First, process all transactions to correctly identify consumption
+    transactions.forEach(tx => {
+      // Skip transactions we don't want to count for consumption
+      if (!tx.material_id) return;
+      
+      // We only want to count actual consumption, not just any quantity change
+      // Negative quantities typically indicate consumption or usage
+      // Some systems might record positive values for consumption - check notes or transaction_type
+      const isConsumption = 
+        (tx.quantity < 0) || 
+        (tx.transaction_type && tx.transaction_type.toLowerCase().includes('consum')) ||
+        (tx.notes && tx.notes.toLowerCase().includes('consum'));
+      
+      if (!isConsumption) return;
+      
+      // Get the absolute value for consumption
+      const consumptionAmount = Math.abs(tx.quantity);
+      
+      // Create a unique key for the order+material+date to detect duplicates
+      const date = tx.usage_date ? new Date(tx.usage_date) : new Date();
+      date.setMinutes(0, 0, 0); // Round to nearest hour
+      const txKey = `${tx.order_id}_${tx.material_id}_${date.toISOString()}`;
+      
+      // If we already saw this specific transaction, skip it
+      if (tx.processedTxKey === txKey) return;
+      tx.processedTxKey = txKey;
+      
+      // Get or create material entry
+      if (!materialMap.has(tx.material_id)) {
+        materialMap.set(tx.material_id, {
+          material_id: tx.material_id,
+          material_name: tx.material_name,
+          gsm: tx.gsm,
+          color: tx.color,
+          unit: tx.unit,
+          total_consumption: 0,
+          total_usage: 0, // Alias for compatibility
+          purchase_price: tx.purchase_price || 0,
+          orders: new Set(),
+          first_usage_date: tx.usage_date,
+          last_usage_date: tx.usage_date,
+          // Track seen transactions to avoid duplicates
+          seen_transactions: new Set([txKey])
+        });
+      }
+      
+      const materialData = materialMap.get(tx.material_id);
+      
+      // Check if we've already processed this exact transaction
+      if (materialData.seen_transactions.has(txKey)) {
+        return; // Skip duplicate
+      }
+      
+      // Update material consumption data
+      materialData.total_consumption += consumptionAmount;
+      materialData.total_usage = materialData.total_consumption; // Alias for compatibility
+      
+      // Track order info
+      if (tx.order_id) {
+        materialData.orders.add(tx.order_id);
+      }
+      
+      // Update date tracking
+      if (tx.usage_date) {
+        const txDate = new Date(tx.usage_date);
         
-        if (txError) {
-          console.error("Error fetching order transactions from logs:", txError);
-          return data || [];
+        if (!materialData.first_usage_date || txDate < new Date(materialData.first_usage_date)) {
+          materialData.first_usage_date = tx.usage_date;
         }
         
-        if (transactionData && transactionData.length > 0) {
-          console.log(`Found ${transactionData.length} order transactions in logs`);
-          
-          // Map log data to order consumption format
-          const mappedData = [];
-          for (const tx of transactionData) {
-            if (tx.metadata && tx.reference_id && tx.reference_number) {
-              // Type-check the metadata object properly
-              const metadata = tx.metadata as Record<string, any>;
-              
-              mappedData.push({
-                order_id: tx.reference_id,
-                order_number: tx.reference_number,
-                company_name: metadata.company_name || 'Unknown',
-                material_id: tx.material_id,
-                material_name: metadata.material_name || 'Unknown Material',
-                total_material_used: Math.abs(tx.quantity),
-                unit: metadata.unit || 'units',
-                usage_date: tx.transaction_date,
-                component_type: metadata.component_type || 'Unknown'
-              });
-            }
-          }
-          
-          console.log(`Mapped ${mappedData.length} transactions to order consumption format`);
-          return mappedData;
+        if (!materialData.last_usage_date || txDate > new Date(materialData.last_usage_date)) {
+          materialData.last_usage_date = tx.usage_date;
         }
       }
       
-      return data || [];
-    },
-  });
+      // Mark this transaction as seen
+      materialData.seen_transactions.add(txKey);
+    });
+    
+    // Convert the map to array and calculate order counts
+    return Array.from(materialMap.values()).map(material => ({
+      ...material,
+      orders_count: material.orders.size,
+      orders: Array.from(material.orders), // Convert Set to Array
+      seen_transactions: undefined // Remove temp tracking property
+    }));
+  };
+  
+  // Function to consolidate order consumption from transaction records
+  const consolidateOrderConsumption = (transactions: any[]) => {
+    // Group by order first
+    const orderMap = new Map();
+    
+    // Process transactions to correctly identify consumption
+    transactions.forEach(tx => {
+      // Skip incomplete transactions
+      if (!tx.material_id || !tx.order_id) return;
+      
+      // We only want to count actual consumption, not just any quantity change
+      const isConsumption = 
+        (tx.quantity < 0) || 
+        (tx.transaction_type && tx.transaction_type.toLowerCase().includes('consum')) ||
+        (tx.notes && tx.notes.toLowerCase().includes('consum'));
+      
+      if (!isConsumption) return;
+      
+      // Get the absolute value for consumption
+      const consumptionAmount = Math.abs(tx.quantity);
+      
+      // Create a unique key for the order+material+date to detect duplicates
+      const date = tx.usage_date ? new Date(tx.usage_date) : new Date();
+      date.setMinutes(0, 0, 0); // Round to nearest hour
+      const txKey = `${tx.order_id}_${tx.material_id}_${date.toISOString()}`;
+      
+      // Get or create order entry
+      if (!orderMap.has(tx.order_id)) {
+        orderMap.set(tx.order_id, {
+          order_id: tx.order_id,
+          order_number: tx.order_number,
+          company_name: tx.company_name,
+          usage_date: tx.usage_date,
+          materials: new Map(),
+          seen_transactions: new Set()
+        });
+      }
+      
+      const orderData = orderMap.get(tx.order_id);
+      
+      // Check if we've already seen this exact transaction
+      if (orderData.seen_transactions.has(txKey)) {
+        return; // Skip duplicate
+      }
+      
+      // Get or create material entry for this order
+      if (!orderData.materials.has(tx.material_id)) {
+        orderData.materials.set(tx.material_id, {
+          material_id: tx.material_id,
+          material_name: tx.material_name,
+          unit: tx.unit,
+          total_material_used: 0,
+          purchase_price: tx.purchase_price || 0,
+          component_type: tx.component_type
+        });
+      }
+      
+      const materialData = orderData.materials.get(tx.material_id);
+      
+      // Update material consumption
+      materialData.total_material_used += consumptionAmount;
+      
+      // Mark this transaction as seen
+      orderData.seen_transactions.add(txKey);
+    });
+    
+    // Convert to the expected format for orderConsumptionData
+    const result: any[] = [];
+    
+    orderMap.forEach(order => {
+      order.materials.forEach(material => {
+        result.push({
+          order_id: order.order_id,
+          order_number: order.order_number,
+          company_name: order.company_name,
+          usage_date: order.usage_date,
+          material_id: material.material_id,
+          material_name: material.material_name,
+          total_material_used: material.total_material_used,
+          unit: material.unit,
+          purchase_price: material.purchase_price,
+          component_type: material.component_type
+        });
+      });
+    });
+    
+    return result;
+  };
 
   // Fetch inventory value data
   const { data: inventoryValueData, isLoading: loadingInventoryValue } = useQuery({
@@ -205,75 +456,24 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
         return {
           ...item,
           totalValue,
-          needsRefill: !!needsRefill,
+          needsRefill,
           urgency
         };
       });
       
-      return items;
+      // Filter to only materials needing refill and sort by urgency
+      return items
+        .filter(item => item.needsRefill)
+        .sort((a, b) => b.urgency - a.urgency);
     },
   });
 
-  // Fetch recent transactions for tracking consumption over time
-  const { data: recentTransactions, isLoading: loadingTransactions } = useQuery({
-    queryKey: ['recent-transactions', currentFilters],
-    queryFn: async () => {
-      // Using both transaction tables for a comprehensive history
-      const queriesPromises = [
-        // Traditional transactions
-        supabase
-          .from('inventory_transactions')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(50),
-          
-        // New transaction logs  
-        supabase
-          .from('inventory_transaction_log')
-          .select('*')
-          .order('transaction_date', { ascending: false })
-          .limit(50)
-      ];
-      
-      if (currentFilters.materialId) {
-        queriesPromises[0] = supabase
-          .from('inventory_transactions')
-          .select('*')
-          .eq('material_id', currentFilters.materialId)
-          .order('created_at', { ascending: false })
-          .limit(50);
-          
-        queriesPromises[1] = supabase
-          .from('inventory_transaction_log')
-          .select('*')
-          .eq('material_id', currentFilters.materialId)
-          .order('transaction_date', { ascending: false })
-          .limit(50);
-      }
-      
-      try {
-        const [txResult, logResult] = await Promise.all(queriesPromises);
-        
-        if (txResult.error) throw txResult.error;
-        if (logResult.error) throw logResult.error;
-        
-        // Combine the results
-        const combinedResults = {
-          transactions: txResult.data || [],
-          transactionLogs: logResult.data || []
-        };
-        
-        console.log(`Fetched ${combinedResults.transactions.length} transactions and ${combinedResults.transactionLogs.length} transaction logs`);
-        return combinedResults;
-      } catch (error) {
-        console.error("Error fetching recent transactions:", error);
-        return { transactions: [], transactionLogs: [] };
-      }
-    },
-  });
-
+  // Function to update filters
   const updateFilters = (newFilters: Partial<InventoryAnalyticsFilters>) => {
-    setFilters(prev => ({ ...prev, ...newFilters }));
+    setFilters(prev => ({
+      ...prev,
+      ...newFilters
+    }));
   };
 
   return {
@@ -281,9 +481,8 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
     orderConsumptionData,
     inventoryValueData,
     refillNeedsData,
-    recentTransactions,
-    isLoading: loadingConsumption || loadingOrderConsumption || loadingInventoryValue || loadingRefillNeeds || loadingTransactions,
     filters: currentFilters,
     updateFilters,
+    isLoading: loadingConsumption || loadingOrderConsumption || loadingInventoryValue || loadingRefillNeeds
   };
 };
