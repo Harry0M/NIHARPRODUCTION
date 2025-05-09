@@ -66,6 +66,10 @@ const OrderConsumption = () => {
     }
   });
   
+  // Add debug output to see what data we're getting
+  console.log("Order consumption data:", orderConsumptionData);
+  console.log("Order details:", orderDetails);
+  
   // Filter data based on search (by order number or company name)
   const filteredData = searchQuery
     ? orderConsumptionData?.filter(item => 
@@ -74,6 +78,8 @@ const OrderConsumption = () => {
         item.material_name?.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : orderConsumptionData;
+    
+  console.log("Filtered data:", filteredData);
     
   // Group by order for visualization and analysis
   const orderChartData = filteredData?.reduce((acc: any[], item) => {
