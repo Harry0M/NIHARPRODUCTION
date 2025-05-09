@@ -314,11 +314,8 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
     console.log("Manually refreshing transactions for stock:", stockId);
     
     try {
-      // Force clear the cache first to ensure a fresh fetch
-      queryClient.removeQueries({ queryKey: ["stock-transactions", stockId] });
-      queryClient.removeQueries({ queryKey: ["stock-transaction-logs", stockId] });
-      
-      // Invalidate the query cache to force a fresh fetch
+      // IMPORTANT: Don't remove queries as this can cause data to disappear
+      // Just invalidate them to trigger a refetch while keeping existing data
       queryClient.invalidateQueries({ queryKey: ["stock-transactions", stockId] });
       queryClient.invalidateQueries({ queryKey: ["stock-transaction-logs", stockId] });
       
@@ -327,6 +324,15 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
         refetchTransactions(),
         refetchTransactionLogs()
       ]);
+      
+      // Store the latest data in the cache to ensure consistency
+      if (txResult.data) {
+        queryClient.setQueryData(["stock-transactions", stockId], txResult.data);
+      }
+      
+      if (logResult.data) {
+        queryClient.setQueryData(["stock-transaction-logs", stockId], logResult.data);
+      }
       
       console.log("Transactions refresh complete:", {
         transactions: txResult.data?.length || 0,

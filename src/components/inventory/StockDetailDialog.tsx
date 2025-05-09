@@ -139,14 +139,28 @@ export const StockDetailDialog = ({
     }
   }, [open, stockId]); // Removed refreshTransactions from dependencies
 
+  // Use a ref to track if we've already refreshed for this dialog opening
+  const hasRefreshedRef = useRef(false);
+  
   useEffect(() => {
     // Auto-switch to transactions tab when this dialog opens if that tab was specified
     if (open && initialTab === "transactions") {
       console.log("Auto-switching to transactions tab based on initialTab prop");
       setActiveTab("transactions");
-      refreshTransactions();
+      
+      // Only refresh once when the dialog opens
+      if (!hasRefreshedRef.current) {
+        console.log("Refreshing transactions once for initialTab=transactions");
+        refreshTransactions();
+        hasRefreshedRef.current = true;
+      }
     }
-  }, [open, initialTab, refreshTransactions]);
+    
+    // Reset the ref when dialog closes
+    if (!open) {
+      hasRefreshedRef.current = false;
+    }
+  }, [open, initialTab]); // Removed refreshTransactions from dependencies
   
   // Handle manual refresh with toast feedback
   const handleRefresh = async () => {

@@ -186,45 +186,31 @@ const StockList = () => {
     setIsDeleteDialogOpen(true);
   };
 
-  const deleteTransactions = async (stockId: string) => {
-    const { error } = await supabase
-      .from('inventory_transactions')
-      .delete()
-      .eq('material_id', stockId);
-      
-    if (error) {
-      console.error("Error deleting related transactions:", error);
-      throw error;
-    }
-    
-    return true;
-  };
-
   const handleDeleteConfirm = async () => {
     if (!deletingStockId) return;
     
     setIsDeleting(true);
     try {
-      // If this inventory has transactions and user confirmed to delete them too
-      if (hasTransactions && deleteWithTransactions) {
-        // First delete all related transactions
-        await deleteTransactions(deletingStockId);
-      }
+      console.log(`Attempting to delete inventory item: ${deletingStockId}`);
       
-      // Then delete the inventory item
+      // With ON DELETE CASCADE, we can directly delete the inventory item 
+      // and all related transaction logs will be automatically deleted
       const { error } = await supabase
         .from('inventory')
         .delete()
         .eq('id', deletingStockId);
 
       if (error) {
-        console.error("Error deleting stock:", error);
+        console.error("Error deleting inventory item:", error);
         
-        // Show specific message for constraint violation
         if (error.code === '23503') {
+          // There's still some other foreign key constraint
+          // Extract details from the error message to identify the problem
+          const tableName = error.details.match(/table "([^"]+)"/)?.[1] || 'unknown table';
+          
           showToast({
             title: "Cannot delete this item",
-            description: "This inventory item has transaction history. Please delete the transactions first or use the option to delete everything.",
+            description: `This item is still referenced in ${tableName}. Please address those references first.`,
             type: "error"
           });
         } else {
@@ -239,19 +225,24 @@ const StockList = () => {
 
       showToast({
         title: "Stock deleted successfully",
+        description: hasTransactions ? "All related transaction records were also deleted." : "",
         type: "success"
       });
       
-      // Refetch inventory data
+      // Refresh inventory data
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      
+      // Also refresh transaction counts
+      queryClient.invalidateQueries({ queryKey: ['inventory-transactions-count'] });
+      
     } catch (error) {
       console.error("Unexpected error during deletion:", error);
+      // Error already shown in toast messages above
     } finally {
       setIsDeleting(false);
       setIsDeleteDialogOpen(false);
       setDeletingStockId(null);
       setHasTransactions(false);
-      setDeleteWithTransactions(false);
     }
   };
 
