@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Info } from "lucide-react";
 import { OrderFormData } from "@/types/order";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface CostSummaryCardProps {
   costData: {
@@ -76,7 +77,16 @@ export function CostSummaryCard({
               <Label htmlFor="margin" className="text-muted-foreground flex items-center gap-1">
                 Margin (%)
                 {orderDetails.template_margin && (
-                  <Info className="h-4 w-4 text-blue-500" title={`Template margin: ${orderDetails.template_margin}%`} />
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-blue-500" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Template margin: {orderDetails.template_margin}%
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
               </Label>
               <div className="flex items-center gap-2">

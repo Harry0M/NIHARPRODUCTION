@@ -63,13 +63,13 @@ export function useCostCalculation({
   // Calculate production costs from rates
   const calculateProductionCost = (): number => {
     const catalogData = {
-      cutting_charge: parseFloat(orderDetails.cutting_charge || "0"),
-      printing_charge: parseFloat(orderDetails.printing_charge || "0"),
-      stitching_charge: parseFloat(orderDetails.stitching_charge || "0"),
-      transport_charge: parseFloat(orderDetails.transport_charge || "0")
+      cutting_charge: orderDetails.cutting_charge ? parseFloat(orderDetails.cutting_charge) : 0,
+      printing_charge: orderDetails.printing_charge ? parseFloat(orderDetails.printing_charge) : 0,
+      stitching_charge: orderDetails.stitching_charge ? parseFloat(orderDetails.stitching_charge) : 0,
+      transport_charge: orderDetails.transport_charge ? parseFloat(orderDetails.transport_charge) : 0
     };
     
-    const orderQuantity = parseFloat(orderDetails.quantity);
+    const orderQuantity = parseFloat(orderDetails.quantity || "0");
     if (isNaN(orderQuantity)) return 0;
     
     const { totalProductionCost } = calculateProductionCosts(catalogData, orderQuantity);

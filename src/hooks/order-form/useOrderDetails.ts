@@ -27,7 +27,7 @@ export function useOrderDetails() {
     // Production costs - these need to be stored for calculation purposes
     cutting_charge: "",
     printing_charge: "",
-    stitching_charge: "", 
+    stitching_charge: "",
     transport_charge: ""
   });
   
