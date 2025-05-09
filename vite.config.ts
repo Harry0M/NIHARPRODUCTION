@@ -17,24 +17,6 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      // Ensure React is consistently imported
-      "react": path.resolve(__dirname, "node_modules/react"),
-      "react-dom": path.resolve(__dirname, "node_modules/react-dom"),
-      "react-router-dom": path.resolve(__dirname, "node_modules/react-router-dom")
     },
   },
-  // Optimize React dependencies bundling
-  optimizeDeps: {
-    include: ['react', 'react-dom', 'react-router-dom']
-  },
-  // Use hash format to avoid routing issues
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom']
-        }
-      }
-    }
-  }
 }));

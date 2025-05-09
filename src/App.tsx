@@ -6,9 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
 import { ColorSchemeProvider } from "./context/ColorSchemeContext";
 import AppRoutes from "./AppRoutes";
-import React from "react";
+import * as React from "react";
 
-// Create a single instance of QueryClient
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -17,20 +16,20 @@ const queryClient = new QueryClient({
   },
 });
 
-function App() {
+const App: React.FC = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ColorSchemeProvider>
-        <TooltipProvider>
-          <BrowserRouter>
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <ColorSchemeProvider>
+          <TooltipProvider>
             <AppRoutes />
             <Toaster />
             <Sonner />
-          </BrowserRouter>
-        </TooltipProvider>
-      </ColorSchemeProvider>
-    </QueryClientProvider>
+          </TooltipProvider>
+        </ColorSchemeProvider>
+      </QueryClientProvider>
+    </BrowserRouter>
   );
-}
+};
 
 export default App;

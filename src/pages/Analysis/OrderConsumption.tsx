@@ -1,8 +1,19 @@
-
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { useInventoryAnalytics } from "@/hooks/analysis/useInventoryAnalytics";
+import { formatCurrency, formatQuantity, formatAnalysisDate } from "@/utils/analysisUtils";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { ArrowLeft, Search, BarChart as BarChartIcon, AlertCircle, FileText, Package, PieChart, TrendingUp, DollarSign, ShoppingBag, Building2 } from "lucide-react";
+import { LoadingSpinner } from "@/components/production/LoadingSpinner";
+import { useNavigate } from "react-router-dom";
+import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { Separator } from "@/components/ui/separator";
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, Cell, PieChart as RechartsPieChart, Pie } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
   TableBody,
@@ -11,579 +22,569 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useInventoryAnalytics } from "@/hooks/analysis/useInventoryAnalytics";
-import { DateRangePicker } from "@/components/ui/date-range-picker";
-import { Separator } from "@/components/ui/separator";
-import { Download, FileDown, BarChart2, PieChart, Package, DollarSign, Percent } from "lucide-react";
-import { addDays, subMonths, formatISO } from "date-fns";
-import { formatCurrency, formatQuantity } from "@/utils/analysisUtils";
-import { PieChart as RechartPieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
-
-// Helper function to generate beautiful colors
-const generateColors = (count: number): string[] => {
-  const baseColors = [
-    "#0ea5e9", // Blue
-    "#10b981", // Green
-    "#f97316", // Orange
-    "#8b5cf6", // Purple
-    "#ec4899", // Pink
-    "#06b6d4", // Cyan
-    "#84cc16", // Lime
-    "#eab308", // Yellow
-    "#f43f5e", // Red
-  ];
-
-  if (count <= baseColors.length) {
-    return baseColors.slice(0, count);
-  }
-
-  // If we need more colors, cycle through with different opacities
-  const colors = [...baseColors];
-  let opacity = 0.8;
-  while (colors.length < count) {
-    baseColors.forEach((color) => {
-      if (colors.length < count) {
-        // Create a lighter version of the color
-        const r = parseInt(color.slice(1, 3), 16);
-        const g = parseInt(color.slice(3, 5), 16);
-        const b = parseInt(color.slice(5, 7), 16);
-        
-        const newColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
-        colors.push(newColor);
-      }
-    });
-    opacity -= 0.2;
-    if (opacity < 0.2) opacity = 0.8;
-  }
-
-  return colors;
-};
-
-// Custom tooltip for charts
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-white dark:bg-gray-800 p-2 border rounded shadow-sm">
-        <p className="font-medium">{payload[0].name}</p>
-        <p>{`${payload[0].value.toFixed(2)} ${payload[0].unit || ""}`}</p>
-        {payload[0].percentage && (
-          <p>{`${payload[0].percentage.toFixed(2)}%`}</p>
-        )}
-      </div>
-    );
-  }
-
-  return null;
-};
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 const OrderConsumption = () => {
-  const {
-    orderConsumptionData,
-    loading,
-    fetchOrderConsumptionData,
-    generateOrderConsumptionCSV,
-  } = useInventoryAnalytics();
-
-  const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
-  const [dateRange, setDateRange] = useState({
-    from: subMonths(new Date(), 3),
-    to: new Date(),
+  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const { orderConsumptionData, filters, updateFilters, isLoading } = useInventoryAnalytics();
+  
+  // Fetch order details for cost calculations
+  const { data: orderDetails, isLoading: loadingOrderDetails } = useQuery({
+    queryKey: ['order-details-for-analysis'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          id, 
+          order_number, 
+          company_name, 
+          order_date, 
+          order_status, 
+          order_quantity, 
+          delivery_date,
+          catalog_id,
+          catalog:catalog_id (
+            id,
+            name,
+            selling_rate,
+            total_cost
+          )
+        `);
+      
+      if (error) throw error;
+      return data || [];
+    }
   });
-  const [activeTab, setActiveTab] = useState("all");
-
-  useEffect(() => {
-    fetchOrderConsumptionData(dateRange);
-  }, [fetchOrderConsumptionData, dateRange]);
-
-  // Get the selected order details for the detail view
-  const orderDetail = orderConsumptionData.find((order) => order.order_id === selectedOrder);
-
-  // Handle CSV download
-  const handleDownloadCSV = () => {
-    const csvContent = generateOrderConsumptionCSV();
-    if (!csvContent) return;
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `order_consumption_${formatISO(new Date(), { representation: 'date' })}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // Chart data preparation 
-  const prepareBarChartData = () => {
-    if (!orderConsumptionData.length) return [];
-
-    return orderConsumptionData.slice(0, 10).map((order) => ({
-      name: order.order_number,
-      cost: order.total_production_cost,
-      revenue: order.total_revenue,
-      profit: order.profit,
-    }));
-  };
-
-  const preparePieChartData = (orderId: string) => {
-    const order = orderConsumptionData.find((o) => o.order_id === orderId);
-    if (!order) return [];
-
-    return order.materials.map((material) => ({
-      name: material.material_name,
-      value: material.total_cost,
-      percentage: material.percentage_of_total,
-      unit: "₹"
-    }));
-  };
+  
+  // Filter data based on search (by order number or company name)
+  const filteredData = searchQuery
+    ? orderConsumptionData?.filter(item => 
+        item.order_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.company_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.material_name?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : orderConsumptionData;
+    
+  // Group by order for visualization and analysis
+  const orderChartData = filteredData?.reduce((acc: any[], item) => {
+    const existingOrder = acc.find(o => o.order_id === item.order_id);
+    
+    // Get the complete order details including quantity and product costs
+    const completeOrderDetails = orderDetails?.find(o => o.id === item.order_id);
+    const orderQuantity = completeOrderDetails?.order_quantity || 1;
+    const productCost = completeOrderDetails?.catalog?.total_cost || 0;
+    const sellingRate = completeOrderDetails?.catalog?.selling_rate || 0;
+    
+    // Calculate total cost and profit
+    const totalCost = productCost * orderQuantity;
+    const totalRevenue = sellingRate * orderQuantity;
+    const profit = totalRevenue - totalCost;
+    const profitMargin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
+    
+    if (existingOrder) {
+      existingOrder.usage += Number(item.total_material_used || 0);
+      existingOrder.materialValue += Number(item.total_material_used || 0) * (item.purchase_price || 0);
+      
+      // Add this material to the materials array if not already present
+      const existingMaterial = existingOrder.materials.find((m: any) => m.material_id === item.material_id);
+      if (!existingMaterial && item.material_id) {
+        existingOrder.materials.push({
+          material_id: item.material_id,
+          material_name: item.material_name,
+          quantity: Number(item.total_material_used || 0),
+          unit: item.unit || 'units',
+          value: Number(item.total_material_used || 0) * (item.purchase_price || 0)
+        });
+      } else if (existingMaterial) {
+        existingMaterial.quantity += Number(item.total_material_used || 0);
+        existingMaterial.value += Number(item.total_material_used || 0) * (item.purchase_price || 0);
+      }
+    } else {
+      const materials = [];
+      if (item.material_id) {
+        materials.push({
+          material_id: item.material_id,
+          material_name: item.material_name,
+          quantity: Number(item.total_material_used || 0),
+          unit: item.unit || 'units',
+          value: Number(item.total_material_used || 0) * (item.purchase_price || 0)
+        });
+      }
+      
+      acc.push({
+        order_id: item.order_id,
+        name: item.order_number,
+        company: item.company_name,
+        usage: Number(item.total_material_used || 0),
+        date: item.usage_date ? new Date(item.usage_date) : null,
+        materials: materials,
+        materialValue: Number(item.total_material_used || 0) * (item.purchase_price || 0),
+        orderQuantity: orderQuantity,
+        productCost: productCost,
+        sellingRate: sellingRate,
+        totalCost: totalCost,
+        totalRevenue: totalRevenue,
+        profit: profit,
+        profitMargin: profitMargin,
+        productName: completeOrderDetails?.catalog?.name || 'Unknown Product',
+      });
+    }
+    return acc;
+  }, []);
+  
+  // Get details of selected order
+  const selectedOrder = selectedOrderId 
+    ? orderChartData?.find(order => order.order_id === selectedOrderId)
+    : null;
+  
+  // Sort materials by value for selected order
+  const sortedMaterials = selectedOrder?.materials?.sort((a: any, b: any) => b.value - a.value) || [];
+  
+  // Prepare data for material distribution chart in selected order
+  const materialDistributionData = sortedMaterials.map((material: any) => ({
+    name: material.material_name,
+    value: material.quantity,
+    unit: material.unit,
+    materialValue: material.value
+  }));
+  
+  // Colors for the chart
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ff7300', '#a05195', '#d45087', '#2f4b7c'];
+  
+  if (isLoading || loadingOrderDetails) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Order Consumption Analysis</h1>
-          <p className="text-muted-foreground">
-            Analyze material consumption and costs by order
-          </p>
-        </div>
-        
-        <div className="flex gap-2">
-          <DateRangePicker
-            value={dateRange}
-            onValueChange={setDateRange}
-          />
-          <Button variant="outline" onClick={handleDownloadCSV}>
-            <FileDown size={16} className="mr-2" />
-            Export CSV
+      <div className="flex flex-col space-y-1.5">
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="sm" onClick={() => navigate('/analysis')}>
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back
           </Button>
+          <h1 className="text-2xl font-bold">Order Consumption Analysis</h1>
         </div>
+        <p className="text-muted-foreground">
+          Analyze material usage, costs, and profitability by order
+        </p>
       </div>
-
-      <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="all">Orders List</TabsTrigger>
-          {selectedOrder && (
-            <TabsTrigger value="detail">Order Detail</TabsTrigger>
-          )}
-          <TabsTrigger value="charts">Charts</TabsTrigger>
-        </TabsList>
-        
-        {/* All Orders List Tab */}
-        <TabsContent value="all" className="space-y-6">
-          <Card>
-            <CardHeader>
+      
+      {/* Filters */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Filters</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col space-y-4 md:flex-row md:space-y-0 md:space-x-4">
+            <div className="flex-1">
+              <Label htmlFor="search">Search</Label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="search"
+                  placeholder="Search by order number, company or material..."
+                  className="pl-8"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="w-full md:w-[300px]">
+              <Label>Date Range</Label>
+              <DatePickerWithRange 
+                date={{
+                  from: filters.dateRange.startDate,
+                  to: filters.dateRange.endDate
+                }}
+                onChange={(range) => {
+                  updateFilters({
+                    dateRange: {
+                      startDate: range.from,
+                      endDate: range.to
+                    }
+                  });
+                }}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Main Content */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Left Side - Orders List */}
+        <div className="md:col-span-1 space-y-6">
+          {/* Overview Cards */}
+          <div className="grid grid-cols-1 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Orders Analyzed</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {orderChartData?.length || 0}
+                </div>
+                <p className="text-xs text-muted-foreground">Orders with material usage data</p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Companies</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {Array.from(new Set(orderChartData?.map(item => item.company))).length}
+                </div>
+                <p className="text-xs text-muted-foreground">Unique companies with orders</p>
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Orders List */}
+          <Card className="overflow-hidden">
+            <CardHeader className="pb-2">
               <CardTitle className="flex items-center">
-                <Package className="mr-2" size={20} />
-                Orders Material Consumption
+                <ShoppingBag className="h-4 w-4 mr-2" />
+                Orders
               </CardTitle>
+              <CardDescription>Click on an order to see details</CardDescription>
             </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <CardContent className="p-0">
+              <ScrollArea className="h-[500px]">
+                <div className="p-0">
+                  {orderChartData && orderChartData.length > 0 ? (
+                    orderChartData.map((order) => (
+                      <div 
+                        key={order.order_id}
+                        className={`flex items-center justify-between p-3 border-b cursor-pointer hover:bg-muted/50 transition-colors ${selectedOrderId === order.order_id ? 'bg-muted' : ''}`}
+                        onClick={() => setSelectedOrderId(order.order_id)}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate flex items-center gap-2">
+                            {order.name}
+                            {order.profit > 0 ? (
+                              <Badge variant="success" className="text-xs">+{order.profitMargin.toFixed(1)}%</Badge>
+                            ) : (
+                              <Badge variant="destructive" className="text-xs">{order.profitMargin.toFixed(1)}%</Badge>
+                            )}
+                          </div>
+                          <div className="text-sm text-muted-foreground flex items-center gap-1">
+                            <Building2 className="h-3 w-3" />
+                            <span className="truncate">{order.company}</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-medium">₹{formatCurrency(order.totalRevenue)}</div>
+                          <div className="text-sm text-muted-foreground">{order.date ? formatAnalysisDate(order.date) : '-'}</div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-muted-foreground">No orders found</div>
+                  )}
                 </div>
-              ) : orderConsumptionData.length === 0 ? (
-                <div className="py-8 text-center">
-                  <p className="text-muted-foreground">No consumption data available for the selected period</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Order Number</TableHead>
-                        <TableHead>Company</TableHead>
-                        <TableHead>Product</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead className="text-right">Quantity</TableHead>
-                        <TableHead className="text-right">Production Cost</TableHead>
-                        <TableHead className="text-right">Revenue</TableHead>
-                        <TableHead className="text-right">Profit</TableHead>
-                        <TableHead className="text-right">Margin</TableHead>
-                        <TableHead></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {orderConsumptionData.map((order) => (
-                        <TableRow 
-                          key={order.order_id}
-                          className={selectedOrder === order.order_id ? "bg-muted/50" : ""}
-                        >
-                          <TableCell className="font-medium">{order.order_number}</TableCell>
-                          <TableCell>{order.company_name}</TableCell>
-                          <TableCell>{order.product_name}</TableCell>
-                          <TableCell>
-                            {new Date(order.order_date).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell className="text-right">{order.order_quantity}</TableCell>
-                          <TableCell className="text-right">₹{formatCurrency(order.total_production_cost)}</TableCell>
-                          <TableCell className="text-right">₹{formatCurrency(order.total_revenue)}</TableCell>
-                          <TableCell className={`text-right ${order.profit >= 0 ? "text-green-600" : "text-red-600"}`}>
-                            ₹{formatCurrency(order.profit)}
-                          </TableCell>
-                          <TableCell className={`text-right ${order.profit_margin >= 0 ? "text-green-600" : "text-red-600"}`}>
-                            {order.profit_margin.toFixed(2)}%
-                          </TableCell>
-                          <TableCell>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => {
-                                setSelectedOrder(order.order_id);
-                                setActiveTab("detail");
-                              }}
-                            >
-                              Details
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+              </ScrollArea>
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
         
-        {/* Order Detail Tab */}
-        <TabsContent value="detail" className="space-y-6">
-          {orderDetail && (
+        {/* Right Side - Order Details or Charts */}
+        <div className="md:col-span-2 space-y-6">
+          {selectedOrder ? (
             <>
+              {/* Order Detail Card */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Package className="mr-2" size={20} />
-                    Order #{orderDetail.order_number} Details
-                  </CardTitle>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-xl">Order {selectedOrder.name}</CardTitle>
+                      <CardDescription>
+                        {selectedOrder.company} • {selectedOrder.productName}
+                      </CardDescription>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setSelectedOrderId(null)}
+                    >
+                      Back to Overview
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="space-y-2">
-                      <h3 className="font-medium text-muted-foreground">Order Information</h3>
-                      <div className="grid grid-cols-2 gap-1">
-                        <span className="text-muted-foreground">Company:</span>
-                        <span className="font-medium">{orderDetail.company_name}</span>
-                        
-                        <span className="text-muted-foreground">Product:</span>
-                        <span className="font-medium">{orderDetail.product_name}</span>
-                        
-                        <span className="text-muted-foreground">Date:</span>
-                        <span className="font-medium">{new Date(orderDetail.order_date).toLocaleDateString()}</span>
-                        
-                        <span className="text-muted-foreground">Quantity:</span>
-                        <span className="font-medium">{orderDetail.order_quantity}</span>
-                      </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="space-y-1 p-4 bg-muted/30 rounded-lg">
+                      <div className="text-sm text-muted-foreground">Order Quantity</div>
+                      <div className="text-2xl font-bold">{selectedOrder.orderQuantity}</div>
                     </div>
-                    
-                    <div className="space-y-2">
-                      <h3 className="font-medium text-muted-foreground">Unit Economics</h3>
-                      <div className="grid grid-cols-2 gap-1">
-                        <span className="text-muted-foreground">Cost per unit:</span>
-                        <span className="font-medium">₹{formatCurrency(orderDetail.total_production_cost / orderDetail.order_quantity)}</span>
-                        
-                        <span className="text-muted-foreground">Selling price:</span>
-                        <span className="font-medium">₹{formatCurrency(orderDetail.selling_rate)}</span>
-                        
-                        <span className="text-muted-foreground">Profit per unit:</span>
-                        <span className={`font-medium ${orderDetail.profit >= 0 ? "text-green-600" : "text-red-600"}`}>
-                          ₹{formatCurrency(orderDetail.profit / orderDetail.order_quantity)}
-                        </span>
-                        
-                        <span className="text-muted-foreground">Profit margin:</span>
-                        <span className={`font-medium ${orderDetail.profit_margin >= 0 ? "text-green-600" : "text-red-600"}`}>
-                          {orderDetail.profit_margin.toFixed(2)}%
-                        </span>
-                      </div>
+                    <div className="space-y-1 p-4 bg-muted/30 rounded-lg">
+                      <div className="text-sm text-muted-foreground">Total Revenue</div>
+                      <div className="text-2xl font-bold">₹{formatCurrency(selectedOrder.totalRevenue)}</div>
                     </div>
-                    
-                    <div className="space-y-2">
-                      <h3 className="font-medium text-muted-foreground">Order Totals</h3>
-                      <div className="grid grid-cols-2 gap-1">
-                        <span className="text-muted-foreground">Total cost:</span>
-                        <span className="font-medium">₹{formatCurrency(orderDetail.total_production_cost)}</span>
-                        
-                        <span className="text-muted-foreground">Total revenue:</span>
-                        <span className="font-medium">₹{formatCurrency(orderDetail.total_revenue)}</span>
-                        
-                        <span className="text-muted-foreground">Total profit:</span>
-                        <span className={`font-medium ${orderDetail.profit >= 0 ? "text-green-600" : "text-red-600"}`}>
-                          ₹{formatCurrency(orderDetail.profit)}
-                        </span>
-                        
-                        <span className="text-muted-foreground">Materials used:</span>
-                        <span className="font-medium">{orderDetail.materials.length}</span>
-                      </div>
+                    <div className={`space-y-1 p-4 rounded-lg ${selectedOrder.profit > 0 ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
+                      <div className="text-sm text-muted-foreground">Profit</div>
+                      <div className="text-2xl font-bold">₹{formatCurrency(selectedOrder.profit)}</div>
+                      <div className="text-sm">{selectedOrder.profitMargin.toFixed(1)}% margin</div>
                     </div>
                   </div>
                   
-                  <Separator className="my-6" />
-                  
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Material Breakdown</h3>
+                  <Tabs defaultValue="materials">
+                    <TabsList className="mb-4">
+                      <TabsTrigger value="materials">Material Breakdown</TabsTrigger>
+                      <TabsTrigger value="costs">Cost Analysis</TabsTrigger>
+                      <TabsTrigger value="chart">Material Distribution</TabsTrigger>
+                    </TabsList>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="overflow-x-auto">
+                    <TabsContent value="materials" className="space-y-4">
+                      <div className="rounded-md border">
                         <Table>
                           <TableHeader>
                             <TableRow>
                               <TableHead>Material</TableHead>
                               <TableHead className="text-right">Quantity</TableHead>
-                              <TableHead className="text-right">Unit Price</TableHead>
-                              <TableHead className="text-right">Total Cost</TableHead>
-                              <TableHead className="text-right">% of Total</TableHead>
+                              <TableHead className="text-right">Unit</TableHead>
+                              <TableHead className="text-right">Value</TableHead>
+                              <TableHead className="text-right">% of Cost</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {orderDetail.materials.map((material) => (
-                              <TableRow key={material.material_id}>
-                                <TableCell className="font-medium">{material.material_name}</TableCell>
-                                <TableCell className="text-right">
-                                  {formatQuantity(material.quantity_used, material.unit)}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  ₹{formatCurrency(material.cost_per_unit)}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  ₹{formatCurrency(material.total_cost)}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {material.percentage_of_total.toFixed(2)}%
+                            {sortedMaterials.length > 0 ? (
+                              sortedMaterials.map((material: any) => (
+                                <TableRow key={material.material_id}>
+                                  <TableCell className="font-medium">{material.material_name}</TableCell>
+                                  <TableCell className="text-right">{material.quantity.toFixed(2)}</TableCell>
+                                  <TableCell className="text-right">{material.unit}</TableCell>
+                                  <TableCell className="text-right">₹{formatCurrency(material.value)}</TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                      <span>{selectedOrder.materialValue ? ((material.value / selectedOrder.materialValue) * 100).toFixed(1) : 0}%</span>
+                                      <div className="w-16">
+                                        <Progress value={selectedOrder.materialValue ? ((material.value / selectedOrder.materialValue) * 100) : 0} className="h-2" />
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            ) : (
+                              <TableRow>
+                                <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                                  No material data available for this order
                                 </TableCell>
                               </TableRow>
-                            ))}
+                            )}
                           </TableBody>
                         </Table>
                       </div>
-                      
-                      <div className="min-h-[300px] flex flex-col justify-center">
-                        <h4 className="text-center text-sm font-medium mb-4">Material Cost Distribution</h4>
-                        <ResponsiveContainer width="100%" height={300}>
-                          <RechartPieChart>
-                            <Pie
-                              data={preparePieChartData(orderDetail.order_id)}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={60}
-                              outerRadius={80}
-                              paddingAngle={2}
-                              dataKey="value"
-                              nameKey="name"
-                              label={({ name, percent }) => 
-                                percent > 0.05 ? `${name} (${(percent * 100).toFixed(0)}%)` : ''}
-                            >
-                              {preparePieChartData(orderDetail.order_id).map((entry, index) => (
-                                <Cell 
-                                  key={`cell-${index}`} 
-                                  fill={generateColors(orderDetail.materials.length)[index % generateColors(orderDetail.materials.length).length]}
-                                />
-                              ))}
-                            </Pie>
-                            <Tooltip content={<CustomTooltip />} />
-                          </RechartPieChart>
-                        </ResponsiveContainer>
+                    </TabsContent>
+                    
+                    <TabsContent value="costs" className="space-y-4">
+                      <div className="grid grid-cols-1 gap-4">
+                        <div className="p-4 rounded-md bg-muted/20">
+                          <h3 className="font-medium mb-2">Cost Breakdown</h3>
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                              <span>Material Costs</span>
+                              <span className="font-medium">₹{formatCurrency(selectedOrder.materialValue)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span>Other Production Costs</span>
+                              <span className="font-medium">₹{formatCurrency(selectedOrder.totalCost - selectedOrder.materialValue)}</span>
+                            </div>
+                            <Separator />
+                            <div className="flex justify-between items-center">
+                              <span>Total Production Cost</span>
+                              <span className="font-medium">₹{formatCurrency(selectedOrder.totalCost)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span>Per Unit Cost</span>
+                              <span className="font-medium">₹{formatCurrency(selectedOrder.productCost)}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="p-4 rounded-md bg-muted/20">
+                          <h3 className="font-medium mb-2">Revenue & Profit</h3>
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                              <span>Selling Rate (Per Unit)</span>
+                              <span className="font-medium">₹{formatCurrency(selectedOrder.sellingRate)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span>Order Quantity</span>
+                              <span className="font-medium">{selectedOrder.orderQuantity}</span>
+                            </div>
+                            <Separator />
+                            <div className="flex justify-between items-center">
+                              <span>Total Revenue</span>
+                              <span className="font-medium">₹{formatCurrency(selectedOrder.totalRevenue)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span>Profit</span>
+                              <span className={`font-medium ${selectedOrder.profit > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                ₹{formatCurrency(selectedOrder.profit)} ({selectedOrder.profitMargin.toFixed(1)}%)
+                              </span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="chart" className="space-y-4">
+                      <div className="h-[400px]">
+                        {materialDistributionData.length > 0 ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RechartsPieChart>
+                              <Pie
+                                data={materialDistributionData}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                outerRadius={120}
+                                fill="#8884d8"
+                                dataKey="value"
+                                nameKey="name"
+                              >
+                                {materialDistributionData.map((entry: any, index: number) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip 
+                                formatter={(value: any, name: any, props: any) => [
+                                  `${value} ${props.payload.unit} (₹${formatCurrency(props.payload.materialValue)})`,
+                                  props.payload.name
+                                ]}
+                              />
+                              <Legend />
+                            </RechartsPieChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            <div className="text-center text-muted-foreground">
+                              <AlertCircle className="mx-auto h-8 w-8" />
+                              <h3 className="mt-2">No material data available for this order</h3>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </TabsContent>
+                  </Tabs>
                 </CardContent>
               </Card>
             </>
-          )}
-        </TabsContent>
-        
-        {/* Charts Tab */}
-        <TabsContent value="charts" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Revenue, Cost, and Profit Comparison */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <BarChart2 className="mr-2" size={20} />
-                  Revenue, Cost & Profit (Top 10 Orders)
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-2">
-                <div className="h-[400px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={prepareBarChartData()}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="name" 
-                        angle={-45} 
-                        textAnchor="end" 
-                        height={70} 
-                        tick={{ fontSize: 12 }}
-                      />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="cost" name="Production Cost" fill="#f97316" />
-                      <Bar dataKey="revenue" name="Revenue" fill="#10b981" />
-                      <Bar dataKey="profit" name="Profit" fill="#0ea5e9" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-            
-            {/* Profit Margin Stats */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Percent className="mr-2" size={20} />
-                  Profit Margin Analysis
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Profit Metrics */}
-                  <div className="space-y-6">
-                    {/* Average Profit Margin */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-muted-foreground">Avg Profit Margin</span>
-                        <span className="text-2xl font-bold">
-                          {orderConsumptionData.length > 0 
-                            ? (orderConsumptionData.reduce((sum, order) => sum + order.profit_margin, 0) / 
-                               orderConsumptionData.length).toFixed(2)
-                            : "0.00"}%
-                        </span>
-                      </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-green-500 rounded-full" 
-                          style={{ 
-                            width: `${Math.min(100, Math.max(0, 
-                              orderConsumptionData.length > 0 
-                              ? (orderConsumptionData.reduce((sum, order) => sum + order.profit_margin, 0) / 
-                                orderConsumptionData.length)
-                              : 0
-                            ))}%` 
+          ) : (
+            <>
+              {/* Overview Charts */}
+              <div className="grid gap-6 grid-cols-1">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <TrendingUp className="h-5 w-5 mr-2" />
+                      Order Profitability Analysis
+                    </CardTitle>
+                    <CardDescription>Revenue, cost and profit margin by order</CardDescription>
+                  </CardHeader>
+                  <CardContent className="h-[400px]">
+                    {orderChartData && orderChartData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={orderChartData.slice(0, 10)}
+                          margin={{
+                            top: 20, right: 30, left: 20, bottom: 60,
                           }}
-                        />
+                          onClick={(data) => data && data.activePayload && setSelectedOrderId(data.activePayload[0].payload.order_id)}
+                          className="cursor-pointer"
+                        >
+                          <XAxis dataKey="name" angle={-45} textAnchor="end" height={50} />
+                          <YAxis />
+                          <Tooltip 
+                            formatter={(value, name) => [`₹${formatCurrency(value)}`, name]}
+                            labelFormatter={(value) => `Order: ${value}`}
+                          />
+                          <Legend />
+                          <Bar dataKey="totalRevenue" name="Revenue" fill="#82ca9d" />
+                          <Bar dataKey="totalCost" name="Cost" fill="#8884d8" />
+                          <Bar dataKey="profit" name="Profit" fill="#ffc658">
+                            {orderChartData.slice(0, 10).map((entry, index) => (
+                              <Cell 
+                                key={`cell-${index}`} 
+                                fill={entry.profit > 0 ? '#4ade80' : '#f87171'}
+                              />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="text-center text-muted-foreground">
+                          <AlertCircle className="mx-auto h-8 w-8" />
+                          <h3 className="mt-2">No order data available</h3>
+                        </div>
                       </div>
-                    </div>
-                    
-                    {/* Highest/Lowest Profit */}
-                    <div className="space-y-4">
-                      <div>
-                        <span className="text-sm font-medium text-muted-foreground block">Highest Margin</span>
-                        {orderConsumptionData.length > 0 && (
-                          <div className="flex justify-between mt-1">
-                            <span className="font-medium">
-                              {orderConsumptionData
-                                .reduce((prev, current) => 
-                                  (prev.profit_margin > current.profit_margin) ? prev : current
-                                ).order_number}
-                            </span>
-                            <span className="text-green-600 font-bold">
-                              {orderConsumptionData
-                                .reduce((prev, current) => 
-                                  (prev.profit_margin > current.profit_margin) ? prev : current
-                                ).profit_margin.toFixed(2)}%
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div>
-                        <span className="text-sm font-medium text-muted-foreground block">Lowest Margin</span>
-                        {orderConsumptionData.length > 0 && (
-                          <div className="flex justify-between mt-1">
-                            <span className="font-medium">
-                              {orderConsumptionData
-                                .reduce((prev, current) => 
-                                  (prev.profit_margin < current.profit_margin) ? prev : current
-                                ).order_number}
-                            </span>
-                            <span className={`font-bold ${
-                              orderConsumptionData
-                                .reduce((prev, current) => 
-                                  (prev.profit_margin < current.profit_margin) ? prev : current
-                                ).profit_margin < 0 ? 'text-red-600' : 'text-orange-500'
-                            }`}>
-                              {orderConsumptionData
-                                .reduce((prev, current) => 
-                                  (prev.profit_margin < current.profit_margin) ? prev : current
-                                ).profit_margin.toFixed(2)}%
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Profit Distribution */}
-                  <div className="h-[200px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={[
-                            {
-                              name: "Profitable Orders",
-                              value: orderConsumptionData.filter(o => o.profit_margin >= 0).length,
-                              fill: "#10b981"
-                            },
-                            {
-                              name: "Loss-making Orders",
-                              value: orderConsumptionData.filter(o => o.profit_margin < 0).length,
-                              fill: "#f43f5e"
-                            }
-                          ]}
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={80}
-                          dataKey="value"
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        />
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
+                    )}
+                  </CardContent>
+                </Card>
                 
-                {/* Profit/Loss Overview */}
-                <div className="grid grid-cols-2 gap-4 mt-6">
-                  <Card className="bg-green-50 dark:bg-green-950/20">
-                    <CardContent className="p-4">
-                      <div className="flex flex-col">
-                        <div className="text-green-600 flex items-center mb-2">
-                          <DollarSign size={16} className="mr-1" />
-                          <span className="text-sm font-medium">Total Profit</span>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <DollarSign className="h-5 w-5 mr-2" />
+                      Material Value by Order
+                    </CardTitle>
+                    <CardDescription>Value of materials used in each order</CardDescription>
+                  </CardHeader>
+                  <CardContent className="h-[400px]">
+                    {orderChartData && orderChartData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          layout="vertical"
+                          data={orderChartData.slice(0, 10).sort((a, b) => b.materialValue - a.materialValue)}
+                          margin={{
+                            top: 5, right: 30, left: 120, bottom: 5,
+                          }}
+                          onClick={(data) => data && data.activePayload && setSelectedOrderId(data.activePayload[0].payload.order_id)}
+                          className="cursor-pointer"
+                        >
+                          <XAxis type="number" />
+                          <YAxis dataKey="name" type="category" width={100} />
+                          <Tooltip 
+                            formatter={(value) => [`₹${formatCurrency(value)}`, 'Material Value']}
+                          />
+                          <Legend />
+                          <Bar dataKey="materialValue" name="Material Value" fill="#0088FE">
+                            {orderChartData.slice(0, 10).sort((a, b) => b.materialValue - a.materialValue).map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="text-center text-muted-foreground">
+                          <AlertCircle className="mx-auto h-8 w-8" />
+                          <h3 className="mt-2">No order consumption data available</h3>
                         </div>
-                        <span className="text-xl font-bold">
-                          ₹{formatCurrency(orderConsumptionData.reduce(
-                            (sum, order) => sum + Math.max(0, order.profit), 0
-                          ))}
-                        </span>
                       </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card className="bg-red-50 dark:bg-red-950/20">
-                    <CardContent className="p-4">
-                      <div className="flex flex-col">
-                        <div className="text-red-600 flex items-center mb-2">
-                          <DollarSign size={16} className="mr-1" />
-                          <span className="text-sm font-medium">Total Loss</span>
-                        </div>
-                        <span className="text-xl font-bold">
-                          ₹{formatCurrency(Math.abs(orderConsumptionData.reduce(
-                            (sum, order) => sum + Math.min(0, order.profit), 0
-                          )))}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
