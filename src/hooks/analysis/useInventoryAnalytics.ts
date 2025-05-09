@@ -1,488 +1,542 @@
-import { useQuery } from "@tanstack/react-query";
+
+import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
-import { calculateRefillUrgency } from "@/utils/analysisUtils";
+import { formatCurrency, formatQuantity, calculatePercentageChange } from "@/utils/analysisUtils";
+import { showToast } from "@/components/ui/enhanced-toast";
 
-export type DateFilter = {
-  startDate: Date | null;
-  endDate: Date | null;
-};
+export interface MaterialConsumptionData {
+  material_id: string;
+  material_name: string;
+  total_consumption: number;
+  unit: string;
+  orders_count: number;
+  total_value: number;
+  usage_by_order: {
+    order_id: string;
+    order_number: string;
+    company_name: string;
+    usage_quantity: number;
+    usage_percentage: number;
+    usage_value: number;
+    component_type?: string;
+  }[];
+}
 
-export type InventoryAnalyticsFilters = {
-  dateRange: DateFilter;
-  materialId?: string | null;
-  orderIds?: string[] | null;
-};
+export interface OrderConsumptionData {
+  order_id: string;
+  order_number: string;
+  company_name: string;
+  order_date: string;
+  order_quantity: number;
+  catalog_id: string;
+  product_name: string;
+  total_production_cost: number;
+  selling_rate: number;
+  total_revenue: number;
+  profit: number;
+  profit_margin: number;
+  materials: {
+    material_id: string;
+    material_name: string;
+    quantity_used: number;
+    unit: string;
+    cost_per_unit: number;
+    total_cost: number;
+    percentage_of_total: number;
+  }[];
+}
 
-export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
-  const [currentFilters, setFilters] = useState<InventoryAnalyticsFilters>(
-    filters || {
-      dateRange: { startDate: null, endDate: null },
-      materialId: null,
-      orderIds: null,
-    }
-  );
+export interface InventoryValueData {
+  total_value: number;
+  items_count: number;
+  categories: {
+    category: string;
+    value: number;
+    percentage: number;
+    items: {
+      material_id: string;
+      material_name: string;
+      quantity: number;
+      unit: string;
+      unit_price: number;
+      total_value: number;
+    }[];
+  }[];
+}
 
-  // Fetch material consumption data with advanced deduplication
-  const { data: consumptionData, isLoading: loadingConsumption } = useQuery({
-    queryKey: ['material-consumption', currentFilters],
-    queryFn: async () => {
-      console.log("Fetching material consumption data with filters:", currentFilters);
-      
-      // Instead of using the view directly, we'll fetch and process the raw data
-      // to handle proper deduplication of transaction pairs
-      const materialTransactions = await fetchAllMaterialTransactions(currentFilters);
-      
-      // Group and aggregate the transactions by material
-      const consumptionByMaterial = consolidateMaterialConsumption(materialTransactions);
-      
-      console.log(`Processed ${consumptionByMaterial.length} material consumption records after deduplication`);
-      return consumptionByMaterial;
-    },
-  });
+export const useInventoryAnalytics = () => {
+  const [materialConsumptionData, setMaterialConsumptionData] = useState<MaterialConsumptionData[]>([]);
+  const [orderConsumptionData, setOrderConsumptionData] = useState<OrderConsumptionData[]>([]);
+  const [inventoryValueData, setInventoryValueData] = useState<InventoryValueData | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Fetch order consumption breakdown with advanced deduplication
-  const { data: orderConsumptionData, isLoading: loadingOrderConsumption } = useQuery({
-    queryKey: ['order-consumption', currentFilters],
-    queryFn: async () => {
-      console.log("Fetching order consumption data with filters:", currentFilters);
-      
-      // Get consolidated transaction data from both sources
-      const materialTransactions = await fetchAllMaterialTransactions(currentFilters);
-      
-      // Process and organize by order
-      const orderConsumption = consolidateOrderConsumption(materialTransactions);
-      
-      console.log(`Processed ${orderConsumption.length} order consumption records after deduplication`);
-      return orderConsumption;
-    },
-  });
-  
-  // Helper function to fetch all transaction data from both tables
-  const fetchAllMaterialTransactions = async (filters: InventoryAnalyticsFilters) => {
-    // First fetch from order_material_breakdown (if available)
-    let baseRecords: any[] = [];
+  // Fetch material consumption data
+  const fetchMaterialConsumptionData = useCallback(async (dateRange?: { from: Date; to: Date }) => {
     try {
+      setLoading(true);
+      setError(null);
+
+      // First, fetch material transactions with negative quantity (consumed materials)
       let query = supabase
-        .from('order_material_breakdown')
-        .select('*');
-      
-      // Apply filters
-      if (filters.materialId) {
-        query = query.eq('material_id', filters.materialId);
-      }
-      
-      if (filters.orderIds && filters.orderIds.length > 0) {
-        query = query.in('order_id', filters.orderIds);
-      }
-      
-      if (filters.dateRange.startDate) {
-        query = query.gte('usage_date', filters.dateRange.startDate.toISOString());
-      }
-      
-      if (filters.dateRange.endDate) {
-        query = query.lte('usage_date', filters.dateRange.endDate.toISOString());
-      }
-      
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error("Error fetching order_material_breakdown data:", error);
-      } else if (data && data.length > 0) {
-        baseRecords = data.map(item => ({
-          ...item,
-          source: 'breakdown',
-          transaction_type: 'Consumption' // Assuming all records here are consumption
-        }));
-      }
-    } catch (error) {
-      console.error("Error in breakdown query:", error);
-    }
-    
-    // Now fetch from inventory_transaction_log
-    let logRecords: any[] = [];
-    try {
-      let logQuery = supabase
-        .from('inventory_transaction_log')
-        .select('*');
-      
-      // Apply similar filters
-      if (filters.materialId) {
-        logQuery = logQuery.eq('material_id', filters.materialId);
-      }
-      
-      // If order IDs filter exists
-      if (filters.orderIds && filters.orderIds.length > 0) {
-        logQuery = logQuery.in('reference_id', filters.orderIds);
-      } else {
-        // Otherwise just get order-related transactions
-        logQuery = logQuery.eq('reference_type', 'Order');
-      }
-      
-      // Date filters
-      if (filters.dateRange.startDate) {
-        logQuery = logQuery.gte('transaction_date', filters.dateRange.startDate.toISOString());
-      }
-      
-      if (filters.dateRange.endDate) {
-        logQuery = logQuery.lte('transaction_date', filters.dateRange.endDate.toISOString());
-      }
-      
-      const { data: logData, error: logError } = await logQuery;
-      
-      if (logError) {
-        console.error("Error fetching transaction log data:", logError);
-      } else if (logData && logData.length > 0) {
-        logRecords = logData.map(log => {
-          // Extract metadata or provide defaults
-          const metadata = log.metadata || {};
-          
-          return {
-            // Map to a consistent format
-            order_id: log.reference_id,
-            order_number: log.reference_number,
-            material_id: log.material_id,
-            material_name: metadata.material_name || 'Unknown',
-            // Important: We're using the raw quantity here and will process it properly later
-            // to avoid double-counting decreases
-            quantity: log.quantity,
-            unit: metadata.unit || 'units',
-            usage_date: log.transaction_date,
-            company_name: metadata.company_name || 'Unknown',
-            component_type: metadata.component_type || 'Unknown',
-            purchase_price: metadata.purchase_price || 0,
-            transaction_type: log.transaction_type,
-            source: 'transaction_log',
-            log_id: log.id,
-            notes: log.notes
-          };
-        });
-      }
-    } catch (error) {
-      console.error("Error in transaction log query:", error);
-    }
-    
-    // Fetch from inventory_transactions as well
-    let txRecords: any[] = [];
-    try {
-      let txQuery = supabase
         .from('inventory_transactions')
-        .select('*');
-      
-      // Apply filters
-      if (filters.materialId) {
-        txQuery = txQuery.eq('material_id', filters.materialId);
+        .select(`
+          id,
+          material_id,
+          quantity,
+          transaction_type,
+          created_at,
+          unit_price,
+          reference_id,
+          reference_number,
+          inventory(
+            material_name,
+            unit
+          ),
+          order:reference_id(
+            id,
+            order_number,
+            company_name,
+            component_type
+          )
+        `)
+        .lt('quantity', 0)
+        .eq('transaction_type', 'consumption');
+
+      // Apply date filter if provided
+      if (dateRange) {
+        query = query
+          .gte('created_at', dateRange.from.toISOString())
+          .lte('created_at', dateRange.to.toISOString());
       }
-      
-      // Date filters - field name may differ
-      if (filters.dateRange.startDate) {
-        txQuery = txQuery.gte('created_at', filters.dateRange.startDate.toISOString());
+
+      const { data: transactions, error: transactionError } = await query;
+
+      if (transactionError) {
+        throw transactionError;
       }
-      
-      if (filters.dateRange.endDate) {
-        txQuery = txQuery.lte('created_at', filters.dateRange.endDate.toISOString());
+
+      if (!transactions || transactions.length === 0) {
+        setMaterialConsumptionData([]);
+        setLoading(false);
+        return;
       }
-      
-      const { data: txData, error: txError } = await txQuery;
-      
-      if (txError) {
-        console.error("Error fetching inventory transactions data:", txError);
-      } else if (txData && txData.length > 0) {
-        txRecords = txData.map(tx => {
+
+      // Process transactions to calculate consumption by material
+      const materialMap: Record<string, MaterialConsumptionData> = {};
+
+      transactions.forEach((transaction) => {
+        const materialId = transaction.material_id;
+        const materialName = transaction.inventory?.material_name as string || 'Unknown Material';
+        const unit = transaction.inventory?.unit as string || 'units';
+        const orderId = transaction.reference_id;
+        const orderNumber = transaction.reference_number;
+        const companyName = transaction.order?.company_name as string || 'Unknown Company';
+        const componentType = transaction.order?.component_type as string || undefined;
+        const quantity = Math.abs(transaction.quantity);
+        const unitPrice = transaction.unit_price || 0;
+        const value = quantity * unitPrice;
+
+        // Initialize material entry if it doesn't exist
+        if (!materialMap[materialId]) {
+          materialMap[materialId] = {
+            material_id: materialId,
+            material_name: materialName,
+            total_consumption: 0,
+            unit: unit,
+            orders_count: 0,
+            total_value: 0,
+            usage_by_order: []
+          };
+        }
+
+        // Update totals
+        materialMap[materialId].total_consumption += quantity;
+        materialMap[materialId].total_value += value;
+
+        // Add to order-specific usage if order exists
+        if (orderId) {
+          // Check if order already exists in usage_by_order
+          const orderIndex = materialMap[materialId].usage_by_order.findIndex(
+            (o) => o.order_id === orderId
+          );
+
+          if (orderIndex >= 0) {
+            // Update existing order entry
+            materialMap[materialId].usage_by_order[orderIndex].usage_quantity += quantity;
+            materialMap[materialId].usage_by_order[orderIndex].usage_value += value;
+          } else {
+            // Add new order entry
+            materialMap[materialId].usage_by_order.push({
+              order_id: orderId,
+              order_number: orderNumber,
+              company_name: companyName,
+              usage_quantity: quantity,
+              usage_percentage: 0, // Calculate after all data is collected
+              usage_value: value,
+              component_type: componentType
+            });
+            materialMap[materialId].orders_count += 1;
+          }
+        }
+      });
+
+      // Calculate percentages for each material and order
+      Object.values(materialMap).forEach((material) => {
+        material.usage_by_order.forEach((orderUsage) => {
+          orderUsage.usage_percentage = 
+            (orderUsage.usage_quantity / material.total_consumption) * 100;
+        });
+
+        // Sort usage by quantity (descending)
+        material.usage_by_order.sort((a, b) => b.usage_quantity - a.usage_quantity);
+      });
+
+      // Convert map to array and sort by total consumption
+      const materialConsumption = Object.values(materialMap).sort(
+        (a, b) => b.total_consumption - a.total_consumption
+      );
+
+      setMaterialConsumptionData(materialConsumption);
+    } catch (err: any) {
+      console.error("Error fetching material consumption data:", err);
+      setError(err.message || "Failed to fetch material consumption data");
+      showToast({
+        title: "Error loading consumption data",
+        description: err.message || "An unexpected error occurred",
+        type: "error"
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Fetch order consumption data
+  const fetchOrderConsumptionData = useCallback(async (dateRange?: { from: Date; to: Date }) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // First, fetch orders
+      let ordersQuery = supabase
+        .from('orders')
+        .select(`
+          id,
+          order_number,
+          order_date,
+          company_name,
+          quantity,
+          catalog:product_id (
+            id,
+            name,
+            production_cost,
+            selling_rate
+          )
+        `)
+        .order('order_date', { ascending: false });
+
+      // Apply date filter if provided
+      if (dateRange) {
+        ordersQuery = ordersQuery
+          .gte('order_date', dateRange.from.toISOString())
+          .lte('order_date', dateRange.to.toISOString());
+      }
+
+      const { data: orders, error: ordersError } = await ordersQuery;
+
+      if (ordersError) {
+        throw ordersError;
+      }
+
+      if (!orders || orders.length === 0) {
+        setOrderConsumptionData([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch material consumption for these orders
+      const orderIds = orders.map((order) => order.id);
+
+      const { data: materialConsumptions, error: consumptionsError } = await supabase
+        .from('inventory_transactions')
+        .select(`
+          id,
+          material_id,
+          quantity,
+          unit_price,
+          reference_id,
+          inventory(
+            material_name,
+            unit
+          )
+        `)
+        .in('reference_id', orderIds)
+        .eq('transaction_type', 'consumption');
+
+      if (consumptionsError) {
+        throw consumptionsError;
+      }
+
+      // Process the data to create order consumption records
+      const orderConsumptionList: OrderConsumptionData[] = [];
+
+      for (const order of orders) {
+        if (!order.catalog) continue;
+        
+        // Calculate order economics
+        const orderQuantity = order.quantity || 0;
+        const productionCost = Number(order.catalog.production_cost) || 0;
+        const sellingRate = Number(order.catalog.selling_rate) || 0;
+        
+        const totalProductionCost = productionCost * orderQuantity;
+        const totalRevenue = sellingRate * orderQuantity;
+        const profit = totalRevenue - totalProductionCost;
+        const profitMargin = totalProductionCost > 0 
+          ? (profit / totalProductionCost) * 100 
+          : 0;
+
+        // Find material consumption for this order
+        const orderMaterials = materialConsumptions
+          ? materialConsumptions.filter((item) => item.reference_id === order.id)
+          : [];
+
+        // Calculate total material cost for this order
+        const materialDetails = orderMaterials.map((material) => {
+          const quantityUsed = Math.abs(material.quantity);
+          const costPerUnit = material.unit_price || 0;
+          const totalCost = quantityUsed * costPerUnit;
+
           return {
-            // Map to our consistent format
-            order_id: tx.reference_id || '',
-            order_number: tx.reference_number || '',
-            material_id: tx.material_id,
-            material_name: tx.material_name || 'Unknown',
-            // Again, using raw quantity to process properly
-            quantity: tx.quantity,
-            unit: tx.unit || 'units',
-            usage_date: tx.created_at,
-            company_name: tx.company_name || 'Unknown',
-            component_type: tx.component_type || 'Unknown',
-            purchase_price: tx.purchase_price || 0,
-            transaction_type: tx.transaction_type,
-            source: 'inventory_transactions',
-            notes: tx.notes
+            material_id: material.material_id,
+            material_name: material.inventory?.material_name as string || 'Unknown Material',
+            quantity_used: quantityUsed,
+            unit: material.inventory?.unit as string || 'units',
+            cost_per_unit: costPerUnit,
+            total_cost: totalCost,
+            percentage_of_total: 0 // Will calculate after summing all materials
           };
         });
-      }
-    } catch (error) {
-      console.error("Error in inventory transactions query:", error);
-    }
-    
-    // Combine all records but we will deduplicate them later
-    return [...baseRecords, ...logRecords, ...txRecords];
-  };
-  
-  // Function to consolidate material consumption from transaction records
-  const consolidateMaterialConsumption = (transactions: any[]) => {
-    // Group transactions by material
-    const materialMap = new Map();
-    
-    // First, process all transactions to correctly identify consumption
-    transactions.forEach(tx => {
-      // Skip transactions we don't want to count for consumption
-      if (!tx.material_id) return;
-      
-      // We only want to count actual consumption, not just any quantity change
-      // Negative quantities typically indicate consumption or usage
-      // Some systems might record positive values for consumption - check notes or transaction_type
-      const isConsumption = 
-        (tx.quantity < 0) || 
-        (tx.transaction_type && tx.transaction_type.toLowerCase().includes('consum')) ||
-        (tx.notes && tx.notes.toLowerCase().includes('consum'));
-      
-      if (!isConsumption) return;
-      
-      // Get the absolute value for consumption
-      const consumptionAmount = Math.abs(tx.quantity);
-      
-      // Create a unique key for the order+material+date to detect duplicates
-      const date = tx.usage_date ? new Date(tx.usage_date) : new Date();
-      date.setMinutes(0, 0, 0); // Round to nearest hour
-      const txKey = `${tx.order_id}_${tx.material_id}_${date.toISOString()}`;
-      
-      // If we already saw this specific transaction, skip it
-      if (tx.processedTxKey === txKey) return;
-      tx.processedTxKey = txKey;
-      
-      // Get or create material entry
-      if (!materialMap.has(tx.material_id)) {
-        materialMap.set(tx.material_id, {
-          material_id: tx.material_id,
-          material_name: tx.material_name,
-          gsm: tx.gsm,
-          color: tx.color,
-          unit: tx.unit,
-          total_consumption: 0,
-          total_usage: 0, // Alias for compatibility
-          purchase_price: tx.purchase_price || 0,
-          orders: new Set(),
-          first_usage_date: tx.usage_date,
-          last_usage_date: tx.usage_date,
-          // Track seen transactions to avoid duplicates
-          seen_transactions: new Set([txKey])
+
+        // Calculate percentages
+        const totalMaterialCost = materialDetails.reduce((sum, mat) => sum + mat.total_cost, 0);
+        materialDetails.forEach(material => {
+          material.percentage_of_total = 
+            totalMaterialCost > 0 ? (material.total_cost / totalMaterialCost) * 100 : 0;
         });
-      }
-      
-      const materialData = materialMap.get(tx.material_id);
-      
-      // Check if we've already processed this exact transaction
-      if (materialData.seen_transactions.has(txKey)) {
-        return; // Skip duplicate
-      }
-      
-      // Update material consumption data
-      materialData.total_consumption += consumptionAmount;
-      materialData.total_usage = materialData.total_consumption; // Alias for compatibility
-      
-      // Track order info
-      if (tx.order_id) {
-        materialData.orders.add(tx.order_id);
-      }
-      
-      // Update date tracking
-      if (tx.usage_date) {
-        const txDate = new Date(tx.usage_date);
-        
-        if (!materialData.first_usage_date || txDate < new Date(materialData.first_usage_date)) {
-          materialData.first_usage_date = tx.usage_date;
-        }
-        
-        if (!materialData.last_usage_date || txDate > new Date(materialData.last_usage_date)) {
-          materialData.last_usage_date = tx.usage_date;
-        }
-      }
-      
-      // Mark this transaction as seen
-      materialData.seen_transactions.add(txKey);
-    });
-    
-    // Convert the map to array and calculate order counts
-    return Array.from(materialMap.values()).map(material => ({
-      ...material,
-      orders_count: material.orders.size,
-      orders: Array.from(material.orders), // Convert Set to Array
-      seen_transactions: undefined // Remove temp tracking property
-    }));
-  };
-  
-  // Function to consolidate order consumption from transaction records
-  const consolidateOrderConsumption = (transactions: any[]) => {
-    // Group by order first
-    const orderMap = new Map();
-    
-    // Process transactions to correctly identify consumption
-    transactions.forEach(tx => {
-      // Skip incomplete transactions
-      if (!tx.material_id || !tx.order_id) return;
-      
-      // We only want to count actual consumption, not just any quantity change
-      const isConsumption = 
-        (tx.quantity < 0) || 
-        (tx.transaction_type && tx.transaction_type.toLowerCase().includes('consum')) ||
-        (tx.notes && tx.notes.toLowerCase().includes('consum'));
-      
-      if (!isConsumption) return;
-      
-      // Get the absolute value for consumption
-      const consumptionAmount = Math.abs(tx.quantity);
-      
-      // Create a unique key for the order+material+date to detect duplicates
-      const date = tx.usage_date ? new Date(tx.usage_date) : new Date();
-      date.setMinutes(0, 0, 0); // Round to nearest hour
-      const txKey = `${tx.order_id}_${tx.material_id}_${date.toISOString()}`;
-      
-      // Get or create order entry
-      if (!orderMap.has(tx.order_id)) {
-        orderMap.set(tx.order_id, {
-          order_id: tx.order_id,
-          order_number: tx.order_number,
-          company_name: tx.company_name,
-          usage_date: tx.usage_date,
-          materials: new Map(),
-          seen_transactions: new Set()
-        });
-      }
-      
-      const orderData = orderMap.get(tx.order_id);
-      
-      // Check if we've already seen this exact transaction
-      if (orderData.seen_transactions.has(txKey)) {
-        return; // Skip duplicate
-      }
-      
-      // Get or create material entry for this order
-      if (!orderData.materials.has(tx.material_id)) {
-        orderData.materials.set(tx.material_id, {
-          material_id: tx.material_id,
-          material_name: tx.material_name,
-          unit: tx.unit,
-          total_material_used: 0,
-          purchase_price: tx.purchase_price || 0,
-          component_type: tx.component_type
-        });
-      }
-      
-      const materialData = orderData.materials.get(tx.material_id);
-      
-      // Update material consumption
-      materialData.total_material_used += consumptionAmount;
-      
-      // Mark this transaction as seen
-      orderData.seen_transactions.add(txKey);
-    });
-    
-    // Convert to the expected format for orderConsumptionData
-    const result: any[] = [];
-    
-    orderMap.forEach(order => {
-      order.materials.forEach(material => {
-        result.push({
-          order_id: order.order_id,
+
+        // Sort materials by total cost (descending)
+        materialDetails.sort((a, b) => b.total_cost - a.total_cost);
+
+        orderConsumptionList.push({
+          order_id: order.id,
           order_number: order.order_number,
-          company_name: order.company_name,
-          usage_date: order.usage_date,
-          material_id: material.material_id,
-          material_name: material.material_name,
-          total_material_used: material.total_material_used,
-          unit: material.unit,
-          purchase_price: material.purchase_price,
-          component_type: material.component_type
+          company_name: order.company_name || 'Unknown Company',
+          order_date: order.order_date,
+          order_quantity: orderQuantity,
+          catalog_id: order.catalog.id,
+          product_name: order.catalog.name || 'Unknown Product',
+          total_production_cost: totalProductionCost,
+          selling_rate: sellingRate,
+          total_revenue: totalRevenue,
+          profit: profit,
+          profit_margin: profitMargin,
+          materials: materialDetails
         });
+      }
+
+      // Sort by order date (newest first)
+      orderConsumptionList.sort((a, b) => 
+        new Date(b.order_date).getTime() - new Date(a.order_date).getTime()
+      );
+
+      setOrderConsumptionData(orderConsumptionList);
+    } catch (err: any) {
+      console.error("Error fetching order consumption data:", err);
+      setError(err.message || "Failed to fetch order consumption data");
+      showToast({
+        title: "Error loading order data",
+        description: err.message || "An unexpected error occurred",
+        type: "error"
       });
-    });
-    
-    return result;
-  };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   // Fetch inventory value data
-  const { data: inventoryValueData, isLoading: loadingInventoryValue } = useQuery({
-    queryKey: ['inventory-value'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('inventory')
-        .select('id, material_name, quantity, unit, purchase_rate, reorder_level, min_stock_level');
-      
-      if (error) {
-        console.error("Error fetching inventory value data:", error);
-        throw error;
-      }
-      
-      // Calculate total value for each material
-      const items = (data || []).map(item => ({
-        ...item,
-        totalValue: (item.quantity || 0) * (item.purchase_rate || 0)
-      }));
-      
-      // Calculate total value of all inventory
-      const totalInventoryValue = items.reduce((sum, item) => sum + item.totalValue, 0);
-      
-      // Add percentage of total for each item
-      return items.map(item => ({
-        ...item,
-        percentage: totalInventoryValue > 0 ? (item.totalValue / totalInventoryValue) * 100 : 0
-      }));
-    },
-  });
+  const fetchInventoryValueData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  // Fetch inventory refill needs
-  const { data: refillNeedsData, isLoading: loadingRefillNeeds } = useQuery({
-    queryKey: ['refill-needs'],
-    queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: inventoryItems, error: inventoryError } = await supabase
         .from('inventory')
-        .select('id, material_name, quantity, unit, purchase_rate, reorder_level, min_stock_level');
-      
-      if (error) {
-        console.error("Error fetching refill needs data:", error);
-        throw error;
+        .select(`
+          material_id,
+          material_name,
+          category,
+          current_quantity,
+          unit,
+          purchase_price
+        `)
+        .gt('current_quantity', 0);
+
+      if (inventoryError) {
+        throw inventoryError;
       }
-      
-      const items = (data || []).map(item => {
-        // Calculate value
-        const totalValue = (item.quantity || 0) * (item.purchase_rate || 0);
-        
-        // Determine if refill is needed and urgency level
-        const needsRefill = item.reorder_level && item.quantity < item.reorder_level;
-        const urgency = calculateRefillUrgency(
-          item.quantity,
-          item.reorder_level,
-          item.min_stock_level
-        );
-        
+
+      if (!inventoryItems || inventoryItems.length === 0) {
+        setInventoryValueData({
+          total_value: 0,
+          items_count: 0,
+          categories: []
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Process inventory items by category
+      const categoryMap: Record<string, {
+        category: string;
+        value: number;
+        items: any[];
+      }> = {};
+
+      let totalInventoryValue = 0;
+
+      inventoryItems.forEach((item) => {
+        const category = item.category || 'Uncategorized';
+        const quantity = Number(item.current_quantity) || 0;
+        const unitPrice = Number(item.purchase_price) || 0;
+        const totalValue = quantity * unitPrice;
+
+        totalInventoryValue += totalValue;
+
+        if (!categoryMap[category]) {
+          categoryMap[category] = {
+            category,
+            value: 0,
+            items: []
+          };
+        }
+
+        categoryMap[category].value += totalValue;
+        categoryMap[category].items.push({
+          material_id: item.material_id,
+          material_name: item.material_name,
+          quantity,
+          unit: item.unit,
+          unit_price: unitPrice,
+          total_value: totalValue
+        });
+      });
+
+      // Calculate percentages and sort items within each category
+      const categories = Object.values(categoryMap).map((category) => {
+        // Sort items by total value (descending)
+        category.items.sort((a, b) => b.total_value - a.total_value);
+
         return {
-          ...item,
-          totalValue,
-          needsRefill,
-          urgency
+          category: category.category,
+          value: category.value,
+          percentage: (category.value / totalInventoryValue) * 100,
+          items: category.items
         };
       });
-      
-      // Filter to only materials needing refill and sort by urgency
-      return items
-        .filter(item => item.needsRefill)
-        .sort((a, b) => b.urgency - a.urgency);
-    },
-  });
 
-  // Function to update filters
-  const updateFilters = (newFilters: Partial<InventoryAnalyticsFilters>) => {
-    setFilters(prev => ({
-      ...prev,
-      ...newFilters
-    }));
-  };
+      // Sort categories by total value (descending)
+      categories.sort((a, b) => b.value - a.value);
+
+      setInventoryValueData({
+        total_value: totalInventoryValue,
+        items_count: inventoryItems.length,
+        categories
+      });
+    } catch (err: any) {
+      console.error("Error fetching inventory value data:", err);
+      setError(err.message || "Failed to fetch inventory value data");
+      showToast({
+        title: "Error loading inventory value data",
+        description: err.message || "An unexpected error occurred",
+        type: "error"
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Generate CSV for material consumption
+  const generateMaterialConsumptionCSV = useCallback(() => {
+    if (!materialConsumptionData.length) return null;
+
+    const headers = [
+      'Material ID',
+      'Material Name',
+      'Total Consumption',
+      'Unit',
+      'Orders Count',
+      'Total Value (₹)',
+    ].join(',');
+
+    const rows = materialConsumptionData.map((material) => {
+      return [
+        material.material_id,
+        `"${material.material_name}"`,
+        material.total_consumption,
+        material.unit,
+        material.orders_count,
+        material.total_value.toFixed(2)
+      ].join(',');
+    });
+
+    return [headers, ...rows].join('\n');
+  }, [materialConsumptionData]);
+
+  // Generate CSV for order consumption
+  const generateOrderConsumptionCSV = useCallback(() => {
+    if (!orderConsumptionData.length) return null;
+
+    const headers = [
+      'Order ID',
+      'Order Number',
+      'Company',
+      'Order Date',
+      'Product',
+      'Quantity',
+      'Production Cost (₹)',
+      'Revenue (₹)',
+      'Profit (₹)',
+      'Profit Margin (%)'
+    ].join(',');
+
+    const rows = orderConsumptionData.map((order) => {
+      return [
+        order.order_id,
+        `"${order.order_number}"`,
+        `"${order.company_name}"`,
+        order.order_date,
+        `"${order.product_name}"`,
+        order.order_quantity,
+        order.total_production_cost.toFixed(2),
+        order.total_revenue.toFixed(2),
+        order.profit.toFixed(2),
+        order.profit_margin.toFixed(2)
+      ].join(',');
+    });
+
+    return [headers, ...rows].join('\n');
+  }, [orderConsumptionData]);
 
   return {
-    consumptionData,
+    materialConsumptionData,
     orderConsumptionData,
     inventoryValueData,
-    refillNeedsData,
-    filters: currentFilters,
-    updateFilters,
-    isLoading: loadingConsumption || loadingOrderConsumption || loadingInventoryValue || loadingRefillNeeds
+    loading,
+    error,
+    fetchMaterialConsumptionData,
+    fetchOrderConsumptionData,
+    fetchInventoryValueData,
+    generateMaterialConsumptionCSV,
+    generateOrderConsumptionCSV
   };
 };
