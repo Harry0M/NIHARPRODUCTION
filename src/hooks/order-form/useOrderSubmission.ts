@@ -17,6 +17,12 @@ interface UseOrderSubmissionProps {
     totalCost: number;
     sellingPrice: number;
     margin: number | null;
+    detailedCosts?: {
+      cuttingCharge: number;
+      printingCharge: number;
+      stitchingCharge: number;
+      transportCharge: number;
+    };
   };
 }
 
@@ -65,6 +71,14 @@ export function useOrderSubmission({
       // Include cost calculation data in order
       const margin = orderDetails.margin ? parseFloat(orderDetails.margin) : costData.margin;
       
+      // Get detailed production cost values
+      const detailedCosts = costData.detailedCosts || {
+        cuttingCharge: 0,
+        printingCharge: 0,
+        stitchingCharge: 0,
+        transportCharge: 0
+      };
+      
       // Prepare data for database insert with cost information
       const orderData = {
         company_name: orderDetails.company_id ? null : orderDetails.company_name,
@@ -83,7 +97,12 @@ export function useOrderSubmission({
         total_cost: costData.totalCost,
         calculated_selling_price: costData.sellingPrice,
         margin: margin,
-        template_margin: orderDetails.template_margin ? parseFloat(orderDetails.template_margin) : null
+        template_margin: orderDetails.template_margin ? parseFloat(orderDetails.template_margin) : null,
+        // Detailed production costs
+        cutting_charge: detailedCosts.cuttingCharge,
+        printing_charge: detailedCosts.printingCharge,
+        stitching_charge: detailedCosts.stitchingCharge, 
+        transport_charge: detailedCosts.transportCharge
       };
 
       console.log("Submitting order data with cost information:", orderData);
@@ -169,6 +188,14 @@ export function useOrderSubmission({
             // Get component cost and from_template flag
             const componentCost = comp.componentCost || comp.materialCost || null;
             const fromTemplate = comp.fromTemplate || false;
+            const isCustom = comp.type === 'custom' || comp.is_custom || false;
+            
+            // Create cost breakdown object
+            const costBreakdown = {
+              material_rate: comp.materialRate || 0,
+              consumption: consumptionValue || 0,
+              material_cost: comp.materialCost || 0
+            };
             
             return {
               order_id: orderResult.id,
@@ -181,7 +208,9 @@ export function useOrderSubmission({
               roll_width: rollWidthValue,
               consumption: consumptionValue,
               component_cost: componentCost,
-              from_template: fromTemplate
+              from_template: fromTemplate,
+              is_custom: isCustom,
+              component_cost_breakdown: costBreakdown
             };
           });
 

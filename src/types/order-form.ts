@@ -18,6 +18,8 @@ export interface Component {
   // New field to track if component is from a template
   fromTemplate?: boolean;
   componentCost?: number;
+  // New field for tracking custom components
+  is_custom?: boolean;
 }
 
 export interface FormErrors {
@@ -42,6 +44,12 @@ export interface UseOrderFormReturn {
     totalCost: number;
     sellingPrice: number;
     margin: number | null;
+    detailedCosts?: {
+      cuttingCharge: number;
+      printingCharge: number;
+      stitchingCharge: number;
+      transportCharge: number;
+    };
   };
   handleOrderChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 
     target: { name: string; value: string | null } 

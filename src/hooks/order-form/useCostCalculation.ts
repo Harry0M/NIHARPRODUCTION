@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { calculateProductionCosts, calculateProfitUsingMargin } from "@/utils/costCalculationUtils";
 import { Component } from "@/types/order-form";
 import { OrderFormData } from "@/types/order";
@@ -10,6 +10,12 @@ interface CostData {
   totalCost: number;
   sellingPrice: number;
   margin: number | null;
+  detailedCosts: {
+    cuttingCharge: number;
+    printingCharge: number;
+    stitchingCharge: number;
+    transportCharge: number;
+  };
 }
 
 interface UseCostCalculationProps {
@@ -28,7 +34,13 @@ export function useCostCalculation({
     productionCost: 0,
     totalCost: 0,
     sellingPrice: 0,
-    margin: null
+    margin: null,
+    detailedCosts: {
+      cuttingCharge: 0,
+      printingCharge: 0,
+      stitchingCharge: 0,
+      transportCharge: 0
+    }
   });
   
   // Calculate material costs based on components
@@ -61,7 +73,7 @@ export function useCostCalculation({
   };
   
   // Calculate production costs from rates
-  const calculateProductionCost = (): number => {
+  const calculateProductionCost = (): { total: number; breakdown: any } => {
     const catalogData = {
       cutting_charge: orderDetails.cutting_charge ? parseFloat(orderDetails.cutting_charge) : 0,
       printing_charge: orderDetails.printing_charge ? parseFloat(orderDetails.printing_charge) : 0,
@@ -70,10 +82,20 @@ export function useCostCalculation({
     };
     
     const orderQuantity = parseFloat(orderDetails.quantity || "0");
-    if (isNaN(orderQuantity)) return 0;
+    if (isNaN(orderQuantity)) return { total: 0, breakdown: catalogData };
     
-    const { totalProductionCost } = calculateProductionCosts(catalogData, orderQuantity);
-    return totalProductionCost;
+    // Calculate production costs with breakdown
+    const result = calculateProductionCosts(catalogData, orderQuantity);
+    
+    return { 
+      total: result.totalProductionCost,
+      breakdown: {
+        cuttingCharge: result.cuttingCharge,
+        printingCharge: result.printingCharge,
+        stitchingCharge: result.stitchingCharge,
+        transportCharge: result.transportCharge
+      }
+    };
   };
   
   // Update cost calculations
@@ -81,8 +103,8 @@ export function useCostCalculation({
     // Calculate material cost
     const materialCost = calculateMaterialCost();
     
-    // Calculate production cost
-    const productionCost = calculateProductionCost();
+    // Calculate production cost with breakdown
+    const { total: productionCost, breakdown } = calculateProductionCost();
     
     // Calculate total cost
     const totalCost = materialCost + productionCost;
@@ -100,8 +122,20 @@ export function useCostCalculation({
       productionCost,
       totalCost,
       sellingPrice,
-      margin
+      margin,
+      detailedCosts: breakdown
     });
+    
+    // Update orderDetails with the calculated costs
+    // This is useful when submitting the order to ensure latest costs are saved
+    const costFields = {
+      material_cost: materialCost.toString(),
+      production_cost: productionCost.toString(),
+      total_cost: totalCost.toString(),
+      calculated_selling_price: sellingPrice.toString()
+    };
+    
+    return costFields;
   };
   
   return {

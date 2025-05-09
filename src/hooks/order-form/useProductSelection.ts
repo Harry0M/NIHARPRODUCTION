@@ -61,7 +61,9 @@ export function useProductSelection({
             printing_charge: costData[0].printing_charge?.toString(),
             stitching_charge: costData[0].stitching_charge?.toString(), 
             transport_charge: costData[0].transport_charge?.toString(),
-            product_quantity: productQuantity.toString()
+            product_quantity: productQuantity.toString(),
+            // Store material cost from template for reference
+            material_cost: costData[0].material_cost?.toString()
           }));
         }
       } catch (err) {
@@ -223,7 +225,8 @@ export function useProductSelection({
       }
       
       // Check if this component is a custom component from the template
-      const isCustomComponent = componentTypeLower === 'custom';
+      const isCustomComponent = componentTypeLower === 'custom' || 
+                               (component.custom_name && component.custom_name.trim() !== '');
       
       if (isCustomComponent) {
         const customIndex = newCustomComponents.length;
@@ -242,7 +245,8 @@ export function useProductSelection({
           fromTemplate: true, // Mark as coming from template
           materialRate,
           materialCost,
-          componentCost: component.component_cost || materialCost
+          componentCost: component.component_cost || materialCost,
+          is_custom: true
         });
         
         // Store base consumption for this custom component

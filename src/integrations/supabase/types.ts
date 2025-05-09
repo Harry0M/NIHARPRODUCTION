@@ -1058,6 +1058,7 @@ export type Database = {
         Row: {
           color: string | null
           component_cost: number | null
+          component_cost_breakdown: Json | null
           component_type: string
           consumption: number | null
           created_at: string | null
@@ -1065,6 +1066,7 @@ export type Database = {
           from_template: boolean | null
           gsm: number | null
           id: string
+          is_custom: boolean | null
           material_id: string | null
           order_id: string | null
           roll_width: number | null
@@ -1074,6 +1076,7 @@ export type Database = {
         Insert: {
           color?: string | null
           component_cost?: number | null
+          component_cost_breakdown?: Json | null
           component_type: string
           consumption?: number | null
           created_at?: string | null
@@ -1081,6 +1084,7 @@ export type Database = {
           from_template?: boolean | null
           gsm?: number | null
           id?: string
+          is_custom?: boolean | null
           material_id?: string | null
           order_id?: string | null
           roll_width?: number | null
@@ -1090,6 +1094,7 @@ export type Database = {
         Update: {
           color?: string | null
           component_cost?: number | null
+          component_cost_breakdown?: Json | null
           component_type?: string
           consumption?: number | null
           created_at?: string | null
@@ -1097,6 +1102,7 @@ export type Database = {
           from_template?: boolean | null
           gsm?: number | null
           id?: string
+          is_custom?: boolean | null
           material_id?: string | null
           order_id?: string | null
           roll_width?: number | null
@@ -1219,6 +1225,7 @@ export type Database = {
           customer_address: string | null
           customer_name: string | null
           customer_phone: string | null
+          cutting_charge: number | null
           delivery_date: string | null
           description: string | null
           id: string
@@ -1226,14 +1233,17 @@ export type Database = {
           material_cost: number | null
           order_date: string
           order_number: string
+          printing_charge: number | null
           production_cost: number | null
           quantity: number
           rate: number | null
           sales_account_id: string | null
           special_instructions: string | null
           status: Database["public"]["Enums"]["order_status"] | null
+          stitching_charge: number | null
           template_margin: number | null
           total_cost: number | null
+          transport_charge: number | null
           updated_at: string
         }
         Insert: {
@@ -1249,6 +1259,7 @@ export type Database = {
           customer_address?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          cutting_charge?: number | null
           delivery_date?: string | null
           description?: string | null
           id?: string
@@ -1256,14 +1267,17 @@ export type Database = {
           material_cost?: number | null
           order_date?: string
           order_number: string
+          printing_charge?: number | null
           production_cost?: number | null
           quantity: number
           rate?: number | null
           sales_account_id?: string | null
           special_instructions?: string | null
           status?: Database["public"]["Enums"]["order_status"] | null
+          stitching_charge?: number | null
           template_margin?: number | null
           total_cost?: number | null
+          transport_charge?: number | null
           updated_at?: string
         }
         Update: {
@@ -1279,6 +1293,7 @@ export type Database = {
           customer_address?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          cutting_charge?: number | null
           delivery_date?: string | null
           description?: string | null
           id?: string
@@ -1286,14 +1301,17 @@ export type Database = {
           material_cost?: number | null
           order_date?: string
           order_number?: string
+          printing_charge?: number | null
           production_cost?: number | null
           quantity?: number
           rate?: number | null
           sales_account_id?: string | null
           special_instructions?: string | null
           status?: Database["public"]["Enums"]["order_status"] | null
+          stitching_charge?: number | null
           template_margin?: number | null
           total_cost?: number | null
+          transport_charge?: number | null
           updated_at?: string
         }
         Relationships: [

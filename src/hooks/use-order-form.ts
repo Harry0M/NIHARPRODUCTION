@@ -59,8 +59,20 @@ export function useOrderForm(): UseOrderFormReturn {
   
   // Update cost calculations whenever relevant data changes
   useEffect(() => {
-    updateCostCalculations();
-  }, [components, customComponents, orderDetails.quantity]);
+    // Get cost field values from calculations
+    const costFields = updateCostCalculations();
+    
+    // Update orderDetails with calculated costs for sync and reference
+    if (costFields) {
+      setOrderDetails(prev => ({
+        ...prev,
+        ...costFields
+      }));
+    }
+  }, [components, customComponents, orderDetails.quantity, 
+      orderDetails.cutting_charge, orderDetails.printing_charge, 
+      orderDetails.stitching_charge, orderDetails.transport_charge,
+      orderDetails.margin]);
 
   // Validate form by using the base validation and passing orderDetails
   const validateForm = () => validateFormBase(orderDetails);
