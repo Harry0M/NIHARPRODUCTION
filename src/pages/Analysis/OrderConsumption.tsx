@@ -87,7 +87,7 @@ const calculateProfitUsingMargin = (cost: number, marginPercent: number) => {
   return { profit, revenue, profitMargin };
 };
 
-// Fix the tooltip formatters to properly handle ValueType
+// Fixed version of formatTooltipValue to properly handle ValueType
 const formatTooltipValue = (value: any): number => {
   // Ensure value is a number
   if (typeof value === 'string') {
@@ -724,9 +724,9 @@ const OrderConsumption = () => {
                                   ))}
                                 </Pie>
                                 <Tooltip 
-                                  formatter={(value: any) => [
-                                    `${value} ${props.payload.unit} (₹${formatCurrency(props.payload.materialValue)})`,
-                                    props.payload.name
+                                  formatter={(value: any, name: any, entry: any) => [
+                                    `${value} ${entry.payload.unit} (₹${formatCurrency(entry.payload.materialValue)})`,
+                                    entry.payload.name
                                   ]}
                                 />
                               </RechartsPieChart>
@@ -766,7 +766,7 @@ const OrderConsumption = () => {
                                 </Pie>
                                 <Tooltip 
                                   formatter={(value: any) => [
-                                    `₹${formatCurrency(value as number)}`,
+                                    `₹${formatCurrency(formatTooltipValue(value))}`,
                                     "Cost"
                                   ]}
                                 />
@@ -809,9 +809,9 @@ const OrderConsumption = () => {
                                   ))}
                                 </Pie>
                                 <Tooltip 
-                                  formatter={(value: any) => [
-                                    `${value} ${props.payload.unit} (₹${formatCurrency(props.payload.materialValue)})`,
-                                    props.payload.name
+                                  formatter={(value: any, name: any, entry: any) => [
+                                    `${value} ${entry.payload.unit} (₹${formatCurrency(entry.payload.materialValue)})`,
+                                    entry.payload.name
                                   ]}
                                 />
                               </RechartsPieChart>
@@ -851,7 +851,7 @@ const OrderConsumption = () => {
                                 </Pie>
                                 <Tooltip 
                                   formatter={(value: any) => [
-                                    `₹${formatCurrency(value as number)}`,
+                                    `₹${formatCurrency(formatTooltipValue(value))}`,
                                     "Cost"
                                   ]}
                                 />

@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useInventoryAnalytics } from "@/hooks/analysis/useInventoryAnalytics";
@@ -33,7 +34,7 @@ const MaterialConsumption = () => {
       
       // Apply date range filter if specified
       let matchesDateRange = true;
-      if (dateFilter.startDate && dateFilter.endDate) {
+      if (dateFilter && dateFilter.from && dateFilter.to) {
         // Check if usage date is within range
         const firstUsageDate = item.first_usage_date ? new Date(item.first_usage_date) : null;
         const lastUsageDate = item.last_usage_date ? new Date(item.last_usage_date) : null;
@@ -42,7 +43,7 @@ const MaterialConsumption = () => {
         // Check if date ranges overlap
         if (firstUsageDate && lastUsageDate) {
           matchesDateRange = 
-            (firstUsageDate <= dateFilter.endDate && lastUsageDate >= dateFilter.startDate);
+            (firstUsageDate <= dateFilter.to && lastUsageDate >= dateFilter.from);
         } else {
           matchesDateRange = false; // No dates available
         }
@@ -129,15 +130,15 @@ const MaterialConsumption = () => {
                     variant={"outline"}
                     className={cn(
                       "w-[200px] justify-start text-left font-normal",
-                      !dateFilter?.startDate && "text-muted-foreground"
+                      !dateFilter?.from && "text-muted-foreground"
                     )}
                   >
                     <CalendarRange className="mr-2 h-4 w-4" />
-                    {dateFilter?.startDate ? (
-                      dateFilter.endDate ? (
-                        `${formatAnalysisDate(dateFilter.startDate)} - ${formatAnalysisDate(dateFilter.endDate)}`
+                    {dateFilter?.from ? (
+                      dateFilter.to ? (
+                        `${formatAnalysisDate(dateFilter.from)} - ${formatAnalysisDate(dateFilter.to)}`
                       ) : (
-                        formatAnalysisDate(dateFilter.startDate)
+                        formatAnalysisDate(dateFilter.from)
                       )
                     ) : (
                       <span>Pick a date range</span>
@@ -147,7 +148,7 @@ const MaterialConsumption = () => {
                 <PopoverContent className="w-auto p-0" align="end">
                   <Calendar
                     mode="range"
-                    defaultMonth={dateFilter?.startDate}
+                    defaultMonth={dateFilter?.from}
                     selected={dateFilter}
                     onSelect={setDateFilter}
                     numberOfMonths={2}

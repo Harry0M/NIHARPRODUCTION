@@ -249,7 +249,7 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
           const uniqueKey = `${item.order_id}_${item.material_id}_${date.toISOString()}`;
           
           // Create our order consumption item with the missing purchase_price from our material price map
-          const materialPrice = materialPriceMap.get(item.material_id as string) || 0;
+          const materialPrice = item.material_id ? materialPriceMap.get(item.material_id as string) || 0 : 0;
           
           const orderItem: OrderConsumptionItem = {
             order_id: item.order_id as string,
