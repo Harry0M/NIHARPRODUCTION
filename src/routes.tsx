@@ -13,9 +13,8 @@ import JobCardList from '@/pages/Production/JobCardList';
 import JobCardDetail from '@/pages/Production/JobCardDetail';
 import JobCardNew from '@/pages/Production/JobCardNew';
 
-// We need to find the actual path that works - choose ONE of these paths
-// For now, we're commenting out this import - we'll add it back later in a proper way
-// import StockList from '@/pages/inventory/StockList';
+// We need to use the correct case for StockList import if we uncomment it later
+// import StockList from '@/pages/Inventory/StockList';
 
 // Create a simplified router with only the routes we know exist
 export const router = createBrowserRouter([
