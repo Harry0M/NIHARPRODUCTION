@@ -5,8 +5,8 @@ import { format } from 'date-fns';
  * Format a currency value for display
  */
 export const formatCurrency = (value: number | null | undefined): string => {
-  if (value === null || value === undefined) return '₹0.00';
-  return `₹${value.toFixed(2)}`;
+  if (value === null || value === undefined) return '0.00';
+  return value.toFixed(2);
 };
 
 /**
@@ -41,6 +41,15 @@ export const calculatePercentageChange = (current: number, previous: number): nu
  */
 export const formatPercentage = (value: number): string => {
   return `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
+};
+
+/**
+ * Format profit margin for display with color coding
+ */
+export const formatProfitMargin = (value: number): { text: string, color: string } => {
+  const color = value >= 0 ? 'text-green-600' : 'text-red-600';
+  const text = `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+  return { text, color };
 };
 
 /**
@@ -116,4 +125,33 @@ export const calculateRefillUrgency = (
   }
   
   return 'normal';
+};
+
+/**
+ * Generate CSV data from an array of objects
+ * @param data Array of objects to convert to CSV
+ * @param columns Object mapping column keys to display names
+ * @returns CSV string
+ */
+export const generateCSV = (data: any[], columns: Record<string, string>): string => {
+  if (!data || !data.length) return '';
+  
+  // CSV header
+  const header = Object.values(columns).join(',');
+  
+  // CSV rows
+  const rows = data.map(item => {
+    return Object.keys(columns)
+      .map(key => {
+        const value = item[key];
+        // Wrap strings in quotes and handle special characters
+        if (typeof value === 'string') {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        return value;
+      })
+      .join(',');
+  });
+  
+  return [header, ...rows].join('\n');
 };
