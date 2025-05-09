@@ -1,5 +1,6 @@
-import { useRoutes, Navigate } from "react-router-dom";
+
 import { useEffect, useState } from "react";
+import { RouterProvider } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { router } from "./routes";
 import { supabase } from "@/integrations/supabase/client";
@@ -68,17 +69,9 @@ const AppRoutes = () => {
     );
   }
 
-  // Create a component that renders the routes using the router config
-  const AppRouteContent = () => {
-    // Use router.routes directly from the createBrowserRouter object
-    const routes = router.routes ? router.routes : [];
-    const routeElement = useRoutes(routes);
-    return routeElement || <Navigate to="/auth" replace />;
-  };
-
   return (
     <AuthProvider initialUser={initialUser}>
-      <AppRouteContent />
+      <RouterProvider router={router} />
     </AuthProvider>
   );
 };

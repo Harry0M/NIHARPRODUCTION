@@ -18,7 +18,7 @@ export interface Order {
   created_at: string;
   special_instructions?: string | null;
   sales_account_id?: string | null;
-  // New cost fields
+  // Cost fields
   margin?: number | null;
   material_cost?: number | null;
   production_cost?: number | null;
@@ -40,7 +40,7 @@ export interface OrderFormData {
   special_instructions: string;
   order_date: string;
   sales_account_id?: string | null;
-  // New cost fields
+  // Cost fields
   margin?: string;
   material_cost?: string;
   production_cost?: string;
