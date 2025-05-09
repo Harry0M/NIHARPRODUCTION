@@ -7,7 +7,7 @@ import { calculateProductionCosts, calculateProfitUsingMargin } from "@/utils/co
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Search, BarChart as BarChartIcon, AlertCircle, FileText, Package, PieChart, TrendingUp, DollarSign, ShoppingBag, Building2 } from "lucide-react";
+import { ArrowLeft, Search, BarChart as BarChartIcon, AlertCircle, FileText, Package, PieChart, TrendingUp, DollarSign, ShoppingBag, Building2, Download, FileSpreadsheet } from "lucide-react";
 import { LoadingSpinner } from "@/components/production/LoadingSpinner";
 import { useNavigate } from "react-router-dom";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
@@ -33,6 +33,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { exportToCSV, prepareOrderConsumptionDataForExport, prepareDetailedConsumptionDataForExport } from "@/utils/exportUtils";
 
 const OrderConsumption = () => {
   const navigate = useNavigate();
@@ -96,7 +97,12 @@ const OrderConsumption = () => {
     // Get the complete order details including quantity and product costs
     const completeOrderDetails = orderDetails?.find(o => o.id === item.order_id);
     const orderQuantity = completeOrderDetails?.quantity || 1;
-    const catalogData = completeOrderDetails?.catalog || null;
+    
+    // Safely extract catalog data with proper type checks
+    let catalogData = null;
+    if (completeOrderDetails && 'catalog' in completeOrderDetails && completeOrderDetails.catalog) {
+      catalogData = completeOrderDetails.catalog;
+    }
     
     // Calculate material cost for this specific transaction
     const materialCost = Number(item.total_material_used || 0) * (item.purchase_price || 0);
@@ -111,7 +117,7 @@ const OrderConsumption = () => {
     };
     
     // Calculate production costs if catalog data is available
-    if (catalogData) {
+    if (catalogData && typeof catalogData === 'object') {
       productionCosts = calculateProductionCosts(catalogData, orderQuantity);
     }
     
@@ -120,7 +126,16 @@ const OrderConsumption = () => {
       (existingOrder ? 0 : productionCosts.totalProductionCost);
 
     // Calculate margin-based profit
-    const marginPercent = catalogData?.margin;
+    // Use a default margin value of 15% if not available in catalog data
+    const marginPercent = 
+      catalogData && 
+      typeof catalogData === 'object' && 
+      catalogData !== null && 
+      'margin' in catalogData && 
+      catalogData.margin !== null && 
+      catalogData.margin !== undefined
+        ? Number(catalogData.margin) || 15
+        : 15;
     let profitCalculation = {
       revenue: 0,
       profit: 0,
@@ -189,7 +204,8 @@ const OrderConsumption = () => {
         profit: profitCalculation.profit,
         profitMargin: profitCalculation.profitMargin,
         marginPercent: marginPercent,
-        productName: catalogData?.name || 'Unknown Product',
+        productName: catalogData && typeof catalogData === 'object' && 'name' in catalogData ? 
+          String(catalogData.name) : 'Unknown Product',
         catalogData: catalogData
       });
     }
@@ -253,7 +269,39 @@ const OrderConsumption = () => {
       {/* Filters */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Filters</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-lg">Filters</CardTitle>
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center"
+                onClick={() => {
+                  if (orderChartData && orderChartData.length > 0) {
+                    const exportData = prepareOrderConsumptionDataForExport(orderChartData);
+                    exportToCSV(exportData, 'order-consumption-summary');
+                  }
+                }}
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Export Summary
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center"
+                onClick={() => {
+                  if (orderChartData && orderChartData.length > 0) {
+                    const exportData = prepareDetailedConsumptionDataForExport(orderChartData);
+                    exportToCSV(exportData, 'order-consumption-details');
+                  }
+                }}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export Details
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col space-y-4 md:flex-row md:space-y-0 md:space-x-4">
@@ -379,18 +427,40 @@ const OrderConsumption = () => {
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div>
-                      <CardTitle className="text-xl">Order {selectedOrder.name}</CardTitle>
+                      <CardTitle className="text-xl">{selectedOrder.name}</CardTitle>
                       <CardDescription>
-                        {selectedOrder.company} • {selectedOrder.productName}
+                        {selectedOrder.company} • {selectedOrder.productName} • {selectedOrder.date ? format(selectedOrder.date, 'dd MMM yyyy') : 'Unknown date'}
                       </CardDescription>
                     </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => setSelectedOrderId(null)}
-                    >
-                      Back to Overview
-                    </Button>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center"
+                        onClick={() => {
+                          // Create a detailed export of this single order
+                          if (selectedOrder) {
+                            // Create single-order exports for both summary and details
+                            const summaryData = prepareOrderConsumptionDataForExport([selectedOrder]);
+                            const detailsData = prepareDetailedConsumptionDataForExport([selectedOrder]);
+                            
+                            // Export both files
+                            exportToCSV(summaryData, `order-${selectedOrder.name}-summary`);
+                            exportToCSV(detailsData, `order-${selectedOrder.name}-details`);
+                          }
+                        }}
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Export
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setSelectedOrderId(null)}
+                      >
+                        Back to Overview
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -650,11 +720,94 @@ const OrderConsumption = () => {
                         </div>
                       </div>
                     </TabsContent>
+                    
+                    <TabsContent value="chart" className="space-y-8">
+                      {/* Material Distribution Pie Chart */}
+                      <div>
+                        <h3 className="text-lg font-medium mb-4">Material Distribution</h3>
+                        <div className="h-[300px]">
+                          {materialDistributionData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                              <RechartsPieChart>
+                                <Pie
+                                  data={materialDistributionData}
+                                  cx="50%"
+                                  cy="50%"
+                                  labelLine={false}
+                                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                  outerRadius={120}
+                                  fill="#8884d8"
+                                  dataKey="value"
+                                  nameKey="name"
+                                >
+                                  {materialDistributionData.map((entry: any, index: number) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                  ))}
+                                </Pie>
+                                <Tooltip 
+                                  formatter={(value: any, name: any, props: any) => [
+                                    `${value} ${props.payload.unit} (₹${formatCurrency(props.payload.materialValue)})`,
+                                    props.payload.name
+                                  ]}
+                                />
+                              </RechartsPieChart>
+                            </ResponsiveContainer>
+                          ) : (
+                            <div className="flex items-center justify-center h-full">
+                              <div className="text-center text-muted-foreground">
+                                <AlertCircle className="mx-auto h-8 w-8" />
+                                <h3 className="mt-2">No material data available</h3>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Cost Breakdown Pie Chart */}
+                      <div>
+                        <h3 className="text-lg font-medium mb-4">Cost Structure</h3>
+                        <div className="h-[300px]">
+                          {selectedOrder.totalCost > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                              <RechartsPieChart>
+                                <Pie
+                                  data={getCostBreakdownData(selectedOrder)}
+                                  cx="50%"
+                                  cy="50%"
+                                  labelLine={false}
+                                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                  outerRadius={120}
+                                  fill="#8884d8"
+                                  dataKey="value"
+                                  nameKey="name"
+                                >
+                                  {getCostBreakdownData(selectedOrder).map((entry: any, index: number) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                  ))}
+                                </Pie>
+                                <Tooltip 
+                                  formatter={(value: any) => [`₹${formatCurrency(value)}`, "Cost"]}
+                                />
+                                <Legend />
+                              </RechartsPieChart>
+                            </ResponsiveContainer>
+                          ) : (
+                            <div className="flex items-center justify-center h-full">
+                              <div className="text-center text-muted-foreground">
+                                <AlertCircle className="mx-auto h-8 w-8" />
+                                <h3 className="mt-2">No cost data available</h3>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </TabsContent>
                   </Tabs>
                 </CardContent>
                 <CardFooter className="flex justify-end border-t pt-4">
                   <Button 
-                    variant="outline" 
+                    size="sm" 
+                    variant="secondary" 
                     onClick={() => navigate(`/orders/${selectedOrder.order_id}`)}
                   >
                     View Order Details

@@ -50,12 +50,10 @@ export const calculateProfitUsingMargin = (
   // Use the margin or default to 15%
   const effectiveMargin = margin !== null && margin !== undefined ? Number(margin) : 15;
   
-  // Calculate revenue using the formula: 
-  // Revenue = Cost / (1 - margin/100)
-  // This ensures that (Revenue - Cost) / Revenue = margin/100
-  const revenue = effectiveMargin < 100 
-    ? totalCost / (1 - effectiveMargin / 100) 
-    : totalCost * 2; // Default multiplier if margin is 100% or higher
+  // Calculate revenue using the margin method formula: 
+  // Revenue = Cost * (1 + margin/100)
+  // This calculates selling price by adding the margin percentage to the cost
+  const revenue = totalCost * (1 + effectiveMargin / 100);
     
   const profit = revenue - totalCost;
   const profitMargin = revenue > 0 ? (profit / revenue) * 100 : 0;

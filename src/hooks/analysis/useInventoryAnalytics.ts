@@ -157,7 +157,10 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
         if (!log) return null;
         
         // Get metadata or use empty object if undefined
-        const metadata = log.metadata || {};
+        // Ensure metadata is an object we can safely access properties from
+        const metadata = typeof log.metadata === 'object' && log.metadata !== null && !Array.isArray(log.metadata)
+          ? log.metadata as Record<string, any>
+          : {};
         
         // Skip non-consumption transactions (e.g., quantity adjustments)
         const isConsumption = 
@@ -171,14 +174,14 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
           order_id: log.reference_id || '',
           order_number: log.reference_number || '',
           material_id: log.material_id || '',
-          material_name: typeof metadata === 'object' && metadata ? String(metadata.material_name || 'Unknown') : 'Unknown',
+          material_name: String(metadata.material_name || 'Unknown'),
           total_material_used: Math.abs(Number(log.quantity) || 0),
-          unit: typeof metadata === 'object' && metadata ? String(metadata.unit || 'units') : 'units',
+          unit: String(metadata.unit || 'units'),
           usage_date: log.transaction_date || new Date().toISOString(),
-          company_name: typeof metadata === 'object' && metadata ? String(metadata.company_name || 'Unknown') : 'Unknown',
-          component_type: typeof metadata === 'object' && metadata ? String(metadata.component_type || 'Unknown') : 'Unknown',
+          company_name: String(metadata.company_name || 'Unknown'),
+          component_type: String(metadata.component_type || 'Unknown'),
           // Handle purchase_price safely with type checking
-          purchase_price: typeof metadata === 'object' && metadata && 'purchase_price' in metadata ? Number(metadata.purchase_price) : 0,
+          purchase_price: 'purchase_price' in metadata ? Number(metadata.purchase_price) : 0,
           source: 'transaction_log',
           log_id: log.id
         };
@@ -316,7 +319,21 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
       // Filter to only materials needing refill and sort by urgency
       return items
         .filter(item => item.needsRefill)
-        .sort((a, b) => b.urgency - a.urgency);
+        .sort((a, b) => {
+          // Create a numeric mapping for urgency levels
+          const urgencyMap: Record<string, number> = {
+            'critical': 3,
+            'warning': 2,
+            'normal': 1
+          };
+          
+          // Get numeric values for comparison
+          const urgencyA = urgencyMap[a.urgency as string] || 0;
+          const urgencyB = urgencyMap[b.urgency as string] || 0;
+          
+          // Sort by numeric values
+          return urgencyB - urgencyA;
+        });
     },
   });
 

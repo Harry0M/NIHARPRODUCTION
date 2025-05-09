@@ -80,10 +80,14 @@ const MaterialConsumption = () => {
   const totalMaterialQuantity = selectedMaterial ? Number(selectedMaterial.total_usage) : 0;
   
   // Add percentage to order breakdown
+  // Using a default purchase price (0) if not available
+  const materialPurchasePrice = selectedMaterial && 'purchase_rate' in selectedMaterial ? 
+    Number(selectedMaterial.purchase_rate) : 0;
+    
   const orderBreakdownWithPercentage = orderBreakdown.map((order: any) => ({
     ...order,
     percentage: totalMaterialQuantity > 0 ? (order.quantity / totalMaterialQuantity) * 100 : 0,
-    value: order.quantity * (selectedMaterial?.purchase_price || 0)
+    value: order.quantity * materialPurchasePrice
   }));
 
   // Sort order breakdown by quantity descending
@@ -267,10 +271,10 @@ const MaterialConsumption = () => {
                       <div className="text-2xl font-bold">{selectedMaterial.orders_count}</div>
                     </div>
                     <div className="space-y-1 p-4 bg-muted/30 rounded-lg">
-                      <div className="text-sm text-muted-foreground">Material Value</div>
-                      <div className="text-2xl font-bold">
-                        ₹{formatCurrency(Number(selectedMaterial.total_usage) * (selectedMaterial.purchase_price || 0))}
-                      </div>
+                        <div className="text-sm text-muted-foreground">Material Value</div>
+                        <div className="text-2xl font-bold">
+                          ₹{formatCurrency(Number(selectedMaterial.total_usage) * materialPurchasePrice)}
+                        </div>
                     </div>
                   </div>
                   
