@@ -162,13 +162,32 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
           ? log.metadata as Record<string, any>
           : {};
         
-        // Skip non-consumption transactions (e.g., quantity adjustments)
-        const isConsumption = 
-          (log.quantity < 0) || 
+        // More selective filtering of consumption transactions
+        // 1. Must have negative quantity (consumption takes material out)
+        const hasNegativeQuantity = log.quantity < 0;
+        
+        // 2. Check if it's explicitly marked as consumption
+        const hasConsumptionLabel = 
           (log.transaction_type && String(log.transaction_type).toLowerCase().includes('consum')) ||
           (log.notes && String(log.notes).toLowerCase().includes('consum'));
-          
+        
+        // 3. Check if it's actually an adjustment/correction rather than consumption
+        const isAdjustment = 
+          (log.notes && (
+            String(log.notes).toLowerCase().includes('adjust') ||
+            String(log.notes).toLowerCase().includes('correct') ||
+            String(log.notes).toLowerCase().includes('fix') ||
+            String(log.notes).toLowerCase().includes('update')
+          ));
+        
+        // Must be negative quantity AND either labeled as consumption OR not an adjustment
+        const isConsumption = hasNegativeQuantity && (hasConsumptionLabel || !isAdjustment);
+        
+        // Skip if not a true consumption transaction
         if (!isConsumption) return null;
+        
+        // Skip if no order reference (likely an inventory adjustment)
+        if (!log.reference_id) return null;
         
         return {
           order_id: log.reference_id || '',
@@ -187,57 +206,61 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
         };
       }).filter(Boolean); // Remove null entries
       
-      // Combine data sources
-      const breakdownItems = (breakdownData || []).map(item => ({...item, source: 'breakdown'}));
+      // COMPLETE REWRITE OF THE DEDUPLICATION STRATEGY
+      // Instead of combining data from both sources, we'll prioritize one source only
+      // to avoid any possibility of duplicate counting
       
-      // Log the data sources for debugging
-      console.log(`Found ${breakdownItems.length} records from order_material_breakdown`);
+      // Log the data for debugging
+      console.log(`Found ${breakdownData?.length || 0} records from order_material_breakdown`);
       console.log(`Found ${convertedLogData.length} valid consumption records from transaction log`);
       
-      const combinedData = [...breakdownItems, ...convertedLogData];
+      // Create a map to track order/material combinations we've already processed
+      const processedCombinations = new Set<string>();
       
-      // Create a map to track unique transactions - more aggressive deduplication
+      // Create a map to store our final unique transactions
       const uniqueTransactions = new Map();
       
-      // Group transactions by order_id and material_id
-      const groupedTransactions = new Map();
-      
-      // First, group all transactions by order and material
-      combinedData.forEach(tx => {
-        // Skip incomplete entries
-        if (!tx.order_id || !tx.material_id) return;
-        
-        const groupKey = `${tx.order_id}_${tx.material_id}`;
-        
-        if (!groupedTransactions.has(groupKey)) {
-          groupedTransactions.set(groupKey, []);
-        }
-        
-        groupedTransactions.get(groupKey).push(tx);
-      });
-      
-      // Now process each group to pick the best representative transaction
-      groupedTransactions.forEach((transactions, groupKey) => {
-        // Sort by source (prefer 'breakdown' over 'transaction_log') and date (prefer newer)
-        transactions.sort((a, b) => {
-          // First, prefer breakdown source
-          if (a.source === 'breakdown' && b.source !== 'breakdown') return -1;
-          if (a.source !== 'breakdown' && b.source === 'breakdown') return 1;
+      // STEP 1: First, use the breakdown data as our primary source if available
+      // This is usually more reliable as it's directly tied to orders
+      if (breakdownData && breakdownData.length > 0) {
+        breakdownData.forEach(item => {
+          if (!item.order_id || !item.material_id) return;
           
-          // For same source, prefer newer records
-          const dateA = a.usage_date ? new Date(a.usage_date) : new Date(0);
-          const dateB = b.usage_date ? new Date(b.usage_date) : new Date(0);
-          return dateB.getTime() - dateA.getTime();
+          // Create a unique key for this order/material combination
+          const key = `${item.order_id}_${item.material_id}`;
+          processedCombinations.add(key);
+          
+          // Add to our unique transactions map with a day-based deduplication key
+          const date = item.usage_date ? new Date(item.usage_date) : new Date();
+          date.setHours(0, 0, 0, 0);
+          const uniqueKey = `${item.order_id}_${item.material_id}_${date.toISOString()}`;
+          uniqueTransactions.set(uniqueKey, {...item, source: 'breakdown'});
         });
+      }
+      
+      // STEP 2: Now, only add transaction log items if they don't duplicate what we already have
+      convertedLogData.forEach(item => {
+        if (!item.order_id || !item.material_id) return;
         
-        // Only take the first/best transaction from each group
-        // This ensures we have exactly ONE transaction per order/material combination
-        if (transactions.length > 0) {
-          uniqueTransactions.set(groupKey, transactions[0]);
+        // Check if we've already processed this combination from the breakdown data
+        const key = `${item.order_id}_${item.material_id}`;
+        if (processedCombinations.has(key)) {
+          // We already have this order/material combination, so skip it
+          return;
         }
+        
+        // This is a new order/material combination, so add it
+        processedCombinations.add(key);
+        
+        // Add to our unique transactions with a day-based deduplication key
+        const date = item.usage_date ? new Date(item.usage_date) : new Date();
+        date.setHours(0, 0, 0, 0);
+        const uniqueKey = `${item.order_id}_${item.material_id}_${date.toISOString()}`;
+        uniqueTransactions.set(uniqueKey, item);
       });
       
-      console.log(`Reduced from ${combinedData.length} to ${uniqueTransactions.size} unique material consumption records`);
+      // Log how many records we ended up with after deduplication
+      console.log(`After deduplication, we have ${uniqueTransactions.size} unique material consumption records`);
       
       // Convert back to array
       const deduplicated = Array.from(uniqueTransactions.values());
