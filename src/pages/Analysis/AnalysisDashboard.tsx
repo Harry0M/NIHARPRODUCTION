@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useInventoryAnalytics } from "@/hooks/analysis/useInventoryAnalytics";
@@ -53,75 +52,91 @@ const AnalysisDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col space-y-1.5">
-        <h1 className="text-2xl font-bold">Inventory Analysis</h1>
-        <p className="text-muted-foreground">
-          Analyze material consumption, inventory value, and refill requirements
-        </p>
-      </div>
-
-      {/* Quick Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Inventory Value
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalInventoryValue)}</div>
-            <p className="text-xs text-muted-foreground">
-              Across {inventoryValueData?.length || 0} materials
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Materials Consumed
-            </CardTitle>
-            <TrendingDown className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{consumptionData?.length || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              Different materials used in orders
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Needing Refill
-            </CardTitle>
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{materialsNeedingRefill}</div>
-            <p className="text-xs text-muted-foreground">
-              Materials below reorder level
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Consumption Rate
-            </CardTitle>
-            <BarChartIcon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {consumptionData && consumptionData.length > 0 
-                ? `${formatQuantity(Number(consumptionData[0]?.total_usage || 0), consumptionData[0]?.unit || '')}`
-                : "0"}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Most consumed material
-            </p>
-          </CardContent>
-        </Card>
+      <div className="flex flex-col space-y-4">
+        <div>
+          <h1 className="text-2xl font-bold">Inventory Analysis</h1>
+          <p className="text-muted-foreground">
+            Analyze material consumption, inventory value, and refill requirements
+          </p>
+        </div>
+        
+        {/* Analysis Navigation Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+          {/* Material Consumption */}
+          <Card className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate('/analysis/materials')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center">
+                <BarChartIcon className="h-5 w-5 mr-2" />
+                Material Consumption
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Analyze which materials are being consumed the most
+              </p>
+            </CardContent>
+          </Card>
+          
+          {/* Order Consumption */}
+          <Card className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate('/analysis/orders')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center">
+                <FileText className="h-5 w-5 mr-2" />
+                Order Consumption
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                View which orders consumed the most materials
+              </p>
+            </CardContent>
+          </Card>
+          
+          {/* Transaction History */}
+          <Card className="hover:bg-accent/50 transition-colors cursor-pointer bg-accent/20" onClick={() => navigate('/analysis/transactions')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center">
+                <FileText className="h-5 w-5 mr-2" />
+                Transaction History
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                View detailed material transaction records
+              </p>
+            </CardContent>
+          </Card>
+          
+          {/* Inventory Value */}
+          <Card className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate('/analysis/value')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center">
+                <TrendingUp className="h-5 w-5 mr-2" />
+                Inventory Value
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Track the total value of your inventory
+              </p>
+            </CardContent>
+          </Card>
+          
+          {/* Refill Analysis */}
+          <Card className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate('/analysis/refill')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center">
+                <RefreshCcw className="h-5 w-5 mr-2" />
+                Refill Analysis
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Identify materials that need to be refilled
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <Tabs defaultValue="overview" className="space-y-4">

@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +35,7 @@ export const StockDetailDialog = ({
 }: StockDetailDialogProps) => {
   const handleClose = () => onOpenChange(false);
   const [activeTab, setActiveTab] = useState<string>(initialTab);
+  const isFirstRender = useRef(true);
 
   const { 
     stockItem, 
@@ -78,7 +78,7 @@ export const StockDetailDialog = ({
             const currentTime = new Date().getTime();
             const timeDiff = currentTime - updateTime;
             
-            // If update is less than 10 seconds ago and affects this material
+            // If update is less than 30 seconds ago and affects this material
             if (timeDiff < 30000 && materialIds.includes(stockId)) {
               console.log("Recent inventory update detected for this material, refreshing transactions");
               refreshTransactions();
@@ -119,16 +119,25 @@ export const StockDetailDialog = ({
         }
       };
       
-      // Check immediately and after a short delay
+      // Check immediately
       checkForInventoryUpdate();
-      const timer = setTimeout(() => {
-        refreshTransactions();
-        checkForInventoryUpdate();
-      }, 500);
       
-      return () => clearTimeout(timer);
+      // Only set the timer on first render
+      if (isFirstRender.current) {
+        isFirstRender.current = false;
+        
+        // Refresh once after opening
+        const timer = setTimeout(() => {
+          refreshTransactions();
+        }, 500);
+        
+        return () => {
+          clearTimeout(timer);
+          isFirstRender.current = true; // Reset for next time dialog opens
+        };
+      }
     }
-  }, [open, stockId, refreshTransactions]);
+  }, [open, stockId]); // Removed refreshTransactions from dependencies
 
   useEffect(() => {
     // Auto-switch to transactions tab when this dialog opens if that tab was specified

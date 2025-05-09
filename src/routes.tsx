@@ -1,4 +1,3 @@
-
 import { Navigate } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import AuthLayout from "@/components/layout/AuthLayout";
@@ -41,6 +40,7 @@ import MaterialConsumption from "@/pages/Analysis/MaterialConsumption";
 import OrderConsumption from "@/pages/Analysis/OrderConsumption";
 import InventoryValue from "@/pages/Analysis/InventoryValue";
 import RefillAnalysis from "@/pages/Analysis/RefillAnalysis";
+import TransactionHistory from "@/pages/Analysis/TransactionHistory";
 
 const routes = [
   {
@@ -105,6 +105,7 @@ const routes = [
               { path: "orders", element: <OrderConsumption /> },
               { path: "value", element: <InventoryValue /> },
               { path: "refill", element: <RefillAnalysis /> },
+              { path: "transactions", element: <TransactionHistory /> },
             ],
           },
           {

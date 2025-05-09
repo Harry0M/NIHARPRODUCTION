@@ -266,9 +266,9 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
       }
     },
     enabled: !!stockId,
-    refetchInterval: 10000,
-    refetchOnWindowFocus: true,
-    staleTime: 5000,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    staleTime: 1000 * 60 * 5,
   });
 
   // Fetch from the new transaction log table with proper typing for the metadata field
@@ -301,9 +301,9 @@ export const useStockDetail = ({ stockId, onClose }: UseStockDetailProps) => {
       }
     },
     enabled: !!stockId,
-    refetchInterval: 10000,
-    refetchOnWindowFocus: true,
-    staleTime: 5000,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    staleTime: 1000 * 60 * 5,
   });
 
   // Function to manually refresh transactions

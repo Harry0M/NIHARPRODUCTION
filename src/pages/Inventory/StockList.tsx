@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, History, Bell } from "lucide-react";
@@ -186,20 +185,6 @@ const StockList = () => {
     setIsDeleteDialogOpen(true);
   };
 
-  const deleteTransactions = async (stockId: string) => {
-    const { error } = await supabase
-      .from('inventory_transactions')
-      .delete()
-      .eq('material_id', stockId);
-      
-    if (error) {
-      console.error("Error deleting related transactions:", error);
-      throw error;
-    }
-    
-    return true;
-  };
-
   const handleDeleteConfirm = async () => {
     if (!deletingStockId) return;
     
@@ -207,45 +192,138 @@ const StockList = () => {
     try {
       // If this inventory has transactions and user confirmed to delete them too
       if (hasTransactions && deleteWithTransactions) {
-        // First delete all related transactions
-        await deleteTransactions(deletingStockId);
+        console.log(`Starting deletion process for inventory item: ${deletingStockId}`);
+        
+        // APPROACH: Use a server-side function to handle the deletion with proper transaction support
+        // This will ensure all related records are deleted in the correct order before the inventory item
+
+        // First, create the server function if you haven't already
+        // Go to Supabase -> SQL Editor and paste the following SQL:
+        /*
+        -- This creates a function that safely deletes an inventory item and all related records
+        CREATE OR REPLACE FUNCTION delete_inventory_with_transactions(p_inventory_id UUID)
+        RETURNS BOOLEAN AS
+        $$
+        BEGIN
+          -- First delete from inventory_transaction_log
+          DELETE FROM inventory_transaction_log WHERE material_id = p_inventory_id;
+          
+          -- Then delete from inventory_transactions
+          DELETE FROM inventory_transactions WHERE material_id = p_inventory_id;
+          
+          -- Finally delete the inventory item
+          DELETE FROM inventory WHERE id = p_inventory_id;
+          
+          RETURN TRUE;
+        EXCEPTION WHEN OTHERS THEN
+          RETURN FALSE;
+        END;
+        $$
+        LANGUAGE plpgsql;
+        */
+
+        // For now, we'll do our best to handle it client-side
+        console.log("Attempting to delete transaction logs");
+        
+        // Try the direct approach first
+        try {
+          const { data: deleteResult, error: deleteError } = await supabase
+            .from('inventory_transaction_log')
+            .delete()
+            .eq('material_id', deletingStockId);
+            
+          if (deleteError) {
+            console.error("Error deleting transaction logs:", deleteError);
+            throw deleteError;
+          }
+          
+          console.log("Successfully deleted transaction logs");
+        } catch (error) {
+          console.error("Failed with direct approach, trying alternative methods");
+          
+          // Examine what's in the transaction log table
+          const { data: logData, error: logError } = await supabase
+            .from('inventory_transaction_log')
+            .select('*')
+            .limit(1);
+            
+          if (logError) {
+            console.error("Error getting sample log:", logError);
+          } else if (logData && logData.length > 0) {
+            console.log("Log sample:", logData[0]);
+            
+            // Get the specific logs for this inventory item
+            const { data: specificLogs, error: specificError } = await supabase
+              .from('inventory_transaction_log')
+              .select('*')
+              .eq('material_id', deletingStockId);
+              
+            if (specificError) {
+              console.error("Error getting specific logs:", specificError);
+            } else {
+              console.log(`Found ${specificLogs?.length || 0} logs for this item`);
+            }
+          }
+          
+          // We can't proceed further without fixing the database issue
+          throw new Error("Cannot automatically delete transaction logs. Database administrator assistance required.");
+        }
+        
+        // Now delete transactions
+        const { error: txError } = await supabase
+          .from('inventory_transactions')
+          .delete()
+          .eq('material_id', deletingStockId);
+          
+        if (txError) {
+          console.error("Error deleting transactions:", txError);
+        }
       }
       
-      // Then delete the inventory item
+      // Now try to delete the inventory item
+      console.log("Deleting inventory item:", deletingStockId);
       const { error } = await supabase
         .from('inventory')
         .delete()
         .eq('id', deletingStockId);
 
       if (error) {
-        console.error("Error deleting stock:", error);
+        console.error("Error deleting inventory:", error);
         
-        // Show specific message for constraint violation
+        // Check for foreign key constraint
         if (error.code === '23503') {
+          // Provide clear guidance on what to do
           showToast({
-            title: "Cannot delete this item",
-            description: "This inventory item has transaction history. Please delete the transactions first or use the option to delete everything.",
-            type: "error"
+            title: "Database Constraint Error",
+            description: "Cannot delete due to database constraints. Please have your database administrator create a server-side function to handle this deletion.",
+            type: "error",
+          });
+          
+          console.error("Constraint details:", {
+            code: error.code,
+            message: error.message,
+            details: error.details
           });
         } else {
           showToast({
-            title: "Delete failed",
+            title: "Delete Failed",
             description: error.message,
             type: "error"
           });
         }
+        
         throw error;
       }
 
       showToast({
-        title: "Stock deleted successfully",
+        title: "Stock Deleted",
+        description: "The inventory item has been successfully removed.",
         type: "success"
       });
       
-      // Refetch inventory data
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
     } catch (error) {
-      console.error("Unexpected error during deletion:", error);
+      console.error("Error in delete process:", error);
     } finally {
       setIsDeleting(false);
       setIsDeleteDialogOpen(false);
