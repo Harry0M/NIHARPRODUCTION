@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -158,9 +159,8 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
         
         // Get metadata or use empty object if undefined
         // Ensure metadata is an object we can safely access properties from
-        const metadata = typeof log.metadata === 'object' && log.metadata !== null && !Array.isArray(log.metadata)
-          ? log.metadata as Record<string, any>
-          : {};
+        const metadata = typeof log.metadata === 'object' && log.metadata !== null ? 
+          (Array.isArray(log.metadata) ? {} : log.metadata as Record<string, any>) : {};
         
         // Skip non-consumption transactions (e.g., quantity adjustments)
         const isConsumption = 
@@ -174,18 +174,18 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
           order_id: log.reference_id || '',
           order_number: log.reference_number || '',
           material_id: log.material_id || '',
-          material_name: String(metadata.material_name || 'Unknown'),
+          material_name: metadata.material_name ? String(metadata.material_name) : 'Unknown',
           total_material_used: Math.abs(Number(log.quantity) || 0),
-          unit: String(metadata.unit || 'units'),
+          unit: metadata.unit ? String(metadata.unit) : 'units',
           usage_date: log.transaction_date || new Date().toISOString(),
-          company_name: String(metadata.company_name || 'Unknown'),
-          component_type: String(metadata.component_type || 'Unknown'),
+          company_name: metadata.company_name ? String(metadata.company_name) : 'Unknown',
+          component_type: metadata.component_type ? String(metadata.component_type) : 'Unknown',
           // Handle purchase_price safely with type checking
-          purchase_price: 'purchase_price' in metadata ? Number(metadata.purchase_price) : 0,
+          purchase_price: metadata.purchase_price !== undefined ? Number(metadata.purchase_price) : 0,
           source: 'transaction_log',
           log_id: log.id
         };
-      }).filter(Boolean); // Remove null entries
+      }).filter(Boolean) as any[]; // Filter out null entries
       
       // Combine data sources
       const breakdownItems = (breakdownData || []).map(item => ({...item, source: 'breakdown'}));
@@ -301,11 +301,11 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
         const totalValue = (Number(item.quantity) || 0) * (Number(item.purchase_rate) || 0);
         
         // Determine if refill is needed and urgency level
-        const needsRefill = item.reorder_level && item.quantity < item.reorder_level;
+        const needsRefill = item.reorder_level && Number(item.quantity) < Number(item.reorder_level);
         const urgency = calculateRefillUrgency(
-          item.quantity,
-          item.reorder_level,
-          item.min_stock_level
+          Number(item.quantity),
+          Number(item.reorder_level),
+          Number(item.min_stock_level)
         );
         
         return {
