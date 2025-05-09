@@ -196,32 +196,48 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
       
       const combinedData = [...breakdownItems, ...convertedLogData];
       
-      // Create a map to track unique transactions
+      // Create a map to track unique transactions - more aggressive deduplication
       const uniqueTransactions = new Map();
       
-      // Process all transactions
+      // Group transactions by order_id and material_id
+      const groupedTransactions = new Map();
+      
+      // First, group all transactions by order and material
       combinedData.forEach(tx => {
         // Skip incomplete entries
         if (!tx.order_id || !tx.material_id) return;
         
-        // Create a unique key for the order+material+approximate date
-        const date = tx.usage_date ? new Date(tx.usage_date) : new Date();
-        date.setMinutes(0, 0, 0); // Round to nearest hour to account for small timing differences
-        const uniqueKey = `${tx.order_id}_${tx.material_id}_${date.toISOString()}`;
+        const groupKey = `${tx.order_id}_${tx.material_id}`;
         
-        // If we already have this transaction, only update if current one has more info
-        if (uniqueTransactions.has(uniqueKey)) {
-          const existing = uniqueTransactions.get(uniqueKey);
+        if (!groupedTransactions.has(groupKey)) {
+          groupedTransactions.set(groupKey, []);
+        }
+        
+        groupedTransactions.get(groupKey).push(tx);
+      });
+      
+      // Now process each group to pick the best representative transaction
+      groupedTransactions.forEach((transactions, groupKey) => {
+        // Sort by source (prefer 'breakdown' over 'transaction_log') and date (prefer newer)
+        transactions.sort((a, b) => {
+          // First, prefer breakdown source
+          if (a.source === 'breakdown' && b.source !== 'breakdown') return -1;
+          if (a.source !== 'breakdown' && b.source === 'breakdown') return 1;
           
-          // Prefer breakdown source as it's more likely to have complete info
-          if (tx.source === 'breakdown' && existing.source === 'transaction_log') {
-            uniqueTransactions.set(uniqueKey, tx);
-          }
-        } else {
-          // First time seeing this transaction
-          uniqueTransactions.set(uniqueKey, tx);
+          // For same source, prefer newer records
+          const dateA = a.usage_date ? new Date(a.usage_date) : new Date(0);
+          const dateB = b.usage_date ? new Date(b.usage_date) : new Date(0);
+          return dateB.getTime() - dateA.getTime();
+        });
+        
+        // Only take the first/best transaction from each group
+        // This ensures we have exactly ONE transaction per order/material combination
+        if (transactions.length > 0) {
+          uniqueTransactions.set(groupKey, transactions[0]);
         }
       });
+      
+      console.log(`Reduced from ${combinedData.length} to ${uniqueTransactions.size} unique material consumption records`);
       
       // Convert back to array
       const deduplicated = Array.from(uniqueTransactions.values());

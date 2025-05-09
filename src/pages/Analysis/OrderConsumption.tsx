@@ -11,6 +11,7 @@ import { ArrowLeft, Search, BarChart as BarChartIcon, AlertCircle, FileText, Pac
 import { LoadingSpinner } from "@/components/production/LoadingSpinner";
 import { useNavigate } from "react-router-dom";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { format } from "date-fns";
 import { Separator } from "@/components/ui/separator";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, Cell, PieChart as RechartsPieChart, Pie } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
