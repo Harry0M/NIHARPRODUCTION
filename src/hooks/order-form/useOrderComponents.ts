@@ -1,13 +1,13 @@
 
 import { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { Component } from "@/types/order-form";
+import { Component, CostCalculation } from "@/types/order-form";
 
 export function useOrderComponents() {
   const [components, setComponents] = useState<Record<string, any>>({});
   const [customComponents, setCustomComponents] = useState<Component[]>([]);
   const [baseConsumptions, setBaseConsumptions] = useState<Record<string, number>>({});
-  const [costCalculation, setCostCalculation] = useState({
+  const [costCalculation, setCostCalculation] = useState<CostCalculation>({
     materialCost: 0,
     cuttingCharge: 0,
     printingCharge: 0,

@@ -56,4 +56,6 @@ export interface UseOrderFormReturn {
   handleSubmit: (e: React.FormEvent) => Promise<string | undefined>;
   validateForm: () => boolean;
   updateConsumptionBasedOnQuantity: (quantity: number) => void;
+  costCalculation?: CostCalculation;
+  updateMargin?: (margin: number) => void;
 }

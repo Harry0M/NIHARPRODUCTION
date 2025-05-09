@@ -38,7 +38,7 @@ export function useOrderForm(): UseOrderFormReturn {
     updateConsumptionBasedOnQuantity
   } = useOrderComponents();
   
-  const { calculateTotalCost } = useCostCalculation();
+  const { calculateTotalCost, calculateSellingPrice } = useCostCalculation();
   
   const {
     handleProductSelect: processProductComponents
@@ -58,6 +58,31 @@ export function useOrderForm(): UseOrderFormReturn {
   // Call product selection handler with components
   const handleProductSelect = (components: any[]) => {
     processProductComponents(components);
+  };
+  
+  // Function to update margin and recalculate selling price
+  const updateMargin = (newMargin: number) => {
+    // Update the margin in order details
+    setOrderDetails(prev => ({
+      ...prev,
+      margin: newMargin.toString()
+    }));
+    
+    // Update cost calculation with new margin and selling price
+    if (costCalculation) {
+      const newSellingPrice = calculateSellingPrice(costCalculation.totalCost, newMargin);
+      setCostCalculation(prev => ({
+        ...prev,
+        margin: newMargin,
+        sellingPrice: newSellingPrice
+      }));
+      
+      // Also update rate in order details
+      setOrderDetails(prev => ({
+        ...prev,
+        rate: newSellingPrice.toFixed(2)
+      }));
+    }
   };
   
   // Update cost calculation when relevant data changes
@@ -87,7 +112,7 @@ export function useOrderForm(): UseOrderFormReturn {
     const margin = parseFloat(orderDetails.margin || '15');
     
     // Calculate selling price
-    const sellingPrice = costs.totalCost * (1 + margin/100);
+    const sellingPrice = calculateSellingPrice(costs.totalCost, margin);
 
     // Update cost calculation state
     setCostCalculation({
@@ -140,6 +165,8 @@ export function useOrderForm(): UseOrderFormReturn {
     handleProductSelect,
     handleSubmit,
     validateForm,
-    updateConsumptionBasedOnQuantity
+    updateConsumptionBasedOnQuantity,
+    costCalculation, // Add cost calculation to return
+    updateMargin // Add update margin function
   };
 }

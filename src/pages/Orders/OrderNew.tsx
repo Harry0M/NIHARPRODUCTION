@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { OrderDetailsForm } from "@/components/orders/OrderDetailsForm";
 import { StandardComponents } from "@/components/orders/StandardComponents";
 import { CustomComponentSection } from "@/components/orders/CustomComponentSection";
+import { CostCalculationDisplay } from "@/components/orders/CostCalculationDisplay";
 import { useOrderForm } from "@/hooks/use-order-form";
 import {
   Card,
@@ -36,7 +37,9 @@ const OrderNew = () => {
     handleProductSelect,
     handleSubmit,
     validateForm,
-    updateConsumptionBasedOnQuantity
+    updateConsumptionBasedOnQuantity,
+    costCalculation, // Get the cost calculation
+    updateMargin // Add function to update margin
   } = useOrderForm();
   
   const onSubmit = async (e: React.FormEvent) => {
@@ -53,7 +56,7 @@ const OrderNew = () => {
   // Calculate total consumption for all components
   const totalConsumption = [...Object.values(components), ...customComponents]
     .reduce((total, comp) => {
-      const consumption = comp.consumption ? parseFloat(comp.consumption) : 0;
+      const consumption = comp?.consumption ? parseFloat(comp.consumption) : 0;
       return isNaN(consumption) ? total : total + consumption;
     }, 0);
   
@@ -131,6 +134,14 @@ const OrderNew = () => {
                   showConsumption={true}
                 />
               </div>
+              
+              {/* Add Cost Calculation Display */}
+              {costCalculation && (
+                <CostCalculationDisplay 
+                  costCalculation={costCalculation}
+                  onMarginChange={updateMargin}
+                />
+              )}
             </div>
           </CardContent>
           <CardFooter>

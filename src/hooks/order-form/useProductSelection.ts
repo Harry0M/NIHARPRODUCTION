@@ -262,12 +262,17 @@ export function useProductSelection({
 
       const { componentTypeLower, baseConsumption } = comp;
       
-      if (componentTypeLower === 'custom') {
+      // IMPORTANT: Check for custom components
+      // - If is_custom is true, it's a custom component
+      // - If component_type is 'custom', it's a custom component
+      // - If custom_name is provided, it's a custom component
+      
+      if (comp.is_custom === true || componentTypeLower === 'custom' || comp.custom_name) {
         const customIndex = newCustomComponents.length;
         newCustomComponents.push({
           id: uuidv4(),
           type: 'custom',
-          customName: comp.custom_name || '',
+          customName: comp.custom_name || comp.componentTypeLower || '',
           ...comp
         });
         

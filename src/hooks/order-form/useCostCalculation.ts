@@ -1,7 +1,7 @@
 
 import { useCallback } from "react";
-import { calculateSellingPrice } from "@/utils/costCalculationUtils";
 import { Component } from "@/types/order-form";
+import * as CostUtils from "@/utils/costCalculationUtils";
 
 export function useCostCalculation() {
   /**
@@ -64,18 +64,18 @@ export function useCostCalculation() {
   /**
    * Calculate selling price based on cost and margin
    */
-  const calculateSellingPrice = useCallback((totalCost: number, margin?: number) => {
+  const calculatePrice = useCallback((totalCost: number, margin?: number) => {
     if (isNaN(totalCost) || totalCost <= 0) return 0;
     
     // Use 15% as default margin if not specified
     const effectiveMargin = margin !== undefined ? margin : 15;
     
     // Calculate selling price using utility function
-    return calculateSellingPrice(totalCost, effectiveMargin);
+    return CostUtils.calculateSellingPrice(totalCost, effectiveMargin);
   }, []);
 
   return {
     calculateTotalCost,
-    calculateSellingPrice
+    calculateSellingPrice: calculatePrice
   };
 }
