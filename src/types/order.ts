@@ -1,3 +1,4 @@
+
 import { Database } from "@/integrations/supabase/types";
 
 export type OrderStatus = Database["public"]["Enums"]["order_status"];
@@ -46,6 +47,11 @@ export interface OrderFormData {
   total_cost?: string;
   calculated_selling_price?: string;
   template_margin?: string;
+  // Production cost fields
+  cutting_charge?: string;
+  printing_charge?: string;
+  stitching_charge?: string;
+  transport_charge?: string;
 }
 
 export interface InventoryMaterial {

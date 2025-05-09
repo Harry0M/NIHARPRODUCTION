@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { createBrowserRouter } from 'react-router-dom';
-import Layout from '@/Layout';
+import Layout from './components/Layout';
 import Dashboard from '@/pages/Dashboard';
 import OrderList from '@/pages/Orders/OrderList';
 import OrderNew from '@/pages/Orders/OrderNew';

@@ -9,7 +9,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { InfoCircledIcon } from "@radix-ui/react-icons";
+import { Info } from "lucide-react";
 import { OrderFormData } from "@/types/order";
 
 interface CostSummaryCardProps {
@@ -76,7 +76,7 @@ export function CostSummaryCard({
               <Label htmlFor="margin" className="text-muted-foreground flex items-center gap-1">
                 Margin (%)
                 {orderDetails.template_margin && (
-                  <InfoCircledIcon className="h-4 w-4 text-blue-500" title={`Template margin: ${orderDetails.template_margin}%`} />
+                  <Info className="h-4 w-4 text-blue-500" title={`Template margin: ${orderDetails.template_margin}%`} />
                 )}
               </Label>
               <div className="flex items-center gap-2">
