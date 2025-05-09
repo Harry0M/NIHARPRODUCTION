@@ -16,9 +16,7 @@ import JobCardDetail from '@/pages/Production/JobCardDetail';
 import JobCardNew from '@/pages/Production/JobCardNew';
 import Auth from '@/pages/Auth';
 import ProtectedRoute from '@/components/ProtectedRoute';
-
-// We need to use the correct case for StockList import if we uncomment it later
-// import StockList from '@/pages/Inventory/StockList';
+import StockList from '@/pages/Inventory/StockList';
 
 // Create a router with auth-aware routes
 export const router = createBrowserRouter([
@@ -47,8 +45,7 @@ export const router = createBrowserRouter([
           { path: 'production/job-cards', element: <JobCardList /> },
           { path: 'production/job-cards/new', element: <JobCardNew /> },
           { path: 'production/job-cards/:id', element: <JobCardDetail /> },
-          // Temporarily comment this route out until we resolve the case sensitivity issue
-          // { path: 'inventory', element: <StockList /> },
+          { path: 'inventory', element: <StockList /> },
           { path: 'analysis/materials', element: <MaterialConsumption /> },
         ],
       },
