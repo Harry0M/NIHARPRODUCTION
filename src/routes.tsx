@@ -1,3 +1,4 @@
+
 import { Navigate } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import AuthLayout from "@/components/layout/AuthLayout";
@@ -9,7 +10,7 @@ import OrderNew from "@/pages/Orders/OrderNew";
 import OrderDetail from "@/pages/Orders/OrderDetail";
 import OrderEdit from "@/pages/Orders/OrderEdit";
 import InventoryLayout from "@/pages/Inventory/InventoryLayout";
-import StockList from "@/pages/Inventory/StockList";
+import StockList from "@/pages/inventory/StockList"; // Changed casing to match actual file path
 import StockNew from "@/pages/Inventory/StockNew";
 import StockDetail from "@/pages/Inventory/StockDetail";
 import CatalogList from "@/pages/Inventory/CatalogList";
