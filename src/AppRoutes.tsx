@@ -1,8 +1,8 @@
 
+import { useRoutes, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { RouterProvider } from "react-router-dom";
 import { Loader2 } from "lucide-react";
-import { router } from "./routes";
+import routes from "./routes";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthProvider } from "@/context/AuthContext";
 
@@ -69,10 +69,17 @@ const AppRoutes = () => {
     );
   }
 
-  // Wrap the RouterProvider with AuthProvider
+  // Create a component that renders the routes
+  const AppRouteContent = () => {
+    const routeElement = useRoutes(routes);
+    return routeElement || <Navigate to="/auth" replace />;
+  };
+
+  // Since we're now within BrowserRouter context from App.tsx,
+  // we can safely use AuthProvider here with the router context
   return (
     <AuthProvider initialUser={initialUser}>
-      <RouterProvider router={router} />
+      <AppRouteContent />
     </AuthProvider>
   );
 };

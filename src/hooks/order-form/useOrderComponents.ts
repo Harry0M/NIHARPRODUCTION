@@ -27,9 +27,7 @@ export function useOrderComponents() {
   const handleCustomComponentChange = (index: number, field: string, value: string) => {
     setCustomComponents(prev => {
       const updated = [...prev];
-      if (index >= 0 && index < updated.length) {
-        updated[index] = { ...updated[index], [field]: value };
-      }
+      updated[index] = { ...updated[index], [field]: value };
       return updated;
     });
   };
@@ -40,18 +38,12 @@ export function useOrderComponents() {
       { 
         id: uuidv4(),
         type: "custom",
-        customName: "",
-        is_custom: true
+        customName: "" 
       }
     ]);
   };
 
   const removeCustomComponent = (index: number) => {
-    if (index < 0 || index >= customComponents.length) {
-      console.warn(`Invalid index ${index} for removeCustomComponent`);
-      return;
-    }
-    
     setCustomComponents(prev => prev.filter((_, i) => i !== index));
     
     // Also remove from base consumptions

@@ -11,27 +11,13 @@ interface UseOrderSubmissionProps {
   components: Record<string, any>;
   customComponents: any[];
   validateForm: () => boolean;
-  costData: {
-    materialCost: number;
-    productionCost: number;
-    totalCost: number;
-    sellingPrice: number;
-    margin: number | null;
-    detailedCosts?: {
-      cuttingCharge: number;
-      printingCharge: number;
-      stitchingCharge: number;
-      transportCharge: number;
-    };
-  };
 }
 
 export function useOrderSubmission({
   orderDetails,
   components,
   customComponents,
-  validateForm,
-  costData
+  validateForm
 }: UseOrderSubmissionProps) {
   const [submitting, setSubmitting] = useState(false);
 
@@ -68,18 +54,7 @@ export function useOrderSubmission({
     setSubmitting(true);
     
     try {
-      // Include cost calculation data in order
-      const margin = orderDetails.margin ? parseFloat(orderDetails.margin) : costData.margin;
-      
-      // Get detailed production cost values
-      const detailedCosts = costData.detailedCosts || {
-        cuttingCharge: 0,
-        printingCharge: 0,
-        stitchingCharge: 0,
-        transportCharge: 0
-      };
-      
-      // Prepare data for database insert with cost information
+      // Prepare data for database insert
       const orderData = {
         company_name: orderDetails.company_id ? null : orderDetails.company_name,
         company_id: orderDetails.company_id,
@@ -90,22 +65,10 @@ export function useOrderSubmission({
         rate: orderDetails.rate ? parseFloat(orderDetails.rate) : null,
         order_date: orderDetails.order_date,
         sales_account_id: orderDetails.sales_account_id || null,
-        special_instructions: orderDetails.special_instructions || null,
-        // Cost data
-        material_cost: costData.materialCost,
-        production_cost: costData.productionCost,
-        total_cost: costData.totalCost,
-        calculated_selling_price: costData.sellingPrice,
-        margin: margin,
-        template_margin: orderDetails.template_margin ? parseFloat(orderDetails.template_margin) : null,
-        // Detailed production costs
-        cutting_charge: detailedCosts.cuttingCharge,
-        printing_charge: detailedCosts.printingCharge,
-        stitching_charge: detailedCosts.stitchingCharge, 
-        transport_charge: detailedCosts.transportCharge
+        special_instructions: orderDetails.special_instructions || null
       };
 
-      console.log("Submitting order data with cost information:", orderData);
+      console.log("Submitting order data:", orderData);
       
       // Implement retry logic for order insertion
       let orderResult = null;
@@ -185,17 +148,19 @@ export function useOrderSubmission({
             const rollWidthValue = convertStringToNumeric(comp.roll_width);
             const consumptionValue = convertStringToNumeric(comp.consumption);
             
-            // Get component cost and from_template flag
-            const componentCost = comp.componentCost || comp.materialCost || null;
-            const fromTemplate = comp.fromTemplate || false;
-            const isCustom = comp.type === 'custom' || comp.is_custom || false;
-            
-            // Create cost breakdown object
-            const costBreakdown = {
-              material_rate: comp.materialRate || 0,
-              consumption: consumptionValue || 0,
-              material_cost: comp.materialCost || 0
-            };
+            // Debug log for individual component
+            console.log(`Preparing component ${componentType}:`, {
+              originalType: comp.type,
+              normalizedType: componentType,
+              originalGsm: comp.gsm,
+              originalRollWidth: comp.roll_width,
+              originalConsumption: comp.consumption,
+              convertedGsm: gsmValue,
+              convertedRollWidth: rollWidthValue,
+              convertedConsumption: consumptionValue,
+              size,
+              materialId: comp.material_id || null
+            });
             
             return {
               order_id: orderResult.id,
@@ -206,11 +171,7 @@ export function useOrderSubmission({
               custom_name: customName,
               material_id: comp.material_id || null,
               roll_width: rollWidthValue,
-              consumption: consumptionValue,
-              component_cost: componentCost,
-              from_template: fromTemplate,
-              is_custom: isCustom,
-              component_cost_breakdown: costBreakdown
+              consumption: consumptionValue
             };
           });
 
@@ -275,19 +236,33 @@ export function useOrderSubmission({
                 }
                 
                 // Force invalidate any transaction queries to ensure fresh data
+                // This will help show the new transactions in the stock detail dialog
                 setTimeout(() => {
+                  // We don't have direct access to queryClient here, so we'll use localStorage
+                  // as a communication channel to tell other components to refresh
                   try {
+                    // Store the timestamp of the update
                     localStorage.setItem('last_inventory_update', new Date().toISOString());
+                    // Store affected material IDs if available
                     if (inventoryResult.updatedMaterials && inventoryResult.updatedMaterials.length > 0) {
                       const materialIds = componentsToInsert
                         .filter(c => c.material_id)
                         .map(c => c.material_id);
                       localStorage.setItem('updated_material_ids', JSON.stringify(materialIds));
+                      
+                      // Notify the user about where to find the transactions
+                      showToast({
+                        title: "Transaction History Updated",
+                        description: "Go to Inventory > Stock > View Details > Transactions to see material usage history",
+                        type: "info"
+                      });
                     }
                   } catch (e) {
+                    // Ignore localStorage errors
                     console.warn("Could not store inventory update info in localStorage", e);
                   }
                 }, 100);
+                
               } else {
                 console.error("Inventory update failed:", inventoryResult.errors);
                 showToast({

@@ -1,58 +1,75 @@
 
 /**
- * Calculate all production costs based on the catalog data and order quantity
+ * Utility functions for detailed cost and profit calculations
  */
+
+// Calculate detailed production costs from catalog data and order quantity
 export const calculateProductionCosts = (
-  catalogData: {
-    cutting_charge?: number;
-    printing_charge?: number;
-    stitching_charge?: number;
-    transport_charge?: number;
-  },
+  catalogData: any,
   orderQuantity: number
-) => {
-  // Get individual costs from catalog data or default to 0
-  const cuttingCharge = (catalogData.cutting_charge || 0) * orderQuantity;
-  const printingCharge = (catalogData.printing_charge || 0) * orderQuantity;
-  const stitchingCharge = (catalogData.stitching_charge || 0) * orderQuantity;
-  const transportCharge = (catalogData.transport_charge || 0);
+): {
+  cuttingCost: number;
+  printingCost: number;
+  stitchingCost: number;
+  transportCost: number;
+  totalProductionCost: number;
+} => {
+  // Extract rates from catalog data with fallbacks to zero
+  const cuttingRate = Number(catalogData?.cutting_charge) || 0;
+  const printingRate = Number(catalogData?.printing_charge) || 0;
+  const stitchingRate = Number(catalogData?.stitching_charge) || 0;
+  const transportRate = Number(catalogData?.transport_charge) || 0;
+  
+  // Calculate individual costs based on order quantity
+  const cuttingCost = cuttingRate * orderQuantity;
+  const printingCost = printingRate * orderQuantity;
+  const stitchingCost = stitchingRate * orderQuantity;
+  const transportCost = transportRate * orderQuantity;
   
   // Sum all production costs
-  const totalProductionCost = 
-    cuttingCharge + 
-    printingCharge + 
-    stitchingCharge + 
-    transportCharge;
+  const totalProductionCost = cuttingCost + printingCost + stitchingCost + transportCost;
   
   return {
-    cuttingCharge,
-    printingCharge,
-    stitchingCharge, 
-    transportCharge,
+    cuttingCost,
+    printingCost,
+    stitchingCost,
+    transportCost,
     totalProductionCost
   };
 };
 
-/**
- * Calculate profit and revenue based on cost and margin
- */
-export const calculateProfitUsingMargin = (cost: number, marginPercent: number) => {
-  if (isNaN(cost) || isNaN(marginPercent)) return { profit: 0, revenue: 0 };
+// Calculate profit using margin percentage from catalog
+export const calculateProfitUsingMargin = (
+  totalCost: number,
+  margin: number | null | undefined
+): {
+  revenue: number;
+  profit: number;
+  profitMargin: number;
+} => {
+  // Use the margin or default to 15%
+  const effectiveMargin = margin !== null && margin !== undefined ? Number(margin) : 15;
   
-  const margin = marginPercent / 100;
-  const revenue = cost / (1 - margin);
-  const profit = revenue - cost;
+  // Calculate revenue using the margin method formula: 
+  // Revenue = Cost * (1 + margin/100)
+  // This calculates selling price by adding the margin percentage to the cost
+  const revenue = totalCost * (1 + effectiveMargin / 100);
+    
+  const profit = revenue - totalCost;
+  const profitMargin = revenue > 0 ? (profit / revenue) * 100 : 0;
   
-  return { profit, revenue };
+  return {
+    revenue,
+    profit,
+    profitMargin
+  };
 };
 
-/**
- * Format a currency value
- */
-export const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 2
-  }).format(value);
+// Calculate selling price based on total cost and margin
+export const calculateSellingPrice = (
+  totalCost: number,
+  margin: number | null | undefined
+): number => {
+  const { revenue } = calculateProfitUsingMargin(totalCost, margin);
+  return revenue;
 };

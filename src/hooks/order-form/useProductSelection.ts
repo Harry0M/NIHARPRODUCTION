@@ -37,40 +37,6 @@ export function useProductSelection({
     const productQuantity = components[0]?.default_quantity || 1;
     console.log(`Product default quantity: ${productQuantity}`);
     
-    // Get product catalog_id from first component
-    const catalogId = components[0]?.catalog_id;
-    console.log(`Catalog ID: ${catalogId}`);
-    
-    // Fetch cost data from the catalog if we have a catalog ID
-    if (catalogId) {
-      try {
-        const { data: costData, error: costError } = await supabase
-          .rpc('get_catalog_cost_data', { catalog_id: catalogId });
-        
-        if (costError) {
-          console.error('Error fetching catalog cost data:', costError);
-        } else if (costData && costData.length > 0) {
-          console.log("Fetched catalog cost data:", costData[0]);
-          
-          // Update order details with cost information from template
-          setOrderDetails(prev => ({
-            ...prev,
-            template_margin: costData[0].margin?.toString(),
-            margin: costData[0].margin?.toString(), // Initially use template margin
-            cutting_charge: costData[0].cutting_charge?.toString(),
-            printing_charge: costData[0].printing_charge?.toString(),
-            stitching_charge: costData[0].stitching_charge?.toString(), 
-            transport_charge: costData[0].transport_charge?.toString(),
-            product_quantity: productQuantity.toString(),
-            // Store material cost from template for reference
-            material_cost: costData[0].material_cost?.toString()
-          }));
-        }
-      } catch (err) {
-        console.error('Error in cost data fetch:', err);
-      }
-    }
-    
     // Update product_quantity in orderDetails
     setOrderDetails(prev => {
       const newDetails = {
@@ -108,7 +74,7 @@ export function useProductSelection({
       try {
         const { data: materials, error } = await supabase
           .from('inventory')
-          .select('id, material_name, color, gsm, unit, roll_width, purchase_rate')
+          .select('id, material_name, color, gsm, unit, roll_width')
           .in('id', materialIds);
           
         if (error) {
@@ -175,32 +141,23 @@ export function useProductSelection({
       let materialColor = '';
       let materialGsm = '';
       let materialRollWidth = '';
-      let materialRate = 0;
       
       if (materialId && materialsData[materialId]) {
         // If we have fetched material data, use it
         materialColor = materialsData[materialId].color || '';
         materialGsm = materialsData[materialId].gsm?.toString() || '';
         materialRollWidth = materialsData[materialId].roll_width?.toString() || rollWidth;
-        materialRate = materialsData[materialId].purchase_rate || 0;
       } else {
         // Fallback to component data
         materialColor = component.material?.color || component.color || '';
         materialGsm = component.material?.gsm?.toString() || component.gsm?.toString() || '';
-        materialRate = component.material?.purchase_rate || 0;
       }
-      
-      // Calculate material cost if we have rate and consumption
-      const materialCost = materialRate && totalConsumption ? 
-        parseFloat(materialRate.toString()) * parseFloat(totalConsumption) : 0;
 
       console.log(`Component ${component.component_type} has material:`, {
         materialId,
         materialColor,
         materialGsm,
-        materialRollWidth,
-        materialRate,
-        materialCost
+        materialRollWidth
       });
       
       // Make sure component_type exists and is a string before converting to lower case
@@ -224,11 +181,7 @@ export function useProductSelection({
         }
       }
       
-      // Check if this component is a custom component from the template
-      const isCustomComponent = componentTypeLower === 'custom' || 
-                               (component.custom_name && component.custom_name.trim() !== '');
-      
-      if (isCustomComponent) {
+      if (componentTypeLower === 'custom') {
         const customIndex = newCustomComponents.length;
         newCustomComponents.push({
           id: uuidv4(),
@@ -241,12 +194,7 @@ export function useProductSelection({
           consumption: totalConsumption, // Use the actual saved total consumption
           baseConsumption: baseConsumption?.toString(), // Store the base consumption per unit
           roll_width: materialRollWidth || rollWidth,
-          material_id: materialId,
-          fromTemplate: true, // Mark as coming from template
-          materialRate,
-          materialCost,
-          componentCost: component.component_cost || materialCost,
-          is_custom: true
+          material_id: materialId
         });
         
         // Store base consumption for this custom component
@@ -269,11 +217,7 @@ export function useProductSelection({
           consumption: totalConsumption, // Use the actual saved total consumption 
           baseConsumption: baseConsumption?.toString(), // Store the base consumption per unit
           roll_width: materialRollWidth || rollWidth,
-          material_id: materialId,
-          fromTemplate: true, // Mark as coming from template
-          materialRate,
-          materialCost,
-          componentCost: component.component_cost || materialCost
+          material_id: materialId
         };
         
         // Store base consumption for standard component
