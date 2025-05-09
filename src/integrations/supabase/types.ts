@@ -1854,6 +1854,26 @@ export type Database = {
         Args: { target_id: string }
         Returns: boolean
       }
+      get_deduplicated_order_consumption: {
+        Args: {
+          p_material_id?: string
+          p_order_ids?: string[]
+          p_start_date?: string
+          p_end_date?: string
+        }
+        Returns: {
+          order_id: string
+          order_number: string
+          company_name: string
+          usage_date: string
+          material_id: string
+          material_name: string
+          total_material_used: number
+          unit: string
+          purchase_price: number
+          component_type: string
+        }[]
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean

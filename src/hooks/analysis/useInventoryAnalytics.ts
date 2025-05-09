@@ -23,380 +23,251 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
     }
   );
 
-  // Fetch material consumption data with advanced deduplication
+  // Fetch material consumption data
   const { data: consumptionData, isLoading: loadingConsumption } = useQuery({
     queryKey: ['material-consumption', currentFilters],
     queryFn: async () => {
       console.log("Fetching material consumption data with filters:", currentFilters);
       
-      // Instead of using the view directly, we'll fetch and process the raw data
-      // to handle proper deduplication of transaction pairs
-      const materialTransactions = await fetchAllMaterialTransactions(currentFilters);
+      // Use the material_consumption_analysis view
+      let query = supabase
+        .from('material_consumption_analysis')
+        .select('*');
+
+      // Apply material filter if specified
+      if (currentFilters.materialId) {
+        query = query.eq('material_id', currentFilters.materialId);
+      }
+
+      // Execute the query
+      const { data, error } = await query;
       
-      // Group and aggregate the transactions by material
-      const consumptionByMaterial = consolidateMaterialConsumption(materialTransactions);
+      if (error) {
+        console.error("Error fetching consumption data:", error);
+        throw error;
+      }
       
-      console.log(`Processed ${consumptionByMaterial.length} material consumption records after deduplication`);
-      return consumptionByMaterial;
+      // Format the data for display
+      const formattedData = data.map(item => ({
+        ...item,
+        total_usage: item.total_consumption || 0,
+        orders_count: item.orders_count || 0,
+        first_usage_date: item.first_usage_date || null,
+        last_usage_date: item.last_usage_date || null
+      }));
+      
+      console.log(`Fetched ${formattedData.length} consumption records`);
+      return formattedData || [];
     },
   });
 
-  // Fetch order consumption breakdown with advanced deduplication
+  // Fetch order consumption breakdown with client-side deduplication
   const { data: orderConsumptionData, isLoading: loadingOrderConsumption } = useQuery({
     queryKey: ['order-consumption', currentFilters],
     queryFn: async () => {
       console.log("Fetching order consumption data with filters:", currentFilters);
       
-      // Get consolidated transaction data from both sources
-      const materialTransactions = await fetchAllMaterialTransactions(currentFilters);
+      // First fetch the inventory data to get purchase prices
+      const { data: inventoryData, error: inventoryError } = await supabase
+        .from('inventory')
+        .select('id, material_name, purchase_rate');
+        
+      if (inventoryError) {
+        console.error("Error fetching inventory data for purchase prices:", inventoryError);
+      }
       
-      // Process and organize by order
-      const orderConsumption = consolidateOrderConsumption(materialTransactions);
+      // Create a lookup map for purchase prices
+      const materialPriceMap = new Map();
+      (inventoryData || []).forEach(item => {
+        if (item.id && item.purchase_rate) {
+          materialPriceMap.set(item.id, Number(item.purchase_rate));
+        }
+      });
       
-      console.log(`Processed ${orderConsumption.length} order consumption records after deduplication`);
-      return orderConsumption;
-    },
-  });
-  
-  // Helper function to fetch all transaction data from both tables
-  const fetchAllMaterialTransactions = async (filters: InventoryAnalyticsFilters) => {
-    // First fetch from order_material_breakdown (if available)
-    let baseRecords: any[] = [];
-    try {
+      console.log("Loaded purchase prices for", materialPriceMap.size, "materials");
+      
+      // 1. Now fetch from the order_material_breakdown table
       let query = supabase
         .from('order_material_breakdown')
         .select('*');
       
       // Apply filters
-      if (filters.materialId) {
-        query = query.eq('material_id', filters.materialId);
+      if (currentFilters.materialId) {
+        query = query.eq('material_id', currentFilters.materialId);
       }
       
-      if (filters.orderIds && filters.orderIds.length > 0) {
-        query = query.in('order_id', filters.orderIds);
+      if (currentFilters.orderIds && currentFilters.orderIds.length > 0) {
+        query = query.in('order_id', currentFilters.orderIds);
       }
       
-      if (filters.dateRange.startDate) {
-        query = query.gte('usage_date', filters.dateRange.startDate.toISOString());
+      if (currentFilters.dateRange.startDate) {
+        query = query.gte('usage_date', currentFilters.dateRange.startDate.toISOString());
       }
       
-      if (filters.dateRange.endDate) {
-        query = query.lte('usage_date', filters.dateRange.endDate.toISOString());
+      if (currentFilters.dateRange.endDate) {
+        query = query.lte('usage_date', currentFilters.dateRange.endDate.toISOString());
       }
       
-      const { data, error } = await query;
+      // Execute the main query
+      const { data: breakdownData, error: breakdownError } = await query;
       
-      if (error) {
-        console.error("Error fetching order_material_breakdown data:", error);
-      } else if (data && data.length > 0) {
-        baseRecords = data.map(item => ({
-          ...item,
-          source: 'breakdown',
-          transaction_type: 'Consumption' // Assuming all records here are consumption
-        }));
+      if (breakdownError) {
+        console.error("Error fetching order breakdown data:", breakdownError);
       }
-    } catch (error) {
-      console.error("Error in breakdown query:", error);
-    }
-    
-    // Now fetch from inventory_transaction_log
-    let logRecords: any[] = [];
-    try {
+      
+      // 2. Also fetch transaction log data for the same materials/orders
       let logQuery = supabase
         .from('inventory_transaction_log')
         .select('*');
       
-      // Apply similar filters
-      if (filters.materialId) {
-        logQuery = logQuery.eq('material_id', filters.materialId);
+      // Apply material filter
+      if (currentFilters.materialId) {
+        logQuery = logQuery.eq('material_id', currentFilters.materialId);
       }
       
-      // If order IDs filter exists
-      if (filters.orderIds && filters.orderIds.length > 0) {
-        logQuery = logQuery.in('reference_id', filters.orderIds);
+      // Apply order filter - use reference_id for orders
+      if (currentFilters.orderIds && currentFilters.orderIds.length > 0) {
+        logQuery = logQuery.in('reference_id', currentFilters.orderIds);
       } else {
-        // Otherwise just get order-related transactions
+        // Just get order-related transactions
         logQuery = logQuery.eq('reference_type', 'Order');
       }
       
-      // Date filters
-      if (filters.dateRange.startDate) {
-        logQuery = logQuery.gte('transaction_date', filters.dateRange.startDate.toISOString());
+      // Apply date filter
+      if (currentFilters.dateRange.startDate) {
+        logQuery = logQuery.gte('transaction_date', currentFilters.dateRange.startDate.toISOString());
       }
       
-      if (filters.dateRange.endDate) {
-        logQuery = logQuery.lte('transaction_date', filters.dateRange.endDate.toISOString());
+      if (currentFilters.dateRange.endDate) {
+        logQuery = logQuery.lte('transaction_date', currentFilters.dateRange.endDate.toISOString());
       }
       
+      // Execute transaction log query
       const { data: logData, error: logError } = await logQuery;
       
       if (logError) {
         console.error("Error fetching transaction log data:", logError);
-      } else if (logData && logData.length > 0) {
-        logRecords = logData.map(log => {
-          // Extract metadata or provide defaults
-          const metadata = log.metadata || {};
+      }
+      
+      // 3. Process and deduplicate the combined data
+      
+      // First, convert log data to the same format as order_material_breakdown
+      const convertedLogData = (logData || []).map(log => {
+        // Skip null or undefined logs
+        if (!log) return null;
+        
+        // Get metadata or use empty object if undefined
+        // Ensure metadata is an object we can safely access properties from
+        const metadata = typeof log.metadata === 'object' && log.metadata !== null && !Array.isArray(log.metadata)
+          ? log.metadata as Record<string, any>
+          : {};
+        
+        // Skip non-consumption transactions (e.g., quantity adjustments)
+        const isConsumption = 
+          (log.quantity < 0) || 
+          (log.transaction_type && String(log.transaction_type).toLowerCase().includes('consum')) ||
+          (log.notes && String(log.notes).toLowerCase().includes('consum'));
           
-          return {
-            // Map to a consistent format
-            order_id: log.reference_id,
-            order_number: log.reference_number,
-            material_id: log.material_id,
-            material_name: metadata.material_name || 'Unknown',
-            // Important: We're using the raw quantity here and will process it properly later
-            // to avoid double-counting decreases
-            quantity: log.quantity,
-            unit: metadata.unit || 'units',
-            usage_date: log.transaction_date,
-            company_name: metadata.company_name || 'Unknown',
-            component_type: metadata.component_type || 'Unknown',
-            purchase_price: metadata.purchase_price || 0,
-            transaction_type: log.transaction_type,
-            source: 'transaction_log',
-            log_id: log.id,
-            notes: log.notes
-          };
-        });
-      }
-    } catch (error) {
-      console.error("Error in transaction log query:", error);
-    }
-    
-    // Fetch from inventory_transactions as well
-    let txRecords: any[] = [];
-    try {
-      let txQuery = supabase
-        .from('inventory_transactions')
-        .select('*');
-      
-      // Apply filters
-      if (filters.materialId) {
-        txQuery = txQuery.eq('material_id', filters.materialId);
-      }
-      
-      // Date filters - field name may differ
-      if (filters.dateRange.startDate) {
-        txQuery = txQuery.gte('created_at', filters.dateRange.startDate.toISOString());
-      }
-      
-      if (filters.dateRange.endDate) {
-        txQuery = txQuery.lte('created_at', filters.dateRange.endDate.toISOString());
-      }
-      
-      const { data: txData, error: txError } = await txQuery;
-      
-      if (txError) {
-        console.error("Error fetching inventory transactions data:", txError);
-      } else if (txData && txData.length > 0) {
-        txRecords = txData.map(tx => {
-          return {
-            // Map to our consistent format
-            order_id: tx.reference_id || '',
-            order_number: tx.reference_number || '',
-            material_id: tx.material_id,
-            material_name: tx.material_name || 'Unknown',
-            // Again, using raw quantity to process properly
-            quantity: tx.quantity,
-            unit: tx.unit || 'units',
-            usage_date: tx.created_at,
-            company_name: tx.company_name || 'Unknown',
-            component_type: tx.component_type || 'Unknown',
-            purchase_price: tx.purchase_price || 0,
-            transaction_type: tx.transaction_type,
-            source: 'inventory_transactions',
-            notes: tx.notes
-          };
-        });
-      }
-    } catch (error) {
-      console.error("Error in inventory transactions query:", error);
-    }
-    
-    // Combine all records but we will deduplicate them later
-    return [...baseRecords, ...logRecords, ...txRecords];
-  };
-  
-  // Function to consolidate material consumption from transaction records
-  const consolidateMaterialConsumption = (transactions: any[]) => {
-    // Group transactions by material
-    const materialMap = new Map();
-    
-    // First, process all transactions to correctly identify consumption
-    transactions.forEach(tx => {
-      // Skip transactions we don't want to count for consumption
-      if (!tx.material_id) return;
-      
-      // We only want to count actual consumption, not just any quantity change
-      // Negative quantities typically indicate consumption or usage
-      // Some systems might record positive values for consumption - check notes or transaction_type
-      const isConsumption = 
-        (tx.quantity < 0) || 
-        (tx.transaction_type && tx.transaction_type.toLowerCase().includes('consum')) ||
-        (tx.notes && tx.notes.toLowerCase().includes('consum'));
-      
-      if (!isConsumption) return;
-      
-      // Get the absolute value for consumption
-      const consumptionAmount = Math.abs(tx.quantity);
-      
-      // Create a unique key for the order+material+date to detect duplicates
-      const date = tx.usage_date ? new Date(tx.usage_date) : new Date();
-      date.setMinutes(0, 0, 0); // Round to nearest hour
-      const txKey = `${tx.order_id}_${tx.material_id}_${date.toISOString()}`;
-      
-      // If we already saw this specific transaction, skip it
-      if (tx.processedTxKey === txKey) return;
-      tx.processedTxKey = txKey;
-      
-      // Get or create material entry
-      if (!materialMap.has(tx.material_id)) {
-        materialMap.set(tx.material_id, {
-          material_id: tx.material_id,
-          material_name: tx.material_name,
-          gsm: tx.gsm,
-          color: tx.color,
-          unit: tx.unit,
-          total_consumption: 0,
-          total_usage: 0, // Alias for compatibility
-          purchase_price: tx.purchase_price || 0,
-          orders: new Set(),
-          first_usage_date: tx.usage_date,
-          last_usage_date: tx.usage_date,
-          // Track seen transactions to avoid duplicates
-          seen_transactions: new Set([txKey])
-        });
-      }
-      
-      const materialData = materialMap.get(tx.material_id);
-      
-      // Check if we've already processed this exact transaction
-      if (materialData.seen_transactions.has(txKey)) {
-        return; // Skip duplicate
-      }
-      
-      // Update material consumption data
-      materialData.total_consumption += consumptionAmount;
-      materialData.total_usage = materialData.total_consumption; // Alias for compatibility
-      
-      // Track order info
-      if (tx.order_id) {
-        materialData.orders.add(tx.order_id);
-      }
-      
-      // Update date tracking
-      if (tx.usage_date) {
-        const txDate = new Date(tx.usage_date);
+        if (!isConsumption) return null;
         
-        if (!materialData.first_usage_date || txDate < new Date(materialData.first_usage_date)) {
-          materialData.first_usage_date = tx.usage_date;
+        return {
+          order_id: log.reference_id || '',
+          order_number: log.reference_number || '',
+          material_id: log.material_id || '',
+          material_name: String(metadata.material_name || 'Unknown'),
+          total_material_used: Math.abs(Number(log.quantity) || 0),
+          unit: String(metadata.unit || 'units'),
+          usage_date: log.transaction_date || new Date().toISOString(),
+          company_name: String(metadata.company_name || 'Unknown'),
+          component_type: String(metadata.component_type || 'Unknown'),
+          // Handle purchase_price safely with type checking
+          purchase_price: 'purchase_price' in metadata ? Number(metadata.purchase_price) : 0,
+          source: 'transaction_log',
+          log_id: log.id
+        };
+      }).filter(Boolean); // Remove null entries
+      
+      // Combine data sources
+      const breakdownItems = (breakdownData || []).map(item => ({...item, source: 'breakdown'}));
+      
+      // Log the data sources for debugging
+      console.log(`Found ${breakdownItems.length} records from order_material_breakdown`);
+      console.log(`Found ${convertedLogData.length} valid consumption records from transaction log`);
+      
+      const combinedData = [...breakdownItems, ...convertedLogData];
+      
+      // Create a map to track unique transactions - more aggressive deduplication
+      const uniqueTransactions = new Map();
+      
+      // Group transactions by order_id and material_id
+      const groupedTransactions = new Map();
+      
+      // First, group all transactions by order and material
+      combinedData.forEach(tx => {
+        // Skip incomplete entries
+        if (!tx.order_id || !tx.material_id) return;
+        
+        const groupKey = `${tx.order_id}_${tx.material_id}`;
+        
+        if (!groupedTransactions.has(groupKey)) {
+          groupedTransactions.set(groupKey, []);
         }
         
-        if (!materialData.last_usage_date || txDate > new Date(materialData.last_usage_date)) {
-          materialData.last_usage_date = tx.usage_date;
-        }
-      }
-      
-      // Mark this transaction as seen
-      materialData.seen_transactions.add(txKey);
-    });
-    
-    // Convert the map to array and calculate order counts
-    return Array.from(materialMap.values()).map(material => ({
-      ...material,
-      orders_count: material.orders.size,
-      orders: Array.from(material.orders), // Convert Set to Array
-      seen_transactions: undefined // Remove temp tracking property
-    }));
-  };
-  
-  // Function to consolidate order consumption from transaction records
-  const consolidateOrderConsumption = (transactions: any[]) => {
-    // Group by order first
-    const orderMap = new Map();
-    
-    // Process transactions to correctly identify consumption
-    transactions.forEach(tx => {
-      // Skip incomplete transactions
-      if (!tx.material_id || !tx.order_id) return;
-      
-      // We only want to count actual consumption, not just any quantity change
-      const isConsumption = 
-        (tx.quantity < 0) || 
-        (tx.transaction_type && tx.transaction_type.toLowerCase().includes('consum')) ||
-        (tx.notes && tx.notes.toLowerCase().includes('consum'));
-      
-      if (!isConsumption) return;
-      
-      // Get the absolute value for consumption
-      const consumptionAmount = Math.abs(tx.quantity);
-      
-      // Create a unique key for the order+material+date to detect duplicates
-      const date = tx.usage_date ? new Date(tx.usage_date) : new Date();
-      date.setMinutes(0, 0, 0); // Round to nearest hour
-      const txKey = `${tx.order_id}_${tx.material_id}_${date.toISOString()}`;
-      
-      // Get or create order entry
-      if (!orderMap.has(tx.order_id)) {
-        orderMap.set(tx.order_id, {
-          order_id: tx.order_id,
-          order_number: tx.order_number,
-          company_name: tx.company_name,
-          usage_date: tx.usage_date,
-          materials: new Map(),
-          seen_transactions: new Set()
-        });
-      }
-      
-      const orderData = orderMap.get(tx.order_id);
-      
-      // Check if we've already seen this exact transaction
-      if (orderData.seen_transactions.has(txKey)) {
-        return; // Skip duplicate
-      }
-      
-      // Get or create material entry for this order
-      if (!orderData.materials.has(tx.material_id)) {
-        orderData.materials.set(tx.material_id, {
-          material_id: tx.material_id,
-          material_name: tx.material_name,
-          unit: tx.unit,
-          total_material_used: 0,
-          purchase_price: tx.purchase_price || 0,
-          component_type: tx.component_type
-        });
-      }
-      
-      const materialData = orderData.materials.get(tx.material_id);
-      
-      // Update material consumption
-      materialData.total_material_used += consumptionAmount;
-      
-      // Mark this transaction as seen
-      orderData.seen_transactions.add(txKey);
-    });
-    
-    // Convert to the expected format for orderConsumptionData
-    const result: any[] = [];
-    
-    orderMap.forEach(order => {
-      order.materials.forEach(material => {
-        result.push({
-          order_id: order.order_id,
-          order_number: order.order_number,
-          company_name: order.company_name,
-          usage_date: order.usage_date,
-          material_id: material.material_id,
-          material_name: material.material_name,
-          total_material_used: material.total_material_used,
-          unit: material.unit,
-          purchase_price: material.purchase_price,
-          component_type: material.component_type
-        });
+        groupedTransactions.get(groupKey).push(tx);
       });
-    });
-    
-    return result;
-  };
+      
+      // Now process each group to pick the best representative transaction
+      groupedTransactions.forEach((transactions, groupKey) => {
+        // Sort by source (prefer 'breakdown' over 'transaction_log') and date (prefer newer)
+        transactions.sort((a, b) => {
+          // First, prefer breakdown source
+          if (a.source === 'breakdown' && b.source !== 'breakdown') return -1;
+          if (a.source !== 'breakdown' && b.source === 'breakdown') return 1;
+          
+          // For same source, prefer newer records
+          const dateA = a.usage_date ? new Date(a.usage_date) : new Date(0);
+          const dateB = b.usage_date ? new Date(b.usage_date) : new Date(0);
+          return dateB.getTime() - dateA.getTime();
+        });
+        
+        // Only take the first/best transaction from each group
+        // This ensures we have exactly ONE transaction per order/material combination
+        if (transactions.length > 0) {
+          uniqueTransactions.set(groupKey, transactions[0]);
+        }
+      });
+      
+      console.log(`Reduced from ${combinedData.length} to ${uniqueTransactions.size} unique material consumption records`);
+      
+      // Convert back to array
+      const deduplicated = Array.from(uniqueTransactions.values());
+      
+      // Make sure all required fields are present with proper types
+      const formattedData = deduplicated.map(item => {
+        // Use the price from the material price map if available
+        const materialPrice = item.material_id ? materialPriceMap.get(item.material_id) : 0;
+        
+        // Prioritize existing purchase_price if it exists, otherwise use the price from inventory
+        const purchasePrice = Number(item.purchase_price) || materialPrice || 0;
+        
+        return {
+          order_id: item.order_id,
+          order_number: item.order_number || '',
+          company_name: item.company_name || 'Unknown',
+          usage_date: item.usage_date || new Date().toISOString(),
+          material_id: item.material_id,
+          material_name: item.material_name || 'Unknown',
+          total_material_used: Number(item.total_material_used) || 0,
+          unit: item.unit || 'units',
+          component_type: item.component_type || 'Unknown',
+          purchase_price: purchasePrice // Now with correct price from inventory if needed
+        };
+      });
+      
+      console.log(`Processed ${formattedData.length} order consumption records after deduplication`);
+      return formattedData;
+    },
+  });
 
   // Fetch inventory value data
   const { data: inventoryValueData, isLoading: loadingInventoryValue } = useQuery({
@@ -414,7 +285,7 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
       // Calculate total value for each material
       const items = (data || []).map(item => ({
         ...item,
-        totalValue: (item.quantity || 0) * (item.purchase_rate || 0)
+        totalValue: (Number(item.quantity) || 0) * (Number(item.purchase_rate) || 0)
       }));
       
       // Calculate total value of all inventory
@@ -443,7 +314,7 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
       
       const items = (data || []).map(item => {
         // Calculate value
-        const totalValue = (item.quantity || 0) * (item.purchase_rate || 0);
+        const totalValue = (Number(item.quantity) || 0) * (Number(item.purchase_rate) || 0);
         
         // Determine if refill is needed and urgency level
         const needsRefill = item.reorder_level && item.quantity < item.reorder_level;
@@ -464,7 +335,21 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
       // Filter to only materials needing refill and sort by urgency
       return items
         .filter(item => item.needsRefill)
-        .sort((a, b) => b.urgency - a.urgency);
+        .sort((a, b) => {
+          // Create a numeric mapping for urgency levels
+          const urgencyMap: Record<string, number> = {
+            'critical': 3,
+            'warning': 2,
+            'normal': 1
+          };
+          
+          // Get numeric values for comparison
+          const urgencyA = urgencyMap[a.urgency as string] || 0;
+          const urgencyB = urgencyMap[b.urgency as string] || 0;
+          
+          // Sort by numeric values
+          return urgencyB - urgencyA;
+        });
     },
   });
 
