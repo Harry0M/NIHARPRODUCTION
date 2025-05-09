@@ -4,7 +4,9 @@ import { useOrderDetails } from "./order-form/useOrderDetails";
 import { useOrderFormValidation } from "./order-form/useOrderFormValidation";
 import { useProductSelection } from "./order-form/useProductSelection";
 import { useOrderSubmission } from "./order-form/useOrderSubmission";
+import { useCostCalculation } from "./order-form/useCostCalculation"; 
 import { UseOrderFormReturn } from "@/types/order-form";
+import { useEffect } from "react";
 
 export function useOrderForm(): UseOrderFormReturn {
   // Use individual hooks
@@ -27,12 +29,16 @@ export function useOrderForm(): UseOrderFormReturn {
     setCustomComponents,
     baseConsumptions,
     setBaseConsumptions,
+    costCalculation,
+    setCostCalculation,
     handleComponentChange,
     handleCustomComponentChange,
     addCustomComponent,
     removeCustomComponent,
     updateConsumptionBasedOnQuantity
   } = useOrderComponents();
+  
+  const { calculateTotalCost } = useCostCalculation();
   
   const {
     handleProductSelect: processProductComponents
@@ -42,7 +48,8 @@ export function useOrderForm(): UseOrderFormReturn {
     setComponents,
     setCustomComponents,
     setBaseConsumptions,
-    updateConsumptionBasedOnQuantity
+    updateConsumptionBasedOnQuantity,
+    setCostCalculation
   });
   
   // Validate form by using the base validation and passing orderDetails
@@ -53,6 +60,60 @@ export function useOrderForm(): UseOrderFormReturn {
     processProductComponents(components);
   };
   
+  // Update cost calculation when relevant data changes
+  useEffect(() => {
+    // Get quantity 
+    const quantity = parseInt(orderDetails.total_quantity || orderDetails.quantity || '0');
+    if (isNaN(quantity) || quantity <= 0) return;
+
+    // Get production charges
+    const cuttingCharge = parseFloat(orderDetails.cutting_charge || '0');
+    const printingCharge = parseFloat(orderDetails.printing_charge || '0');
+    const stitchingCharge = parseFloat(orderDetails.stitching_charge || '0');
+    const transportCharge = parseFloat(orderDetails.transport_charge || '0');
+
+    // Calculate costs
+    const costs = calculateTotalCost(
+      components,
+      customComponents,
+      cuttingCharge,
+      printingCharge,
+      stitchingCharge,
+      transportCharge,
+      quantity
+    );
+
+    // Get margin
+    const margin = parseFloat(orderDetails.margin || '15');
+    
+    // Calculate selling price
+    const sellingPrice = costs.totalCost * (1 + margin/100);
+
+    // Update cost calculation state
+    setCostCalculation({
+      ...costs,
+      margin,
+      sellingPrice
+    });
+
+    // Also update the rate field in orderDetails
+    setOrderDetails(prev => ({
+      ...prev,
+      rate: sellingPrice.toFixed(2)
+    }));
+
+  }, [
+    components, 
+    customComponents, 
+    orderDetails.quantity,
+    orderDetails.total_quantity,
+    orderDetails.cutting_charge,
+    orderDetails.printing_charge,
+    orderDetails.stitching_charge,
+    orderDetails.transport_charge,
+    orderDetails.margin
+  ]);
+  
   const {
     submitting,
     handleSubmit
@@ -60,7 +121,8 @@ export function useOrderForm(): UseOrderFormReturn {
     orderDetails,
     components,
     customComponents,
-    validateForm
+    validateForm,
+    costCalculation
   });
   
   // Return a unified API that matches the original hook

@@ -1057,12 +1057,16 @@ export type Database = {
       order_components: {
         Row: {
           color: string | null
+          component_cost: number | null
+          component_cost_breakdown: Json | null
           component_type: string
           consumption: number | null
           created_at: string | null
           custom_name: string | null
+          from_template: boolean | null
           gsm: number | null
           id: string
+          is_custom: boolean | null
           material_id: string | null
           order_id: string | null
           roll_width: number | null
@@ -1071,12 +1075,16 @@ export type Database = {
         }
         Insert: {
           color?: string | null
+          component_cost?: number | null
+          component_cost_breakdown?: Json | null
           component_type: string
           consumption?: number | null
           created_at?: string | null
           custom_name?: string | null
+          from_template?: boolean | null
           gsm?: number | null
           id?: string
+          is_custom?: boolean | null
           material_id?: string | null
           order_id?: string | null
           roll_width?: number | null
@@ -1085,12 +1093,16 @@ export type Database = {
         }
         Update: {
           color?: string | null
+          component_cost?: number | null
+          component_cost_breakdown?: Json | null
           component_type?: string
           consumption?: number | null
           created_at?: string | null
           custom_name?: string | null
+          from_template?: boolean | null
           gsm?: number | null
           id?: string
+          is_custom?: boolean | null
           material_id?: string | null
           order_id?: string | null
           roll_width?: number | null
@@ -1204,6 +1216,7 @@ export type Database = {
           bag_length: number
           bag_width: number
           border_dimension: number | null
+          calculated_selling_price: number | null
           catalog_id: string | null
           company_id: string | null
           company_name: string
@@ -1212,22 +1225,32 @@ export type Database = {
           customer_address: string | null
           customer_name: string | null
           customer_phone: string | null
+          cutting_charge: number | null
           delivery_date: string | null
           description: string | null
           id: string
+          margin: number | null
+          material_cost: number | null
           order_date: string
           order_number: string
+          printing_charge: number | null
+          production_cost: number | null
           quantity: number
           rate: number | null
           sales_account_id: string | null
           special_instructions: string | null
           status: Database["public"]["Enums"]["order_status"] | null
+          stitching_charge: number | null
+          template_margin: number | null
+          total_cost: number | null
+          transport_charge: number | null
           updated_at: string
         }
         Insert: {
           bag_length: number
           bag_width: number
           border_dimension?: number | null
+          calculated_selling_price?: number | null
           catalog_id?: string | null
           company_id?: string | null
           company_name: string
@@ -1236,22 +1259,32 @@ export type Database = {
           customer_address?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          cutting_charge?: number | null
           delivery_date?: string | null
           description?: string | null
           id?: string
+          margin?: number | null
+          material_cost?: number | null
           order_date?: string
           order_number: string
+          printing_charge?: number | null
+          production_cost?: number | null
           quantity: number
           rate?: number | null
           sales_account_id?: string | null
           special_instructions?: string | null
           status?: Database["public"]["Enums"]["order_status"] | null
+          stitching_charge?: number | null
+          template_margin?: number | null
+          total_cost?: number | null
+          transport_charge?: number | null
           updated_at?: string
         }
         Update: {
           bag_length?: number
           bag_width?: number
           border_dimension?: number | null
+          calculated_selling_price?: number | null
           catalog_id?: string | null
           company_id?: string | null
           company_name?: string
@@ -1260,16 +1293,25 @@ export type Database = {
           customer_address?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          cutting_charge?: number | null
           delivery_date?: string | null
           description?: string | null
           id?: string
+          margin?: number | null
+          material_cost?: number | null
           order_date?: string
           order_number?: string
+          printing_charge?: number | null
+          production_cost?: number | null
           quantity?: number
           rate?: number | null
           sales_account_id?: string | null
           special_instructions?: string | null
           status?: Database["public"]["Enums"]["order_status"] | null
+          stitching_charge?: number | null
+          template_margin?: number | null
+          total_cost?: number | null
+          transport_charge?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -1853,6 +1895,19 @@ export type Database = {
       force_delete_order: {
         Args: { target_id: string }
         Returns: boolean
+      }
+      get_catalog_cost_data: {
+        Args: { catalog_id: string }
+        Returns: {
+          total_cost: number
+          material_cost: number
+          cutting_charge: number
+          printing_charge: number
+          stitching_charge: number
+          transport_charge: number
+          margin: number
+          selling_rate: number
+        }[]
       }
       get_deduplicated_order_consumption: {
         Args: {

@@ -7,6 +7,17 @@ export function useOrderComponents() {
   const [components, setComponents] = useState<Record<string, any>>({});
   const [customComponents, setCustomComponents] = useState<Component[]>([]);
   const [baseConsumptions, setBaseConsumptions] = useState<Record<string, number>>({});
+  const [costCalculation, setCostCalculation] = useState({
+    materialCost: 0,
+    cuttingCharge: 0,
+    printingCharge: 0,
+    stitchingCharge: 0,
+    transportCharge: 0,
+    productionCost: 0,
+    totalCost: 0,
+    margin: 15, // Default margin
+    sellingPrice: 0
+  });
   
   const handleComponentChange = (type: string, field: string, value: string) => {
     setComponents(prev => {
@@ -96,6 +107,8 @@ export function useOrderComponents() {
     setCustomComponents,
     baseConsumptions,
     setBaseConsumptions,
+    costCalculation,
+    setCostCalculation,
     handleComponentChange,
     handleCustomComponentChange,
     addCustomComponent,

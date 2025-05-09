@@ -12,6 +12,7 @@ interface UseProductSelectionProps {
   setCustomComponents: React.Dispatch<React.SetStateAction<any[]>>;
   setBaseConsumptions: React.Dispatch<React.SetStateAction<Record<string, number>>>;
   updateConsumptionBasedOnQuantity: (quantity: number) => void;
+  setCostCalculation?: React.Dispatch<React.SetStateAction<any>>;
 }
 
 export function useProductSelection({
@@ -20,7 +21,8 @@ export function useProductSelection({
   setComponents,
   setCustomComponents,
   setBaseConsumptions,
-  updateConsumptionBasedOnQuantity
+  updateConsumptionBasedOnQuantity,
+  setCostCalculation
 }: UseProductSelectionProps) {
   const [selectedProductId, setSelectedProductId] = useState<string | undefined>();
   
@@ -74,7 +76,7 @@ export function useProductSelection({
       try {
         const { data: materials, error } = await supabase
           .from('inventory')
-          .select('id, material_name, color, gsm, unit, roll_width')
+          .select('id, material_name, color, gsm, unit, roll_width, purchase_rate')
           .in('id', materialIds);
           
         if (error) {
@@ -97,8 +99,52 @@ export function useProductSelection({
       }
     }
 
-    components.forEach(component => {
-      if (!component) return;
+    // Collect cost data from product if available
+    let productCosts = {
+      cutting_charge: 0,
+      printing_charge: 0,
+      stitching_charge: 0,
+      transport_charge: 0,
+      margin: 15
+    };
+
+    // Try to fetch cost data from the catalog product
+    if (components[0]?.catalog_id) {
+      try {
+        const { data: costData, error } = await supabase
+          .from('catalog')
+          .select('cutting_charge, printing_charge, stitching_charge, transport_charge, margin')
+          .eq('id', components[0].catalog_id)
+          .single();
+          
+        if (!error && costData) {
+          productCosts = {
+            cutting_charge: costData.cutting_charge || 0,
+            printing_charge: costData.printing_charge || 0,
+            stitching_charge: costData.stitching_charge || 0,
+            transport_charge: costData.transport_charge || 0,
+            margin: costData.margin || 15
+          };
+          console.log("Fetched product cost data:", productCosts);
+        }
+      } catch (err) {
+        console.error('Error fetching product cost data:', err);
+      }
+    }
+
+    // Update the order details with cost data
+    setOrderDetails(prev => ({
+      ...prev,
+      cutting_charge: productCosts.cutting_charge?.toString() || '0',
+      printing_charge: productCosts.printing_charge?.toString() || '0',
+      stitching_charge: productCosts.stitching_charge?.toString() || '0',
+      transport_charge: productCosts.transport_charge?.toString() || '0',
+      margin: productCosts.margin?.toString() || '15'
+    }));
+
+    // Create a function to process each component
+    const processComponent = (component: any) => {
+      if (!component) return null;
       
       console.log("Processing component:", component);
       
@@ -141,29 +187,33 @@ export function useProductSelection({
       let materialColor = '';
       let materialGsm = '';
       let materialRollWidth = '';
+      let materialRate = 0;
       
       if (materialId && materialsData[materialId]) {
         // If we have fetched material data, use it
         materialColor = materialsData[materialId].color || '';
         materialGsm = materialsData[materialId].gsm?.toString() || '';
         materialRollWidth = materialsData[materialId].roll_width?.toString() || rollWidth;
+        materialRate = materialsData[materialId].purchase_rate || 0;
       } else {
         // Fallback to component data
         materialColor = component.material?.color || component.color || '';
         materialGsm = component.material?.gsm?.toString() || component.gsm?.toString() || '';
       }
 
-      console.log(`Component ${component.component_type} has material:`, {
-        materialId,
-        materialColor,
-        materialGsm,
-        materialRollWidth
-      });
-      
+      // Calculate material cost based on consumption and rate
+      let materialCost = 0;
+      if (totalConsumption && materialRate) {
+        const consumptionVal = parseFloat(totalConsumption);
+        if (!isNaN(consumptionVal)) {
+          materialCost = consumptionVal * materialRate;
+        }
+      }
+
       // Make sure component_type exists and is a string before converting to lower case
       if (!component.component_type || typeof component.component_type !== 'string') {
         console.warn('Component has no valid component_type:', component);
-        return;
+        return null;
       }
       
       const componentTypeLower = component.component_type.toLowerCase();
@@ -180,21 +230,45 @@ export function useProductSelection({
           console.log(`Calculated base consumption: ${baseConsumption} (total: ${totalConsumptionVal} / product qty: ${productQuantity})`);
         }
       }
+
+      // Prepare the common component object with all necessary fields
+      const commonFields = {
+        color: materialColor,
+        gsm: materialGsm,
+        length,
+        width,
+        consumption: totalConsumption,
+        baseConsumption: baseConsumption?.toString(),
+        roll_width: materialRollWidth || rollWidth,
+        material_id: materialId,
+        materialRate,
+        materialCost
+      };
+
+      return {
+        ...component,
+        ...commonFields,
+        componentTypeLower,
+        baseConsumption
+      };
+    };
+
+    // Process all components
+    const processedComponents = components.map(processComponent).filter(Boolean);
+
+    // Separate standard and custom components
+    processedComponents.forEach(comp => {
+      if (!comp) return;
+
+      const { componentTypeLower, baseConsumption } = comp;
       
       if (componentTypeLower === 'custom') {
         const customIndex = newCustomComponents.length;
         newCustomComponents.push({
           id: uuidv4(),
           type: 'custom',
-          customName: component.custom_name || '',
-          color: materialColor,
-          gsm: materialGsm,
-          length,
-          width,
-          consumption: totalConsumption, // Use the actual saved total consumption
-          baseConsumption: baseConsumption?.toString(), // Store the base consumption per unit
-          roll_width: materialRollWidth || rollWidth,
-          material_id: materialId
+          customName: comp.custom_name || '',
+          ...comp
         });
         
         // Store base consumption for this custom component
@@ -203,21 +277,14 @@ export function useProductSelection({
         }
       } else if (standardTypesLower.includes(componentTypeLower)) {
         // Map the component type to the capitalized version used in the UI
-        const componentTypeKey = component.component_type;
+        const componentTypeKey = comp.component_type;
         
         console.log(`Found standard component ${componentTypeLower} -> mapping to key ${componentTypeKey}`);
         
         newOrderComponents[componentTypeKey] = {
           id: uuidv4(),
           type: componentTypeKey, // Preserve original capitalization
-          color: materialColor,
-          gsm: materialGsm,
-          length,
-          width,
-          consumption: totalConsumption, // Use the actual saved total consumption 
-          baseConsumption: baseConsumption?.toString(), // Store the base consumption per unit
-          roll_width: materialRollWidth || rollWidth,
-          material_id: materialId
+          ...comp
         };
         
         // Store base consumption for standard component
@@ -235,6 +302,24 @@ export function useProductSelection({
     setComponents(newOrderComponents);
     setCustomComponents(newCustomComponents);
     setBaseConsumptions(newBaseConsumptions);
+
+    // Update cost calculation state if callback provided
+    if (setCostCalculation) {
+      // Sum up material costs from all components
+      const materialCost = [...Object.values(newOrderComponents), ...newCustomComponents].reduce(
+        (total, comp) => total + (comp.materialCost || 0), 0
+      );
+
+      setCostCalculation(prev => ({
+        ...prev,
+        materialCost,
+        cuttingCharge: productCosts.cutting_charge || 0,
+        printingCharge: productCosts.printing_charge || 0,
+        stitchingCharge: productCosts.stitching_charge || 0,
+        transportCharge: productCosts.transport_charge || 0,
+        margin: productCosts.margin || 15
+      }));
+    }
 
     // If quantity already entered, recalculate total quantity and update consumption
     if (orderDetails.quantity) {

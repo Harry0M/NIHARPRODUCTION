@@ -18,6 +18,15 @@ export interface Order {
   created_at: string;
   special_instructions?: string | null;
   sales_account_id?: string | null;
+  // Cost-related fields
+  material_cost?: number | null;
+  cutting_charge?: number | null;
+  printing_charge?: number | null;
+  stitching_charge?: number | null;
+  transport_charge?: number | null;
+  production_cost?: number | null;
+  total_cost?: number | null;
+  margin?: number | null;
 }
 
 export interface OrderFormData {
@@ -33,6 +42,12 @@ export interface OrderFormData {
   special_instructions: string;
   order_date: string;
   sales_account_id?: string | null;
+  // Cost-related fields
+  cutting_charge?: string;
+  printing_charge?: string;
+  stitching_charge?: string;
+  transport_charge?: string;
+  margin?: string;
 }
 
 export interface InventoryMaterial {
@@ -58,4 +73,7 @@ export interface Component {
   consumption?: string | number | null; // Allow both string and number for flexibility
   roll_width?: string | number | null; // Allow both string and number for flexibility
   inventory?: InventoryMaterial | null;
+  is_custom?: boolean;
+  component_cost?: number | null;
+  component_cost_breakdown?: any | null;
 }

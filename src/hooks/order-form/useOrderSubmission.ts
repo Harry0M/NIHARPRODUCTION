@@ -11,13 +11,25 @@ interface UseOrderSubmissionProps {
   components: Record<string, any>;
   customComponents: any[];
   validateForm: () => boolean;
+  costCalculation?: {
+    materialCost: number;
+    cuttingCharge: number;
+    printingCharge: number;
+    stitchingCharge: number;
+    transportCharge: number;
+    productionCost: number;
+    totalCost: number;
+    margin?: number;
+    sellingPrice?: number;
+  };
 }
 
 export function useOrderSubmission({
   orderDetails,
   components,
   customComponents,
-  validateForm
+  validateForm,
+  costCalculation
 }: UseOrderSubmissionProps) {
   const [submitting, setSubmitting] = useState(false);
 
@@ -54,18 +66,49 @@ export function useOrderSubmission({
     setSubmitting(true);
     
     try {
+      // Get cost values from costCalculation object or from orderDetails
+      const margin = costCalculation?.margin || parseFloat(orderDetails.margin || '15');
+      const materialCost = costCalculation?.materialCost || 0;
+      const cuttingCharge = costCalculation?.cuttingCharge || 
+                          (parseFloat(orderDetails.cutting_charge || '0') * parseFloat(orderDetails.total_quantity || orderDetails.quantity));
+      const printingCharge = costCalculation?.printingCharge || 
+                           (parseFloat(orderDetails.printing_charge || '0') * parseFloat(orderDetails.total_quantity || orderDetails.quantity));
+      const stitchingCharge = costCalculation?.stitchingCharge || 
+                            (parseFloat(orderDetails.stitching_charge || '0') * parseFloat(orderDetails.total_quantity || orderDetails.quantity));
+      const transportCharge = costCalculation?.transportCharge || 
+                            (parseFloat(orderDetails.transport_charge || '0') * parseFloat(orderDetails.total_quantity || orderDetails.quantity));
+      
+      // Calculate production and total costs
+      const productionCost = costCalculation?.productionCost || 
+                            (cuttingCharge + printingCharge + stitchingCharge + transportCharge);
+      const totalCost = costCalculation?.totalCost || (materialCost + productionCost);
+      
+      // Calculate selling price using margin
+      const sellingRate = costCalculation?.sellingPrice || 
+                        (orderDetails.rate ? parseFloat(orderDetails.rate) : (totalCost * (1 + margin/100)));
+      
       // Prepare data for database insert
       const orderData = {
         company_name: orderDetails.company_id ? null : orderDetails.company_name,
         company_id: orderDetails.company_id,
-        quantity: parseInt(orderDetails.total_quantity), // Use total quantity for the order
+        quantity: parseInt(orderDetails.total_quantity || orderDetails.quantity), // Use total quantity for the order
         bag_length: parseFloat(orderDetails.bag_length),
         bag_width: parseFloat(orderDetails.bag_width),
         border_dimension: orderDetails.border_dimension ? parseFloat(orderDetails.border_dimension) : null,
-        rate: orderDetails.rate ? parseFloat(orderDetails.rate) : null,
+        rate: sellingRate,
         order_date: orderDetails.order_date,
         sales_account_id: orderDetails.sales_account_id || null,
-        special_instructions: orderDetails.special_instructions || null
+        special_instructions: orderDetails.special_instructions || null,
+        // Cost calculations
+        material_cost: materialCost,
+        cutting_charge: parseFloat(orderDetails.cutting_charge || '0'),
+        printing_charge: parseFloat(orderDetails.printing_charge || '0'),
+        stitching_charge: parseFloat(orderDetails.stitching_charge || '0'),
+        transport_charge: parseFloat(orderDetails.transport_charge || '0'),
+        production_cost: productionCost,
+        total_cost: totalCost,
+        margin: margin,
+        calculated_selling_price: sellingRate
       };
 
       console.log("Submitting order data:", orderData);
@@ -148,6 +191,14 @@ export function useOrderSubmission({
             const rollWidthValue = convertStringToNumeric(comp.roll_width);
             const consumptionValue = convertStringToNumeric(comp.consumption);
             
+            // Get material cost if available
+            const materialCost = comp.materialCost;
+            const componentCostBreakdown = materialCost ? { 
+              material_cost: materialCost,
+              material_rate: comp.materialRate || 0,
+              consumption: consumptionValue
+            } : null;
+            
             // Debug log for individual component
             console.log(`Preparing component ${componentType}:`, {
               originalType: comp.type,
@@ -159,19 +210,25 @@ export function useOrderSubmission({
               convertedRollWidth: rollWidthValue,
               convertedConsumption: consumptionValue,
               size,
-              materialId: comp.material_id || null
+              materialId: comp.material_id || null,
+              isCustom: comp.type === 'custom',
+              materialCost,
+              componentCostBreakdown
             });
             
             return {
               order_id: orderResult.id,
               component_type: componentType,
+              is_custom: comp.type === 'custom',
               size,
               color: comp.color || null,
               gsm: gsmValue,
               custom_name: customName,
               material_id: comp.material_id || null,
               roll_width: rollWidthValue,
-              consumption: consumptionValue
+              consumption: consumptionValue,
+              component_cost: materialCost || null,
+              component_cost_breakdown: componentCostBreakdown
             };
           });
 

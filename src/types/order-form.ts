@@ -27,6 +27,18 @@ export interface FormErrors {
   total_quantity?: string;
 }
 
+export interface CostCalculation {
+  materialCost: number;
+  cuttingCharge: number;
+  printingCharge: number;
+  stitchingCharge: number;
+  transportCharge: number;
+  productionCost: number;
+  totalCost: number;
+  margin: number;
+  sellingPrice: number;
+}
+
 export interface UseOrderFormReturn {
   orderDetails: OrderFormData;
   components: Record<string, any>;
