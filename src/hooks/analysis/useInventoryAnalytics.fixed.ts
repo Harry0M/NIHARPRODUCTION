@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -331,7 +332,7 @@ export const useInventoryAnalytics = (filters?: InventoryAnalyticsFilters) => {
       // Process the already deduplicated order consumption data to create material summaries
       if (Array.isArray(orderConsumptionData)) {
         orderConsumptionData.forEach(item => {
-          if (!item.material_id) return;
+          if (!item || !item.material_id) return;
           
           // Get existing material entry or create a new one
           const materialKey = item.material_id;

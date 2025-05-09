@@ -1,7 +1,9 @@
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { startOfMonth, endOfMonth, parseISO, format } from "date-fns";
+import { calculateRefillUrgency } from "@/utils/analysisUtils";
 
 interface InventoryFilters {
   dateRange: {
@@ -41,11 +43,10 @@ export function useInventoryAnalytics() {
         params.end_date = filters.dateRange.endDate.toISOString();
       }
       
-      // Fetch material consumption data with proper aggregation
-      const { data, error } = await supabase.rpc(
-        'get_material_consumption_summary',
-        params
-      );
+      // Instead of using a Supabase function, query the view directly
+      const { data, error } = await supabase
+        .from('material_usage_summary')
+        .select('*');
       
       if (error) {
         console.error("Error fetching material consumption:", error);
@@ -76,11 +77,10 @@ export function useInventoryAnalytics() {
         params.p_end_date = filters.dateRange.endDate.toISOString();
       }
       
-      // Call the dedicated function for order consumption
-      const { data, error } = await supabase.rpc(
-        'get_deduplicated_order_consumption',
-        params
-      );
+      // Query order material breakdown view directly instead of using rpc
+      const { data, error } = await supabase
+        .from('order_material_breakdown')
+        .select('*');
       
       if (error) {
         console.error("Error fetching order consumption:", error);
@@ -90,6 +90,90 @@ export function useInventoryAnalytics() {
       return data || [];
     },
     enabled: !!filters.dateRange.startDate && !!filters.dateRange.endDate
+  });
+  
+  // Fetch inventory value data
+  const { data: inventoryValueData, isLoading: loadingInventoryValue } = useQuery({
+    queryKey: ['inventory-value'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('inventory')
+        .select('id, material_name, quantity, unit, purchase_rate, reorder_level, min_stock_level');
+      
+      if (error) {
+        console.error("Error fetching inventory value data:", error);
+        throw error;
+      }
+      
+      // Calculate total value for each material
+      const items = (data || []).map(item => ({
+        ...item,
+        totalValue: (Number(item.quantity) || 0) * (Number(item.purchase_rate) || 0)
+      }));
+      
+      // Calculate total value of all inventory
+      const totalInventoryValue = items.reduce((sum, item) => sum + item.totalValue, 0);
+      
+      // Add percentage of total for each item
+      return items.map(item => ({
+        ...item,
+        percentage: totalInventoryValue > 0 ? (item.totalValue / totalInventoryValue) * 100 : 0
+      }));
+    },
+  });
+
+  // Fetch inventory refill needs
+  const { data: refillNeedsData, isLoading: loadingRefillNeeds } = useQuery({
+    queryKey: ['refill-needs'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('inventory')
+        .select('id, material_name, quantity, unit, purchase_rate, reorder_level, min_stock_level');
+      
+      if (error) {
+        console.error("Error fetching refill needs data:", error);
+        throw error;
+      }
+      
+      const items = (data || []).map(item => {
+        // Calculate value
+        const totalValue = (Number(item.quantity) || 0) * (Number(item.purchase_rate) || 0);
+        
+        // Determine if refill is needed and urgency level
+        const needsRefill = item.reorder_level && item.quantity < item.reorder_level;
+        const urgency = calculateRefillUrgency(
+          item.quantity,
+          item.reorder_level,
+          item.min_stock_level
+        );
+        
+        return {
+          ...item,
+          totalValue,
+          needsRefill,
+          urgency
+        };
+      });
+      
+      // Filter to only materials needing refill and sort by urgency
+      return items
+        .filter(item => item.needsRefill)
+        .sort((a, b) => {
+          // Create a numeric mapping for urgency levels
+          const urgencyMap: Record<string, number> = {
+            'critical': 3,
+            'warning': 2,
+            'normal': 1
+          };
+          
+          // Get numeric values for comparison
+          const urgencyA = urgencyMap[a.urgency as string] || 0;
+          const urgencyB = urgencyMap[b.urgency as string] || 0;
+          
+          // Sort by numeric values
+          return urgencyB - urgencyA;
+        });
+    },
   });
   
   // Function to process transaction data for charts and analysis
@@ -237,7 +321,9 @@ export function useInventoryAnalytics() {
   return {
     consumptionData,
     orderConsumptionData: mappedOrderConsumption,
-    isLoading: loadingConsumption || loadingOrders,
+    inventoryValueData,
+    refillNeedsData,
+    isLoading: loadingConsumption || loadingOrders || loadingInventoryValue || loadingRefillNeeds,
     stockMetrics,
     filters,
     updateFilters,

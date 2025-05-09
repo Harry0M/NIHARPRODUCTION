@@ -87,6 +87,15 @@ const calculateProfitUsingMargin = (cost: number, marginPercent: number) => {
   return { profit, revenue, profitMargin };
 };
 
+// Fix the tooltip formatters to properly handle ValueType
+const formatTooltipValue = (value: any): number => {
+  // Ensure value is a number
+  if (typeof value === 'string') {
+    return parseFloat(value) || 0;
+  }
+  return Number(value) || 0;
+};
+
 const OrderConsumption = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
@@ -715,7 +724,7 @@ const OrderConsumption = () => {
                                   ))}
                                 </Pie>
                                 <Tooltip 
-                                  formatter={(value: any, name: any, props: any) => [
+                                  formatter={(value: any) => [
                                     `${value} ${props.payload.unit} (₹${formatCurrency(props.payload.materialValue)})`,
                                     props.payload.name
                                   ]}
@@ -756,7 +765,10 @@ const OrderConsumption = () => {
                                   ))}
                                 </Pie>
                                 <Tooltip 
-                                  formatter={(value: any) => [`₹${formatCurrency(value as number)}`, "Cost"]}
+                                  formatter={(value: any) => [
+                                    `₹${formatCurrency(value as number)}`,
+                                    "Cost"
+                                  ]}
                                 />
                                 <Legend />
                               </RechartsPieChart>
@@ -797,7 +809,7 @@ const OrderConsumption = () => {
                                   ))}
                                 </Pie>
                                 <Tooltip 
-                                  formatter={(value: any, name: any, props: any) => [
+                                  formatter={(value: any) => [
                                     `${value} ${props.payload.unit} (₹${formatCurrency(props.payload.materialValue)})`,
                                     props.payload.name
                                   ]}
@@ -838,7 +850,10 @@ const OrderConsumption = () => {
                                   ))}
                                 </Pie>
                                 <Tooltip 
-                                  formatter={(value: any) => [`₹${formatCurrency(value as number)}`, "Cost"]}
+                                  formatter={(value: any) => [
+                                    `₹${formatCurrency(value as number)}`,
+                                    "Cost"
+                                  ]}
                                 />
                                 <Legend />
                               </RechartsPieChart>
@@ -893,7 +908,10 @@ const OrderConsumption = () => {
                           <XAxis dataKey="name" angle={-45} textAnchor="end" height={50} />
                           <YAxis />
                           <Tooltip 
-                            formatter={(value, name) => [`₹${formatCurrency(value)}`, name]}
+                            formatter={(value, name) => [
+                              formatCurrency(formatTooltipValue(value)),
+                              name
+                            ]}
                             labelFormatter={(value) => `Order: ${value}`}
                           />
                           <Legend />
@@ -942,7 +960,10 @@ const OrderConsumption = () => {
                           <XAxis dataKey="name" angle={-45} textAnchor="end" height={50} />
                           <YAxis />
                           <Tooltip 
-                            formatter={(value) => [`₹${formatCurrency(value)}`, "Cost"]}
+                            formatter={(value) => [
+                              `₹${formatCurrency(value)}`,
+                              "Cost"
+                            ]}
                             labelFormatter={(value) => `Order: ${value}`}
                           />
                           <Legend />

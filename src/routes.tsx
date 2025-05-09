@@ -17,6 +17,8 @@ import JobCardNew from '@/pages/Production/JobCardNew';
 import Auth from '@/pages/Auth';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import StockList from '@/pages/Inventory/StockList';
+import InventoryValue from '@/pages/Analysis/InventoryValue';
+import RefillAnalysis from '@/pages/Analysis/RefillAnalysis';
 
 // Create a router with auth-aware routes
 export const router = createBrowserRouter([
@@ -47,6 +49,8 @@ export const router = createBrowserRouter([
           { path: 'production/job-cards/:id', element: <JobCardDetail /> },
           { path: 'inventory', element: <StockList /> },
           { path: 'analysis/materials', element: <MaterialConsumption /> },
+          { path: 'analysis/inventory-value', element: <InventoryValue /> },
+          { path: 'analysis/refill-needs', element: <RefillAnalysis /> },
         ],
       },
     ],
