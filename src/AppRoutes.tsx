@@ -69,6 +69,7 @@ const AppRoutes = () => {
     );
   }
 
+  // Wrap the RouterProvider with AuthProvider
   return (
     <AuthProvider initialUser={initialUser}>
       <RouterProvider router={router} />

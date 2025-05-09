@@ -2,7 +2,6 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate, useLocation } from "react-router-dom";
 
 interface AuthContextProps {
   session: Session | null;
@@ -19,32 +18,20 @@ interface AuthProviderProps {
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
-// Create a version of AuthProvider that doesn't need router context
+// Create a version of AuthProvider that doesn't rely on router hooks
 export const AuthProvider = ({ children, initialUser }: AuthProviderProps) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(initialUser);
   const [loading, setLoading] = useState(!initialUser);
   
-  // Get location and navigate within router context
-  const navigate = useNavigate();
-  const location = useLocation();
-
   useEffect(() => {
     // Setup the auth subscription
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
+        console.log("Auth state change:", event);
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         setLoading(false);
-        
-        // Sync auth state with routes - Using setTimeout to avoid React state update issues
-        setTimeout(() => {
-          if (event === "SIGNED_OUT") {
-            navigate("/auth");
-          } else if (event === "SIGNED_IN" && location.pathname === "/auth") {
-            navigate("/dashboard");
-          }
-        }, 0);
       }
     );
 
@@ -61,7 +48,7 @@ export const AuthProvider = ({ children, initialUser }: AuthProviderProps) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [navigate, location.pathname]);
+  }, []);
 
   const signOut = async () => {
     await supabase.auth.signOut();
