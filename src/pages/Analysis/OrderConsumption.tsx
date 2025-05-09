@@ -35,7 +35,6 @@ import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { exportToCSV, prepareOrderConsumptionDataForExport, prepareDetailedConsumptionDataForExport } from "@/utils/exportUtils";
-import { format } from "date-fns";
 
 const OrderConsumption = () => {
   const navigate = useNavigate();
@@ -107,7 +106,7 @@ const OrderConsumption = () => {
     }
     
     // Calculate material cost for this specific transaction
-    const materialCost = Number(item.total_material_used || 0) * (Number(item.purchase_price) || 0);
+    const materialCost = Number(item.total_material_used || 0) * (item.purchase_price || 0);
     
     // Initialize production costs
     let productionCosts = {
@@ -207,12 +206,12 @@ const OrderConsumption = () => {
         profitMargin: profitCalculation.profitMargin,
         marginPercent: marginPercent,
         productName: catalogData && typeof catalogData === 'object' && 'name' in catalogData ? 
-          String(catalogData.name || 'Unknown Product') : 'Unknown Product',
+          String(catalogData.name) : 'Unknown Product',
         catalogData: catalogData
       });
     }
     return acc;
-  }, []) || [];
+  }, []);
   
   // Get details of selected order
   const selectedOrder = selectedOrderId 
@@ -249,14 +248,6 @@ const OrderConsumption = () => {
   // Colors for the chart
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ff7300', '#a05195', '#d45087', '#2f4b7c'];
   
-  // Custom formatter for tooltips
-  const tooltipFormatter = (value: any, name: string) => {
-    if (typeof value === 'string') {
-      value = parseFloat(value);
-    }
-    return [`₹${formatCurrency(value)}`, name];
-  };
-
   if (isLoading || loadingOrderDetails) {
     return <LoadingSpinner />;
   }
@@ -403,7 +394,7 @@ const OrderConsumption = () => {
                           <div className="font-medium truncate flex items-center gap-2">
                             {order.name}
                             {order.profit > 0 ? (
-                              <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">+{order.profitMargin.toFixed(1)}%</Badge>
+                              <Badge variant="success" className="text-xs">+{order.profitMargin.toFixed(1)}%</Badge>
                             ) : (
                               <Badge variant="destructive" className="text-xs">{order.profitMargin.toFixed(1)}%</Badge>
                             )}
@@ -714,9 +705,89 @@ const OrderConsumption = () => {
                                   ))}
                                 </Pie>
                                 <Tooltip 
-                                  formatter={(value: any) => {
-                                    return [`₹${formatCurrency(Number(value))}`, "Cost"];
-                                  }}
+                                  formatter={(value: any) => [`₹${formatCurrency(value)}`, "Cost"]}
+                                />
+                                <Legend />
+                              </RechartsPieChart>
+                            </ResponsiveContainer>
+                          ) : (
+                            <div className="flex items-center justify-center h-full">
+                              <div className="text-center text-muted-foreground">
+                                <AlertCircle className="mx-auto h-8 w-8" />
+                                <h3 className="mt-2">No cost data available</h3>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="chart" className="space-y-8">
+                      {/* Material Distribution Pie Chart */}
+                      <div>
+                        <h3 className="text-lg font-medium mb-4">Material Distribution</h3>
+                        <div className="h-[300px]">
+                          {materialDistributionData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                              <RechartsPieChart>
+                                <Pie
+                                  data={materialDistributionData}
+                                  cx="50%"
+                                  cy="50%"
+                                  labelLine={false}
+                                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                  outerRadius={120}
+                                  fill="#8884d8"
+                                  dataKey="value"
+                                  nameKey="name"
+                                >
+                                  {materialDistributionData.map((entry: any, index: number) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                  ))}
+                                </Pie>
+                                <Tooltip 
+                                  formatter={(value: any, name: any, props: any) => [
+                                    `${value} ${props.payload.unit} (₹${formatCurrency(props.payload.materialValue)})`,
+                                    props.payload.name
+                                  ]}
+                                />
+                              </RechartsPieChart>
+                            </ResponsiveContainer>
+                          ) : (
+                            <div className="flex items-center justify-center h-full">
+                              <div className="text-center text-muted-foreground">
+                                <AlertCircle className="mx-auto h-8 w-8" />
+                                <h3 className="mt-2">No material data available</h3>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Cost Breakdown Pie Chart */}
+                      <div>
+                        <h3 className="text-lg font-medium mb-4">Cost Structure</h3>
+                        <div className="h-[300px]">
+                          {selectedOrder.totalCost > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                              <RechartsPieChart>
+                                <Pie
+                                  data={getCostBreakdownData(selectedOrder)}
+                                  cx="50%"
+                                  cy="50%"
+                                  labelLine={false}
+                                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                  outerRadius={120}
+                                  fill="#8884d8"
+                                  dataKey="value"
+                                  nameKey="name"
+                                >
+                                  {getCostBreakdownData(selectedOrder).map((entry: any, index: number) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                  ))}
+                                </Pie>
+                                <Tooltip 
+                                  formatter={(value: any) => [`₹${formatCurrency(value)}`, "Cost"]}
                                 />
                                 <Legend />
                               </RechartsPieChart>
@@ -770,7 +841,10 @@ const OrderConsumption = () => {
                         >
                           <XAxis dataKey="name" angle={-45} textAnchor="end" height={50} />
                           <YAxis />
-                          <Tooltip formatter={tooltipFormatter} labelFormatter={(value) => `Order: ${value}`} />
+                          <Tooltip 
+                            formatter={(value, name) => [`₹${formatCurrency(value)}`, name]}
+                            labelFormatter={(value) => `Order: ${value}`}
+                          />
                           <Legend />
                           <Bar dataKey="totalRevenue" name="Revenue" fill="#82ca9d" />
                           <Bar dataKey="totalCost" name="Cost" fill="#8884d8" />
@@ -817,9 +891,7 @@ const OrderConsumption = () => {
                           <XAxis dataKey="name" angle={-45} textAnchor="end" height={50} />
                           <YAxis />
                           <Tooltip 
-                            formatter={(value: any) => {
-                              return [`₹${formatCurrency(Number(value))}`, "Cost"];
-                            }}
+                            formatter={(value) => [`₹${formatCurrency(value)}`, "Cost"]}
                             labelFormatter={(value) => `Order: ${value}`}
                           />
                           <Legend />
