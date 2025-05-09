@@ -16,7 +16,19 @@ export function useOrderDetails() {
     rate: "",
     special_instructions: "",
     sales_account_id: null,
-    order_date: new Date().toISOString().split('T')[0]
+    order_date: new Date().toISOString().split('T')[0],
+    // Cost calculation fields
+    margin: "",
+    material_cost: "",
+    production_cost: "",
+    total_cost: "",
+    calculated_selling_price: "",
+    template_margin: "",
+    // Production costs - these need to be stored for calculation purposes
+    cutting_charge: "",
+    printing_charge: "",
+    stitching_charge: "", 
+    transport_charge: ""
   });
   
   const { clearFieldError } = useOrderFormValidation();

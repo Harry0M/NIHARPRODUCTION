@@ -15,6 +15,9 @@ export interface Component {
   materialRate?: number;
   materialCost?: number;
   material_id?: string;
+  // New field to track if component is from a template
+  fromTemplate?: boolean;
+  componentCost?: number;
 }
 
 export interface FormErrors {
@@ -33,6 +36,13 @@ export interface UseOrderFormReturn {
   customComponents: Component[];
   submitting: boolean;
   formErrors: FormErrors;
+  costData: {
+    materialCost: number;
+    productionCost: number;
+    totalCost: number;
+    sellingPrice: number;
+    margin: number | null;
+  };
   handleOrderChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 
     target: { name: string; value: string | null } 
   }) => void;
@@ -44,4 +54,5 @@ export interface UseOrderFormReturn {
   handleSubmit: (e: React.FormEvent) => Promise<string | undefined>;
   validateForm: () => boolean;
   updateConsumptionBasedOnQuantity: (quantity: number) => void;
+  updateCostCalculations: () => void;
 }
