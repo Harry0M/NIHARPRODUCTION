@@ -1,11 +1,12 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, PackageCheck, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStitchingJob } from "@/hooks/use-stitching-job";
 import { StitchingForm } from "@/components/production/stitching/StitchingForm";
 import { Card, CardContent } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function StitchingJob() {
   const { id } = useParams();
@@ -20,6 +21,37 @@ export default function StitchingJob() {
     handleSubmit
   } = useStitchingJob(id);
   const [showNewJobForm, setShowNewJobForm] = useState(false);
+  const [totalPrintingQuantity, setTotalPrintingQuantity] = useState(0);
+  
+  // Fetch printing jobs to calculate total quantity
+  useEffect(() => {
+    if (id) {
+      const fetchPrintingJobs = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('printing_jobs')
+            .select('received_quantity')
+            .eq('job_card_id', id);
+          
+          if (error) throw error;
+          
+          // Calculate total received quantity from printing jobs
+          const total = data.reduce((sum, job) => {
+            const quantity = job.received_quantity ? 
+              (typeof job.received_quantity === 'string' ? 
+                parseInt(job.received_quantity) : job.received_quantity) : 0;
+            return sum + quantity;
+          }, 0);
+          
+          setTotalPrintingQuantity(total);
+        } catch (err) {
+          console.error('Error fetching printing jobs:', err);
+        }
+      };
+      
+      fetchPrintingJobs();
+    }
+  }, [id]);
 
   if (fetching) {
     return (
@@ -99,6 +131,7 @@ export default function StitchingJob() {
           onCancel={() => setShowNewJobForm(false)}
           loading={loading}
           selectedJobId={null}
+          totalPrintingQuantity={totalPrintingQuantity}
         />
       )}
 
@@ -148,6 +181,7 @@ export default function StitchingJob() {
           onCancel={() => setSelectedJobId(null)}
           loading={loading}
           selectedJobId={selectedJobId}
+          totalPrintingQuantity={totalPrintingQuantity}
         />
       )}
     </div>
