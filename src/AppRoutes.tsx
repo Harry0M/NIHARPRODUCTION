@@ -1,8 +1,7 @@
-
 import { useRoutes, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
-import router from "./routes";
+import { router } from "./routes";  // Import named export instead of default
 import { supabase } from "@/integrations/supabase/client";
 import { AuthProvider } from "@/context/AuthContext";
 

@@ -1,3 +1,4 @@
+
 import { createBrowserRouter } from "react-router-dom";
 
 import AppLayout from "./components/layout/AppLayout";
@@ -50,8 +51,8 @@ import PartnerAnalysis from "./pages/Analysis/PartnerAnalysis";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
-// Export the router for use in AppRoutes.tsx
-export const router = createBrowserRouter([
+// Export the router as a named export for use in AppRoutes.tsx
+export const router = [
   {
     path: "/",
     element: <AppLayout />,
@@ -173,7 +174,6 @@ export const router = createBrowserRouter([
     path: "*",
     element: <NotFound />
   }
-]);
+];
 
-// Export default for AppRoutes.tsx
-export default router;
+// No default export needed - we're using the named export

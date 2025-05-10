@@ -41,3 +41,6 @@ export function CuttingJobOrderInfo({ order }: CuttingJobOrderInfoProps) {
     </Card>
   );
 }
+
+// Add default export
+export default CuttingJobOrderInfo;
