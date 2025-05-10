@@ -1,4 +1,3 @@
-
 import { createBrowserRouter } from "react-router-dom";
 
 import AppLayout from "./components/layout/AppLayout";
@@ -9,7 +8,7 @@ import OrderList from "./pages/Orders/OrderList";
 import OrderNew from "./pages/Orders/OrderNew";
 import OrderDetail from "./pages/Orders/OrderDetail";
 import OrderEdit from "./pages/Orders/OrderEdit";
-import { StockList } from "@/pages/Inventory/StockList";
+import StockList from "@/pages/Inventory/StockList";
 import StockNew from "./pages/Inventory/StockNew";
 import StockDetail from "./pages/Inventory/StockDetail";
 import CatalogList from "./pages/Inventory/CatalogList";
@@ -51,6 +50,7 @@ import PartnerAnalysis from "./pages/Analysis/PartnerAnalysis";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
+// Export the router for use in AppRoutes.tsx
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -175,3 +175,5 @@ export const router = createBrowserRouter([
   }
 ]);
 
+// Export default for AppRoutes.tsx
+export default router;
