@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -10,6 +9,7 @@ interface StitchingJobData {
   worker_name: string;
   is_internal: boolean;
   received_quantity: number | null;
+  provided_quantity: number | null;
   part_quantity: number | null;
   border_quantity: number | null;
   handle_quantity: number | null;

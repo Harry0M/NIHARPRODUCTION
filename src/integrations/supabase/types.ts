@@ -1554,6 +1554,7 @@ export type Database = {
           notes: string | null
           part_quantity: number | null
           piping_quantity: number | null
+          provided_quantity: number | null
           rate: number | null
           received_quantity: number | null
           runner_quantity: number | null
@@ -1575,6 +1576,7 @@ export type Database = {
           notes?: string | null
           part_quantity?: number | null
           piping_quantity?: number | null
+          provided_quantity?: number | null
           rate?: number | null
           received_quantity?: number | null
           runner_quantity?: number | null
@@ -1596,6 +1598,7 @@ export type Database = {
           notes?: string | null
           part_quantity?: number | null
           piping_quantity?: number | null
+          provided_quantity?: number | null
           rate?: number | null
           received_quantity?: number | null
           runner_quantity?: number | null
