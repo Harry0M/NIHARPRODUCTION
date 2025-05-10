@@ -19,6 +19,8 @@ interface StitchingFormProps {
   loading: boolean;
   selectedJobId: string | null;
   totalPrintingQuantity?: number;
+  remainingQuantity?: number;
+  currentProvidedQuantity?: number;
 }
 
 export const StitchingForm = ({
@@ -27,7 +29,9 @@ export const StitchingForm = ({
   onCancel,
   loading,
   selectedJobId,
-  totalPrintingQuantity = 0
+  totalPrintingQuantity = 0,
+  remainingQuantity = 0,
+  currentProvidedQuantity = 0
 }: StitchingFormProps) => {
   const form = useForm<StitchingFormValues>({
     resolver: zodResolver(stitchingFormSchema),
@@ -56,7 +60,13 @@ export const StitchingForm = ({
             <CardDescription>Enter the stitching job specifications</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <QuantityFields form={form} totalPrintingQuantity={totalPrintingQuantity} />
+            <QuantityFields 
+              form={form} 
+              totalPrintingQuantity={totalPrintingQuantity} 
+              remainingQuantity={remainingQuantity}
+              selectedJobId={selectedJobId}
+              currentProvidedQuantity={currentProvidedQuantity}
+            />
             <DateFields form={form} />
             <NotesField form={form} />
             <WorkerFields form={form} />

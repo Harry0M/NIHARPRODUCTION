@@ -22,6 +22,7 @@ export default function StitchingJob() {
   } = useStitchingJob(id);
   const [showNewJobForm, setShowNewJobForm] = useState(false);
   const [totalPrintingQuantity, setTotalPrintingQuantity] = useState(0);
+  const [remainingQuantity, setRemainingQuantity] = useState(0);
   
   // Fetch printing jobs to calculate total quantity
   useEffect(() => {
@@ -44,6 +45,16 @@ export default function StitchingJob() {
           }, 0);
           
           setTotalPrintingQuantity(total);
+          
+          // Calculate remaining quantity by subtracting all provided quantities from existing stitching jobs
+          if (existingJobs) {
+            const totalProvided = existingJobs.reduce((sum, job) => {
+              return sum + (job.provided_quantity || 0);
+            }, 0);
+            setRemainingQuantity(total - totalProvided);
+          } else {
+            setRemainingQuantity(total);
+          }
         } catch (err) {
           console.error('Error fetching printing jobs:', err);
         }
@@ -51,7 +62,7 @@ export default function StitchingJob() {
       
       fetchPrintingJobs();
     }
-  }, [id]);
+  }, [id, existingJobs]);
 
   if (fetching) {
     return (
@@ -72,6 +83,13 @@ export default function StitchingJob() {
       </div>
     );
   }
+
+  // When editing a job, find the current provided quantity for that job
+  const getCurrentProvidedQuantity = () => {
+    if (!selectedJobId || !existingJobs) return 0;
+    const selectedJob = existingJobs.find(job => job.id === selectedJobId);
+    return selectedJob?.provided_quantity || 0;
+  };
 
   return (
     <div className="space-y-6">
@@ -107,7 +125,7 @@ export default function StitchingJob() {
       {showNewJobForm && (
         <StitchingForm
           defaultValues={{
-            received_quantity: null, // Remove auto-filling
+            received_quantity: null,
             provided_quantity: null,
             part_quantity: null,
             border_quantity: null,
@@ -133,6 +151,8 @@ export default function StitchingJob() {
           loading={loading}
           selectedJobId={null}
           totalPrintingQuantity={totalPrintingQuantity}
+          remainingQuantity={remainingQuantity}
+          currentProvidedQuantity={0}
         />
       )}
 
@@ -186,6 +206,8 @@ export default function StitchingJob() {
           loading={loading}
           selectedJobId={selectedJobId}
           totalPrintingQuantity={totalPrintingQuantity}
+          remainingQuantity={remainingQuantity}
+          currentProvidedQuantity={getCurrentProvidedQuantity()}
         />
       )}
     </div>
