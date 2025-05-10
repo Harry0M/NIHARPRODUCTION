@@ -2,7 +2,7 @@
 import { z } from "zod";
 
 export const stitchingFormSchema = z.object({
-  total_quantity: z.coerce.number().min(0, "Quantity must be a positive number").nullable(),
+  received_quantity: z.coerce.number().min(0, "Quantity must be a positive number").nullable(),
   part_quantity: z.coerce.number().min(0, "Part quantity must be a positive number").nullable(),
   border_quantity: z.coerce.number().min(0, "Border quantity must be a positive number").nullable(),
   handle_quantity: z.coerce.number().min(0, "Handle quantity must be a positive number").nullable(),

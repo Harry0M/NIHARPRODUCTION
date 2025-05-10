@@ -9,7 +9,7 @@ interface StitchingJobData {
   job_card_id: string;
   worker_name: string;
   is_internal: boolean;
-  total_quantity: number | null;
+  received_quantity: number | null;
   part_quantity: number | null;
   border_quantity: number | null;
   handle_quantity: number | null;
@@ -120,7 +120,7 @@ export const useStitchingJob = (jobCardId?: string) => {
     try {
       // Format job name as "worker_name-timestamp"
       const timestamp = new Date().getTime().toString().slice(-4);
-      const jobName = `${jobData.worker_name || 'worker'}-${timestamp}`;
+      const jobName = `${jobData.worker_name ? jobData.worker_name : 'worker'}-${timestamp}`;
 
       const { data, error } = await supabase
         .from('stitching_jobs')

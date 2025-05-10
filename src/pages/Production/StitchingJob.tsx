@@ -75,7 +75,7 @@ export default function StitchingJob() {
       {showNewJobForm && (
         <StitchingForm
           defaultValues={{
-            total_quantity: jobCard.order && jobCard.order.quantity ? jobCard.order.quantity : null,
+            received_quantity: jobCard.order && jobCard.order.quantity ? jobCard.order.quantity : null,
             part_quantity: null,
             border_quantity: null,
             handle_quantity: null,
@@ -113,6 +113,9 @@ export default function StitchingJob() {
                   <p className="text-sm text-muted-foreground">Status: {job.status}</p>
                   {job.worker_name && (
                     <p className="text-sm text-muted-foreground">Worker: {job.worker_name}</p>
+                  )}
+                  {job.received_quantity && (
+                    <p className="text-sm font-medium text-primary">Received Quantity: {job.received_quantity}</p>
                   )}
                 </div>
                 <Button 

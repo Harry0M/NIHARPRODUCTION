@@ -1555,10 +1555,10 @@ export type Database = {
           part_quantity: number | null
           piping_quantity: number | null
           rate: number | null
+          received_quantity: number | null
           runner_quantity: number | null
           start_date: string | null
           status: Database["public"]["Enums"]["job_status"] | null
-          total_quantity: number | null
           updated_at: string
           worker_name: string | null
         }
@@ -1576,10 +1576,10 @@ export type Database = {
           part_quantity?: number | null
           piping_quantity?: number | null
           rate?: number | null
+          received_quantity?: number | null
           runner_quantity?: number | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["job_status"] | null
-          total_quantity?: number | null
           updated_at?: string
           worker_name?: string | null
         }
@@ -1597,10 +1597,10 @@ export type Database = {
           part_quantity?: number | null
           piping_quantity?: number | null
           rate?: number | null
+          received_quantity?: number | null
           runner_quantity?: number | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["job_status"] | null
-          total_quantity?: number | null
           updated_at?: string
           worker_name?: string | null
         }

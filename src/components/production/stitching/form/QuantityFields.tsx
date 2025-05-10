@@ -10,7 +10,7 @@ interface QuantityFieldsProps {
 
 export const QuantityFields = ({ form }: QuantityFieldsProps) => {
   const quantityFields = [
-    { name: "total_quantity" as const, label: "Total Quantity" },
+    { name: "received_quantity" as const, label: "Received Quantity" },
     { name: "part_quantity" as const, label: "Part Quantity" },
     { name: "border_quantity" as const, label: "Border Quantity" },
     { name: "handle_quantity" as const, label: "Handle Quantity" },
