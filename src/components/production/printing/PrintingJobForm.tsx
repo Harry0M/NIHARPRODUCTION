@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -26,7 +27,6 @@ interface PrintingFormData {
   status: JobStatus;
   expected_completion_date: string;
   print_image: string;
-  received_quantity?: string; // Added field for received quantity from cutting job
 }
 
 interface PrintingJobFormProps {
@@ -35,7 +35,6 @@ interface PrintingJobFormProps {
     length: number;
     width: number;
   };
-  cuttingJobReceivedQuantity?: string; // Add prop for cutting job received quantity
   onSubmit: (data: PrintingFormData) => void;
   onCancel: () => void;
   isSubmitting: boolean;
@@ -44,7 +43,6 @@ interface PrintingJobFormProps {
 export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
   initialData,
   bagDimensions,
-  cuttingJobReceivedQuantity,
   onSubmit,
   onCancel,
   isSubmitting
@@ -62,8 +60,7 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
     expected_completion_date: initialData?.expected_completion_date || "",
     print_image: initialData?.print_image || "",
     id: initialData?.id, // Include id when initializing formData
-    job_card_id: initialData?.job_card_id, // Include job_card_id when initializing
-    received_quantity: initialData?.received_quantity || cuttingJobReceivedQuantity || ""
+    job_card_id: initialData?.job_card_id // Include job_card_id when initializing
   }));
   const [imagePreview, setImagePreview] = useState<string | null>(initialData?.print_image || null);
 
@@ -87,11 +84,10 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
       setFormData(prev => ({ 
         ...prev, 
         id: initialData.id,
-        job_card_id: initialData.job_card_id,
-        received_quantity: initialData.received_quantity || cuttingJobReceivedQuantity || prev.received_quantity
+        job_card_id: initialData.job_card_id 
       }));
     }
-  }, [initialData, cuttingJobReceivedQuantity]);
+  }, [initialData]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -117,20 +113,6 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
     <Card>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4 pt-4">
-          {/* Received Quantity from Cutting Job */}
-          {cuttingJobReceivedQuantity && (
-            <div className="space-y-2">
-              <Label htmlFor="received_quantity">Received Quantity from Cutting</Label>
-              <Input
-                id="received_quantity"
-                value={formData.received_quantity}
-                onChange={(e) => setFormData(prev => ({ ...prev, received_quantity: e.target.value }))}
-                placeholder="Quantity received from cutting"
-                className="bg-muted/30"
-              />
-            </div>
-          )}
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="pulling">Pulling</Label>
