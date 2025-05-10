@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { CalendarIcon, Filter } from "lucide-react";
 
 interface PartnerAnalysisFiltersProps {
@@ -70,9 +70,9 @@ export const PartnerAnalysisFilters = ({
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Date Range</label>
-              <DateRangePicker 
+              <DatePickerWithRange
+                date={undefined}
                 onChange={onDateRangeChange}
-                align="start"
                 className="w-full"
               />
             </div>

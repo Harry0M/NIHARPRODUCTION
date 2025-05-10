@@ -46,7 +46,7 @@ export const usePartnerPerformance = (dateRange?: { from: Date; to: Date }) => {
             received_quantity,
             created_at,
             updated_at,
-            rate:1,
+            rate,
             job_cards(
               job_name,
               orders(order_number, company_name)

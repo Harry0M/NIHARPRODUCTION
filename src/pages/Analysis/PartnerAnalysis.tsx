@@ -7,9 +7,10 @@ import { PartnerEfficiencyCard } from "@/components/analysis/partners/PartnerEff
 import { PartnerJobsTable } from "@/components/analysis/partners/PartnerJobsTable";
 import { filterJobsByType, sortPartnersByEfficiency } from "@/utils/partnerAnalysisUtils";
 import { PartnerJobData, PartnerPerformanceData } from "@/types/production";
+import { DateRange } from "react-day-picker";
 
 export default function PartnerAnalysis() {
-  const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | undefined>(undefined);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [jobTypeFilter, setJobTypeFilter] = useState<string>("all");
   const [partnerFilter, setPartnerFilter] = useState<string>("all");
   const [selectedPartner, setSelectedPartner] = useState<PartnerPerformanceData | null>(null);
@@ -73,7 +74,7 @@ export default function PartnerAnalysis() {
     setSelectedPartner(null);
   };
   
-  const handleDateRangeChange = (range?: { from: Date; to: Date }) => {
+  const handleDateRangeChange = (range: DateRange | undefined) => {
     setDateRange(range);
     // Reset selected partner when changing date range
     setSelectedPartner(null);
