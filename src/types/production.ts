@@ -122,3 +122,33 @@ export interface JobCardData {
     updated_at?: string;
   }[];
 }
+
+// New interfaces for partner analysis
+export interface PartnerPerformanceData {
+  partner_name: string;
+  job_type: 'cutting' | 'printing' | 'stitching';
+  total_jobs: number;
+  completed_jobs: number;
+  total_provided_quantity: number;
+  total_received_quantity: number;
+  efficiency_ratio: number;
+  average_rate: number;
+  total_cost: number;
+  avg_completion_time?: number; // in days
+}
+
+export interface PartnerJobData {
+  id: string;
+  job_type: 'cutting' | 'printing' | 'stitching';
+  partner_name: string;
+  provided_quantity: number;
+  received_quantity: number;
+  waste_percentage: number;
+  rate: number;
+  created_at: string;
+  completed_at?: string;
+  status: JobStatus;
+  job_card_id: string;
+  job_name?: string;
+  order_name?: string;
+}
