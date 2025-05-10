@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -205,48 +204,6 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
     }
   };
 
-  // New section to display worker name and received quantity prominently
-  const renderKeyInfoSection = () => {
-    if (!jobDetails) return null;
-    
-    return (
-      <div className="bg-muted/50 p-4 rounded-md mb-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <h4 className="text-sm font-medium text-muted-foreground">Worker</h4>
-            <p className="text-lg font-medium">
-              {jobDetails.worker_name || "Not assigned"}
-            </p>
-          </div>
-          {job.type === 'cutting' && (
-            <div>
-              <h4 className="text-sm font-medium text-muted-foreground">Received Quantity</h4>
-              <p className="text-lg font-medium">
-                {jobDetails.received_quantity !== null ? jobDetails.received_quantity : "Not recorded"}
-              </p>
-            </div>
-          )}
-          {job.type === 'printing' && (
-            <div>
-              <h4 className="text-sm font-medium text-muted-foreground">Received Quantity</h4>
-              <p className="text-lg font-medium">
-                {jobDetails.received_quantity !== null ? jobDetails.received_quantity : "Not recorded"}
-              </p>
-            </div>
-          )}
-          {job.type === 'stitching' && (
-            <div>
-              <h4 className="text-sm font-medium text-muted-foreground">Total Quantity</h4>
-              <p className="text-lg font-medium">
-                {jobDetails.total_quantity !== null ? jobDetails.total_quantity : "Not recorded"}
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   const renderJobSpecificDetails = () => {
     if (!jobDetails) return null;
     
@@ -254,6 +211,15 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
       case 'cutting':
         return (
           <>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-medium mb-1">Received Quantity</h4>
+                <p className="text-sm text-muted-foreground">
+                  {jobDetails.received_quantity || "Not recorded"}
+                </p>
+              </div>
+            </div>
+            
             {jobDetails.components && jobDetails.components.length > 0 && (
               <div className="mt-4">
                 <h4 className="font-medium mb-2">Components</h4>
@@ -368,6 +334,12 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
         return (
           <>
             <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-medium mb-1">Total Quantity</h4>
+                <p className="text-sm text-muted-foreground">
+                  {jobDetails.total_quantity || "Not specified"}
+                </p>
+              </div>
               <div>
                 <h4 className="font-medium mb-1">Start Date</h4>
                 <p className="text-sm text-muted-foreground">
@@ -494,14 +466,17 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
             </div>
           ) : (
             <>
-              {/* Prominently display worker name and received quantity */}
-              {renderKeyInfoSection()}
-              
               <div className="grid grid-cols-2 gap-4 pb-4">
                 <div>
                   <h4 className="font-medium mb-1">Created</h4>
                   <p className="text-sm text-muted-foreground">
                     {formatDate(jobDetails.created_at)}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-medium mb-1">Worker</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {jobDetails.worker_name || "Not assigned"}
                   </p>
                 </div>
                 <div>
