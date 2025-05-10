@@ -121,6 +121,3 @@ export function CuttingJobComponentForm({
     </Card>
   );
 }
-
-// Add a default export that re-exports the named export
-export default CuttingJobComponentForm;
