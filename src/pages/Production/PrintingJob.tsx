@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { ArrowLeft, Printer, Plus } from "lucide-react";
@@ -65,6 +64,7 @@ export default function PrintingJob() {
         sheet_length: String(formData.sheet_length),
         sheet_width: String(formData.sheet_width),
         rate: String(formData.rate || '0'),
+        received_quantity: formData.received_quantity || undefined, // Include received_quantity
       };
 
       if (formData.id) {
@@ -185,7 +185,9 @@ export default function PrintingJob() {
             // Convert numeric database values to strings for the form
             sheet_length: String(printingJobs.find(job => job.id === selectedJobId)!.sheet_length || ''),
             sheet_width: String(printingJobs.find(job => job.id === selectedJobId)!.sheet_width || ''),
-            rate: String(printingJobs.find(job => job.id === selectedJobId)!.rate || '')
+            rate: String(printingJobs.find(job => job.id === selectedJobId)!.rate || ''),
+            received_quantity: printingJobs.find(job => job.id === selectedJobId)!.received_quantity !== null ? 
+              String(printingJobs.find(job => job.id === selectedJobId)!.received_quantity) : ''
           }}
           bagDimensions={{
             length: jobCard.orders.bag_length,

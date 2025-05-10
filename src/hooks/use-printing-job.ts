@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -14,6 +15,7 @@ interface PrintingData {
   status: JobStatus;
   expected_completion_date: string;
   print_image: string;
+  received_quantity: string; // Add the received_quantity field
 }
 
 export const usePrintingJob = () => {
@@ -27,7 +29,8 @@ export const usePrintingJob = () => {
     rate: "",
     status: "pending",
     expected_completion_date: "",
-    print_image: ""
+    print_image: "",
+    received_quantity: "" // Initialize the received_quantity field
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);

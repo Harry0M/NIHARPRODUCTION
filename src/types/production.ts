@@ -1,4 +1,3 @@
-
 export type JobStatus = "pending" | "in_progress" | "completed";
 
 export interface TimelineJob {
@@ -68,6 +67,7 @@ export interface PrintingJobData {
   status: JobStatus;
   expected_completion_date: string;
   print_image: string;
+  received_quantity?: string; // Add the received_quantity field
   created_at?: string;
   created_by?: string;
 }

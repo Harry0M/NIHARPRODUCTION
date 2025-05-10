@@ -27,6 +27,7 @@ interface PrintingFormData {
   status: JobStatus;
   expected_completion_date: string;
   print_image: string;
+  received_quantity: string; // Add the received_quantity field
 }
 
 interface PrintingJobFormProps {
@@ -59,6 +60,7 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
     status: initialData?.status || "pending",
     expected_completion_date: initialData?.expected_completion_date || "",
     print_image: initialData?.print_image || "",
+    received_quantity: initialData?.received_quantity || "", // Initialize the received_quantity field
     id: initialData?.id, // Include id when initializing formData
     job_card_id: initialData?.job_card_id // Include job_card_id when initializing
   }));
@@ -168,6 +170,16 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
+              <Label htmlFor="received_quantity">Received Quantity</Label>
+              <Input
+                id="received_quantity"
+                type="number"
+                value={formData.received_quantity}
+                onChange={(e) => setFormData(prev => ({ ...prev, received_quantity: e.target.value }))}
+                placeholder="Enter received quantity"
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="rate">Rate</Label>
               <Input
                 id="rate"
@@ -176,24 +188,25 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
                 onChange={(e) => setFormData(prev => ({ ...prev, rate: e.target.value }))}
               />
             </div>
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value: JobStatus) => 
-                  setFormData(prev => ({ ...prev, status: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <Select
+              value={formData.status}
+              onValueChange={(value: JobStatus) => 
+                setFormData(prev => ({ ...prev, status: value }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

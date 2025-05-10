@@ -301,6 +301,12 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
               </p>
             </div>
             <div>
+              <h4 className="font-medium mb-1">Received Quantity</h4>
+              <p className="text-sm text-muted-foreground">
+                {jobDetails.received_quantity || "Not recorded"}
+              </p>
+            </div>
+            <div>
               <h4 className="font-medium mb-1">Expected Completion</h4>
               <p className="text-sm text-muted-foreground">
                 {jobDetails.expected_completion_date ? formatDate(jobDetails.expected_completion_date) : "Not set"}

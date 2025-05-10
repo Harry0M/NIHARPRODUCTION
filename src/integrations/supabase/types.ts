@@ -1349,6 +1349,7 @@ export type Database = {
           print_image: string | null
           pulling: string | null
           rate: number | null
+          received_quantity: number | null
           sheet_length: number | null
           sheet_width: number | null
           status: Database["public"]["Enums"]["job_status"] | null
@@ -1366,6 +1367,7 @@ export type Database = {
           print_image?: string | null
           pulling?: string | null
           rate?: number | null
+          received_quantity?: number | null
           sheet_length?: number | null
           sheet_width?: number | null
           status?: Database["public"]["Enums"]["job_status"] | null
@@ -1383,6 +1385,7 @@ export type Database = {
           print_image?: string | null
           pulling?: string | null
           rate?: number | null
+          received_quantity?: number | null
           sheet_length?: number | null
           sheet_width?: number | null
           status?: Database["public"]["Enums"]["job_status"] | null
