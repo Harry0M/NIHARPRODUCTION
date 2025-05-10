@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -205,29 +204,6 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
     }
   };
 
-  // Function to render prominent worker and received quantity information
-  const renderKeyJobInfo = () => {
-    if (!jobDetails) return null;
-    
-    return (
-      <div className="bg-muted/50 p-4 rounded-md mb-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <h3 className="text-base font-semibold">Worker</h3>
-            <p className="text-lg">{jobDetails.worker_name || "Not assigned"}</p>
-          </div>
-          
-          {jobDetails.received_quantity !== undefined && (
-            <div>
-              <h3 className="text-base font-semibold">Received Quantity</h3>
-              <p className="text-lg">{jobDetails.received_quantity || "Not recorded"}</p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   const renderJobSpecificDetails = () => {
     if (!jobDetails) return null;
     
@@ -235,6 +211,15 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
       case 'cutting':
         return (
           <>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-medium mb-1">Received Quantity</h4>
+                <p className="text-sm text-muted-foreground">
+                  {jobDetails.received_quantity || "Not recorded"}
+                </p>
+              </div>
+            </div>
+            
             {jobDetails.components && jobDetails.components.length > 0 && (
               <div className="mt-4">
                 <h4 className="font-medium mb-2">Components</h4>
@@ -481,14 +466,17 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
             </div>
           ) : (
             <>
-              {/* Prominent worker and received quantity information */}
-              {renderKeyJobInfo()}
-              
               <div className="grid grid-cols-2 gap-4 pb-4">
                 <div>
                   <h4 className="font-medium mb-1">Created</h4>
                   <p className="text-sm text-muted-foreground">
                     {formatDate(jobDetails.created_at)}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-medium mb-1">Worker</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {jobDetails.worker_name || "Not assigned"}
                   </p>
                 </div>
                 <div>
