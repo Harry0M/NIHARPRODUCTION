@@ -6,6 +6,7 @@ import { CuttingComponent, JobStatus } from "@/types/production";
 import { ComponentStatusSelect } from "@/components/production/cutting/ComponentStatusSelect";
 import { ComponentMeasurements } from "@/components/production/cutting/ComponentMeasurements";
 import { ComponentNotes } from "@/components/production/cutting/ComponentNotes";
+import { useEffect } from "react";
 
 interface CuttingJobComponentFormProps {
   components: Component[];
@@ -28,6 +29,34 @@ export function CuttingJobComponentForm({
     handleComponentChange(index, field, value);
   };
 
+  // Auto-fill width and height from component data if not already set
+  useEffect(() => {
+    components.forEach((component, index) => {
+      // For components that haven't been initialized yet
+      if (!componentData[index]?.width || componentData[index]?.width === "") {
+        // Try to extract dimensions from size field if available
+        if (component.size) {
+          // Attempt to parse size for width (assuming format like '10x20' or similar)
+          const sizeParts = component.size.split('x');
+          if (sizeParts.length > 0 && !isNaN(Number(sizeParts[0]))) {
+            handleComponentChange(index, "width", sizeParts[0].trim());
+          }
+        }
+      }
+      
+      if (!componentData[index]?.height || componentData[index]?.height === "") {
+        // Try to extract dimensions from size field if available
+        if (component.size) {
+          // Attempt to parse size for height (assuming format like '10x20' or similar)
+          const sizeParts = component.size.split('x');
+          if (sizeParts.length > 1 && !isNaN(Number(sizeParts[1]))) {
+            handleComponentChange(index, "height", sizeParts[1].trim());
+          }
+        }
+      }
+    });
+  }, [components, componentData, handleComponentChange]);
+
   return (
     <Card className="md:col-span-3">
       <CardHeader>
@@ -48,8 +77,8 @@ export function CuttingJobComponentForm({
               </div>
 
               <ComponentMeasurements
-                width={componentData[index]?.width || component.width?.toString() || ""}
-                height={componentData[index]?.height || component.length?.toString() || ""}
+                width={componentData[index]?.width || ""}
+                height={componentData[index]?.height || ""}
                 counter={componentData[index]?.counter || ""}
                 rewinding={componentData[index]?.rewinding || ""}
                 materialName={component.inventory?.material_name || ""}
