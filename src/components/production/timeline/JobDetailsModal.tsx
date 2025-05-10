@@ -57,6 +57,8 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
                 height,
                 counter,
                 rewinding,
+                roll_width,
+                consumption,
                 rate,
                 status,
                 notes,
