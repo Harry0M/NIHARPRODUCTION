@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, PackageCheck, Plus } from "lucide-react";
@@ -157,33 +156,57 @@ export default function StitchingJob() {
       )}
 
       {!showNewJobForm && !selectedJobId && !fetching && existingJobs && existingJobs.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {existingJobs.map((job) => (
-            <Card key={job.id} className="hover:border-primary transition-colors">
-              <CardContent className="pt-6">
-                <div className="mb-4">
-                  <p className="font-medium">Job Details</p>
-                  <p className="text-sm text-muted-foreground">Created: {new Date(job.created_at).toLocaleDateString()}</p>
-                  <p className="text-sm text-muted-foreground">Status: {job.status}</p>
-                  {job.worker_name && (
-                    <p className="text-sm text-muted-foreground">Worker: {job.worker_name}</p>
-                  )}
-                  {job.received_quantity && (
-                    <p className="text-sm font-medium text-primary">Received Quantity: {job.received_quantity}</p>
-                  )}
-                  {job.provided_quantity && (
-                    <p className="text-sm font-medium text-primary">Provided Quantity: {job.provided_quantity}</p>
-                  )}
+        <div className="space-y-4">
+          <div className="rounded-md border">
+            <div className="bg-muted/50 p-4 grid grid-cols-12 font-medium">
+              <div className="col-span-3">Worker & Quantity</div>
+              <div className="col-span-2">Status</div>
+              <div className="col-span-2">Created</div>
+              <div className="col-span-3">Quantities</div>
+              <div className="col-span-2">Actions</div>
+            </div>
+            {existingJobs.map((job) => {
+              // Format job title with worker name and provided quantity
+              const jobTitle = `${job.worker_name || 'Worker'} - ${job.provided_quantity || 0} pcs`;
+              
+              return (
+                <div key={job.id} className="p-4 border-t grid grid-cols-12 items-center hover:bg-muted/20 transition-colors">
+                  <div className="col-span-3">
+                    <p className="font-medium">{jobTitle}</p>
+                    {job.notes && <p className="text-xs text-muted-foreground line-clamp-1">{job.notes}</p>}
+                  </div>
+                  <div className="col-span-2">
+                    <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs ${job.status === 'completed' ? 'bg-green-100 text-green-700' : job.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                      {job.status === 'in_progress' ? 'In Progress' : job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                    </span>
+                  </div>
+                  <div className="col-span-2 text-sm text-muted-foreground">
+                    {new Date(job.created_at).toLocaleDateString()}
+                  </div>
+                  <div className="col-span-3 space-y-1">
+                    {job.provided_quantity && (
+                      <p className="text-sm"><span className="font-medium">Provided:</span> {job.provided_quantity}</p>
+                    )}
+                    {job.received_quantity && (
+                      <p className="text-sm"><span className="font-medium">Received:</span> {job.received_quantity}</p>
+                    )}
+                    {job.part_quantity && (
+                      <p className="text-sm"><span className="font-medium">Parts:</span> {job.part_quantity}</p>
+                    )}
+                  </div>
+                  <div className="col-span-2 flex justify-end">
+                    <Button
+                      onClick={() => setSelectedJobId(job.id)}
+                      size="sm"
+                      className="gap-1"
+                    >
+                      Edit
+                    </Button>
+                  </div>
                 </div>
-                <Button 
-                  onClick={() => setSelectedJobId(job.id)}
-                  className="w-full"
-                >
-                  Edit Stitching Job
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+              );
+            })}
+          </div>
         </div>
       )}
 

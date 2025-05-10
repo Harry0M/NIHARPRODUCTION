@@ -631,7 +631,8 @@ const CatalogNew = () => {
         description: `${formattedName} has been added to the catalog`
       });
 
-      navigate("/inventory/catalog");
+      // Force a page reload while navigating to ensure a complete refresh
+      window.location.href = '/inventory/catalog';
       
     } catch (error: any) {
       toast({

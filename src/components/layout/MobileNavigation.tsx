@@ -71,13 +71,8 @@ const MobileNavigation = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="end" className="w-56 mb-2">
                 <DropdownMenuItem asChild>
-                  <NavLink to="/vendors" className="flex items-center gap-2 py-2">
-                    Vendors
-                  </NavLink>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <NavLink to="/suppliers" className="flex items-center gap-2 py-2">
-                    Suppliers
+                  <NavLink to="/partners" className="flex items-center gap-2 py-2">
+                    Partners
                   </NavLink>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>

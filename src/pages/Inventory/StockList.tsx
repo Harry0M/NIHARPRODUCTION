@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, History, Bell } from "lucide-react";
+import { Plus, Trash2, History, Bell, Search, Box, Layers, Package, FileCheck, AlertCircle, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,13 +13,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyStockState } from "@/components/inventory/EmptyStockState";
 import { StockDetailDialog } from "@/components/inventory/StockDetailDialog";
 import { DeleteStockDialog } from "@/components/inventory/dialogs/DeleteStockDialog";
 import { showToast } from "@/components/ui/enhanced-toast";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
+import { DownloadButton } from "@/components/DownloadButton";
 
 const StockList = () => {
   const navigate = useNavigate();
@@ -262,161 +264,277 @@ const StockList = () => {
     setIsDeleteDialogOpen(true);
   };
 
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredStock = stock?.filter(item => 
+    (item.material_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.color?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.suppliers?.name?.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+  
   return (
-    <Card>
-      <div className="p-4 flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Inventory Stock</h2>
-        <Button onClick={() => navigate('/inventory/stock/new')}>
-          <Plus size={16} className="mr-2" />
-          Add Stock
-        </Button>
+    <div className="space-y-6 fade-in">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 slide-in">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <span className="h-6 w-1.5 rounded-full bg-primary inline-block"></span>
+            Inventory Stock
+          </h1>
+          <p className="text-muted-foreground mt-1">Manage your raw materials and inventory</p>
+        </div>
+        
+        <div className="flex items-center gap-3 scale-in" style={{animationDelay: '0.1s'}}>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => refetch()}
+            className="border-border/60 shadow-sm transition-all"
+          >
+            <RefreshCw size={16} className="mr-2" />
+            Refresh
+          </Button>
+          
+          <Button 
+            onClick={() => navigate('/inventory/stock/new')}
+            className="shadow-sm transition-all font-medium"
+          >
+            <Plus size={16} className="mr-2" />
+            Add Stock
+          </Button>
+        </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex justify-center items-center p-8">
-          <div className="rounded-full h-8 w-8 border-b-2 border-primary animate-spin"></div>
-        </div>
-      ) : stock?.length === 0 ? (
-        <EmptyStockState />
-      ) : (
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Material Name</TableHead>
-                <TableHead>Color</TableHead>
-                <TableHead>GSM</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Unit</TableHead>
-                {stock?.some(item => item.alternate_unit) && (
-                  <TableHead>Alt. Quantity</TableHead>
-                )}
-                {stock?.some(item => item.track_cost) && (
-                  <>
-                    <TableHead>Purchase Price</TableHead>
-                    <TableHead>Selling Price</TableHead>
-                  </>
-                )}
-                <TableHead>Supplier</TableHead>
-                <TableHead>Activity</TableHead>
-                <TableHead className="w-[80px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {stock?.map((item) => {
-                const hasRecentUpdate = recentlyUpdatedItems.includes(item.id);
-                const transactionCount = transactionCounts?.[item.id] || 0;
-                
-                return (
-                  <TableRow 
-                    key={item.id}
-                    className={`cursor-pointer hover:bg-muted ${hasRecentUpdate ? 'bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/20 dark:hover:bg-amber-900/30' : ''}`}
-                    onClick={() => handleStockClick(item.id)}
-                  >
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {hasRecentUpdate && (
-                          <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                          </span>
-                        )}
-                        {item.material_name}
-                      </div>
-                    </TableCell>
-                    <TableCell>{item.color || 'N/A'}</TableCell>
-                    <TableCell>{item.gsm || 'N/A'}</TableCell>
-                    <TableCell>{item.quantity} {item.unit}</TableCell>
-                    {stock?.some(i => i.alternate_unit) && (
-                      <TableCell>
-                        {item.alternate_unit ? 
-                          `${(item.quantity * (item.conversion_rate || 0)).toFixed(2)} ${item.alternate_unit}` : 
-                          'N/A'}
-                      </TableCell>
+      <Card className="border-border/60 shadow-sm fade-in overflow-hidden">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <span className="h-5 w-1 rounded-full bg-primary inline-block"></span>
+            All Materials
+            {!isLoading && filteredStock && (
+              <Badge 
+                variant="outline" 
+                className="ml-2 bg-muted/50 text-foreground/80 hover:bg-muted transition-colors border-border/40 shadow-sm"
+              >
+                <Box className="h-3 w-3 mr-1 text-primary" />
+                {filteredStock.length} {filteredStock.length === 1 ? 'item' : 'items'}
+              </Badge>
+            )}
+          </CardTitle>
+          <CardDescription className="mt-1">View and manage all your raw materials and stock</CardDescription>
+          
+          <div className="mt-4 relative">
+            <Input
+              placeholder="Search materials..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 border-border/60 focus:border-primary/60"
+            />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="flex flex-col justify-center items-center p-16 slide-up" style={{animationDelay: '0.2s'}}>
+              <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent mb-4"></div>
+              <p className="text-muted-foreground">Loading inventory...</p>
+            </div>
+          ) : filteredStock?.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-16 text-center bg-muted/20 dark:bg-muted/10 rounded-b-xl slide-up" style={{animationDelay: '0.2s'}}>
+              <div className="w-16 h-16 mb-4 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary">
+                <Layers className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">
+                {searchTerm ? 'No matching items found' : 'No inventory items'}
+              </h3>
+              <p className="text-muted-foreground max-w-md mb-6">
+                {searchTerm 
+                  ? `No materials match your search term "${searchTerm}". Try another search or clear the filter.` 
+                  : 'You haven\'t added any materials to your inventory yet. Add your first material to get started.'}
+              </p>
+              {searchTerm && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => setSearchTerm('')} 
+                  className="text-primary hover:bg-primary/5"
+                >
+                  <FileCheck className="h-4 w-4 mr-2" />
+                  Clear search
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-md border-t border-border/40 overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-muted/50 dark:bg-muted/20">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="font-medium">Material Name</TableHead>
+                    <TableHead className="font-medium">Color</TableHead>
+                    <TableHead className="font-medium">GSM</TableHead>
+                    <TableHead className="font-medium text-right">Quantity</TableHead>
+                    <TableHead className="font-medium">Unit</TableHead>
+                    {filteredStock?.some(item => item.alternate_unit) && (
+                      <TableHead className="font-medium">Alt. Quantity</TableHead>
                     )}
-                    {stock?.some(i => i.track_cost) && (
+                    {filteredStock?.some(item => item.track_cost) && (
                       <>
-                        <TableCell>{item.track_cost && item.purchase_price ? `₹${item.purchase_price}` : 'N/A'}</TableCell>
-                        <TableCell>{item.track_cost && item.selling_price ? `₹${item.selling_price}` : 'N/A'}</TableCell>
+                        <TableHead className="font-medium text-right">Purchase Price</TableHead>
+                        <TableHead className="font-medium text-right">Selling Price</TableHead>
                       </>
                     )}
-                    <TableCell>{item.suppliers?.name || 'N/A'}</TableCell>
-                    <TableCell>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            {transactionCount > 0 ? (
-                              <Badge variant="secondary" className="flex items-center gap-1">
-                                <History className="h-3 w-3" />
-                                {transactionCount}
-                              </Badge>
-                            ) : hasRecentUpdate ? (
-                              <Badge variant="outline" className="flex items-center gap-1">
-                                <Bell className="h-3 w-3" />
-                                Updated
-                              </Badge>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">None</span>
-                            )}
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {transactionCount > 0
-                              ? `${transactionCount} recent transactions`
-                              : hasRecentUpdate
-                                ? "Recently updated"
-                                : "No recent activity"}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={(e) => handleDeleteClick(e, item.id, item.material_name)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Delete</span>
-                      </Button>
-                    </TableCell>
+                    <TableHead className="font-medium">Supplier</TableHead>
+                    <TableHead className="font-medium">Activity</TableHead>
+                    <TableHead className="w-10"></TableHead>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+                </TableHeader>
+                <TableBody>
+                  {filteredStock?.map((item, index) => (
+                    <TableRow
+                      key={item.id}
+                      className={`cursor-pointer hover:bg-muted/40 dark:hover:bg-muted/20 transition-colors ${recentlyUpdatedItems.includes(item.id) ? 'bg-amber-50/70 hover:bg-amber-100/70 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 border-l-2 border-l-amber-400' : ''}`}
+                      onClick={() => handleStockClick(item.id)}
+                      style={{animationDelay: `${0.05 * index}s`}}
+                    >
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <span className={`${recentlyUpdatedItems.includes(item.id) ? 'text-amber-600 dark:text-amber-400' : 'text-primary'}`}>
+                            {item.material_name}
+                          </span>
+                          {recentlyUpdatedItems.includes(item.id) && (
+                            <Badge 
+                              variant="outline" 
+                              className="bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 border-amber-200 dark:border-amber-700/30 text-[10px] px-1 py-0 h-4"
+                            >
+                              NEW
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {item.color ? (
+                          <Badge variant="outline" className="bg-muted/30 dark:bg-muted/20 hover:bg-muted/50 border-border/60 text-xs font-normal">
+                            {item.color}
+                          </Badge>
+                        ) : '—'}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm">{item.gsm || '—'}</TableCell>
+                      <TableCell className="text-right font-medium">{item.quantity.toLocaleString()}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{item.unit}</TableCell>
+                      {filteredStock?.some(item => item.alternate_unit) && (
+                        <TableCell>
+                          {item.alternate_unit && item.quantity && item.conversion_rate
+                            ? <span className="text-sm">{(item.quantity * item.conversion_rate).toLocaleString()} <span className="text-muted-foreground">{item.alternate_unit}</span></span>
+                            : <span className="text-muted-foreground">\u2014</span>}
+                        </TableCell>
+                      )}
+                      {filteredStock?.some(item => item.track_cost) && (
+                        <>
+                          <TableCell className="text-right">
+                            {item.track_cost 
+                              ? <span className="font-medium text-blue-600 dark:text-blue-400">₹{item.purchase_price?.toFixed(2) || '0.00'}</span>
+                              : <span className="text-muted-foreground">—</span>}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {item.track_cost && item.selling_price
+                              ? <span className="font-medium text-green-600 dark:text-green-400">₹{item.selling_price.toFixed(2)}</span>
+                              : <span className="text-muted-foreground">—</span>}
+                          </TableCell>
+                        </>
+                      )}
+                      <TableCell>
+                        {item.suppliers?.name ? (
+                          <span className="text-sm truncate max-w-[120px] inline-block">{item.suppliers.name}</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {transactionCounts && typeof transactionCounts === 'object' && item.id in transactionCounts ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="inline-flex items-center">
+                                  <Badge variant="outline" className="bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 hover:bg-green-100 border-green-200 dark:border-green-700/30 shadow-sm">
+                                    <History className="h-3 w-3 mr-1" />
+                                    {transactionCounts[item.id]}
+                                  </Badge>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="border-border/60 shadow-md">
+                                <p className="text-xs">{transactionCounts[item.id]} transactions in the last 24 hours</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : recentlyUpdatedItems.includes(item.id) ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="inline-flex items-center">
+                                  <Badge variant="secondary" className="bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 hover:bg-amber-100 border-amber-200 dark:border-amber-700/30 animate-pulse shadow-sm">
+                                    <Bell className="h-3 w-3 mr-1" />
+                                    Updated
+                                  </Badge>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="border-border/60 shadow-md">
+                                <p className="text-xs">This material was recently updated</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : ("—")
+                        }
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => handleDeleteClick(e, item.id, item.material_name)}
+                          className="h-8 w-8 p-0 hover:bg-destructive/10 dark:hover:bg-destructive/20 hover:text-destructive rounded-full transition-colors"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Stock detail dialog */}
+      {isDetailDialogOpen && selectedStockId && (
+        <StockDetailDialog 
+          stockId={selectedStockId} 
+          open={isDetailDialogOpen} 
+          onOpenChange={setIsDetailDialogOpen} 
+          onEdit={() => {
+            if (selectedStockId) {
+              navigate(`/inventory/stock/${selectedStockId}/edit`);
+              setIsDetailDialogOpen(false);
+            }
+          }}
+          onDelete={() => {
+            if (selectedStockId) {
+              handleInitiateDelete(selectedStockId);
+            }
+          }}
+          initialTab={recentlyUpdatedItems.includes(selectedStockId) ? "transactions" : "details"}
+        />
       )}
 
-      <StockDetailDialog 
-        stockId={selectedStockId}
-        open={isDetailDialogOpen}
-        onOpenChange={setIsDetailDialogOpen}
-        onEdit={() => {
-          if (selectedStockId) {
-            navigate(`/inventory/stock/${selectedStockId}/edit`);
-            setIsDetailDialogOpen(false);
-          }
-        }}
-        onDelete={() => {
-          if (selectedStockId) {
-            handleInitiateDelete(selectedStockId);
-          }
-        }}
-        initialTab={recentlyUpdatedItems.includes(selectedStockId || '') ? "transactions" : "details"}
-      />
-
-      <DeleteStockDialog
+      {/* Delete confirmation dialog */}
+      <DeleteStockDialog 
         isOpen={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
         onConfirm={handleDeleteConfirm}
         isDeleting={isDeleting}
-        itemName="this inventory item"
+        itemName="stock item"
         hasTransactions={hasTransactions}
         deleteWithTransactions={deleteWithTransactions}
         onToggleDeleteWithTransactions={setDeleteWithTransactions}
       />
-    </Card>
+    </div>
   );
 };
 

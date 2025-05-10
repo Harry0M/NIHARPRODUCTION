@@ -109,7 +109,8 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
         title: "Stock created successfully",
         description: "New stock item has been added to inventory",
       });
-      navigate("/inventory/stock");
+      // Use window.location.href instead of navigate for reliable page refresh
+      window.location.href = "/inventory/stock";
     },
     onError: (error) => {
       console.error("Error creating stock:", error);
@@ -162,7 +163,8 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
         title: "Stock updated successfully",
         description: "The stock item has been updated",
       });
-      navigate("/inventory/stock");
+      // Use window.location.href instead of navigate for reliable page refresh
+      window.location.href = "/inventory/stock";
     },
     onError: (error) => {
       console.error("Error updating stock:", error);

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { BarChart, Package, Truck, Users, Layers, Calendar, AlertCircle } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { SkeletonTable } from "@/components/ui/skeleton-table";
@@ -13,7 +13,7 @@ type Stats = {
   activeOrders: number;
   inProduction: number;
   readyForDispatch: number;
-  activeVendors: number;
+  activePartners: number;
   dueThisWeek: number;
   jobsInProgress: number;
 };
@@ -34,11 +34,12 @@ type RecentOrder = {
 };
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<Stats>({
     activeOrders: 0,
     inProduction: 0,
     readyForDispatch: 0,
-    activeVendors: 0,
+    activePartners: 0,
     dueThisWeek: 0,
     jobsInProgress: 0,
   });
@@ -77,12 +78,22 @@ const Dashboard = () => {
           .eq('status', 'ready_for_dispatch');
         if (readyForDispatchError) throw readyForDispatchError;
 
-        // Fetch active vendors count
+        // Fetch active partners count (both vendors and suppliers)
         const { count: activeVendorsCount, error: vendorsError } = await supabase
           .from('vendors')
           .select('id', { count: 'exact', head: true })
           .eq('status', 'active');
         if (vendorsError) throw vendorsError;
+        
+        // Fetch active suppliers count
+        const { count: activeSuppliersCount, error: suppliersError } = await supabase
+          .from('suppliers')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'active');
+        if (suppliersError) throw suppliersError;
+        
+        // Calculate total active partners
+        const totalActivePartners = (activeVendorsCount || 0) + (activeSuppliersCount || 0);
 
         // Fetch recent orders
         const { data: ordersData, error: ordersError } = await supabase
@@ -179,7 +190,7 @@ const Dashboard = () => {
           activeOrders: activeOrdersCount || 0,
           inProduction: inProductionCount || 0,
           readyForDispatch: readyForDispatchCount || 0,
-          activeVendors: activeVendorsCount || 0,
+          activePartners: totalActivePartners,
           dueThisWeek: dueThisWeekCount || 0,
           jobsInProgress: jobsInProgressCount || 0,
         });
@@ -254,12 +265,12 @@ const Dashboard = () => {
       className: "bg-green-50"
     },
     {
-      title: "Active Vendors",
-      value: stats.activeVendors.toString(),
+      title: "Active Partners",
+      value: stats.activePartners.toString(),
       icon: Users,
       change: "",
       positive: null,
-      linkTo: "/vendors",
+      linkTo: "/partners",
       className: "bg-purple-50"
     },
     {
@@ -307,27 +318,30 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Overview of your manufacturing operations</p>
-      </div>
-
+    <div className="space-y-8 p-4 md:p-6 fade-in">
       <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        {statsCards.map((card) => (
-          <Link key={card.title} to={card.linkTo} className="block">
-            <Card className={`hover:border-primary hover:shadow-md transition-all duration-200 min-h-[120px] ${card.className}`}>
+        {statsCards.map((stat, i) => (
+          <Link key={i} to={stat.linkTo} className="slide-up" style={{animationDelay: `${i * 0.05}s`}}>
+            <Card 
+              className={`h-full overflow-hidden hover:shadow-elevated transition-all duration-200 border-border/60 hover:translate-y-[-2px] ${stat.className} dark:bg-card/95 dark:border-border/30 dark:hover:border-primary/20`}
+            >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-                <card.icon className="h-5 w-5 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">
+                  {stat.title}
+                </CardTitle>
+                <div className={`${stat.className} dark:bg-background/30 p-2 rounded-full dark:text-primary`}>
+                  <stat.icon className="h-4 w-4" />
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{card.value}</div>
-                {card.change && (
-                  <p className={`text-xs ${card.positive === true ? 'text-green-500' : card.positive === false ? 'text-red-500' : 'text-muted-foreground'}`}>
-                    {card.change}
-                  </p>
-                )}
+                <div className="text-2xl font-bold">{stat.value}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {stat.change && (
+                    <span className={stat.positive ? "text-green-500" : "text-red-500"}>
+                      {stat.positive ? "↗" : "↘"} {stat.change}
+                    </span>
+                  )}
+                </p>
               </CardContent>
             </Card>
           </Link>
@@ -366,54 +380,94 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Orders</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {recentOrders.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="py-3 px-4 text-left font-medium">Order ID</th>
-                    <th className="py-3 px-4 text-left font-medium">Customer</th>
-                    <th className="py-3 px-4 text-left font-medium">Product</th>
-                    <th className="py-3 px-4 text-left font-medium">Quantity</th>
-                    <th className="py-3 px-4 text-left font-medium">Status</th>
-                    <th className="py-3 px-4 text-left font-medium">Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentOrders.map((order) => (
-                    <tr 
-                      key={order.id} 
-                      className="border-b hover:bg-muted/50 cursor-pointer transition-colors duration-200"
-                      onClick={() => window.location.href = `/orders/${order.id}`}
-                    >
-                      <td className="py-3 px-4">{order.order_number}</td>
-                      <td className="py-3 px-4">{order.company_name}</td>
-                      <td className="py-3 px-4">{order.product}</td>
-                      <td className="py-3 px-4">{order.quantity.toLocaleString()}</td>
-                      <td className="py-3 px-4">
-                        <StatusBadge status={order.status as StatusType} />
-                      </td>
-                      <td className="py-3 px-4">{formatDate(order.date)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        {/* Production Progress */}
+        <Card className="md:col-span-2 border-border/60 shadow-sm slide-up" style={{animationDelay: '0.3s'}}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <span className="h-5 w-1 rounded-full bg-primary inline-block"></span>
+                Production Progress
+              </CardTitle>
+              <CardDescription className="mt-1">Status of ongoing production stages</CardDescription>
             </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">No recent orders found</p>
-              <Link to="/orders/new" className="text-primary hover:underline inline-block mt-2">
-                Create your first order
-              </Link>
+            <div className="bg-muted/30 dark:bg-background/20 p-2 rounded-full">
+              <BarChart className="h-4 w-4 text-primary" />
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-5">
+              {productionStages.map((stage, index) => (
+                <div key={stage.name} className="flex items-center scale-in" style={{animationDelay: `${0.3 + (index * 0.1)}s`}}>
+                  <div className="mr-3 shrink-0 w-24 font-medium text-sm">{stage.name}</div>
+                  <div className="flex-1 flex items-center gap-3 relative">
+                    <div className="relative w-full h-2 bg-muted/40 rounded-full overflow-hidden flex-1">
+                      <div 
+                        className={`absolute top-0 left-0 h-full rounded-full ${stage.complete > 85 ? 'bg-green-500' : stage.complete > 50 ? 'bg-blue-500' : stage.complete > 25 ? 'bg-amber-500' : 'bg-red-500'}`}
+                        style={{ width: `${stage.complete}%` }}
+                      />
+                    </div>
+                    <span className={`w-10 text-right text-sm font-medium ${stage.complete > 85 ? 'text-green-600 dark:text-green-400' : stage.complete > 50 ? 'text-blue-600 dark:text-blue-400' : stage.complete > 25 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {stage.complete}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Orders */}
+        <Card className="lg:col-span-1 border-border/60 shadow-sm slide-up" style={{animationDelay: '0.4s'}}>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <span className="h-5 w-1 rounded-full bg-primary inline-block"></span>
+              Recent Orders
+            </CardTitle>
+            <CardDescription className="mt-1">Latest orders received</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {recentOrders.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center scale-in" style={{animationDelay: '0.5s'}}>
+                <div className="w-12 h-12 mb-3 rounded-full bg-muted/50 flex items-center justify-center">
+                  <Package className="h-6 w-6 text-muted-foreground/80" />
+                </div>
+                <p className="text-muted-foreground">No recent orders found</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {recentOrders.map((order, index) => (
+                  <div 
+                    key={order.id} 
+                    className="flex items-center p-3 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer scale-in" 
+                    style={{animationDelay: `${0.5 + (index * 0.1)}s`}}
+                    onClick={() => navigate(`/orders/${order.id}`)}
+                  >
+                    <div className="space-y-1 flex-1">
+                      <p className="text-sm font-medium leading-none flex items-center gap-2">
+                        <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded text-xs">{order.order_number}</span>
+                        {order.product && <span className="text-xs text-muted-foreground">{order.product}</span>}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {order.company_name} • {order.quantity.toLocaleString()} units
+                      </p>
+                    </div>
+                    <div className="ml-auto flex flex-col items-end gap-1">
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${order.status === 'completed' ? 'bg-green-500/10 text-green-600 ring-1 ring-inset ring-green-500/20 dark:bg-green-500/20 dark:text-green-300 dark:ring-green-500/30' : order.status === 'ready_for_dispatch' ? 'bg-blue-500/10 text-blue-600 ring-1 ring-inset ring-blue-500/20 dark:bg-blue-500/20 dark:text-blue-300 dark:ring-blue-500/30' : 'bg-amber-500/10 text-amber-600 ring-1 ring-inset ring-amber-500/20 dark:bg-amber-500/20 dark:text-amber-300 dark:ring-amber-500/30'}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${order.status === 'completed' ? 'bg-green-500' : order.status === 'ready_for_dispatch' ? 'bg-blue-500' : 'bg-amber-500'}`}></span>
+                        {getStatusDisplay(order.status)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDate(order.date)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

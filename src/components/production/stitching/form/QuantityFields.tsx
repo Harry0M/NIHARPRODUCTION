@@ -38,7 +38,6 @@ export const QuantityFields = ({
   }, [providedQuantity, remainingQuantity, selectedJobId, currentProvidedQuantity]);
 
   const quantityFields = [
-    { name: "received_quantity" as const, label: "Received Quantity" },
     { name: "provided_quantity" as const, label: "Provided Quantity" },
     { name: "part_quantity" as const, label: "Part Quantity" },
     { name: "border_quantity" as const, label: "Border Quantity" },
@@ -46,6 +45,7 @@ export const QuantityFields = ({
     { name: "chain_quantity" as const, label: "Chain Quantity" },
     { name: "runner_quantity" as const, label: "Runner Quantity" },
     { name: "piping_quantity" as const, label: "Piping Quantity" },
+    { name: "received_quantity" as const, label: "Received Quantity" },
   ];
 
   return (

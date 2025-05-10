@@ -49,7 +49,8 @@ const OrderNew = () => {
     
     const orderId = await handleSubmit(e);
     if (orderId) {
-      navigate(`/orders/${orderId}`);
+      // Use window.location.href instead of navigate for reliable page refresh
+      window.location.href = `/orders/${orderId}`;
     }
   };
   

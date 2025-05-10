@@ -173,31 +173,59 @@ export default function PrintingJob() {
       )}
 
       {!showNewJobForm && !selectedJobId && !printingJobsLoading && printingJobs && printingJobs.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {printingJobs.map((job) => (
-            <Card key={job.id} className="hover:border-primary transition-colors">
-              <CardContent className="pt-6">
-                <div className="mb-4">
-                  <p className="font-medium">Job Details</p>
-                  <p className="text-sm text-muted-foreground">Created: {new Date(job.created_at).toLocaleDateString()}</p>
-                  <p className="text-sm text-muted-foreground">Status: {job.status}</p>
-                  
-                  {/* Display received quantity */}
-                  {job.received_quantity && (
-                    <div className="mt-2 border-t pt-2">
-                      <p className="font-medium text-primary">Received Quantity: {job.received_quantity}</p>
-                    </div>
-                  )}
+        <div className="space-y-4">
+          <div className="rounded-md border">
+            <div className="bg-muted/50 p-4 grid grid-cols-12 font-medium">
+              <div className="col-span-2">Job ID</div>
+              <div className="col-span-2">Status</div>
+              <div className="col-span-2">Date</div>
+              <div className="col-span-3">Quantities</div>
+              <div className="col-span-3">Actions</div>
+            </div>
+            {printingJobs.map((job, index) => {
+              // Format job title with worker name and quantity like stitching jobs
+              const jobTitle = job.worker_name ? 
+                `${job.worker_name} - ${job.received_quantity || 0} pcs` : 
+                `Job ${index + 1} - ${job.received_quantity || 0} pcs`;
+              const sheetSize = job.sheet_length && job.sheet_width ? 
+                `${job.sheet_length}×${job.sheet_width}` : 'N/A';
+              
+              return (
+                <div key={job.id} className="p-4 border-t grid grid-cols-12 items-center hover:bg-muted/20 transition-colors">
+                  <div className="col-span-2">
+                    <p className="font-medium">{jobTitle}</p>
+                    {job.worker_name && <p className="text-xs text-muted-foreground">Worker: {job.worker_name}</p>}
+                  </div>
+                  <div className="col-span-2">
+                    <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs ${job.status === 'completed' ? 'bg-green-100 text-green-700' : job.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                      {job.status === 'in_progress' ? 'In Progress' : job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                    </span>
+                  </div>
+                  <div className="col-span-2 text-sm text-muted-foreground">
+                    {new Date(job.created_at).toLocaleDateString()}
+                  </div>
+                  <div className="col-span-3 space-y-1">
+                    {job.received_quantity && (
+                      <p className="text-sm"><span className="font-medium">Received:</span> {job.received_quantity}</p>
+                    )}
+                    <p className="text-sm"><span className="font-medium">Sheet:</span> {sheetSize}</p>
+                    {job.rate && (
+                      <p className="text-sm"><span className="font-medium">Rate:</span> {job.rate}</p>
+                    )}
+                  </div>
+                  <div className="col-span-3 flex justify-end">
+                    <Button
+                      onClick={() => setSelectedJobId(job.id)}
+                      size="sm"
+                      className="gap-1"
+                    >
+                      Edit
+                    </Button>
+                  </div>
                 </div>
-                <Button 
-                  onClick={() => setSelectedJobId(job.id)}
-                  className="w-full"
-                >
-                  Edit Printing Job
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+              );
+            })}
+          </div>
         </div>
       )}
 

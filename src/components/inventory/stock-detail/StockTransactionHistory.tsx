@@ -151,9 +151,9 @@ export const StockTransactionHistory = ({
   // Show empty state if no transactions
   if (isEmpty) {
     return (
-      <Card className="mt-6">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
+      <Card className="mt-6 border-border/60 overflow-hidden slide-up" style={{animationDelay: '0.1s'}}>
+        <CardHeader className="flex flex-row items-center justify-between bg-muted/30 dark:bg-muted/10 border-b border-border/40">
+          <CardTitle className="flex items-center gap-2 text-primary">
             <History className="h-5 w-5" />
             Transaction History
           </CardTitle>
@@ -162,27 +162,29 @@ export const StockTransactionHistory = ({
             size="sm" 
             onClick={handleRefresh} 
             disabled={localLoading || isLoading}
-            className="flex items-center gap-1"
+            className="flex items-center gap-1 border-border/60 shadow-sm hover:bg-muted/80 dark:hover:bg-muted/20"
           >
             <RefreshCcw className={`h-4 w-4 ${(localLoading || isLoading) ? 'animate-spin' : ''}`} />
             {(localLoading || isLoading) ? "Refreshing..." : "Refresh Transactions"}
           </Button>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-10 space-y-2">
-            <AlertCircle className="h-10 w-10 text-muted-foreground" />
-            <p className="text-muted-foreground text-center">No transaction history found</p>
+        <CardContent className="p-8">
+          <div className="flex flex-col items-center justify-center py-10 space-y-4 bg-muted/10 dark:bg-muted/5 rounded-xl border border-dashed border-border/40 animate-in fade-in duration-300">
+            <div className="w-16 h-16 mb-2 rounded-full bg-muted/30 dark:bg-muted/20 flex items-center justify-center">
+              <Database className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <p className="text-lg font-medium">No transaction history yet</p>
             <p className="text-sm text-muted-foreground text-center max-w-md">
               When materials are used in orders or new stock is added, transactions will appear here.
               {(localLoading || isLoading) ? " Checking for latest transactions..." : ""}
             </p>
             {!localLoading && !isLoading && (
               <Button 
-                variant="default" 
+                variant="outline" 
                 onClick={handleRefresh} 
-                className="mt-4"
+                className="mt-4 border-border/60 gap-2 shadow-sm hover:bg-muted/80 dark:hover:bg-muted/20"
               >
-                <RefreshCcw className="h-4 w-4 mr-2" />
+                <RefreshCcw className="h-4 w-4" />
                 Check for New Transactions
               </Button>
             )}
@@ -193,25 +195,36 @@ export const StockTransactionHistory = ({
   }
 
   return (
-    <Card className="mt-4">
-      <CardHeader className="flex flex-row items-center justify-between bg-muted/20">
-        <CardTitle className="flex items-center gap-2">
+    <Card className="mt-4 border-border/60 overflow-hidden slide-up" style={{animationDelay: '0.15s'}}>
+      <CardHeader className="flex flex-row items-center justify-between bg-muted/30 dark:bg-muted/10 border-b border-border/40">
+        <CardTitle className="flex items-center gap-2 text-primary">
           <History className="h-5 w-5" />
           <span>Transaction History</span>
-          <Badge variant="outline" className="ml-2">
-            {totalRecords} {totalRecords === 1 ? 'transaction' : 'transactions'}
+          <Badge variant="outline" className="ml-2 bg-primary/10 dark:bg-primary/20 border-primary/20 dark:border-primary/30 text-primary hover:bg-primary/15">
+            {totalRecords} record{totalRecords !== 1 ? 's' : ''}
           </Badge>
         </CardTitle>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={handleRefresh} 
-          disabled={localLoading || isLoading}
-          className="flex items-center gap-1"
-        >
-          <RefreshCcw className={`h-4 w-4 ${(localLoading || isLoading) ? 'animate-spin' : ''}`} />
-          {(localLoading || isLoading) ? "Refreshing..." : "Refresh"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleRefresh} 
+                  disabled={localLoading || isLoading}
+                  className="border-border/60 shadow-sm hover:bg-muted/80 dark:hover:bg-muted/20"
+                >
+                  <RefreshCcw className={`h-4 w-4 ${(localLoading || isLoading) ? 'animate-spin' : ''}`} />
+                  <span className="sr-only">Refresh</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="bg-background border-border/60 shadow-md">
+                <p>Refresh transaction history</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </CardHeader>
       <CardContent className="p-4">
         <Tabs defaultValue="transactions" value={activeTab} onValueChange={setActiveTab} className="mb-4">

@@ -3,7 +3,7 @@ import { Bell, Search, Plus, Keyboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { Link, useLocation } from "react-router-dom";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { KeyboardShortcutsDialog } from "@/components/keyboard/KeyboardShortcutsDialog";
 import { useState } from "react";
 import { KeyboardShortcutsHelp } from "@/components/keyboard/KeyboardShortcutsHelp";
@@ -164,7 +164,7 @@ const Header = () => {
         >
           <Keyboard className="h-5 w-5" />
         </Button>
-        <ThemeToggle />
+        <ThemeSwitcher />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">

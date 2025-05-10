@@ -29,10 +29,8 @@ import DispatchDetail from "@/pages/Production/DispatchDetail";
 import CompanyList from "@/pages/Companies/CompanyList";
 import CompanyNew from "@/pages/Companies/CompanyNew";
 import CompanyOrders from "@/pages/Companies/CompanyOrders";
-import SupplierList from "@/pages/SupplierList";
-import SupplierNew from "@/pages/SupplierNew";
-import VendorList from "@/pages/VendorList";
-import VendorNew from "@/pages/VendorNew";
+import PartnersList from "@/pages/Partners/PartnersList";
+import PartnerNew from "@/pages/Partners/PartnerNew";
 import Index from "@/pages/Index";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AnalysisDashboard from "@/pages/Analysis/AnalysisDashboard";
@@ -120,17 +118,26 @@ const routes = [
             ],
           },
           {
+            path: "partners",
+            children: [
+              { path: "", element: <PartnersList /> },
+              { path: "new", element: <PartnerNew /> },
+              { path: ":id/edit", element: <PartnerNew /> },
+            ],
+          },
+          // Redirects from old routes
+          {
             path: "suppliers",
             children: [
-              { path: "", element: <SupplierList /> },
-              { path: "new", element: <SupplierNew /> },
+              { path: "", element: <Navigate to="/partners" replace /> },
+              { path: "new", element: <Navigate to="/partners/new?type=supplier" replace /> },
             ],
           },
           {
             path: "vendors",
             children: [
-              { path: "", element: <VendorList /> },
-              { path: "new", element: <VendorNew /> },
+              { path: "", element: <Navigate to="/partners" replace /> },
+              { path: "new", element: <Navigate to="/partners/new?type=vendor" replace /> },
             ],
           },
         ],

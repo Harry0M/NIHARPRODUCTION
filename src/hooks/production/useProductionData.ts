@@ -85,7 +85,8 @@ export const useProductionData = () => {
             is_internal,
             worker_name,
             status,
-            total_quantity,
+            provided_quantity,
+            received_quantity,
             created_at,
             job_cards(
               id,
@@ -121,8 +122,9 @@ export const useProductionData = () => {
           return {
             id: job.id,
             jobCardId: job.job_card_id,
+            orderId: orderData?.id || 'unknown',  // Added orderId for grouping
             order: orderData?.order_number || 'Unknown',
-            product: orderData ? `Bag ${orderData.bag_length}×${orderData.bag_width}` : 'Unknown',
+            product: orderData ? `${orderData.company_name || 'Company'} - ${job.worker_name || 'Worker'}` : 'Unknown',
             quantity: orderData?.quantity || 0,
             progress,
             worker: job.is_internal ? 'Internal Team' : job.worker_name || 'External',
@@ -130,7 +132,8 @@ export const useProductionData = () => {
             consumption: job.consumption_meters || 0,
             status: job.status as JobStatus,
             daysLeft: Math.floor(Math.random() * 5) + 1, // Placeholder for urgency
-            created_at: job.created_at
+            created_at: job.created_at,
+            bagDimensions: orderData ? `${orderData.bag_length}×${orderData.bag_width}` : 'Unknown'  // Keep dimensions as separate field
           };
         });
 
@@ -143,8 +146,9 @@ export const useProductionData = () => {
           return {
             id: job.id,
             jobCardId: job.job_card_id,
+            orderId: orderData?.id || 'unknown',  // Added orderId for grouping
             order: orderData?.order_number || 'Unknown',
-            product: orderData ? `Bag ${orderData.bag_length}×${orderData.bag_width}` : 'Unknown',
+            product: orderData ? `${orderData.company_name || 'Company'} - ${job.worker_name || 'Worker'}` : 'Unknown',
             quantity: orderData?.quantity || 0,
             progress,
             worker: job.is_internal ? 'Internal Team' : job.worker_name || 'External',
@@ -152,7 +156,8 @@ export const useProductionData = () => {
             screenStatus: 'Ready',
             status: job.status as JobStatus,
             daysLeft: Math.floor(Math.random() * 5) + 1,
-            created_at: job.created_at
+            created_at: job.created_at,
+            bagDimensions: orderData ? `${orderData.bag_length}×${orderData.bag_width}` : 'Unknown'  // Keep dimensions as separate field
           };
         });
 
@@ -165,9 +170,10 @@ export const useProductionData = () => {
           return {
             id: job.id,
             jobCardId: job.job_card_id,
+            orderId: orderData?.id || 'unknown',  // Added orderId for grouping
             order: orderData?.order_number || 'Unknown',
-            product: orderData ? `Bag ${orderData.bag_length}×${orderData.bag_width}` : 'Unknown',
-            quantity: job.total_quantity || (orderData?.quantity || 0),
+            product: orderData ? `${orderData.company_name || 'Company'} - ${job.worker_name || 'Worker'}` : 'Unknown',
+            quantity: job.provided_quantity || job.received_quantity || (orderData?.quantity || 0),
             progress,
             worker: job.is_internal ? 'Internal Team' : job.worker_name || 'External',
             parts: progress > 50 ? 'Ready' : 'In Process',
@@ -175,7 +181,8 @@ export const useProductionData = () => {
             finishing: progress > 90 ? 'Ready' : 'Pending',
             status: job.status as JobStatus,
             daysLeft: Math.floor(Math.random() * 3) + 1,
-            created_at: job.created_at
+            created_at: job.created_at,
+            bagDimensions: orderData ? `${orderData.bag_length}×${orderData.bag_width}` : 'Unknown'  // Keep dimensions as separate field
           };
         });
 
@@ -183,13 +190,15 @@ export const useProductionData = () => {
         const formattedDispatchJobs = (dispatchOrders || []).map(order => ({
           id: order.id,
           jobCardId: order.id, // For UI consistency using order id
+          orderId: order.id, // Using the order id itself for grouping
           order: order.order_number,
-          product: `Bag ${order.bag_length}×${order.bag_width}`,
+          product: `${order.company_name || 'Company'} - Dispatch`,
           quantity: order.quantity,
           progress: 100,
           worker: 'Internal Team',
           status: 'pending' as JobStatus, // Convert string to JobStatus type
-          created_at: order.created_at
+          created_at: order.created_at,
+          bagDimensions: `${order.bag_length}×${order.bag_width}` // Adding bag dimensions
         }));
 
         setJobs({

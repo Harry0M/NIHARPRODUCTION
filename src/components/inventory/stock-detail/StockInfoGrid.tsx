@@ -50,34 +50,42 @@ export const StockInfoGrid = ({ stockItem, linkedComponents = [], transactions =
     stockItem.quantity < stockItem.reorder_level;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-300">
       {/* Stock Summary Card - Most critical information at a glance */}
-      <Card className={isLowStock ? "border-red-300 bg-red-50 dark:bg-red-950/20" : ""}>
+      <Card 
+        className={`border-border/60 overflow-hidden ${isLowStock ? "border-red-300 bg-red-50/80 dark:bg-red-950/20" : "bg-card dark:bg-card/95"}`}
+      >
         <CardContent className="p-6">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium">Stock Summary</h3>
+            <h3 className="text-xl font-semibold text-primary">Stock Summary</h3>
             {isLowStock && (
-              <Badge variant="destructive">Low Stock</Badge>
+              <Badge variant="destructive" className="px-2 py-1 shadow-sm animate-pulse">
+                <span className="relative flex h-2 w-2 mr-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                </span>
+                Low Stock
+              </Badge>
             )}
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div className="col-span-2 md:col-span-3 border-b pb-2 mb-2">
-              <p className="text-sm text-muted-foreground">Material</p>
+            <div className="col-span-2 md:col-span-3 border-b border-border/40 pb-3 mb-3">
+              <p className="text-sm text-muted-foreground font-medium">Material</p>
               <p className="text-xl font-medium">{formatValue(stockItem.material_name)}</p>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {stockItem.color && <Badge variant="outline">{formatValue(stockItem.color)}</Badge>}
-                {stockItem.gsm && <Badge variant="outline">{formatValue(stockItem.gsm)} GSM</Badge>}
+              <div className="flex flex-wrap gap-2 mt-2">
+                {stockItem.color && <Badge variant="outline" className="bg-muted/30 dark:bg-muted/20 hover:bg-muted/50 border-border/60 text-sm font-normal">{formatValue(stockItem.color)}</Badge>}
+                {stockItem.gsm && <Badge variant="outline" className="bg-muted/30 dark:bg-muted/20 hover:bg-muted/50 border-border/60 text-sm font-normal">{formatValue(stockItem.gsm)} GSM</Badge>}
                 {stockItem.material_categories && (
-                  <Badge variant="secondary">{formatValue(stockItem.material_categories?.name)}</Badge>
+                  <Badge variant="secondary" className="bg-secondary/90 text-secondary-foreground hover:bg-secondary text-sm font-normal">{formatValue(stockItem.material_categories?.name)}</Badge>
                 )}
               </div>
             </div>
             
             {/* Current stock - highlight this information */}
-            <div className="col-span-2 md:col-span-1 bg-primary/5 rounded-md p-3">
-              <p className="text-sm text-muted-foreground">Current Stock</p>
-              <p className="text-2xl font-bold">{formatValue(stockItem.quantity)} <span className="text-sm font-normal">{formatValue(stockItem.unit)}</span></p>
+            <div className="col-span-2 md:col-span-1 bg-primary/5 dark:bg-primary/10 rounded-md p-4 border border-primary/10 dark:border-primary/20 shadow-sm">
+              <p className="text-sm text-muted-foreground font-medium">Current Stock</p>
+              <p className="text-2xl font-bold text-primary">{formatValue(stockItem.quantity)} <span className="text-sm font-normal text-muted-foreground">{formatValue(stockItem.unit)}</span></p>
               {stockItem.alternate_unit && (
                 <p className="text-sm text-muted-foreground mt-1">
                   {formatValue(stockItem.quantity * (stockItem.conversion_rate || 1))} {formatValue(stockItem.alternate_unit)}
@@ -87,18 +95,18 @@ export const StockInfoGrid = ({ stockItem, linkedComponents = [], transactions =
             
             {/* Inventory value - important financial metric */}
             {inventoryValue && (
-              <div className="bg-primary/5 rounded-md p-3">
-                <p className="text-sm text-muted-foreground">Inventory Value</p>
-                <p className="text-2xl font-bold">₹{inventoryValue}</p>
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-md p-4 border border-blue-100 dark:border-blue-800/30 shadow-sm">
+                <p className="text-sm text-muted-foreground font-medium">Inventory Value</p>
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">₹{inventoryValue}</p>
                 <p className="text-sm text-muted-foreground mt-1">@ ₹{formatValue(stockItem.purchase_price)}/{formatValue(stockItem.unit)}</p>
               </div>
             )}
             
             {/* Reorder information - critical for stock management */}
             {stockItem.reorder_level !== null && (
-              <div className={`rounded-md p-3 ${isLowStock ? 'bg-red-100 dark:bg-red-900/20' : 'bg-primary/5'}`}>
-                <p className="text-sm text-muted-foreground">Reorder Point</p>
-                <p className="text-2xl font-bold">{formatValue(stockItem.reorder_level)} <span className="text-sm font-normal">{formatValue(stockItem.unit)}</span></p>
+              <div className={`rounded-md p-4 border shadow-sm ${isLowStock ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/30' : 'bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-800/30'}`}>
+                <p className="text-sm text-muted-foreground font-medium">Reorder Point</p>
+                <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{formatValue(stockItem.reorder_level)} <span className="text-sm font-normal text-muted-foreground">{formatValue(stockItem.unit)}</span></p>
                 {stockItem.reorder_quantity && (
                   <p className="text-sm text-muted-foreground mt-1">Order qty: {formatValue(stockItem.reorder_quantity)} {formatValue(stockItem.unit)}</p>
                 )}

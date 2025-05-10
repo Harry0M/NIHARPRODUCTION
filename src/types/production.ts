@@ -15,6 +15,7 @@ export interface TimelineJob {
 export interface JobData {
   id: string;
   jobCardId: string;
+  orderId?: string;
   order: string;
   product: string;
   quantity: number;
@@ -31,6 +32,7 @@ export interface JobData {
   parts?: string;
   handles?: string;
   finishing?: string;
+  bagDimensions?: string;
 }
 
 export interface JobsData {
