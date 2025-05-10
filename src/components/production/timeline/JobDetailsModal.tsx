@@ -52,7 +52,7 @@ const fetchJobDetails = async (jobId: string, jobType: string) => {
             ),
             components:cutting_components (
               id,
-              component_type,
+              component_id,
               width,
               height,
               counter,
