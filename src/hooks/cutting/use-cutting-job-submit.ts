@@ -12,7 +12,7 @@ export const useCuttingJobSubmit = () => {
     const result = { ...data };
     
     // List of fields that should be numeric
-    const numericFields = ['width', 'height', 'counter', 'rewinding', 'rate', 'waste_quantity'];
+    const numericFields = ['width', 'height', 'rate', 'waste_quantity'];
     
     // Convert empty strings to null for numeric fields
     numericFields.forEach(field => {
@@ -35,8 +35,6 @@ export const useCuttingJobSubmit = () => {
       // Sanitize the cutting data numeric fields
       const sanitizedCuttingData = {
         ...cuttingData,
-        roll_width: cuttingData.roll_width === '' ? null : cuttingData.roll_width,
-        consumption_meters: cuttingData.consumption_meters === '' ? null : cuttingData.consumption_meters,
         received_quantity: cuttingData.received_quantity === '' ? null : cuttingData.received_quantity
       };
 
@@ -57,7 +55,8 @@ export const useCuttingJobSubmit = () => {
         // Create a copy of the component data without the component_type field
         const { component_type, ...componentDataToInsert } = component;
         
-        // Sanitize numeric fields before inserting
+        // No need to sanitize counter and rewinding as they can accept any value
+        // Just sanitize the numeric fields that need to be numbers
         const sanitizedComponentData = sanitizeNumericFields(componentDataToInsert);
         
         const { error: componentError } = await supabase
@@ -95,8 +94,6 @@ export const useCuttingJobSubmit = () => {
       // Sanitize the cutting data numeric fields
       const sanitizedCuttingData = {
         ...cuttingData,
-        roll_width: cuttingData.roll_width === '' ? null : cuttingData.roll_width,
-        consumption_meters: cuttingData.consumption_meters === '' ? null : cuttingData.consumption_meters,
         received_quantity: cuttingData.received_quantity === '' ? null : cuttingData.received_quantity
       };
 
@@ -112,7 +109,8 @@ export const useCuttingJobSubmit = () => {
         // Remove component_type from the data being inserted or updated
         const { component_type, ...componentDataToUse } = component;
         
-        // Sanitize numeric fields
+        // Don't sanitize counter and rewinding as they can accept any value
+        // Just sanitize the numeric fields that need to be numbers
         const sanitizedComponentData = sanitizeNumericFields(componentDataToUse);
         
         // Check if the component already exists

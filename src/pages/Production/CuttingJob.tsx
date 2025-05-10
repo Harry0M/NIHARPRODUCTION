@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CuttingJobOrderInfo } from "./CuttingJobOrderInfo";
 import { CuttingJobSelection } from "./CuttingJobSelection";
 import { CuttingJobComponentForm } from "./CuttingJobComponentForm";
-import { CuttingJobDetailsForm } from "./cutting/CuttingJobDetailsForm";
+import { CuttingDetailsForm } from "@/components/production/cutting/CuttingDetailsForm";
 import { useCuttingJob } from "@/hooks/use-cutting-job";
 
 export default function CuttingJob() {
@@ -59,13 +59,6 @@ export default function CuttingJob() {
       updated[index] = { ...updated[index], [field]: value };
       return updated;
     });
-  };
-
-  const handleConsumptionCalculated = (meters: number) => {
-    setCuttingData(prev => ({
-      ...prev,
-      consumption_meters: meters.toString()
-    }));
   };
 
   const handleGoBack = () => {
@@ -130,7 +123,7 @@ export default function CuttingJob() {
           <CuttingJobOrderInfo order={jobCard.order} />
           
           <div className="lg:col-span-2">
-            <CuttingJobDetailsForm
+            <CuttingDetailsForm
               cuttingData={cuttingData}
               validationError={validationError}
               orderInfo={{
@@ -142,7 +135,6 @@ export default function CuttingJob() {
               onCheckboxChange={handleCheckboxChange}
               onSelectChange={handleSelectChange}
               onWorkerSelect={handleWorkerSelect}
-              onConsumptionCalculated={handleConsumptionCalculated}
             />
           </div>
         </div>

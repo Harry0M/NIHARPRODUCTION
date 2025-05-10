@@ -48,10 +48,13 @@ export function CuttingJobComponentForm({
               </div>
 
               <ComponentMeasurements
-                width={componentData[index]?.width || ""}
-                height={componentData[index]?.height || ""}
+                width={componentData[index]?.width || component.width?.toString() || ""}
+                height={componentData[index]?.height || component.length?.toString() || ""}
                 counter={componentData[index]?.counter || ""}
                 rewinding={componentData[index]?.rewinding || ""}
+                materialName={component.inventory?.material_name || ""}
+                rollWidth={component.roll_width?.toString() || ""}
+                consumption={component.consumption?.toString() || ""}
                 onMeasurementChange={handleMeasurementChange(index)}
               />
 

@@ -4,8 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { CuttingComponent, JobStatus } from "@/types/production";
 
 interface CuttingData {
-  roll_width: string;
-  consumption_meters: string;
   worker_name: string;
   is_internal: boolean;
   status: JobStatus;
@@ -15,8 +13,6 @@ interface CuttingData {
 export const useCuttingJobForm = (components: any[]) => {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [cuttingData, setCuttingData] = useState<CuttingData>({
-    roll_width: "",
-    consumption_meters: "",
     worker_name: "",
     is_internal: true,
     status: "pending",
@@ -28,8 +24,6 @@ export const useCuttingJobForm = (components: any[]) => {
   const handleNewJob = () => {
     setSelectedJobId(null);
     setCuttingData({
-      roll_width: "",
-      consumption_meters: "",
       worker_name: "",
       is_internal: true,
       status: "pending",
@@ -40,8 +34,8 @@ export const useCuttingJobForm = (components: any[]) => {
     const initialComponentData = components.map(comp => ({
       component_id: comp.id,
       component_type: comp.component_type,
-      width: "",
-      height: "",
+      width: comp.width?.toString() || "",
+      height: comp.length?.toString() || "",
       counter: "",
       rewinding: "",
       rate: "",
@@ -56,8 +50,6 @@ export const useCuttingJobForm = (components: any[]) => {
     if (selectedJob) {
       setSelectedJobId(jobId);
       setCuttingData({
-        roll_width: selectedJob.roll_width?.toString() || "",
-        consumption_meters: selectedJob.consumption_meters?.toString() || "",
         worker_name: selectedJob.worker_name || "",
         is_internal: selectedJob.is_internal,
         status: selectedJob.status,
@@ -81,8 +73,8 @@ export const useCuttingJobForm = (components: any[]) => {
           return {
             component_id: comp.id,
             component_type: comp.component_type,
-            width: existingComponent?.width?.toString() || "",
-            height: existingComponent?.height?.toString() || "",
+            width: existingComponent?.width?.toString() || comp.width?.toString() || "",
+            height: existingComponent?.height?.toString() || comp.length?.toString() || "",
             counter: existingComponent?.counter?.toString() || "",
             rewinding: existingComponent?.rewinding?.toString() || "",
             rate: existingComponent?.rate?.toString() || "",

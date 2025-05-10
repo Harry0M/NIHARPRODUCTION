@@ -5,13 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { VendorSelection } from "@/components/production/VendorSelection";
-import { ConsumptionCalculator } from "@/components/production/ConsumptionCalculator";
 import { JobStatus } from "@/types/production";
 
 interface CuttingDetailsFormProps {
   cuttingData: {
-    roll_width: string;
-    consumption_meters: string;
     worker_name: string;
     is_internal: boolean;
     status: JobStatus;
@@ -27,7 +24,6 @@ interface CuttingDetailsFormProps {
   onCheckboxChange: (checked: boolean) => void;
   onSelectChange: (name: string, value: JobStatus) => void;
   onWorkerSelect: (value: string) => void;
-  onConsumptionCalculated: (meters: number) => void;
 }
 
 export function CuttingDetailsForm({
@@ -37,8 +33,7 @@ export function CuttingDetailsForm({
   onInputChange,
   onCheckboxChange,
   onSelectChange,
-  onWorkerSelect,
-  onConsumptionCalculated
+  onWorkerSelect
 }: CuttingDetailsFormProps) {
   return (
     <Card className="md:col-span-3">
@@ -48,42 +43,6 @@ export function CuttingDetailsForm({
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="space-y-2">
-            <Label htmlFor="roll_width" className={`text-primary font-medium ${validationError ? 'text-destructive' : ''}`}>
-              Roll Width (Required) *
-            </Label>
-            <Input 
-              id="roll_width" 
-              name="roll_width"
-              type="text"
-              placeholder="Roll width in inches"
-              value={cuttingData.roll_width}
-              onChange={onInputChange}
-              required
-              className={`border-2 ${validationError ? 'border-destructive' : 'border-primary'} focus:ring-2 focus:ring-primary`}
-              aria-required="true"
-              aria-invalid={validationError ? "true" : "false"}
-              aria-describedby={validationError ? "roll-width-error" : undefined}
-            />
-            {validationError && (
-              <p id="roll-width-error" className="text-sm font-medium text-destructive mt-1">
-                {validationError}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="consumption_meters">Consumption (meters)</Label>
-            <Input 
-              id="consumption_meters" 
-              name="consumption_meters"
-              type="text"
-              value={cuttingData.consumption_meters}
-              onChange={onInputChange}
-              placeholder="Material consumption"
-            />
-          </div>
-
           <div className="space-y-2">
             <Label htmlFor="received_quantity">Received Quantity</Label>
             <Input 
@@ -130,16 +89,6 @@ export function CuttingDetailsForm({
                 <SelectItem value="completed">Completed</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="md:col-span-3">
-            <ConsumptionCalculator
-              length={orderInfo.bag_length}
-              width={orderInfo.bag_width}
-              quantity={orderInfo.quantity}
-              rollWidth={cuttingData.roll_width ? parseFloat(cuttingData.roll_width) : 0}
-              onConsumptionCalculated={onConsumptionCalculated}
-            />
           </div>
         </div>
       </CardContent>
