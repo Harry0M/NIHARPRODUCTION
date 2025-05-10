@@ -30,7 +30,7 @@ export const useCuttingJobForm = (components: any[]) => {
       received_quantity: ""
     });
 
-    // Initialize componentData with the provided components
+    // Initialize componentData with the provided components, auto-filling width and height
     const initialComponentData = components.map(comp => ({
       component_id: comp.id,
       component_type: comp.component_type,
@@ -65,7 +65,7 @@ export const useCuttingJobForm = (components: any[]) => {
         if (error) throw error;
 
         // Ensure we have a componentData entry for each component
-        // This prevents the foreign key constraint issues
+        // This prevents the foreign key constraint issues and preserves width and height values
         const formattedComponents = components.map(comp => {
           // Find if this component has existing data
           const existingComponent = data?.find(c => c.component_id === comp.id);
