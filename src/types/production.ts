@@ -45,8 +45,10 @@ export interface CuttingComponent {
   component_type: string;
   width: string;
   height: string;
-  counter: string; // Can be any value (string, number, symbol)
-  rewinding: string; // Can be any value (string, number, symbol)
+  counter: string;
+  rewinding: string;
+  roll_width?: string;  // Added roll_width at component level
+  consumption?: string;  // Added consumption at component level
   rate: string;
   status: JobStatus;
   notes?: string;

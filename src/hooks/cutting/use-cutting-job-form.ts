@@ -38,6 +38,8 @@ export const useCuttingJobForm = (components: any[]) => {
       height: comp.length?.toString() || "",
       counter: "",
       rewinding: "",
+      roll_width: comp.roll_width?.toString() || "",
+      consumption: comp.consumption?.toString() || "",
       rate: "",
       status: "pending" as JobStatus,
       notes: ""
@@ -65,7 +67,7 @@ export const useCuttingJobForm = (components: any[]) => {
         if (error) throw error;
 
         // Ensure we have a componentData entry for each component
-        // This prevents the foreign key constraint issues and preserves width and height values
+        // This preserves width, height, roll_width and consumption values
         const formattedComponents = components.map(comp => {
           // Find if this component has existing data
           const existingComponent = data?.find(c => c.component_id === comp.id);
@@ -77,6 +79,8 @@ export const useCuttingJobForm = (components: any[]) => {
             height: existingComponent?.height?.toString() || comp.length?.toString() || "",
             counter: existingComponent?.counter || "",
             rewinding: existingComponent?.rewinding || "",
+            roll_width: existingComponent?.roll_width?.toString() || comp.roll_width?.toString() || "",
+            consumption: existingComponent?.consumption?.toString() || comp.consumption?.toString() || "",
             rate: existingComponent?.rate?.toString() || "",
             status: existingComponent?.status || "pending",
             notes: existingComponent?.notes || ""

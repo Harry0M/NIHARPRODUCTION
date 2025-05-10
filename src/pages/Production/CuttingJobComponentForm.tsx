@@ -81,9 +81,9 @@ export function CuttingJobComponentForm({
                 height={componentData[index]?.height || ""}
                 counter={componentData[index]?.counter || ""}
                 rewinding={componentData[index]?.rewinding || ""}
+                roll_width={componentData[index]?.roll_width || ""}
+                consumption={componentData[index]?.consumption || ""}
                 materialName={component.inventory?.material_name || ""}
-                rollWidth={component.roll_width?.toString() || ""}
-                consumption={component.consumption?.toString() || ""}
                 onMeasurementChange={handleMeasurementChange(index)}
               />
 

@@ -12,7 +12,7 @@ export const useCuttingJobSubmit = () => {
     const result = { ...data };
     
     // List of fields that should be numeric
-    const numericFields = ['width', 'height', 'rate', 'waste_quantity'];
+    const numericFields = ['width', 'height', 'roll_width', 'consumption', 'rate', 'waste_quantity'];
     
     // Convert empty strings to null for numeric fields
     numericFields.forEach(field => {

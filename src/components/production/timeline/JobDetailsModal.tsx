@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { StageStatus } from "@/components/production/StageStatus";
 import { TimelineJob } from "@/types/production";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { Download, Edit } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { downloadAsPDF } from "@/utils/downloadUtils";
@@ -34,57 +34,57 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
     }
   }, [job, open]);
 
-const fetchJobDetails = async (jobId: string, jobType: string) => {
-  if (!jobId || !jobType) return;
-  
-  setLoading(true);
-  try {
-    let data;
+  const fetchJobDetails = async (jobId: string, jobType: string) => {
+    if (!jobId || !jobType) return;
     
-    switch (jobType) {
-      case 'cutting':
-        const { data: cuttingData, error: cuttingError } = await supabase
-          .from('cutting_jobs')
-          .select(`
-            *,
-            job_card:job_cards (
-              job_name, job_number
-            ),
-            components:cutting_components (
-              id,
-              component_id,
-              width,
-              height,
-              counter,
-              rewinding,
-              rate,
-              status,
-              notes,
-              waste_quantity
-            )
-          `)
-          .eq('id', jobId)
-          .single();
-        
-        if (cuttingError) throw cuttingError;
-        data = cuttingData;
-        break;
+    setLoading(true);
+    try {
+      let data;
+      
+      switch (jobType) {
+        case 'cutting':
+          const { data: cuttingData, error: cuttingError } = await supabase
+            .from('cutting_jobs')
+            .select(`
+              *,
+              job_card:job_cards (
+                job_name, job_number
+              ),
+              components:cutting_components (
+                id,
+                component_id,
+                width,
+                height,
+                counter,
+                rewinding,
+                rate,
+                status,
+                notes,
+                waste_quantity
+              )
+            `)
+            .eq('id', jobId)
+            .single();
           
-      case 'printing':
-        const { data: printingData, error: printingError } = await supabase
-          .from('printing_jobs')
-          .select(`
-            *,
-            job_card:job_cards (
-              job_name, job_number
-            )
-          `)
-          .eq('id', jobId)
-          .single();
+          if (cuttingError) throw cuttingError;
+          data = cuttingData;
+          break;
           
-        if (printingError) throw printingError;
-        data = printingData;
-        break;
+        case 'printing':
+          const { data: printingData, error: printingError } = await supabase
+            .from('printing_jobs')
+            .select(`
+              *,
+              job_card:job_cards (
+                job_name, job_number
+              )
+            `)
+            .eq('id', jobId)
+            .single();
+          
+          if (printingError) throw printingError;
+          data = printingData;
+          break;
           
         case 'stitching':
           const { data: stitchingData, error: stitchingError } = await supabase
@@ -134,12 +134,11 @@ const fetchJobDetails = async (jobId: string, jobType: string) => {
             status: jobDetails.status,
             worker: jobDetails.worker_name || "N/A",
             is_internal: jobDetails.is_internal ? "Yes" : "No",
-            roll_width: jobDetails.roll_width,
-            consumption_meters: jobDetails.consumption_meters,
             received_quantity: jobDetails.received_quantity,
             created_at: formatDate(jobDetails.created_at),
             components: jobDetails.components?.map((c: any) => 
-              `${c.component_type}: ${c.width}×${c.height}, Status: ${c.status}`
+              `${c.component_type}: ${c.width}×${c.height}, Roll Width: ${c.roll_width || 'N/A'}, 
+              Consumption: ${c.consumption || 'N/A'}, Status: ${c.status}`
             ).join('; ')
           }
         ];
@@ -212,18 +211,6 @@ const fetchJobDetails = async (jobId: string, jobType: string) => {
           <>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <h4 className="font-medium mb-1">Roll Width</h4>
-                <p className="text-sm text-muted-foreground">
-                  {jobDetails.roll_width || "Not specified"}
-                </p>
-              </div>
-              <div>
-                <h4 className="font-medium mb-1">Consumption (meters)</h4>
-                <p className="text-sm text-muted-foreground">
-                  {jobDetails.consumption_meters || "Not calculated"}
-                </p>
-              </div>
-              <div>
                 <h4 className="font-medium mb-1">Received Quantity</h4>
                 <p className="text-sm text-muted-foreground">
                   {jobDetails.received_quantity || "Not recorded"}
@@ -255,6 +242,12 @@ const fetchJobDetails = async (jobId: string, jobType: string) => {
                         </div>
                         <div>
                           <span className="text-muted-foreground">Rewinding:</span> {component.rewinding || 'N/A'}
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Roll Width:</span> {component.roll_width || 'N/A'}
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Consumption:</span> {component.consumption || 'N/A'}
                         </div>
                         <div>
                           <span className="text-muted-foreground">Rate:</span> {component.rate || 'N/A'}
