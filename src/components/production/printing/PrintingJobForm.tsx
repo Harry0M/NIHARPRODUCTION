@@ -39,6 +39,7 @@ interface PrintingJobFormProps {
   onSubmit: (data: PrintingFormData) => void;
   onCancel: () => void;
   isSubmitting: boolean;
+  totalCuttingQuantity?: number;
 }
 
 export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
@@ -46,7 +47,8 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
   bagDimensions,
   onSubmit,
   onCancel,
-  isSubmitting
+  isSubmitting,
+  totalCuttingQuantity = 0
 }) => {
   const { uploadImage, uploading } = usePrintImage();
   const [formData, setFormData] = useState<PrintingFormData>(() => ({
@@ -178,6 +180,17 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
                 onChange={(e) => setFormData(prev => ({ ...prev, received_quantity: e.target.value }))}
                 placeholder="Enter received quantity"
               />
+              {totalCuttingQuantity > 0 && (
+                <div className="mt-2 p-2 bg-primary/10 border border-primary rounded-md flex items-center justify-between shadow-sm">
+                  <div>
+                    <h4 className="font-semibold text-primary">Cutting Jobs Quantity</h4>
+                    <p className="text-sm">Total received from all cutting jobs</p>
+                  </div>
+                  <div className="text-xl font-bold text-primary">
+                    {totalCuttingQuantity}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="rate">Rate</Label>

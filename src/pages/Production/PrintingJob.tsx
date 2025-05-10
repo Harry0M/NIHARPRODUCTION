@@ -55,6 +55,20 @@ export default function PrintingJob() {
       return data;
     }
   });
+  
+  // Query to get cutting jobs for this job card
+  const { data: cuttingJobs, isLoading: cuttingJobsLoading } = useQuery({
+    queryKey: ['cutting-jobs', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('cutting_jobs')
+        .select('*')
+        .eq('job_card_id', id);
+
+      if (error) throw error;
+      return data;
+    }
+  });
 
   const handleSubmit = async (formData: PrintingJobData) => {
     try {
@@ -64,7 +78,7 @@ export default function PrintingJob() {
         sheet_length: String(formData.sheet_length),
         sheet_width: String(formData.sheet_width),
         rate: String(formData.rate || '0'),
-        received_quantity: formData.received_quantity || undefined, // Include received_quantity
+        received_quantity: formData.received_quantity || "0", // Ensure received_quantity is always a string value
       };
 
       if (formData.id) {
@@ -153,6 +167,8 @@ export default function PrintingJob() {
           onSubmit={handleSubmit}
           onCancel={() => setShowNewJobForm(false)}
           isSubmitting={submitting}
+          totalCuttingQuantity={cuttingJobs?.reduce((total, job) => 
+            total + (job.received_quantity || 0), 0) || 0}
         />
       )}
 
@@ -165,6 +181,13 @@ export default function PrintingJob() {
                   <p className="font-medium">Job Details</p>
                   <p className="text-sm text-muted-foreground">Created: {new Date(job.created_at).toLocaleDateString()}</p>
                   <p className="text-sm text-muted-foreground">Status: {job.status}</p>
+                  
+                  {/* Display received quantity */}
+                  {job.received_quantity && (
+                    <div className="mt-2 border-t pt-2">
+                      <p className="font-medium text-primary">Received Quantity: {job.received_quantity}</p>
+                    </div>
+                  )}
                 </div>
                 <Button 
                   onClick={() => setSelectedJobId(job.id)}
@@ -196,6 +219,8 @@ export default function PrintingJob() {
           onSubmit={handleSubmit}
           onCancel={() => setSelectedJobId(null)}
           isSubmitting={submitting}
+          totalCuttingQuantity={cuttingJobs?.reduce((total, job) => 
+            total + (job.received_quantity || 0), 0) || 0}
         />
       )}
     </div>
