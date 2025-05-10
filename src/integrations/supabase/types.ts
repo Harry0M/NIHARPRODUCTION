@@ -302,14 +302,14 @@ export type Database = {
       cutting_components: {
         Row: {
           component_id: string
-          counter: number | null
+          counter: string | null
           created_at: string
           cutting_job_id: string
           height: number | null
           id: string
           notes: string | null
           rate: number | null
-          rewinding: number | null
+          rewinding: string | null
           status: Database["public"]["Enums"]["job_status"] | null
           updated_at: string
           waste_quantity: number | null
@@ -317,14 +317,14 @@ export type Database = {
         }
         Insert: {
           component_id: string
-          counter?: number | null
+          counter?: string | null
           created_at?: string
           cutting_job_id: string
           height?: number | null
           id?: string
           notes?: string | null
           rate?: number | null
-          rewinding?: number | null
+          rewinding?: string | null
           status?: Database["public"]["Enums"]["job_status"] | null
           updated_at?: string
           waste_quantity?: number | null
@@ -332,14 +332,14 @@ export type Database = {
         }
         Update: {
           component_id?: string
-          counter?: number | null
+          counter?: string | null
           created_at?: string
           cutting_job_id?: string
           height?: number | null
           id?: string
           notes?: string | null
           rate?: number | null
-          rewinding?: number | null
+          rewinding?: string | null
           status?: Database["public"]["Enums"]["job_status"] | null
           updated_at?: string
           waste_quantity?: number | null

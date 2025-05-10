@@ -75,8 +75,8 @@ export const useCuttingJobForm = (components: any[]) => {
             component_type: comp.component_type,
             width: existingComponent?.width?.toString() || comp.width?.toString() || "",
             height: existingComponent?.height?.toString() || comp.length?.toString() || "",
-            counter: existingComponent?.counter?.toString() || "",
-            rewinding: existingComponent?.rewinding?.toString() || "",
+            counter: existingComponent?.counter || "",
+            rewinding: existingComponent?.rewinding || "",
             rate: existingComponent?.rate?.toString() || "",
             status: existingComponent?.status || "pending",
             notes: existingComponent?.notes || ""
