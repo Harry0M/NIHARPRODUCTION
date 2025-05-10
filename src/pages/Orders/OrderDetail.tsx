@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { 
@@ -42,6 +41,8 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Component, InventoryMaterial } from "@/types/order";
 import { getStatusColor, getStatusDisplay } from "@/utils/orderUtils";
+import { useCostCalculation } from "@/hooks/order-form/useCostCalculation";
+import { CostCalculationDisplay } from "@/components/orders/CostCalculationDisplay";
 
 interface Order {
   id: string;
@@ -106,6 +107,10 @@ const OrderDetail = () => {
   const [materialSummary, setMaterialSummary] = useState<MaterialSummary[]>([]);
   const [totalMaterialCost, setTotalMaterialCost] = useState<number>(0);
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [costCalculation, setCostCalculation] = useState<any>(null);
+  
+  // Get cost calculation functions
+  const { calculateTotalCost, calculateSellingPrice } = useCostCalculation();
   
   useEffect(() => {
     const fetchOrderData = async () => {
@@ -146,7 +151,11 @@ const OrderDetail = () => {
           gsm: comp.gsm !== null ? String(comp.gsm) : null,
           // Ensure we handle inventory correctly
           inventory: comp.inventory && typeof comp.inventory === 'object' ? 
-            comp.inventory as InventoryMaterial : null
+            comp.inventory as InventoryMaterial : null,
+          // Add material rate for cost calculation
+          materialRate: comp.inventory && typeof comp.inventory === 'object' 
+            ? (comp.inventory as any).purchase_rate
+            : null
         })) || [];
         
         setComponents(typeSafeComponents);
@@ -216,6 +225,45 @@ const OrderDetail = () => {
           
         if (jobCardsError) throw jobCardsError;
         setJobCards(jobCardsData || []);
+
+        // Calculate the costs using order form logic if order exists
+        if (orderData) {
+          // Get quantity
+          const quantity = parseInt(orderData.total_quantity?.toString() || orderData.quantity?.toString() || '0');
+          
+          // Get production charges
+          const cuttingCharge = parseFloat(orderData.cutting_charge?.toString() || '0');
+          const printingCharge = parseFloat(orderData.printing_charge?.toString() || '0');
+          const stitchingCharge = parseFloat(orderData.stitching_charge?.toString() || '0');
+          const transportCharge = parseFloat(orderData.transport_charge?.toString() || '0');
+          
+          // Calculate costs using the same function as the order form
+          const costs = calculateTotalCost(
+            typeSafeComponents.reduce((obj, comp) => {
+              obj[comp.id] = comp;
+              return obj;
+            }, {} as Record<string, any>),
+            [], // No custom components in view mode
+            cuttingCharge,
+            printingCharge,
+            stitchingCharge,
+            transportCharge,
+            quantity
+          );
+          
+          // Get margin
+          const margin = parseFloat(orderData.margin?.toString() || '15');
+          
+          // Calculate selling price
+          const sellingPrice = calculateSellingPrice(costs.totalCost, margin);
+          
+          // Set cost calculation
+          setCostCalculation({
+            ...costs,
+            margin,
+            sellingPrice
+          });
+        }
         
       } catch (error: any) {
         toast({
@@ -273,9 +321,9 @@ const OrderDetail = () => {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
     }).format(amount);
   };
 
@@ -462,197 +510,75 @@ const OrderDetail = () => {
             </CardContent>
           </Card>
 
-          {/* Cost Breakdown Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calculator size={18} />
-                Cost Breakdown
-              </CardTitle>
-              <CardDescription>Detailed cost information for this order</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {/* Production Charges Section */}
-                <div>
-                  <h3 className="font-medium mb-3">Production Charges</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="rounded-md border p-4 bg-slate-50">
-                      <p className="text-sm text-muted-foreground">Cutting Charge</p>
-                      <p className="text-xl font-medium mt-1">
-                        {formatCurrency(Number(order.cutting_charge || 0))}
-                      </p>
-                    </div>
-                    <div className="rounded-md border p-4 bg-slate-50">
-                      <p className="text-sm text-muted-foreground">Printing Charge</p>
-                      <p className="text-xl font-medium mt-1">
-                        {formatCurrency(Number(order.printing_charge || 0))}
-                      </p>
-                    </div>
-                    <div className="rounded-md border p-4 bg-slate-50">
-                      <p className="text-sm text-muted-foreground">Stitching Charge</p>
-                      <p className="text-xl font-medium mt-1">
-                        {formatCurrency(Number(order.stitching_charge || 0))}
-                      </p>
-                    </div>
-                    <div className="rounded-md border p-4 bg-slate-50">
-                      <p className="text-sm text-muted-foreground">Transport Charge</p>
-                      <p className="text-xl font-medium mt-1">
-                        {formatCurrency(Number(order.transport_charge || 0))}
-                      </p>
-                    </div>
-                  </div>
+          {/* Material Summary Table */}
+          {materialSummary.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Layers size={18} />
+                  Material Consumption
+                </CardTitle>
+                <CardDescription>Summary of all materials used in this order</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Material</TableHead>
+                        <TableHead>Specifications</TableHead>
+                        <TableHead>Consumption</TableHead>
+                        <TableHead>Rate</TableHead>
+                        <TableHead>Cost</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {materialSummary.map((material) => (
+                        <TableRow key={material.material_id}>
+                          <TableCell className="font-medium">
+                            {material.material_name}
+                          </TableCell>
+                          <TableCell>
+                            {[
+                              material.color ? `Color: ${material.color}` : null,
+                              material.gsm ? `GSM: ${material.gsm}` : null
+                            ].filter(Boolean).join(', ') || '-'}
+                          </TableCell>
+                          <TableCell>
+                            {material.total_consumption.toFixed(2)} {material.unit}
+                          </TableCell>
+                          <TableCell>
+                            {material.purchase_rate 
+                              ? formatCurrency(material.purchase_rate) 
+                              : '-'}
+                          </TableCell>
+                          <TableCell>
+                            {formatCurrency(material.total_cost)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
-
-                {/* Material Cost Summary */}
-                {materialSummary.length > 0 && (
-                  <div>
-                    <h3 className="font-medium mb-3">Material Costs</h3>
-                    <div className="rounded-md border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Material</TableHead>
-                            <TableHead>Specifications</TableHead>
-                            <TableHead>Consumption</TableHead>
-                            <TableHead>Rate</TableHead>
-                            <TableHead>Cost</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {materialSummary.map((material) => (
-                            <TableRow key={material.material_id}>
-                              <TableCell className="font-medium">
-                                {material.material_name}
-                              </TableCell>
-                              <TableCell>
-                                {[
-                                  material.color ? `Color: ${material.color}` : null,
-                                  material.gsm ? `GSM: ${material.gsm}` : null
-                                ].filter(Boolean).join(', ') || '-'}
-                              </TableCell>
-                              <TableCell>
-                                {material.total_consumption.toFixed(2)} {material.unit}
-                              </TableCell>
-                              <TableCell>
-                                {material.purchase_rate 
-                                  ? formatCurrency(material.purchase_rate) 
-                                  : '-'}
-                              </TableCell>
-                              <TableCell>
-                                {formatCurrency(material.total_cost)}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-                )}
-
-                {/* Cost Summary */}
-                <div>
-                  <h3 className="font-medium mb-3">Cost Summary</h3>
-                  <div className="rounded-md border p-6 space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Material Cost:</span>
-                      <span>{formatCurrency(Number(order.material_cost || totalMaterialCost))}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Production Charges:</span>
-                      <span>{formatCurrency(Number(order.production_cost || 0))}</span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between font-medium">
-                      <span>Total Cost:</span>
-                      <span>{formatCurrency(Number(order.total_cost || 0))}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Margin:</span>
-                      <span>{order.margin !== null ? `${order.margin}%` : '15%'}</span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between text-lg font-semibold">
-                      <span>Selling Price:</span>
-                      <span>
-                        {formatCurrency(Number(order.calculated_selling_price || 0))}
-                        {order.calculated_selling_price && order.total_quantity 
-                          ? ` (${formatCurrency(Number(order.calculated_selling_price) / Number(order.total_quantity))} per unit)`
-                          : ''}
-                      </span>
-                    </div>
-                    
-                    {order.rate && (
-                      <>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Revenue (Rate × Quantity):</span>
-                          <span>{formatCurrency(order.rate * Number(order.total_quantity || order.quantity))}</span>
-                        </div>
-                        <div className="flex justify-between font-medium">
-                          <span>Estimated Profit:</span>
-                          <span className={
-                            (order.rate * Number(order.total_quantity || order.quantity)) - Number(order.total_cost || 0) > 0 
-                              ? "text-green-600" 
-                              : "text-red-600"
-                          }>
-                            {formatCurrency((order.rate * Number(order.total_quantity || order.quantity)) - Number(order.total_cost || 0))}
-                          </span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Material Consumption Summary Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Layers size={18} />
-                Material Consumption Summary
-              </CardTitle>
-              <CardDescription>Total materials consumed for this order</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {materialSummary.length > 0 ? (
-                <div className="space-y-4">
-                  {materialSummary.map((material) => (
-                    <div key={material.material_id} className="flex items-center justify-between p-3 border rounded-md">
-                      <div>
-                        <p className="font-medium">{material.material_name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {[
-                            material.color ? `Color: ${material.color}` : null,
-                            material.gsm ? `GSM: ${material.gsm}` : null
-                          ].filter(Boolean).join(', ') || '-'}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">{material.total_consumption.toFixed(2)} {material.unit}</p>
-                        {material.purchase_rate && (
-                          <p className="text-sm text-muted-foreground">
-                            Rate: {formatCurrency(material.purchase_rate)}/{material.unit}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  <div className="mt-4 p-4 border rounded-md bg-slate-50">
-                    <div className="flex justify-between font-medium">
-                      <span>Total Material Cost:</span>
-                      <span>{formatCurrency(totalMaterialCost)}</span>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">No material consumption data available</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Cost Calculation Display */}
+          {costCalculation && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calculator size={18} />
+                  Cost Calculation
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CostCalculationDisplay costCalculation={costCalculation} />
+              </CardContent>
+            </Card>
+          )}
+          
         </TabsContent>
         
         <TabsContent value="production" className="space-y-6 pt-4">

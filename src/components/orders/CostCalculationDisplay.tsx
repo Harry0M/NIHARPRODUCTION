@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -40,6 +39,10 @@ export const CostCalculationDisplay = ({
       onMarginChange(newMargin);
     }
   };
+
+  // Calculate profit amount
+  const profit = costCalculation.sellingPrice - costCalculation.totalCost;
+  const profitIsPositive = profit > 0;
 
   return (
     <Card className="mt-4">
@@ -132,6 +135,23 @@ export const CostCalculationDisplay = ({
                 className="max-w-xs"
               />
             </div>
+            
+            {/* Add profit amount section */}
+            <div className="bg-slate-50 p-3 rounded-md">
+              <div className="flex justify-between items-center">
+                <span>Selling Price</span>
+                <span className="font-medium">{formatCurrency(costCalculation.sellingPrice)}</span>
+              </div>
+            </div>
+            
+            <div className={`p-3 rounded-md ${profitIsPositive ? 'bg-green-50' : 'bg-red-50'}`}>
+              <div className="flex justify-between items-center font-medium">
+                <span>Profit</span>
+                <span className={profitIsPositive ? 'text-green-600' : 'text-red-600'}>
+                  {formatCurrency(profit)}
+                </span>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
@@ -148,7 +168,7 @@ export const CostCalculationDisplay = ({
             
             <Separator />
             
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-4 gap-4">
               <div>
                 <Label className="text-muted-foreground">Total Cost</Label>
                 <div className="font-medium text-lg">{formatCurrency(costCalculation.totalCost)}</div>
@@ -160,6 +180,12 @@ export const CostCalculationDisplay = ({
               <div>
                 <Label className="text-muted-foreground">Selling Price</Label>
                 <div className="font-medium text-lg text-green-700">{formatCurrency(costCalculation.sellingPrice)}</div>
+              </div>
+              <div>
+                <Label className="text-muted-foreground">Profit</Label>
+                <div className={`font-medium text-lg ${profitIsPositive ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(profit)}
+                </div>
               </div>
             </div>
           </div>
