@@ -11,6 +11,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { PrintingJobForm } from "@/components/production/printing/PrintingJobForm";
 import { Card, CardContent } from "@/components/ui/card";
 
+// Match interface from PrintingJobForm.tsx
+interface PrintingFormData {
+  id?: string;
+  job_card_id?: string;
+  pulling: string;
+  gsm: string;
+  sheet_length: string;
+  sheet_width: string;
+  worker_name: string;
+  is_internal: boolean;
+  rate: string;
+  status: JobStatus;
+  expected_completion_date: string;
+  print_image: string;
+  received_quantity: string;
+}
+
 export default function PrintingJob() {
   const { id } = useParams();
   const queryClient = useQueryClient();
@@ -57,23 +74,83 @@ export default function PrintingJob() {
     }
   });
   
-  // Query to get cutting jobs for this job card
+  // Query to get cutting jobs for this job card with order component details
   const { data: cuttingJobs, isLoading: cuttingJobsLoading } = useQuery({
     queryKey: ['cutting-jobs', id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First get cutting jobs
+      const { data: jobsData, error: jobsError } = await supabase
         .from('cutting_jobs')
         .select('*')
         .eq('job_card_id', id);
 
-      if (error) throw error;
-      return data;
+      if (jobsError) throw jobsError;
+      
+      // Get the order components for the job card
+      const { data: orderComponentsData, error: componentsError } = await supabase
+        .from('job_cards')
+        .select(`
+          id,
+          order_id,
+          orders:order_id (order_components(*))
+        `)
+        .eq('id', id)
+        .single();
+
+      if (componentsError) throw componentsError;
+      
+      // Return both datasets
+      return {
+        jobs: jobsData,
+        orderComponents: orderComponentsData?.orders?.order_components || []
+      };
     }
   });
+  
+  // Extract part component dimensions for sheet size autofill
+  const getPartComponentDimensions = () => {
+    if (!cuttingJobs?.orderComponents || !Array.isArray(cuttingJobs.orderComponents) || cuttingJobs.orderComponents.length === 0) {
+      return { length: "", width: "" };
+    }
+    
+    // Look for a component with type 'part'
+    const partComponent = cuttingJobs.orderComponents.find(
+      (comp: any) => comp.component_type?.toLowerCase() === 'part'
+    );
+    
+    if (!partComponent) {
+      return { length: "", width: "" };
+    }
+    
+    // Extract size dimensions if available
+    if (partComponent.size) {
+      const sizeParts = partComponent.size.split('x');
+      if (sizeParts.length >= 2) {
+        return {
+          length: sizeParts[0]?.trim() || "",
+          width: sizeParts[1]?.trim() || ""
+        };
+      }
+    }
+    
+    // If not in size format, check for direct length and width properties
+    if (partComponent.length && partComponent.width) {
+      return {
+        length: partComponent.length.toString(),
+        width: partComponent.width.toString()
+      };
+    }
+    
+    return { length: "", width: "" };
+  };
+  
+  // Get the part dimensions
+  const partDimensions = getPartComponentDimensions();
 
   // Calculate the total cutting quantity and allocated quantity
-  const totalCuttingQuantity = cuttingJobs?.reduce((total, job) => 
-    total + (job.received_quantity || 0), 0) || 0;
+  const totalCuttingQuantity = cuttingJobs && Array.isArray(cuttingJobs.jobs)
+    ? cuttingJobs.jobs.reduce((total, job) => total + (job.received_quantity || 0), 0)
+    : 0;
   
   // Calculate the total allocated to printing jobs so far
   const totalAllocatedQuantity = printingJobs?.reduce((total, job) => 
@@ -82,7 +159,7 @@ export default function PrintingJob() {
   // Calculate remaining unallocated quantity from cutting jobs
   const remainingQuantity = totalCuttingQuantity - totalAllocatedQuantity;
 
-  const handleSubmit = async (formData: PrintingJobData) => {
+  const handleSubmit = async (formData: PrintingFormData) => {
     try {
       // Before saving, validate the quantity allocation if this is a new pulling
       const pullingQty = Number(formData.pulling) || 0;
@@ -223,6 +300,7 @@ export default function PrintingJob() {
             length: jobCard.orders.bag_length,
             width: jobCard.orders.bag_width
           }}
+          partDimensions={partDimensions} // Pass the extracted part dimensions
           onSubmit={handleSubmit}
           onCancel={() => setShowNewJobForm(false)}
           isSubmitting={submitting}
@@ -307,6 +385,7 @@ export default function PrintingJob() {
             length: jobCard.orders.bag_length,
             width: jobCard.orders.bag_width
           }}
+          partDimensions={partDimensions} // Pass the extracted part dimensions
           onSubmit={handleSubmit}
           onCancel={() => setSelectedJobId(null)}
           isSubmitting={submitting}

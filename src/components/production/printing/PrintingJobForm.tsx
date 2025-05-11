@@ -37,6 +37,10 @@ interface PrintingJobFormProps {
     length: number;
     width: number;
   };
+  partDimensions?: {
+    length: string;
+    width: string;
+  };
   onSubmit: (data: PrintingFormData) => void;
   onCancel: () => void;
   isSubmitting: boolean;
@@ -47,6 +51,7 @@ interface PrintingJobFormProps {
 export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
   initialData,
   bagDimensions,
+  partDimensions,
   onSubmit,
   onCancel,
   isSubmitting,
@@ -57,8 +62,11 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
   const [formData, setFormData] = useState<PrintingFormData>(() => ({
     pulling: initialData?.pulling || "",
     gsm: initialData?.gsm || "",
-    sheet_length: initialData?.sheet_length || String(bagDimensions.length || ""),
-    sheet_width: initialData?.sheet_width || String(bagDimensions.width || ""),
+    // Prioritize initialData, then part dimensions, then fall back to bag dimensions
+    sheet_length: initialData?.sheet_length || 
+                 (partDimensions?.length ? partDimensions.length : String(bagDimensions.length || "")),
+    sheet_width: initialData?.sheet_width || 
+                (partDimensions?.width ? partDimensions.width : String(bagDimensions.width || "")),
     worker_name: initialData?.worker_name || "",
     is_internal: initialData?.is_internal ?? true,
     rate: initialData?.rate || "",
@@ -75,13 +83,16 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
   const currentPullingQuantity = initialData?.pulling ? Number(initialData.pulling) : 0;
 
   useEffect(() => {
-    // Update sheet dimensions when bag dimensions change
+    // Don't update if we already have values from initialData
+    if (initialData?.sheet_length || initialData?.sheet_width) return;
+    
+    // Prioritize part dimensions over bag dimensions for automatic filling
     setFormData(prev => ({
       ...prev,
-      sheet_length: String(bagDimensions.length || prev.sheet_length),
-      sheet_width: String(bagDimensions.width || prev.sheet_width)
+      sheet_length: partDimensions?.length || String(bagDimensions.length || prev.sheet_length),
+      sheet_width: partDimensions?.width || String(bagDimensions.width || prev.sheet_width)
     }));
-  }, [bagDimensions]);
+  }, [bagDimensions, partDimensions, initialData]);
 
   useEffect(() => {
     // Update image preview when initialData changes
