@@ -36,7 +36,7 @@ export const MaterialGrid = ({
   }
 
   return (
-    <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 ${maxHeight} overflow-y-auto p-2`}>
+    <div className={`flex flex-col space-y-2 ${maxHeight} overflow-y-auto p-2`}>
       {filteredMaterials.map((material) => (
         <Card
           key={material.id}
@@ -47,7 +47,7 @@ export const MaterialGrid = ({
           }`}
           onClick={() => setSelectedMaterialId(material.id)}
         >
-          <div className="flex justify-between items-start">
+          <div className="flex justify-between items-center">
             <div>
               <h4 className="font-medium text-slate-900">{material.material_name}</h4>
               <div className="mt-1 flex flex-wrap gap-2">
