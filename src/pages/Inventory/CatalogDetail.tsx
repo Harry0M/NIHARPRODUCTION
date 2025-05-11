@@ -284,6 +284,14 @@ const CatalogDetail = () => {
           totalCost={product.total_cost}
           margin={product.margin}
           description={product.description}
+          // Complete cost breakdown fields
+          materialCost={product.total_cost ? (product.total_cost - (product.cutting_charge || 0) - (product.printing_charge || 0) - (product.stitching_charge || 0) - (product.transport_charge || 0)) : null}
+          cuttingCharge={product.cutting_charge}
+          printingCharge={product.printing_charge}
+          stitchingCharge={product.stitching_charge}
+          transportCharge={product.transport_charge}
+          productionCost={product.cutting_charge && product.printing_charge && product.stitching_charge && product.transport_charge ?
+            product.cutting_charge + product.printing_charge + product.stitching_charge + product.transport_charge : null}
         />
 
         {/* Components Card */}
