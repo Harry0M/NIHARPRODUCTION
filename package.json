@@ -11,6 +11,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@devexpress/dx-react-chart": "^4.0.11",
+    "@devexpress/dx-react-core": "^4.0.11",
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.1",
@@ -41,6 +43,7 @@
     "@radix-ui/react-tooltip": "^1.1.4",
     "@supabase/postgrest-js": "^1.19.4",
     "@supabase/supabase-js": "^2.49.4",
+    "@syncfusion/ej2-react-gantt": "^29.1.41",
     "@tanstack/react-query": "^5.56.2",
     "@tanstack/react-table": "^8.21.3",
     "@types/uuid": "^10.0.0",

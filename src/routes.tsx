@@ -5,6 +5,7 @@ import AuthLayout from "@/components/layout/AuthLayout";
 import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
 import NotFound from "@/pages/NotFound";
+import MaterialRequirements from "@/pages/Analysis/MaterialRequirements";
 import OrderList from "@/pages/Orders/OrderList";
 import OrderNew from "@/pages/Orders/OrderNew";
 import OrderDetail from "@/pages/Orders/OrderDetail";
