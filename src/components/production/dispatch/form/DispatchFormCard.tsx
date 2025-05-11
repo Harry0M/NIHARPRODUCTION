@@ -8,6 +8,7 @@ import type { BatchData, DispatchFormData, DispatchFormProps } from "./types";
 import { BatchForm } from "./BatchForm";
 import { RecipientForm } from "./RecipientForm";
 import { QualityControls } from "./QualityControls";
+import { MultipleBatchCreator } from "./MultipleBatchCreator";
 
 export const DispatchFormCard = ({
   orderNumber,
@@ -43,6 +44,17 @@ export const DispatchFormCard = ({
 
   const addBatch = () => {
     setBatches([...batches, { quantity: 0, delivery_date: "", notes: "" }]);
+  };
+  
+  // Create multiple batches at once
+  const createMultipleBatches = (newBatches: BatchData[]) => {
+    // If there's only one batch with quantity 0, replace it
+    if (batches.length === 1 && batches[0].quantity === 0) {
+      setBatches(newBatches);
+    } else {
+      // Otherwise, add new batches to existing ones
+      setBatches([...batches, ...newBatches]);
+    }
   };
 
   const removeBatch = (index: number) => {
@@ -141,6 +153,12 @@ export const DispatchFormCard = ({
             onFieldChange={handleFieldChange}
           />
 
+          {/* Multiple Batch Creator */}
+          <MultipleBatchCreator
+            orderQuantity={quantity}
+            createBatches={createMultipleBatches}
+          />
+          
           {/* Batch Management */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
