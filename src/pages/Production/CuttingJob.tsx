@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { ArrowLeft, Scissors, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CuttingJobOrderInfo } from "./CuttingJobOrderInfo";
@@ -11,6 +11,7 @@ import { useCuttingJob } from "@/hooks/use-cutting-job";
 
 export default function CuttingJob() {
   const { id } = useParams();
+  const location = useLocation();
   
   const {
     jobCard,
@@ -38,6 +39,17 @@ export default function CuttingJob() {
       setShowNewJobForm(false);
     }
   }, [selectedJobId]);
+  
+  // Check for edit parameter in URL upon component load
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const editJobId = searchParams.get('edit');
+    
+    if (editJobId) {
+      handleSelectJob(editJobId);
+      setShowNewJobForm(false); // Ensure new job form is hidden
+    }
+  }, [location.search]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

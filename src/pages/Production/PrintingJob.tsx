@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { ArrowLeft, Printer, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
@@ -30,10 +30,22 @@ interface PrintingFormData {
 
 export default function PrintingJob() {
   const { id } = useParams();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { submitting, createPrintingJob, updatePrintingJob } = usePrintingJob();
   const [showNewJobForm, setShowNewJobForm] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  
+  // Check for edit parameter in URL upon component load
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const editJobId = searchParams.get('edit');
+    
+    if (editJobId) {
+      setSelectedJobId(editJobId);
+      setShowNewJobForm(false); // Ensure new job form is hidden
+    }
+  }, [location.search]);
 
   const { data: jobCard, isLoading: jobCardLoading } = useQuery({
     queryKey: ['job-card', id],

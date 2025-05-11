@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, PackageCheck, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStitchingJob } from "@/hooks/use-stitching-job";
@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 export default function StitchingJob() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     loading,
     fetching,
@@ -23,6 +24,17 @@ export default function StitchingJob() {
   const [showNewJobForm, setShowNewJobForm] = useState(false);
   const [totalPrintingQuantity, setTotalPrintingQuantity] = useState(0);
   const [remainingQuantity, setRemainingQuantity] = useState(0);
+  
+  // Check for edit parameter in URL upon component load
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const editJobId = searchParams.get('edit');
+    
+    if (editJobId) {
+      setSelectedJobId(editJobId);
+      setShowNewJobForm(false); // Ensure new job form is hidden
+    }
+  }, [location.search]);
   
   // Fetch printing jobs to calculate total quantity
   useEffect(() => {

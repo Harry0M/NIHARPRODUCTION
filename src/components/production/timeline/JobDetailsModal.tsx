@@ -123,6 +123,32 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
     }
   };
 
+  const handleUpdate = () => {
+    if (!jobDetails || !job) return;
+
+    // Directly navigate to the edit page based on job type
+    const jobCardId = jobDetails.job_card_id;
+    let editUrl = '';
+
+    switch(job.type) {
+      case 'cutting':
+        editUrl = `/production/cutting/${jobCardId}?edit=${job.id}`;
+        break;
+      case 'printing':
+        editUrl = `/production/printing/${jobCardId}?edit=${job.id}`;
+        break;
+      case 'stitching':
+        editUrl = `/production/stitching/${jobCardId}?edit=${job.id}`;
+        break;
+      default:
+        // Default to job card page if type is unknown
+        editUrl = `/production/job-cards/${jobCardId}`;
+    }
+
+    // Use direct navigation to ensure full page refresh
+    window.location.href = editUrl;
+  };
+
   const handleDownload = () => {
     if (!jobDetails) return;
     
@@ -185,12 +211,7 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
     downloadAsPDF(data, `${job.type}-job-${job.id}`, `${job.type.charAt(0).toUpperCase() + job.type.slice(1)} Job Details`);
   };
 
-  const handleUpdate = () => {
-    if (!job || !jobDetails) return;
-    
-    // Navigate to the appropriate edit page
-    navigate(`/production/${job.type}/${jobDetails.job_card_id}`);
-  };
+  // The handleUpdate function has been moved and enhanced to use window.location.href above
 
   // Helper function to get badge variant based on status
   const getBadgeVariant = (status: string) => {
