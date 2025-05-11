@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   ArrowLeft, Users, BadgeCheck, BarChart3, Calendar, 
   DollarSign, TrendingUp, AlertCircle, PackageCheck
@@ -60,8 +60,12 @@ interface JobRecord {
 }
 
 const PartnerPerformance = () => {
-  const { id, type } = useParams<{ id: string, type: string }>();
+  const { id, type: routeType } = useParams<{ id: string, type?: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const queryType = searchParams.get('type');
+  const type = routeType || queryType;
+
   const [loading, setLoading] = useState(true);
   const [partnerData, setPartnerData] = useState<PartnerData | null>(null);
   const [jobs, setJobs] = useState<{
@@ -126,6 +130,14 @@ const PartnerPerformance = () => {
     if (id && type) {
       fetchPartnerData();
       fetchJobs();
+    } else if (id && !type) {
+      // If we have an ID but no type, redirect to partners list
+      toast({
+        title: "Missing partner type",
+        description: "Please select a vendor or supplier from the partners list",
+        variant: "destructive"
+      });
+      navigate("/partners");
     }
   }, [id, type]);
 
@@ -181,36 +193,38 @@ const PartnerPerformance = () => {
         partnerName = data?.name || '';
       }
       
-      // Fetch cutting jobs
+      console.log('Searching for jobs with partner name:', partnerName);
+      
+      // Fetch cutting jobs with LIKE query to handle cases where worker_name might contain additional characters
       const { data: cuttingData, error: cuttingError } = await supabase
         .from('cutting_jobs')
         .select(`
           *,
           job_card:job_card_id (job_number, order:order_id (order_number, company_name))
         `)
-        .eq('worker_name', partnerName);
+        .ilike('worker_name', `%${partnerName}%`);
       
       if (cuttingError) throw cuttingError;
       
-      // Fetch printing jobs
+      // Fetch printing jobs with LIKE query
       const { data: printingData, error: printingError } = await supabase
         .from('printing_jobs')
         .select(`
           *,
           job_card:job_card_id (job_number, order:order_id (order_number, company_name))
         `)
-        .eq('worker_name', partnerName);
+        .ilike('worker_name', `%${partnerName}%`);
       
       if (printingError) throw printingError;
       
-      // Fetch stitching jobs
+      // Fetch stitching jobs with LIKE query
       const { data: stitchingData, error: stitchingError } = await supabase
         .from('stitching_jobs')
         .select(`
           *,
           job_card:job_card_id (job_number, order:order_id (order_number, company_name))
         `)
-        .eq('worker_name', partnerName);
+        .ilike('worker_name', `%${partnerName}%`);
       
       if (stitchingError) throw stitchingError;
       

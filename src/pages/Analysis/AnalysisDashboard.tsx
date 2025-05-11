@@ -8,7 +8,7 @@ import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from "recharts";
 import { LoadingSpinner } from "@/components/production/LoadingSpinner";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, BarChart as BarChartIcon, FileText, TrendingDown, TrendingUp, ArchiveIcon, Package, RefreshCcw } from "lucide-react";
+import { AlertCircle, BarChart as BarChartIcon, FileText, TrendingDown, TrendingUp, ArchiveIcon, Package, RefreshCcw, Users } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 const AnalysisDashboard = () => {
@@ -61,7 +61,7 @@ const AnalysisDashboard = () => {
         </div>
         
         {/* Analysis Navigation Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
           {/* Material Consumption */}
           <Card className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate('/analysis/materials')}>
             <CardHeader className="pb-2">
@@ -133,6 +133,21 @@ const AnalysisDashboard = () => {
             <CardContent>
               <p className="text-sm text-muted-foreground">
                 Identify materials that need to be refilled
+              </p>
+            </CardContent>
+          </Card>
+          
+          {/* Partner Performance */}
+          <Card className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate('/analysis/partners')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center">
+                <Users className="h-5 w-5 mr-2" />
+                Partner Performance
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Analyze vendor and supplier job efficiency
               </p>
             </CardContent>
           </Card>

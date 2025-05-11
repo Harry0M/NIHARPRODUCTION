@@ -41,6 +41,7 @@ import OrderConsumption from "@/pages/Analysis/OrderConsumption";
 import InventoryValue from "@/pages/Analysis/InventoryValue";
 import RefillAnalysis from "@/pages/Analysis/RefillAnalysis";
 import TransactionHistory from "@/pages/Analysis/TransactionHistory";
+import PartnersAnalysis from "@/pages/Analysis/PartnersAnalysis";
 
 const routes = [
   {
@@ -109,6 +110,7 @@ const routes = [
               { path: "value", element: <InventoryValue /> },
               { path: "refill", element: <RefillAnalysis /> },
               { path: "transactions", element: <TransactionHistory /> },
+              { path: "partners", element: <PartnersAnalysis /> },
               { path: "partner/:id/:type", element: <PartnerPerformance /> },
             ],
           },
