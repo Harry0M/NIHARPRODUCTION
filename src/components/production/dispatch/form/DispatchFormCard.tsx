@@ -13,15 +13,16 @@ import { MultipleBatchCreator } from "./MultipleBatchCreator";
 export const DispatchFormCard = ({
   orderNumber,
   companyName,
+  companyAddress,
   quantity,
   stages,
   onDispatchSubmit,
 }: DispatchFormProps) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<Omit<DispatchFormData, 'batches'>>({
-    recipient_name: "",
+    recipient_name: companyName || "",
     tracking_number: "",
-    delivery_address: "",
+    delivery_address: companyAddress || "",
     notes: "",
     confirm_quality_check: false,
     confirm_quantity_check: false,

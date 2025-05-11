@@ -96,10 +96,15 @@ const DispatchDetail = () => {
             />
           ) : (
             <DispatchForm
-              jobCardId={order.job_cards?.[0]?.id || ""}
-              orderNumber={order.order_number}
-              companyName={order.company_name}
-              quantity={order.quantity}
+              jobCardId={order?.job_cards?.[0]?.id || ""}
+              orderNumber={order?.order_number || ""}
+              companyName={order?.company_name || ""}
+              companyAddress={
+                order?.companies?.address || 
+                (order?.sales_account?.companies?.address) || 
+                ''
+              }
+              quantity={order?.quantity || 0}
               stages={productionStages}
               onDispatchSubmit={handleDispatchSubmit}
             />

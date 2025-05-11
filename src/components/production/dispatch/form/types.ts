@@ -19,6 +19,7 @@ export interface DispatchFormProps {
   jobCardId: string;
   orderNumber: string;
   companyName: string;
+  companyAddress?: string;
   quantity: number;
   stages: {
     name: string;

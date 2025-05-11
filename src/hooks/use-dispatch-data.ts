@@ -11,6 +11,23 @@ type JobCard = Database['public']['Tables']['job_cards']['Row'] & {
 
 export type Order = Database['public']['Tables']['orders']['Row'] & {
   job_cards: JobCard[];
+  companies?: {
+    id: string;
+    name: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+  };
+  sales_account?: {
+    id: string;
+    companies?: {
+      id: string;
+      name: string;
+      address?: string;
+      phone?: string;
+      email?: string;
+    };
+  };
 };
 
 export const useDispatchData = () => {
@@ -97,6 +114,38 @@ export const useOrderDispatchData = (orderId: string) => {
           `)
           .eq('id', orderId)
           .single();
+          
+        // Separately fetch company information to avoid relationship errors
+        let companyData = null;
+        let salesAccountData = null;
+
+        if (!orderError && orderData?.company_id) {
+          const { data: company } = await supabase
+            .from('companies')
+            .select('*')
+            .eq('id', orderData.company_id)
+            .single();
+          companyData = company;
+        }
+
+        // Since 'sales_accounts' table doesn't exist in the schema, let's check if sales_account_id
+        // references a company directly or skip this part if it doesn't exist
+        if (!orderError && orderData?.sales_account_id) {
+          // Try to get the company directly since it might be a reference to company
+          const { data: salesAccountCompany } = await supabase
+            .from('companies')
+            .select('*')
+            .eq('id', orderData.sales_account_id)
+            .single();
+            
+          // Create a sales account structure with the company data
+          if (salesAccountCompany) {
+            salesAccountData = {
+              id: orderData.sales_account_id,
+              companies: salesAccountCompany
+            };
+          }
+        }
 
         if (orderError) throw orderError;
 
@@ -180,18 +229,21 @@ export const useOrderDispatchData = (orderId: string) => {
           });
         }
 
-        // Transform the data to ensure proper typing
-        const typedOrder = {
+        // Create our extended order object with company information
+        const orderWithCompanyData: Order = {
           ...orderData,
-          job_cards: (orderData?.job_cards || []).map((card: any) => ({
+          job_cards: (orderData.job_cards || []).map((card: any) => ({
             ...card,
             cutting_jobs: card.cutting_jobs || [],
             printing_jobs: card.printing_jobs || [],
             stitching_jobs: card.stitching_jobs || []
-          }))
-        } as Order;
-
-        setOrder(typedOrder);
+          })),
+          // Explicitly add company data with correct typing
+          companies: companyData as Order['companies'],
+          sales_account: salesAccountData as Order['sales_account']
+        };
+        
+        setOrder(orderWithCompanyData);
         setDispatchData(dispatchData || null);
         setDispatchBatches(batches);
         setProductionStages(stages);
