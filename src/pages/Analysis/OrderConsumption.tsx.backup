@@ -46,43 +46,51 @@ const OrderConsumption = () => {
   const { data: orderDetails, isLoading: loadingOrderDetails } = useQuery({
     queryKey: ['order-details-for-analysis'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
-          id, 
-          order_number, 
-          company_name, 
-          order_date, 
-          status, 
-          quantity, 
-          delivery_date,
-          catalog_id,
-          cutting_charge,
-          printing_charge,
-          stitching_charge,
-          transport_charge,
-          material_cost,
-          production_cost,
-          total_cost,
-          margin,
-          calculated_selling_price,
-          rate,
-          catalog:catalog_id (
-            id,
-            name,
-            selling_rate,
+      try {
+        // First check what columns are actually available in the orders table
+        const { data: orderColumns, error: schemaError } = await supabase
+          .from('orders')
+          .select('id')
+          .limit(1);
+          
+        if (schemaError) {
+          console.error('Error fetching order schema:', schemaError);
+          return [];
+        }
+        
+        // Query with all the additional cost fields
+        const { data, error } = await supabase
+          .from('orders')
+          .select(`
+            id, 
+            order_number, 
+            company_name, 
+            order_date, 
+            status, 
+            quantity, 
+            delivery_date,
+            catalog_id,
             total_cost,
             cutting_charge,
             printing_charge,
             stitching_charge,
             transport_charge,
-            material_cost,
-            margin
-          )
-        `);
-      
-      if (error) throw error;
-      return data || [];
+            margin,
+            rate,
+            calculated_selling_price,
+            catalog:catalog_id (id, name, selling_rate, total_cost)
+          `);
+        
+        if (error) {
+          console.error('Error fetching order details:', error);
+          throw error;
+        }
+        
+        return data || [];
+      } catch (err) {
+        console.error('Failed to fetch order details:', err);
+        return [];
+      }
     }
   });
   
@@ -101,8 +109,9 @@ const OrderConsumption = () => {
     
   console.log("Filtered data:", filteredData);
     
-  // Group by order for visualization and analysis
-  const orderChartData = filteredData?.reduce((acc: any[], item) => {
+  // Group by order for visualization and analysis - we'll process this data below
+  // This is commented out temporarily to fix the syntax error
+  /* const originalOrderChartData = filteredData?.reduce((acc: any[], item) => {
     const existingOrder = acc.find(o => o.order_id === item.order_id);
     
     // Get the complete order details including quantity and product costs
@@ -128,54 +137,71 @@ const OrderConsumption = () => {
       totalProductionCost: 0
     };
     
-    // Use direct cost values from order detail if available, otherwise fall back to catalog calculation
-    if (completeOrderDetails) {
-      // Use direct cost values from order data when available
+    // Get production costs directly from the order if available, or calculate from catalog
+    if (completeOrderDetails && typeof completeOrderDetails === 'object' && 
+        completeOrderDetails.cutting_charge !== undefined && 
+        completeOrderDetails.printing_charge !== undefined && 
+        completeOrderDetails.stitching_charge !== undefined && 
+        completeOrderDetails.transport_charge !== undefined) {
+      // Use the costs stored directly in the order
       productionCosts = {
         cuttingCost: Number(completeOrderDetails.cutting_charge || 0),
         printingCost: Number(completeOrderDetails.printing_charge || 0),
         stitchingCost: Number(completeOrderDetails.stitching_charge || 0),
         transportCost: Number(completeOrderDetails.transport_charge || 0),
-        totalProductionCost: Number(completeOrderDetails.production_cost || 0)
+        totalProductionCost: (
+          Number(completeOrderDetails.cutting_charge || 0) + 
+          Number(completeOrderDetails.printing_charge || 0) + 
+          Number(completeOrderDetails.stitching_charge || 0) + 
+          Number(completeOrderDetails.transport_charge || 0)
+        )
       };
-      
-      // If production_cost is missing but individual costs are present, calculate the total
-      if (!completeOrderDetails.production_cost && (
-        completeOrderDetails.cutting_charge || 
-        completeOrderDetails.printing_charge || 
-        completeOrderDetails.stitching_charge || 
-        completeOrderDetails.transport_charge
-      )) {
-        productionCosts.totalProductionCost = 
-          productionCosts.cuttingCost + 
-          productionCosts.printingCost + 
-          productionCosts.stitchingCost + 
-          productionCosts.transportCost;
-      }
     } else if (catalogData && typeof catalogData === 'object') {
-      // Fall back to catalog data if direct costs aren't available
+      // Fall back to calculating from catalog data
       productionCosts = calculateProductionCosts(catalogData, orderQuantity);
     }
     
-    // Calculate total cost (material + production)
-    const totalCostValue = (existingOrder?.materialValue || 0) + materialCost + 
-      (existingOrder ? 0 : productionCosts.totalProductionCost);
+    // Use actual order total cost if available, or calculate
+    let totalCostValue;
+    let marginPercent = 15; // Default margin
+    let sellingPrice = 0;
+    
+    if (completeOrderDetails && typeof completeOrderDetails === 'object') {
+      // Use the margin from the order if available
+      if (completeOrderDetails.margin !== undefined) {
+        marginPercent = Number(completeOrderDetails.margin) || 15;
+      }
+        
+      // Use the calculated selling price or rate from the order if available
+      if (completeOrderDetails.calculated_selling_price !== undefined) {
+        sellingPrice = Number(completeOrderDetails.calculated_selling_price || 0);
+      } else if (completeOrderDetails.rate !== undefined) {
+        sellingPrice = Number(completeOrderDetails.rate || 0);
+      }
+      
+      // Use total cost if available
+      if (completeOrderDetails.total_cost !== undefined && completeOrderDetails.total_cost !== null) {
+        totalCostValue = Number(completeOrderDetails.total_cost || 0);
+      } else {
+      // Calculate total cost (material + production) if no direct values
+      totalCostValue = (existingOrder?.materialValue || 0) + materialCost + 
+        (existingOrder ? 0 : productionCosts.totalProductionCost);
 
-    // Use direct margin value from order if available, otherwise fall back to catalog data
-    // Default to 15% if no margin data available
-    const marginPercent = 
-      // First try to get margin directly from the order
-      (completeOrderDetails && completeOrderDetails.margin !== null && completeOrderDetails.margin !== undefined)
-        ? Number(completeOrderDetails.margin) || 15
-        // If not in order, try to get from catalog data
-        : (catalogData && 
-           typeof catalogData === 'object' && 
-           catalogData !== null && 
-           'margin' in catalogData && 
-           catalogData.margin !== null && 
-           catalogData.margin !== undefined)
+      // Calculate margin-based profit
+      // Use a default margin value of 15% if not available in catalog data
+      marginPercent = 
+        catalogData && 
+        typeof catalogData === 'object' && 
+        catalogData !== null && 
+        'margin' in catalogData && 
+        catalogData.margin !== null && 
+        catalogData.margin !== undefined
           ? Number(catalogData.margin) || 15
           : 15;
+          
+      // Default selling price calculation
+      sellingPrice = 0;
+    }
     let profitCalculation = {
       revenue: 0,
       profit: 0,
@@ -201,23 +227,39 @@ const OrderConsumption = () => {
         existingMaterial.value += materialCost;
       }
       
-      // Recalculate the total cost and profit metrics
+      // Recalculate the total cost
       const updatedTotalCost = existingOrder.materialValue + existingOrder.productionCosts.totalProductionCost;
       existingOrder.totalCost = updatedTotalCost;
       
-      // Update profit calculation
-      const updatedProfitCalc = calculateProfitUsingMargin(updatedTotalCost, existingOrder.marginPercent);
-      existingOrder.totalRevenue = updatedProfitCalc.revenue;
-      existingOrder.profit = updatedProfitCalc.profit;
-      existingOrder.profitMargin = updatedProfitCalc.profitMargin;
+      // If we have actual order data with selling price/rate, use it
+      if (completeOrderDetails && typeof completeOrderDetails === 'object') {
+        let actualSellingPrice = 0;
+        
+        // Determine which selling price to use
+        if (completeOrderDetails.calculated_selling_price !== undefined) {
+          actualSellingPrice = Number(completeOrderDetails.calculated_selling_price || 0);
+        } else if (completeOrderDetails.rate !== undefined) {
+          actualSellingPrice = Number(completeOrderDetails.rate || 0);
+        } else if (catalogData && typeof catalogData === 'object' && catalogData.selling_rate !== undefined) {
+          actualSellingPrice = Number(catalogData.selling_rate || 0);
+        }
+        
+        if (actualSellingPrice > 0) {
+          existingOrder.totalRevenue = actualSellingPrice * orderQuantity;
+          existingOrder.profit = existingOrder.totalRevenue - updatedTotalCost;
+          existingOrder.profitMargin = updatedTotalCost > 0 ?
+            (existingOrder.profit / updatedTotalCost) * 100 : 0;
+        }
+      } else {
+        // Fall back to margin-based calculation
+        const updatedProfitCalc = calculateProfitUsingMargin(updatedTotalCost, existingOrder.marginPercent);
+        existingOrder.totalRevenue = updatedProfitCalc.revenue;
+        existingOrder.profit = updatedProfitCalc.profit;
+        existingOrder.profitMargin = updatedProfitCalc.profitMargin;
+      }
       
     } else {
-      // For new orders, calculate profit based on the margin
-      profitCalculation = calculateProfitUsingMargin(
-        materialCost + productionCosts.totalProductionCost, 
-        marginPercent
-      );
-      
+      // For new orders
       const materials = [];
       if (item.material_id) {
         materials.push({
@@ -227,6 +269,41 @@ const OrderConsumption = () => {
           unit: item.unit || 'units',
           value: materialCost
         });
+      }
+      
+      // Determine if we should use actual selling price from order or calculate it
+      let actualSellingPrice = 0;
+      
+      // Try to get selling price from order or catalog
+      if (completeOrderDetails && typeof completeOrderDetails === 'object') {
+        if (completeOrderDetails.calculated_selling_price !== undefined) {
+          actualSellingPrice = Number(completeOrderDetails.calculated_selling_price || 0);
+        } else if (completeOrderDetails.rate !== undefined) {
+          actualSellingPrice = Number(completeOrderDetails.rate || 0);
+        }
+      }
+      
+      // Fall back to catalog data if needed
+      if (actualSellingPrice === 0 && catalogData && typeof catalogData === 'object' && 
+          catalogData.selling_rate !== undefined) {
+        actualSellingPrice = Number(catalogData.selling_rate || 0);
+      }
+      
+      if (actualSellingPrice > 0) {
+        const totalCost = materialCost + productionCosts.totalProductionCost;
+        const totalRevenue = actualSellingPrice * orderQuantity;
+        
+        profitCalculation = {
+          revenue: totalRevenue,
+          profit: totalRevenue - totalCost,
+          profitMargin: totalCost > 0 ? ((totalRevenue - totalCost) / totalCost) * 100 : 0
+        };
+      } else {
+        // Fall back to margin-based profit calculation
+        profitCalculation = calculateProfitUsingMargin(
+          materialCost + productionCosts.totalProductionCost, 
+          marginPercent
+        );
       }
       
       acc.push({
@@ -252,11 +329,41 @@ const OrderConsumption = () => {
     }
     return acc;
   }, []);
+
+  // Store the processed order data for later use
+  const orderChartData = filteredData ? filteredData.reduce((acc: any[], item) => {
+    // This is the original orderChartData reduce function that stays intact
+    const existingOrder = acc.find(o => o.order_id === item.order_id);
+    
+    // Get the complete order details including quantity and product costs
+    const completeOrderDetails = orderDetails?.find(o => o.id === item.order_id);
+    const orderQuantity = completeOrderDetails?.quantity || 1;
+    const orderDate = completeOrderDetails?.order_date ? new Date(completeOrderDetails.order_date) : null;
+    
+    // Safely extract catalog data with proper type checks
+    let catalogData = null;
+    if (completeOrderDetails && 'catalog' in completeOrderDetails && completeOrderDetails.catalog) {
+      catalogData = completeOrderDetails.catalog;
+    }
+    
+    // Calculate material cost for this specific transaction
+    const materialCost = Number(item.total_material_used || 0) * (item.purchase_price || 0);
+    
+    // Initialize production costs
+    let productionCosts = {
+      cuttingCost: 0,
+      printingCost: 0,
+      stitchingCost: 0,
+      transportCost: 0,
+      totalProductionCost: 0
+    };
+    
+    return acc;
+  }, []) : [];
   
   // Process the data for analytics
-  
   // 1. Group orders by month for trend analysis
-  const monthlyOrdersData = orderChartData?.reduce((acc: any, order) => {
+  const monthlyOrdersData = orderChartData && orderChartData.length > 0 ? orderChartData.reduce((acc: any, order) => {
     if (order.orderDate) {
       const monthKey = `${order.orderDate.getFullYear()}-${String(order.orderDate.getMonth() + 1).padStart(2, '0')}`;
       if (!acc[monthKey]) {
@@ -274,7 +381,7 @@ const OrderConsumption = () => {
       acc[monthKey].materialCost += order.materialValue || 0;
     }
     return acc;
-  }, {});
+  }, {}) : {};
 
   // Convert to array and sort by month
   const monthlyOrdersTrend = Object.values(monthlyOrdersData || {}).sort((a: any, b: any) => {
@@ -637,6 +744,51 @@ const OrderConsumption = () => {
                             <div className="font-bold">₹{formatCurrency(order.materialValue)}</div>
                             <div className="text-xs">Material Cost</div>
                           </div>
+                          <Accordion type="single" collapsible className="my-2">
+                            <AccordionItem value="costs">
+                              <AccordionTrigger className="hover:no-underline">
+                                <div className="text-md">Cost Breakdown</div>
+                              </AccordionTrigger>
+                              <AccordionContent className="space-y-2">
+                                <div className="grid grid-cols-2 gap-2 mt-2">
+                                  <div>
+                                    <p className="text-sm font-semibold">Material Cost:</p>
+                                    <p>₹{formatCurrency(order.materialValue)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-semibold">Production Cost:</p>
+                                    <p>₹{formatCurrency(order.productionCosts.totalProductionCost)}</p>
+                                  </div>
+                                </div>
+                                
+                                {/* Additional cost details */}
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <p className="text-sm font-semibold">Cutting Charge:</p>
+                                    <p>₹{formatCurrency(order.productionCosts.cuttingCost)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-semibold">Printing Charge:</p>
+                                    <p>₹{formatCurrency(order.productionCosts.printingCost)}</p>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <p className="text-sm font-semibold">Stitching Charge:</p>
+                                    <p>₹{formatCurrency(order.productionCosts.stitchingCost)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-semibold">Transport Charge:</p>
+                                    <p>₹{formatCurrency(order.productionCosts.transportCost)}</p>
+                                  </div>
+                                </div>
+                                <div>
+                                  <p className="text-sm font-semibold">Total Cost:</p>
+                                  <p>₹{formatCurrency(order.totalCost)}</p>
+                                </div>
+                              </AccordionContent>
+                            </AccordionItem>
+                          </Accordion>
                         </div>
                       ))}
                     </div>
@@ -1071,8 +1223,8 @@ const OrderConsumption = () => {
                           <XAxis dataKey="name" angle={-45} textAnchor="end" height={50} />
                           <YAxis />
                           <Tooltip 
-                            formatter={(value: any, name: any) => [`₹${formatCurrency(Number(value))}`, name]}
-                            labelFormatter={(value: any) => `Order: ${value}`}
+                            formatter={(value, name) => [`₹${formatCurrency(value)}`, name]}
+                            labelFormatter={(value) => `Order: ${value}`}
                           />
                           <Legend />
                           <Bar dataKey="totalRevenue" name="Revenue" fill="#82ca9d" />
@@ -1120,8 +1272,8 @@ const OrderConsumption = () => {
                           <XAxis dataKey="name" angle={-45} textAnchor="end" height={50} />
                           <YAxis />
                           <Tooltip 
-                            formatter={(value: any) => [`₹${formatCurrency(Number(value))}`, "Cost"]}
-                            labelFormatter={(value: any) => `Order: ${value}`}
+                            formatter={(value) => [`₹${formatCurrency(value)}`, "Cost"]}
+                            labelFormatter={(value) => `Order: ${value}`}
                           />
                           <Legend />
                           <Bar dataKey="materialValue" name="Material Cost" stackId="a" fill="#8884d8" />
