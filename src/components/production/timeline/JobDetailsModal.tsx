@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -188,8 +189,21 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
   const handleUpdate = () => {
     if (!job || !jobDetails) return;
     
-    // Navigate to the appropriate edit page
-    navigate(`/production/${job.type}/${jobDetails.job_card_id}`);
+    // Close the modal first
+    onOpenChange(false);
+    
+    // Now directly navigate to the edit form with the appropriate params
+    switch (job.type) {
+      case 'cutting':
+        navigate(`/production/cutting/${jobDetails.job_card_id}?jobId=${job.id}`);
+        break;
+      case 'printing':
+        navigate(`/production/printing/${jobDetails.job_card_id}?jobId=${job.id}`);
+        break;
+      case 'stitching':
+        navigate(`/production/stitching/${jobDetails.job_card_id}?jobId=${job.id}`);
+        break;
+    }
   };
 
   // Helper function to get badge variant based on status
