@@ -207,13 +207,17 @@ export const StockDetailDialog = ({
                          (transactionLogs && transactionLogs.length > 0);
   const transactionCount = (transactions?.length || 0) + (transactionLogs?.length || 0);
 
-  // Auto-switch to transactions tab if transactions appear after refresh
+  // Store user's manually selected tab
+  const userSelectedTabRef = useRef<string | null>(null);
+
+  // Auto-switch to transactions tab only on initial load if transactions exist
   useEffect(() => {
-    if (hasTransactions && isRefreshing === false && activeTab === "details") {
-      // Only switch if we just finished refreshing and found transactions
+    // Only auto-switch if user hasn't manually selected a tab yet
+    if (hasTransactions && isRefreshing === false && userSelectedTabRef.current === null) {
+      console.log("Auto-switching to transactions tab on initial load");
       setActiveTab("transactions");
     }
-  }, [hasTransactions, isRefreshing, activeTab]);
+  }, [hasTransactions, isRefreshing]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -268,7 +272,11 @@ export const StockDetailDialog = ({
         ) : stockItem ? (
           <Tabs 
             value={activeTab} 
-            onValueChange={setActiveTab} 
+            onValueChange={(value) => {
+              // Track that user has manually selected a tab
+              userSelectedTabRef.current = value;
+              setActiveTab(value);
+            }} 
             defaultValue="details"
           >
             <TabsList className="grid grid-cols-2 mb-4">
