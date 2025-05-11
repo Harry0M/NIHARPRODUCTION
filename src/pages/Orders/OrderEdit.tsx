@@ -167,7 +167,8 @@ const OrderEdit = () => {
           description: error.message,
           variant: "destructive"
         });
-        navigate("/orders");
+        // Use window.location.href for full page refresh
+        window.location.href = "/orders";
       } finally {
         setLoading(false);
       }
@@ -518,7 +519,8 @@ const OrderEdit = () => {
         description: "The order has been updated successfully",
       });
       
-      navigate(`/orders/${id}`);
+      // Use window.location.href for full page refresh
+      window.location.href = `/orders/${id}`;
       
     } catch (error: any) {
       toast({
@@ -740,7 +742,7 @@ const OrderEdit = () => {
           variant="ghost" 
           size="sm" 
           className="gap-1"
-          onClick={() => navigate(`/orders/${id}`)}
+          onClick={() => window.location.href = `/orders/${id}`}
         >
           <ArrowLeft size={16} />
           Back
@@ -802,7 +804,7 @@ const OrderEdit = () => {
             <Button 
               type="button" 
               variant="outline"
-              onClick={() => navigate(`/orders/${id}`)}
+              onClick={() => window.location.href = `/orders/${id}`}
             >
               Cancel
             </Button>

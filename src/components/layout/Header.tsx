@@ -2,7 +2,7 @@
 import { Bell, Search, Plus, Keyboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { KeyboardShortcutsDialog } from "@/components/keyboard/KeyboardShortcutsDialog";
 import { useState } from "react";
@@ -82,56 +82,66 @@ const Header = () => {
   const getActionButton = () => {
     if (location.pathname === '/orders') {
       return (
-        <Link to="/orders/new">
-          <Button size="sm" className="gap-1">
-            <Plus size={16} />
-            New Order
-          </Button>
-        </Link>
+        <Button 
+          size="sm" 
+          className="gap-1"
+          onClick={() => { window.location.href = '/orders/new'; }}
+        >
+          <Plus size={16} />
+          New Order
+        </Button>
       );
     }
     
     if (location.pathname === '/production/job-cards') {
       return (
-        <Link to="/production/job-cards/new">
-          <Button size="sm" className="gap-1">
-            <Plus size={16} />
-            New Job Card
-          </Button>
-        </Link>
+        <Button 
+          size="sm" 
+          className="gap-1"
+          onClick={() => { window.location.href = '/production/job-cards/new'; }}
+        >
+          <Plus size={16} />
+          New Job Card
+        </Button>
       );
     }
     
     if (location.pathname === '/vendors') {
       return (
-        <Link to="/vendors/new">
-          <Button size="sm" className="gap-1">
-            <Plus size={16} />
-            New Vendor
-          </Button>
-        </Link>
+        <Button 
+          size="sm" 
+          className="gap-1"
+          onClick={() => { window.location.href = '/vendors/new'; }}
+        >
+          <Plus size={16} />
+          New Vendor
+        </Button>
       );
     }
     
     if (location.pathname === '/suppliers') {
       return (
-        <Link to="/suppliers/new">
-          <Button size="sm" className="gap-1">
-            <Plus size={16} />
-            New Supplier
-          </Button>
-        </Link>
+        <Button 
+          size="sm" 
+          className="gap-1"
+          onClick={() => { window.location.href = '/suppliers/new'; }}
+        >
+          <Plus size={16} />
+          New Supplier
+        </Button>
       );
     }
     
     if (location.pathname === '/inventory') {
       return (
-        <Link to="/inventory/new">
-          <Button size="sm" className="gap-1">
-            <Plus size={16} />
-            New Item
-          </Button>
-        </Link>
+        <Button 
+          size="sm" 
+          className="gap-1"
+          onClick={() => { window.location.href = '/inventory/new'; }}
+        >
+          <Plus size={16} />
+          New Item
+        </Button>
       );
     }
     
