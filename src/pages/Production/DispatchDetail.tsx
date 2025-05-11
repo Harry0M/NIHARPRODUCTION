@@ -11,7 +11,15 @@ import { useDispatchActions } from "@/hooks/use-dispatch-actions";
 
 const DispatchDetail = () => {
   const { id: orderId } = useParams();
-  const { order, dispatchData, dispatchBatches, productionStages, loading } = useOrderDispatchData(orderId || '');
+  const { 
+    order, 
+    dispatchData, 
+    dispatchBatches, 
+    productionStages, 
+    loading,
+    companyAddress,
+    companyName
+  } = useOrderDispatchData(orderId || '');
   const { handleDispatch } = useDispatchActions();
 
   const handleDownloadCSV = () => {
@@ -99,11 +107,8 @@ const DispatchDetail = () => {
               jobCardId={order?.job_cards?.[0]?.id || ""}
               orderNumber={order?.order_number || ""}
               companyName={order?.company_name || ""}
-              companyAddress={
-                order?.companies?.address || 
-                (order?.sales_account?.companies?.address) || 
-                ''
-              }
+              companyAddress={companyAddress || ''}
+              recipientName={companyName || ''}
               quantity={order?.quantity || 0}
               stages={productionStages}
               onDispatchSubmit={handleDispatchSubmit}

@@ -20,6 +20,7 @@ export interface DispatchFormProps {
   orderNumber: string;
   companyName: string;
   companyAddress?: string;
+  recipientName?: string;
   quantity: number;
   stages: {
     name: string;
