@@ -943,76 +943,6 @@ export type Database = {
           },
         ]
       }
-      job_wastage: {
-        Row: {
-          created_at: string | null
-          id: string
-          job_card_id: string | null
-          job_id: string
-          job_type: string
-          notes: string | null
-          order_id: string | null
-          provided_quantity: number | null
-          received_quantity: number | null
-          updated_at: string | null
-          wastage_percentage: number | null
-          wastage_quantity: number | null
-          worker_name: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          job_card_id?: string | null
-          job_id: string
-          job_type: string
-          notes?: string | null
-          order_id?: string | null
-          provided_quantity?: number | null
-          received_quantity?: number | null
-          updated_at?: string | null
-          wastage_percentage?: number | null
-          wastage_quantity?: number | null
-          worker_name?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          job_card_id?: string | null
-          job_id?: string
-          job_type?: string
-          notes?: string | null
-          order_id?: string | null
-          provided_quantity?: number | null
-          received_quantity?: number | null
-          updated_at?: string | null
-          wastage_percentage?: number | null
-          wastage_quantity?: number | null
-          worker_name?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "job_wastage_job_card_id_fkey"
-            columns: ["job_card_id"]
-            isOneToOne: false
-            referencedRelation: "job_cards"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "job_wastage_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "order_material_breakdown"
-            referencedColumns: ["order_id"]
-          },
-          {
-            foreignKeyName: "job_wastage_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       material_categories: {
         Row: {
           created_at: string
@@ -1935,39 +1865,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "material_usage_summary"
             referencedColumns: ["material_id"]
-          },
-        ]
-      }
-      wastage_analysis: {
-        Row: {
-          company_name: string | null
-          created_at: string | null
-          id: string | null
-          job_number: string | null
-          job_type: string | null
-          notes: string | null
-          order_id: string | null
-          order_number: string | null
-          provided_quantity: number | null
-          received_quantity: number | null
-          wastage_percentage: number | null
-          wastage_quantity: number | null
-          worker_name: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "job_wastage_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "order_material_breakdown"
-            referencedColumns: ["order_id"]
-          },
-          {
-            foreignKeyName: "job_wastage_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
           },
         ]
       }
