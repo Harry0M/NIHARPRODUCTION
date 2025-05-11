@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from "react";
-// Using regular anchor tags instead of NavLink for full page refreshes
+// Using NavLink for client-side routing without page refreshes
+import { Link, useLocation } from "react-router-dom";
 import { 
   Package, 
   Layers, 
@@ -36,6 +37,7 @@ const navItems = [
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const { signOut } = useAuth();
+  const location = useLocation();
 
   return (
     <div
@@ -58,30 +60,25 @@ const Sidebar = () => {
       <nav className="flex-1 py-4 overflow-y-auto">
         <ul className="space-y-1 px-2">
           {navItems.map((item) => {
-            // Check if current path matches this navigation item
-            const isActive = window.location.pathname.startsWith(item.path);
+            // Check if current path matches this navigation item using react-router's location
+            const isActive = location.pathname.startsWith(item.path);
             
             return (
               <li key={item.name}>
-                <a
-                  href={item.path}
+                <Link
+                  to={item.path}
                   className={cn(
                     "flex items-center px-3 py-2 rounded-md transition-all duration-200",
                     isActive
                       ? "bg-sidebar-accent/80 text-sidebar-accent-foreground font-medium shadow-sm"
                       : "hover:bg-sidebar-accent/50 text-sidebar-foreground/80 hover:shadow-sm"
                   )}
-                  // Use this to force full page refresh
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.location.href = item.path;
-                  }}
                 >
                   <item.icon size={20} className={cn("flex-shrink-0", collapsed ? "mr-0" : "mr-3")} />
                   <span className={cn("transition-opacity", collapsed ? "opacity-0 w-0" : "opacity-100")}>
                     {item.name}
                   </span>
-                </a>
+                </Link>
               </li>
             );
           })}
