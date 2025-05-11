@@ -1,8 +1,7 @@
 
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Check } from "lucide-react";
 import { Material } from "@/components/inventory/catalog/ComponentsTable";
+import { Badge } from "@/components/ui/badge";
 
 interface MaterialGridProps {
   isLoading: boolean;
@@ -36,14 +35,14 @@ export const MaterialGrid = ({
   }
 
   return (
-    <div className={`flex flex-col space-y-2 ${maxHeight} overflow-y-auto p-2`}>
+    <div className={`flex flex-col ${maxHeight} overflow-y-auto p-2`}>
       {filteredMaterials.map((material) => (
-        <Card
+        <div
           key={material.id}
-          className={`cursor-pointer transition-all p-3 hover:shadow-md ${
+          className={`cursor-pointer transition-all p-3 border-b hover:bg-slate-50 ${
             selectedMaterialId === material.id 
-              ? 'border-2 border-blue-500 bg-blue-50' 
-              : 'border border-slate-200 bg-white'
+              ? 'bg-blue-50' 
+              : 'bg-white'
           }`}
           onClick={() => setSelectedMaterialId(material.id)}
         >
@@ -74,7 +73,7 @@ export const MaterialGrid = ({
               </div>
             )}
           </div>
-        </Card>
+        </div>
       ))}
     </div>
   );
