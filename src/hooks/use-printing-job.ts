@@ -15,7 +15,7 @@ interface PrintingData {
   status: JobStatus;
   expected_completion_date: string;
   print_image: string;
-  received_quantity: string; // Add the received_quantity field
+  received_quantity: string; 
 }
 
 export const usePrintingJob = () => {
@@ -30,7 +30,7 @@ export const usePrintingJob = () => {
     status: "pending",
     expected_completion_date: "",
     print_image: "",
-    received_quantity: "" // Initialize the received_quantity field
+    received_quantity: "" 
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);

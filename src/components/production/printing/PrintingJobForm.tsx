@@ -13,10 +13,11 @@ import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
 import { JobStatus } from "@/types/production";
 import { usePrintImage } from "@/hooks/use-print-image";
+import { QuantityFields } from "./QuantityFields";
 
 interface PrintingFormData {
-  id?: string; // Optional property for existing job ID
-  job_card_id?: string; // Add job_card_id as an optional property
+  id?: string;
+  job_card_id?: string;
   pulling: string;
   gsm: string;
   sheet_length: string;
@@ -27,7 +28,7 @@ interface PrintingFormData {
   status: JobStatus;
   expected_completion_date: string;
   print_image: string;
-  received_quantity: string; // Add the received_quantity field
+  received_quantity: string;
 }
 
 interface PrintingJobFormProps {
@@ -39,7 +40,8 @@ interface PrintingJobFormProps {
   onSubmit: (data: PrintingFormData) => void;
   onCancel: () => void;
   isSubmitting: boolean;
-  totalCuttingQuantity?: number;
+  totalCuttingQuantity: number;
+  remainingQuantity: number;
 }
 
 export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
@@ -48,7 +50,8 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
   onSubmit,
   onCancel,
   isSubmitting,
-  totalCuttingQuantity = 0
+  totalCuttingQuantity = 0,
+  remainingQuantity = 0
 }) => {
   const { uploadImage, uploading } = usePrintImage();
   const [formData, setFormData] = useState<PrintingFormData>(() => ({
@@ -62,11 +65,14 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
     status: initialData?.status || "pending",
     expected_completion_date: initialData?.expected_completion_date || "",
     print_image: initialData?.print_image || "",
-    received_quantity: initialData?.received_quantity || "", // Initialize the received_quantity field
-    id: initialData?.id, // Include id when initializing formData
-    job_card_id: initialData?.job_card_id // Include job_card_id when initializing
+    received_quantity: initialData?.received_quantity || "",
+    id: initialData?.id,
+    job_card_id: initialData?.job_card_id
   }));
   const [imagePreview, setImagePreview] = useState<string | null>(initialData?.print_image || null);
+
+  // Calculate the current pulling quantity for this job (for edit mode)
+  const currentPullingQuantity = initialData?.pulling ? Number(initialData.pulling) : 0;
 
   useEffect(() => {
     // Update sheet dimensions when bag dimensions change
@@ -117,21 +123,33 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
     <Card>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4 pt-4">
+          <QuantityFields
+            pulling={formData.pulling}
+            receivedQuantity={formData.received_quantity}
+            totalCuttingQuantity={totalCuttingQuantity}
+            remainingQuantity={remainingQuantity}
+            currentPullingQuantity={currentPullingQuantity}
+            onPullingChange={(value) => setFormData(prev => ({ ...prev, pulling: value }))}
+            onReceivedQuantityChange={(value) => setFormData(prev => ({ ...prev, received_quantity: value }))}
+          />
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="pulling">Pulling</Label>
-              <Input
-                id="pulling"
-                value={formData.pulling}
-                onChange={(e) => setFormData(prev => ({ ...prev, pulling: e.target.value }))}
-              />
-            </div>
             <div className="space-y-2">
               <Label htmlFor="gsm">GSM</Label>
               <Input
                 id="gsm"
                 value={formData.gsm}
                 onChange={(e) => setFormData(prev => ({ ...prev, gsm: e.target.value }))}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="rate">Rate</Label>
+              <Input
+                id="rate"
+                type="number"
+                value={formData.rate}
+                onChange={(e) => setFormData(prev => ({ ...prev, rate: e.target.value }))}
               />
             </div>
           </div>
@@ -168,39 +186,6 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
                 is_internal: false
               }))}
             />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="received_quantity">Received Quantity</Label>
-              <Input
-                id="received_quantity"
-                type="number"
-                value={formData.received_quantity}
-                onChange={(e) => setFormData(prev => ({ ...prev, received_quantity: e.target.value }))}
-                placeholder="Enter received quantity"
-              />
-              {totalCuttingQuantity > 0 && (
-                <div className="mt-2 p-2 bg-primary/10 border border-primary rounded-md flex items-center justify-between shadow-sm">
-                  <div>
-                    <h4 className="font-semibold text-primary">Cutting Jobs Quantity</h4>
-                    <p className="text-sm">Total received from all cutting jobs</p>
-                  </div>
-                  <div className="text-xl font-bold text-primary">
-                    {totalCuttingQuantity}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="rate">Rate</Label>
-              <Input
-                id="rate"
-                type="number"
-                value={formData.rate}
-                onChange={(e) => setFormData(prev => ({ ...prev, rate: e.target.value }))}
-              />
-            </div>
           </div>
           
           <div className="space-y-2">

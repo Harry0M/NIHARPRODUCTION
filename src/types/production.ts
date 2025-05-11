@@ -60,7 +60,7 @@ export interface CuttingComponent {
 export interface PrintingJobData {
   id?: string;  // Add id as an optional property
   job_card_id: string;
-  pulling: string;
+  pulling: string;  // Added pulling field for quantity allocation
   gsm: string;
   sheet_length: string;  
   sheet_width: string;   

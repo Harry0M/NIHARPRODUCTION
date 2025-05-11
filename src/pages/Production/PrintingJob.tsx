@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { ArrowLeft, Printer, Plus } from "lucide-react";
@@ -70,15 +71,47 @@ export default function PrintingJob() {
     }
   });
 
+  // Calculate the total cutting quantity and allocated quantity
+  const totalCuttingQuantity = cuttingJobs?.reduce((total, job) => 
+    total + (job.received_quantity || 0), 0) || 0;
+  
+  // Calculate the total allocated to printing jobs so far
+  const totalAllocatedQuantity = printingJobs?.reduce((total, job) => 
+    total + (Number(job.pulling) || 0), 0) || 0;
+  
+  // Calculate remaining unallocated quantity from cutting jobs
+  const remainingQuantity = totalCuttingQuantity - totalAllocatedQuantity;
+
   const handleSubmit = async (formData: PrintingJobData) => {
     try {
+      // Before saving, validate the quantity allocation if this is a new pulling
+      const pullingQty = Number(formData.pulling) || 0;
+      const currentJobPulling = formData.id 
+        ? (printingJobs?.find(job => job.id === formData.id)?.pulling || "0") 
+        : "0";
+      const currentPullingQty = Number(currentJobPulling) || 0;
+      
+      // Calculate the net change in allocation
+      const netAllocationChange = pullingQty - currentPullingQty;
+      
+      // Check if we have enough quantity left to allocate
+      if (netAllocationChange > remainingQuantity) {
+        toast({
+          title: "Quantity Allocation Error",
+          description: `You're trying to allocate ${netAllocationChange} units, but only ${remainingQuantity} are available.`,
+          variant: "destructive"
+        });
+        return;
+      }
+
       const printingJobData: PrintingJobData = {
         ...formData,
         job_card_id: id!,
         sheet_length: String(formData.sheet_length),
         sheet_width: String(formData.sheet_width),
         rate: String(formData.rate || '0'),
-        received_quantity: formData.received_quantity || "0", // Ensure received_quantity is always a string value
+        pulling: String(formData.pulling || '0'),
+        received_quantity: formData.received_quantity || "0", 
       };
 
       if (formData.id) {
@@ -158,6 +191,32 @@ export default function PrintingJob() {
         )}
       </div>
       
+      {/* Summary Card for Quantities */}
+      {!showNewJobForm && !selectedJobId && (
+        <Card className="bg-muted/30">
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-background p-4 rounded-lg border shadow-sm">
+                <h3 className="font-semibold text-lg mb-1">Total Cutting Quantity</h3>
+                <p className="text-2xl font-bold">{totalCuttingQuantity}</p>
+              </div>
+              
+              <div className="bg-background p-4 rounded-lg border shadow-sm">
+                <h3 className="font-semibold text-lg mb-1">Allocated to Printing</h3>
+                <p className="text-2xl font-bold">{totalAllocatedQuantity}</p>
+              </div>
+              
+              <div className={`bg-background p-4 rounded-lg border shadow-sm ${remainingQuantity < 0 ? 'border-red-500' : ''}`}>
+                <h3 className="font-semibold text-lg mb-1">Remaining Available</h3>
+                <p className={`text-2xl font-bold ${remainingQuantity < 0 ? 'text-red-500' : ''}`}>
+                  {remainingQuantity}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
       {showNewJobForm && (
         <PrintingJobForm
           bagDimensions={{
@@ -167,8 +226,8 @@ export default function PrintingJob() {
           onSubmit={handleSubmit}
           onCancel={() => setShowNewJobForm(false)}
           isSubmitting={submitting}
-          totalCuttingQuantity={cuttingJobs?.reduce((total, job) => 
-            total + (job.received_quantity || 0), 0) || 0}
+          totalCuttingQuantity={totalCuttingQuantity}
+          remainingQuantity={remainingQuantity}
         />
       )}
 
@@ -205,6 +264,9 @@ export default function PrintingJob() {
                     {new Date(job.created_at).toLocaleDateString()}
                   </div>
                   <div className="col-span-3 space-y-1">
+                    {job.pulling && (
+                      <p className="text-sm"><span className="font-medium">Pulling:</span> {job.pulling}</p>
+                    )}
                     {job.received_quantity && (
                       <p className="text-sm"><span className="font-medium">Received:</span> {job.received_quantity}</p>
                     )}
@@ -237,6 +299,7 @@ export default function PrintingJob() {
             sheet_length: String(printingJobs.find(job => job.id === selectedJobId)!.sheet_length || ''),
             sheet_width: String(printingJobs.find(job => job.id === selectedJobId)!.sheet_width || ''),
             rate: String(printingJobs.find(job => job.id === selectedJobId)!.rate || ''),
+            pulling: String(printingJobs.find(job => job.id === selectedJobId)!.pulling || ''),
             received_quantity: printingJobs.find(job => job.id === selectedJobId)!.received_quantity !== null ? 
               String(printingJobs.find(job => job.id === selectedJobId)!.received_quantity) : ''
           }}
@@ -247,8 +310,8 @@ export default function PrintingJob() {
           onSubmit={handleSubmit}
           onCancel={() => setSelectedJobId(null)}
           isSubmitting={submitting}
-          totalCuttingQuantity={cuttingJobs?.reduce((total, job) => 
-            total + (job.received_quantity || 0), 0) || 0}
+          totalCuttingQuantity={totalCuttingQuantity}
+          remainingQuantity={remainingQuantity + (Number(printingJobs.find(job => job.id === selectedJobId)!.pulling) || 0)}
         />
       )}
     </div>
