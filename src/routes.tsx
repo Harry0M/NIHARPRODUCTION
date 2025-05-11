@@ -1,3 +1,4 @@
+
 import { Navigate } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import AuthLayout from "@/components/layout/AuthLayout";
@@ -31,6 +32,7 @@ import CompanyNew from "@/pages/Companies/CompanyNew";
 import CompanyOrders from "@/pages/Companies/CompanyOrders";
 import PartnersList from "@/pages/Partners/PartnersList";
 import PartnerNew from "@/pages/Partners/PartnerNew";
+import PartnerPerformance from "@/pages/Analysis/PartnerPerformance";
 import Index from "@/pages/Index";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AnalysisDashboard from "@/pages/Analysis/AnalysisDashboard";
@@ -107,6 +109,7 @@ const routes = [
               { path: "value", element: <InventoryValue /> },
               { path: "refill", element: <RefillAnalysis /> },
               { path: "transactions", element: <TransactionHistory /> },
+              { path: "partner/:id/:type", element: <PartnerPerformance /> },
             ],
           },
           {
@@ -123,6 +126,7 @@ const routes = [
               { path: "", element: <PartnersList /> },
               { path: "new", element: <PartnerNew /> },
               { path: ":id/edit", element: <PartnerNew /> },
+              { path: ":id/performance", element: <PartnerPerformance /> },
             ],
           },
           // Redirects from old routes

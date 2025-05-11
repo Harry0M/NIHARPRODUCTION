@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -13,7 +14,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Trash, Edit } from "lucide-react";
+import { Plus, Search, Trash, Edit, BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -269,7 +270,7 @@ const PartnersList = () => {
                         <TableHead className="font-semibold">Phone</TableHead>
                         <TableHead className="font-semibold">Services/Materials</TableHead>
                         <TableHead className="font-semibold">Status</TableHead>
-                        <TableHead className="font-semibold w-[100px] text-right">Actions</TableHead>
+                        <TableHead className="font-semibold w-[150px] text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -310,6 +311,15 @@ const PartnersList = () => {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+                                onClick={() => navigate(`/partners/${partner.id}/performance?type=${partner.partnerType}`)}
+                                title="View Performance"
+                              >
+                                <BarChart3 className="h-4 w-4" />
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
