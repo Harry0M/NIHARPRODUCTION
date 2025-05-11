@@ -82,6 +82,8 @@ export const OrderInfoCard = ({
                   {component.size && <p>Size: {component.size}</p>}
                   {component.color && <p>Color: {component.color}</p>}
                   {component.gsm && <p>GSM: {component.gsm}</p>}
+                  {component.consumption && <p>Consumption: {component.consumption} meters</p>}
+                  {component.roll_width && <p>Roll Width: {component.roll_width} inches</p>}
                 </div>
               </div>
             ))
