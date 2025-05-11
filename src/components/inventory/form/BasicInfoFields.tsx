@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { useFormContext } from "react-hook-form";
 import {
   FormField,
@@ -20,6 +20,8 @@ import { predefinedColors } from "./StockFormSchema";
 
 export const BasicInfoFields = () => {
   const { control, formState } = useFormContext();
+  const [isCustomColor, setIsCustomColor] = useState(false);
+  const [customColorValue, setCustomColorValue] = useState("");
 
   return (
     <div className="space-y-4">
@@ -46,12 +48,23 @@ export const BasicInfoFields = () => {
           <FormItem>
             <FormLabel>Color</FormLabel>
             <Select
-              onValueChange={field.onChange}
-              value={field.value || ""}
+              onValueChange={(value) => {
+                if (value === "custom") {
+                  setIsCustomColor(true);
+                  // Keep the field value as it is, we'll update it when custom color is entered
+                } else {
+                  setIsCustomColor(false);
+                  setCustomColorValue("");
+                  field.onChange(value);
+                }
+              }}
+              value={isCustomColor ? "custom" : (field.value || "")}
             >
               <FormControl>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a color" />
+                  <SelectValue placeholder="Select a color">
+                    {isCustomColor ? customColorValue || "Custom..." : field.value}
+                  </SelectValue>
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
@@ -69,11 +82,16 @@ export const BasicInfoFields = () => {
                 <SelectItem value="custom">Custom...</SelectItem>
               </SelectContent>
             </Select>
-            {field.value === "custom" && (
+            {isCustomColor && (
               <Input 
                 placeholder="Enter custom color" 
                 className="mt-2"
-                onChange={(e) => field.onChange(e.target.value)}
+                value={customColorValue}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setCustomColorValue(value);
+                  field.onChange(value); // Update the actual form field with the custom color value
+                }}
               />
             )}
             <FormMessage />
