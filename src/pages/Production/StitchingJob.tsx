@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, PackageCheck, Plus } from "lucide-react";
@@ -90,6 +91,10 @@ export default function StitchingJob() {
     return selectedJob?.provided_quantity || 0;
   };
 
+  // Calculate the total allocated to stitching jobs so far
+  const totalAllocatedQuantity = existingJobs?.reduce((total, job) => 
+    total + (job.provided_quantity || 0), 0) || 0;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -120,6 +125,32 @@ export default function StitchingJob() {
           </Button>
         )}
       </div>
+
+      {/* Summary Card for Quantities - added to match PrintingJob.tsx */}
+      {!showNewJobForm && !selectedJobId && (
+        <Card className="bg-muted/30">
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-background p-4 rounded-lg border shadow-sm">
+                <h3 className="font-semibold text-lg mb-1">Total Printing Quantity</h3>
+                <p className="text-2xl font-bold">{totalPrintingQuantity}</p>
+              </div>
+              
+              <div className="bg-background p-4 rounded-lg border shadow-sm">
+                <h3 className="font-semibold text-lg mb-1">Allocated to Stitching</h3>
+                <p className="text-2xl font-bold">{totalAllocatedQuantity}</p>
+              </div>
+              
+              <div className={`bg-background p-4 rounded-lg border shadow-sm ${remainingQuantity < 0 ? 'border-red-500' : ''}`}>
+                <h3 className="font-semibold text-lg mb-1">Remaining Available</h3>
+                <p className={`text-2xl font-bold ${remainingQuantity < 0 ? 'text-red-500' : ''}`}>
+                  {remainingQuantity}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {showNewJobForm && (
         <StitchingForm
