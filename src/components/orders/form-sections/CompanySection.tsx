@@ -22,8 +22,54 @@ export const CompanySection = ({
   handleOrderChange,
   formErrors
 }: CompanySectionProps) => {
+  // Function to handle sales account selection
+  const handleSalesAccountChange = (value: string) => {
+    // First update the sales_account_id field
+    handleOrderChange({ 
+      target: { 
+        name: 'sales_account_id', 
+        value 
+      } 
+    });
+    
+    // If an actual company is selected (not "none"), also update the company_name field
+    if (value !== "none") {
+      // Find the selected company
+      const selectedCompany = companies.find(company => company.id === value);
+      if (selectedCompany) {
+        // Update the company_name field with the selected company's name
+        handleOrderChange({
+          target: {
+            name: 'company_name',
+            value: selectedCompany.name
+          }
+        });
+      }
+    }
+  };
+  
   return (
     <div className="space-y-4 border-b pb-4">
+      <div className="space-y-2">
+        <Label htmlFor="sales_account">Sales Account (Optional)</Label>
+        <Select 
+          onValueChange={handleSalesAccountChange}
+          value={formData.sales_account_id || "none"}
+        >
+          <SelectTrigger id="sales_account">
+            <SelectValue placeholder="Select sales account" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">None</SelectItem>
+            {companies.map((company) => (
+              <SelectItem key={company.id} value={company.id}>
+                {company.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="company_name" className="flex items-center gap-1">
           Company Name
@@ -44,33 +90,6 @@ export const CompanySection = ({
             <AlertCircle className="h-3 w-3" /> {formErrors.company}
           </p>
         )}
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="sales_account">Sales Account (Optional)</Label>
-        <Select 
-          onValueChange={(value) => 
-            handleOrderChange({ 
-              target: { 
-                name: 'sales_account_id', 
-                value 
-              } 
-            })
-          }
-          value={formData.sales_account_id || "none"}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select sales account" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">None</SelectItem>
-            {companies.map((company) => (
-              <SelectItem key={company.id} value={company.id}>
-                {company.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
     </div>
   );

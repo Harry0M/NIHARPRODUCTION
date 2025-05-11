@@ -140,20 +140,20 @@ export const OrderDetailsForm = ({
         <CardDescription>Enter the basic information for this order</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Product Selector Component */}
-        <ProductSelector 
-          catalogProducts={catalogProducts}
-          isLoading={isLoading}
-          onProductSelect={handleProductSelect}
-          selectedProductId={selectedProductId}
-        />
-
         {/* Company Section Component */}
         <CompanySection 
           formData={formData}
           companies={companies}
           handleOrderChange={handleOrderChange}
           formErrors={formErrors}
+        />
+        
+        {/* Product Selector Component */}
+        <ProductSelector 
+          catalogProducts={catalogProducts}
+          isLoading={isLoading}
+          onProductSelect={handleProductSelect}
+          selectedProductId={selectedProductId}
         />
 
         {/* Order Details Section Component */}

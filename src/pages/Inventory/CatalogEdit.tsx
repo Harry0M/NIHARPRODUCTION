@@ -27,6 +27,12 @@ interface ComponentType {
   length?: string;
   width?: string;
   roll_width?: string;
+  material_id?: string;
+  material_linked?: boolean;
+  consumption?: string;
+  baseConsumption?: string;
+  materialRate?: number;
+  materialCost?: number;
 }
 
 const CatalogEdit = () => {
@@ -46,13 +52,22 @@ const CatalogEdit = () => {
     default_quantity: "",
     default_rate: "",
     selling_rate: "",
-    margin: ""
+    margin: "",
+    // Add cost breakdown fields
+    cutting_charge: "0",
+    printing_charge: "0",
+    stitching_charge: "0",
+    transport_charge: "0",
+    material_cost: "0",
+    total_cost: "0"
   });
   
   const [components, setComponents] = useState<Record<string, any>>({});
   const [customComponents, setCustomComponents] = useState<ComponentType[]>([]);
   const [existingComponents, setExistingComponents] = useState<any[]>([]);
   const [deletedComponentIds, setDeletedComponentIds] = useState<string[]>([]);
+  const [materialPrices, setMaterialPrices] = useState<Record<string, number>>({});
+  const [lastCalculation, setLastCalculation] = useState<string>("");
 
   useEffect(() => {
     if (product) {
@@ -65,7 +80,14 @@ const CatalogEdit = () => {
         default_quantity: product.default_quantity ? product.default_quantity.toString() : "",
         default_rate: product.default_rate ? product.default_rate.toString() : "",
         selling_rate: product.selling_rate ? product.selling_rate.toString() : "",
-        margin: product.margin ? product.margin.toString() : ""
+        margin: product.margin ? product.margin.toString() : "",
+        // Cost fields
+        cutting_charge: product.cutting_charge ? product.cutting_charge.toString() : "0",
+        printing_charge: product.printing_charge ? product.printing_charge.toString() : "0",
+        stitching_charge: product.stitching_charge ? product.stitching_charge.toString() : "0",
+        transport_charge: product.transport_charge ? product.transport_charge.toString() : "0",
+        material_cost: product.total_cost ? (product.total_cost - (product.cutting_charge || 0) - (product.printing_charge || 0) - (product.stitching_charge || 0) - (product.transport_charge || 0)).toString() : "0",
+        total_cost: product.total_cost ? product.total_cost.toString() : "0"
       });
 
       // Process components from product
@@ -108,6 +130,103 @@ const CatalogEdit = () => {
     }
   }, [product]);
 
+  // Function to calculate material cost for components
+  const calculateTotalMaterialCost = () => {
+    let totalCost = 0;
+    
+    // Skip calculation if components aren't loaded yet
+    if (Object.keys(components).length === 0 && customComponents.length === 0) {
+      return 0;
+    }
+    
+    // Add costs from standard components
+    Object.values(components).forEach((component: any) => {
+      if (component && component.material_id && materialPrices[component.material_id]) {
+        const consumption = parseFloat(component.consumption || '0');
+        const rate = materialPrices[component.material_id];
+        if (!isNaN(consumption) && !isNaN(rate)) {
+          totalCost += consumption * rate;
+        }
+      }
+    });
+    
+    // Add costs from custom components
+    customComponents.forEach((component) => {
+      if (component.material_id && materialPrices[component.material_id]) {
+        const consumption = parseFloat(component.consumption || '0');
+        const rate = materialPrices[component.material_id];
+        if (!isNaN(consumption) && !isNaN(rate)) {
+          totalCost += consumption * rate;
+        }
+      }
+    });
+    
+    return totalCost;
+  };
+
+  useEffect(() => {
+    // Calculate a hash of the current state to prevent unnecessary updates
+    const currentCalculationState = JSON.stringify({
+      components: Object.keys(components).length,
+      customComponents: customComponents.length,
+      materialPrices: Object.keys(materialPrices).length
+    });
+    
+    // Skip if nothing relevant has changed
+    if (currentCalculationState === lastCalculation) return;
+    
+    // Calculate the total material cost
+    const totalMaterialCost = calculateTotalMaterialCost();
+    const formattedMaterialCost = totalMaterialCost.toFixed(2);
+    
+    // Skip if the material cost hasn't changed
+    if (formattedMaterialCost === productData.material_cost) {
+      setLastCalculation(currentCalculationState);
+      return;
+    }
+    
+    // Update the product data with the new material cost
+    setProductData(prev => {
+      // Calculate total cost with new material cost
+      const updatedData = {
+        ...prev,
+        material_cost: formattedMaterialCost
+      };
+      
+      // Update total cost
+      const totalCost = calculateTotalCost();
+      const formattedTotalCost = totalCost.toFixed(2);
+      
+      // Only update if actually changed
+      if (formattedTotalCost !== prev.total_cost) {
+        updatedData.total_cost = formattedTotalCost;
+        
+        // Update margin if selling rate exists
+        if (updatedData.selling_rate && parseFloat(updatedData.selling_rate) > 0 && totalCost > 0) {
+          const calculatedMargin = ((parseFloat(updatedData.selling_rate) - totalCost) / totalCost) * 100;
+          updatedData.margin = calculatedMargin.toFixed(2);
+        }
+      }
+      
+      return updatedData;
+    });
+    
+    // Save the current calculation state to prevent unnecessary recalculations
+    setLastCalculation(currentCalculationState);
+  }, [components, customComponents, materialPrices, lastCalculation]);
+
+  // Calculate the total cost by summing all component costs
+  const calculateTotalCost = () => {
+    const materialCost = parseFloat(productData.material_cost) || 0;
+    const cuttingCharge = parseFloat(productData.cutting_charge) || 0;
+    const printingCharge = parseFloat(productData.printing_charge) || 0;
+    const stitchingCharge = parseFloat(productData.stitching_charge) || 0;
+    const transportCharge = parseFloat(productData.transport_charge) || 0;
+    
+    const totalCost = materialCost + cuttingCharge + printingCharge + stitchingCharge + transportCharge;
+    return totalCost;
+  };
+
   const handleProductChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setProductData(prev => ({
@@ -141,6 +260,17 @@ const CatalogEdit = () => {
           selling_rate: calculatedSellingRate.toFixed(2)
         }));
       }
+    }
+    
+    // Recalculate total cost when cost components change
+    if (["cutting_charge", "printing_charge", "stitching_charge", "transport_charge", "material_cost"].includes(name)) {
+      setTimeout(() => {
+        const totalCost = calculateTotalCost();
+        setProductData(prev => ({
+          ...prev,
+          total_cost: totalCost.toFixed(2)
+        }));
+      }, 0);
     }
   };
 
@@ -231,8 +361,17 @@ const CatalogEdit = () => {
     
     setSubmitting(true);
     
+    // Show a pending toast to indicate the process has started
+    const pendingToast = toast({
+      title: "Saving changes...",
+      description: "Please wait while your changes are being saved",
+      variant: "default"
+    });
+    
     try {
-      // Prepare product data with new fields
+      console.log("Starting product update process...");
+      
+      // Prepare product data with all required fields
       const productDbData = {
         name: productData.name,
         description: productData.description || null,
@@ -243,8 +382,16 @@ const CatalogEdit = () => {
         default_rate: productData.default_rate ? parseFloat(productData.default_rate) : null,
         selling_rate: productData.selling_rate ? parseFloat(productData.selling_rate) : null,
         margin: productData.margin ? parseFloat(productData.margin) : null,
+        // Add all the cost fields
+        cutting_charge: parseFloat(productData.cutting_charge) || 0,
+        printing_charge: parseFloat(productData.printing_charge) || 0,
+        stitching_charge: parseFloat(productData.stitching_charge) || 0,
+        transport_charge: parseFloat(productData.transport_charge) || 0,
+        total_cost: parseFloat(productData.total_cost) || 0,
         updated_at: new Date().toISOString()
       };
+      
+      console.log("Product data to update:", productDbData);
       
       // Update the product
       const { error: productError } = await supabase
@@ -253,17 +400,23 @@ const CatalogEdit = () => {
         .eq("id", id);
       
       if (productError) {
+        console.error("Error updating product data:", productError);
         throw productError;
       }
       
+      console.log("Product updated successfully with ID:", id);
+      
       // Delete components that were removed
       if (deletedComponentIds.length > 0) {
+        console.log("Deleting removed components:", deletedComponentIds);
+        
         const { error: deleteError } = await supabase
           .from("catalog_components")
           .delete()
           .in("id", deletedComponentIds);
           
         if (deleteError) {
+          console.error("Error deleting components:", deleteError);
           throw deleteError;
         }
       }
@@ -271,8 +424,10 @@ const CatalogEdit = () => {
       // Process components
       const allComponents = [
         ...Object.values(components).filter(Boolean),
-        ...customComponents.filter(comp => comp.customName || comp.color || comp.gsm || comp.length || comp.width || comp.roll_width)
+        ...customComponents.filter(comp => comp.customName || comp.color || comp.length || comp.width || comp.roll_width)
       ];
+      
+      console.log("Components to update:", allComponents.length);
       
       // Update or insert components
       for (const comp of allComponents) {
@@ -280,7 +435,7 @@ const CatalogEdit = () => {
         
         const componentData = {
           catalog_id: id,
-          component_type: comp.type === 'custom' ? 'custom' : comp.type,
+          component_type: comp.type === 'custom' ? (comp.customName || 'custom') : comp.type,
           size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
           color: comp.color || null,
           gsm: comp.gsm ? parseFloat(comp.gsm) : null,
@@ -288,18 +443,28 @@ const CatalogEdit = () => {
           custom_name: comp.type === 'custom' ? comp.customName : null,
           length: comp.length ? parseFloat(comp.length) : null,
           width: comp.width ? parseFloat(comp.width) : null,
+          material_id: comp.material_id || null,
+          material_linked: comp.material_id ? true : false,
+          consumption: comp.consumption || null,
           updated_at: new Date().toISOString()
         };
         
         if (isExisting) {
+          console.log(`Updating existing component ${comp.id}:`, comp.type);
           // Update existing component
           const { error } = await supabase
             .from("catalog_components")
             .update(componentData)
             .eq("id", comp.id);
             
-          if (error) throw error;
+          if (error) {
+            console.error(`Error updating component ${comp.id}:`, error);
+            throw error;
+          }
+          
+          console.log(`Component ${comp.id} updated successfully`);
         } else {
+          console.log(`Creating new component of type ${comp.type}:`, comp);
           // Insert new component
           const { error } = await supabase
             .from("catalog_components")
@@ -308,18 +473,32 @@ const CatalogEdit = () => {
               id: comp.id
             });
             
-          if (error) throw error;
+          if (error) {
+            console.error(`Error creating component ${comp.id}:`, error);
+            throw error;
+          }
+          
+          console.log(`New component created with ID:`, comp.id);
         }
       }
       
+      // Clear the pending toast
+      pendingToast?.dismiss();
+      
       toast({
         title: "Product updated successfully",
-        description: `${productData.name} has been updated in the catalog`
+        description: `${productData.name} has been updated in the catalog`,
+        variant: "default"
       });
 
-      navigate(`/inventory/catalog/${id}`);
+      // Immediate redirect with a full page refresh
+      // This resolves navigation issues by forcing a complete page reload
+      window.location.href = `/inventory/catalog/${id}`;
       
     } catch (error: any) {
+      // Clear the pending toast
+      pendingToast?.dismiss();
+      
       toast({
         title: "Error updating product",
         description: error.message || "An unexpected error occurred",
@@ -343,7 +522,7 @@ const CatalogEdit = () => {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 p-8">
         <div className="text-2xl font-semibold text-muted-foreground">Product not found</div>
-        <Button onClick={() => navigate("/inventory/catalog")}>
+        <Button onClick={() => window.location.href = "/inventory/catalog"}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Catalog
         </Button>
       </div>
@@ -357,7 +536,7 @@ const CatalogEdit = () => {
           <Button 
             variant="ghost" 
             size="sm"
-            onClick={() => navigate(`/inventory/catalog/${id}`)}
+            onClick={() => window.location.href = `/inventory/catalog/${id}`}
             className="gap-1"
           >
             <ArrowLeft size={16} />
@@ -510,6 +689,93 @@ const CatalogEdit = () => {
                 Margin is calculated as ((Selling Rate - Cost Rate) / Cost Rate) × 100
               </p>
             </div>
+            
+            {/* Add Cost Breakdown Section */}
+            <div className="col-span-2 mt-4">
+              <h3 className="text-lg font-medium mb-4">Cost Breakdown</h3>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="material_cost">Material Cost</Label>
+                  <Input 
+                    id="material_cost" 
+                    name="material_cost"
+                    type="number"
+                    step="0.01"
+                    value={productData.material_cost}
+                    onChange={handleProductChange}
+                    placeholder="Material cost"
+                    min="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cutting_charge">Cutting Charge</Label>
+                  <Input 
+                    id="cutting_charge" 
+                    name="cutting_charge"
+                    type="number"
+                    step="0.01"
+                    value={productData.cutting_charge}
+                    onChange={handleProductChange}
+                    placeholder="Cutting charge"
+                    min="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="printing_charge">Printing Charge</Label>
+                  <Input 
+                    id="printing_charge" 
+                    name="printing_charge"
+                    type="number"
+                    step="0.01"
+                    value={productData.printing_charge}
+                    onChange={handleProductChange}
+                    placeholder="Printing charge"
+                    min="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="stitching_charge">Stitching Charge</Label>
+                  <Input 
+                    id="stitching_charge" 
+                    name="stitching_charge"
+                    type="number"
+                    step="0.01"
+                    value={productData.stitching_charge}
+                    onChange={handleProductChange}
+                    placeholder="Stitching charge"
+                    min="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="transport_charge">Transport Charge</Label>
+                  <Input 
+                    id="transport_charge" 
+                    name="transport_charge"
+                    type="number"
+                    step="0.01"
+                    value={productData.transport_charge}
+                    onChange={handleProductChange}
+                    placeholder="Transport charge"
+                    min="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="total_cost">Total Cost</Label>
+                  <Input 
+                    id="total_cost" 
+                    name="total_cost"
+                    type="number"
+                    step="0.01"
+                    value={productData.total_cost}
+                    readOnly
+                    className="bg-slate-50"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Sum of material cost and all charges
+                  </p>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
         
@@ -555,7 +821,7 @@ const CatalogEdit = () => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate(`/inventory/catalog/${id}`)}
+              onClick={() => window.location.href = `/inventory/catalog/${id}`}
             >
               Cancel
             </Button>
