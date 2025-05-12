@@ -1,4 +1,3 @@
-
 import { Bell, Search, Plus, Keyboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
@@ -80,18 +79,8 @@ const Header = () => {
   }, []);
 
   const getActionButton = () => {
-    if (location.pathname === '/orders') {
-      return (
-        <Button 
-          size="sm" 
-          className="gap-1"
-          onClick={() => { window.location.href = '/orders/new'; }}
-        >
-          <Plus size={16} />
-          New Order
-        </Button>
-      );
-    }
+    // Removed the duplicate "New Order" button from the Orders page
+    // since it already exists in the OrderHeader component
     
     if (location.pathname === '/production/job-cards') {
       return (

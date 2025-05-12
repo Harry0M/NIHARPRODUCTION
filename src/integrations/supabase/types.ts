@@ -943,6 +943,76 @@ export type Database = {
           },
         ]
       }
+      job_wastage: {
+        Row: {
+          created_at: string | null
+          id: string
+          job_card_id: string | null
+          job_id: string
+          job_type: string
+          notes: string | null
+          order_id: string | null
+          provided_quantity: number | null
+          received_quantity: number | null
+          updated_at: string | null
+          wastage_percentage: number | null
+          wastage_quantity: number | null
+          worker_name: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          job_card_id?: string | null
+          job_id: string
+          job_type: string
+          notes?: string | null
+          order_id?: string | null
+          provided_quantity?: number | null
+          received_quantity?: number | null
+          updated_at?: string | null
+          wastage_percentage?: number | null
+          wastage_quantity?: number | null
+          worker_name?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          job_card_id?: string | null
+          job_id?: string
+          job_type?: string
+          notes?: string | null
+          order_id?: string | null
+          provided_quantity?: number | null
+          received_quantity?: number | null
+          updated_at?: string | null
+          wastage_percentage?: number | null
+          wastage_quantity?: number | null
+          worker_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_wastage_job_card_id_fkey"
+            columns: ["job_card_id"]
+            isOneToOne: false
+            referencedRelation: "job_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_wastage_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_material_breakdown"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "job_wastage_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       material_categories: {
         Row: {
           created_at: string
@@ -1868,6 +1938,39 @@ export type Database = {
           },
         ]
       }
+      wastage_analysis: {
+        Row: {
+          company_name: string | null
+          created_at: string | null
+          id: string | null
+          job_number: string | null
+          job_type: string | null
+          notes: string | null
+          order_id: string | null
+          order_number: string | null
+          provided_quantity: number | null
+          received_quantity: number | null
+          wastage_percentage: number | null
+          wastage_quantity: number | null
+          worker_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_wastage_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_material_breakdown"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "job_wastage_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       calculate_consumption: {
@@ -1939,6 +2042,24 @@ export type Database = {
           unit: string
           purchase_price: number
           component_type: string
+        }[]
+      }
+      get_production_wastage: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          order_id: string
+          order_number: string
+          company_name: string
+          job_number: string
+          job_type: string
+          worker_name: string
+          provided_quantity: number
+          received_quantity: number
+          wastage_quantity: number
+          wastage_percentage: number
+          notes: string
+          created_at: string
         }[]
       }
       is_admin: {
