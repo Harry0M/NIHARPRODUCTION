@@ -79,21 +79,8 @@ const Header = () => {
   }, []);
 
   const getActionButton = () => {
-    // Removed the duplicate "New Order" button from the Orders page
-    // since it already exists in the OrderHeader component
-    
-    if (location.pathname === '/production/job-cards') {
-      return (
-        <Button 
-          size="sm" 
-          className="gap-1"
-          onClick={() => { window.location.href = '/production/job-cards/new'; }}
-        >
-          <Plus size={16} />
-          New Job Card
-        </Button>
-      );
-    }
+    // Removed the duplicate "New Job Card" button from the production/job-cards page
+    // since it already exists in the JobCardListHeader component
     
     if (location.pathname === '/vendors') {
       return (
