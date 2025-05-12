@@ -277,8 +277,14 @@ const PartnersList = () => {
                       {filteredPartners.map((partner, index) => (
                         <TableRow 
                           key={`${partner.partnerType}-${partner.id}`}
-                          className="group transition-colors duration-150"
+                          className="group transition-colors duration-150 cursor-pointer hover:bg-muted"
                           style={{ animationDelay: `${index * 0.05}s` }}
+                          onClick={(e) => {
+                            // Only navigate if click is on the row itself, not on action buttons
+                            if (e.currentTarget === e.target || !e.target.closest('button')) {
+                              navigate(`/partners/${partner.id}/performance?type=${partner.partnerType}`);
+                            }
+                          }}
                         >
                           <TableCell className="font-medium">{partner.name}</TableCell>
                           <TableCell>
@@ -315,7 +321,10 @@ const PartnersList = () => {
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
-                                onClick={() => navigate(`/partners/${partner.id}/performance?type=${partner.partnerType}`)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/partners/${partner.id}/performance?type=${partner.partnerType}`);
+                                }}
                                 title="View Performance"
                               >
                                 <BarChart3 className="h-4 w-4" />
@@ -324,7 +333,10 @@ const PartnersList = () => {
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
-                                onClick={() => navigate(`/partners/${partner.id}/edit?type=${partner.partnerType}`)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/partners/${partner.id}/edit?type=${partner.partnerType}`);
+                                }}
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
@@ -332,7 +344,8 @@ const PartnersList = () => {
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive"
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   setPartnerToDelete({id: partner.id, type: partner.partnerType});
                                   setDeleteDialogOpen(true);
                                 }}
