@@ -4,7 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { downloadAsCSV, downloadAsPDF, formatOrdersForDownload } from "@/utils/downloadUtils";
 import { DeleteOrderDialog } from "@/components/orders/list/DeleteOrderDialog";
+import { BulkDeleteDialog } from "@/components/orders/list/BulkDeleteDialog";
 import { useOrderDeletion } from "@/hooks/use-order-deletion";
+import { useBulkOrderDeletion } from "@/hooks/use-bulk-order-deletion";
 import { OrderHeader } from "@/components/orders/list/OrderHeader";
 import { OrderContent } from "@/components/orders/list/OrderContent";
 import { Button } from "@/components/ui/button";
@@ -38,6 +40,13 @@ const OrderList = () => {
     // Remove from selected if it was selected
     setSelectedOrders(prev => prev.filter(id => id !== deletedOrderId));
   };
+  
+  const handleOrdersDeleted = (deletedOrderIds: string[]) => {
+    // Update orders state without causing a full re-fetch
+    setOrders(prevOrders => prevOrders.filter(order => !deletedOrderIds.includes(order.id)));
+    // Clear selection
+    setSelectedOrders([]);
+  };
 
   const { 
     deleteDialogOpen, 
@@ -46,6 +55,14 @@ const OrderList = () => {
     handleDeleteClick, 
     handleDeleteOrder 
   } = useOrderDeletion(handleOrderDeleted);
+  
+  const {
+    bulkDeleteDialogOpen,
+    bulkDeleteLoading,
+    setBulkDeleteDialogOpen,
+    handleBulkDeleteClick,
+    handleBulkDeleteOrders
+  } = useBulkOrderDeletion(handleOrdersDeleted);
 
   useEffect(() => {
     fetchOrders();
@@ -157,17 +174,7 @@ const OrderList = () => {
 
   const handleBulkDelete = () => {
     if (selectedOrders.length === 0) return;
-    
-    // For now, we'll just confirm and show a toast
-    // In a real implementation, you'd want to create a confirmation modal
-    if (window.confirm(`Are you sure you want to delete ${selectedOrders.length} orders?`)) {
-      showToast({
-        title: `${selectedOrders.length} orders deleted`,
-        type: "success"
-      });
-      setOrders(prev => prev.filter(order => !selectedOrders.includes(order.id)));
-      setSelectedOrders([]);
-    }
+    handleBulkDeleteClick(selectedOrders);
   };
 
   const handleBulkStatusUpdate = (status: OrderStatus) => {
@@ -248,6 +255,14 @@ const OrderList = () => {
         onOpenChange={setDeleteDialogOpen}
         onConfirm={handleDeleteOrder}
         isLoading={deleteLoading}
+      />
+      
+      <BulkDeleteDialog
+        open={bulkDeleteDialogOpen}
+        onOpenChange={setBulkDeleteDialogOpen}
+        onConfirm={handleBulkDeleteOrders}
+        isLoading={bulkDeleteLoading}
+        orderCount={selectedOrders.length}
       />
     </div>
   );

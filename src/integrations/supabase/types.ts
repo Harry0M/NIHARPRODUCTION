@@ -2003,6 +2003,10 @@ export type Database = {
         Args: { order_id: string }
         Returns: boolean
       }
+      bulk_delete_orders: {
+        Args: { order_ids: string[] }
+        Returns: { deleted_count: number, status: string }[]
+      }
       emergency_delete_order: {
         Args: { target_id: string }
         Returns: boolean
