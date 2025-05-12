@@ -8,6 +8,7 @@ import JobCardFilters from "@/components/production/job-cards/JobCardFilters";
 import JobCardEmptyState from "@/components/production/job-cards/JobCardEmptyState";
 import JobCardTable from "@/components/production/job-cards/JobCardTable";
 import JobCardDeleteDialog from "@/components/production/job-cards/JobCardDeleteDialog";
+import BulkJobCardDeleteDialog from "@/components/production/job-cards/BulkJobCardDeleteDialog";
 import { SkeletonTable } from "@/components/ui/skeleton-table";
 import { showToast } from "@/components/ui/enhanced-toast";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
@@ -16,6 +17,7 @@ import { useJobCards } from "@/hooks/job-cards/useJobCards";
 import { useJobCardStatus } from "@/hooks/job-cards/useJobCardStatus";
 import { useJobCardStages } from "@/hooks/job-cards/useJobCardStages";
 import { useJobCardDelete } from "@/hooks/job-cards/useJobCardDelete";
+import { useBulkJobCardDelete } from "@/hooks/job-cards/useBulkJobCardDelete";
 
 const JobCardList = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -32,6 +34,14 @@ const JobCardList = () => {
     confirmDeleteJobCard, 
     handleDeleteJobCard 
   } = useJobCardDelete(setJobCards);
+  
+  const {
+    bulkDeleteDialogOpen,
+    setBulkDeleteDialogOpen,
+    bulkDeleteLoading,
+    confirmBulkDeleteJobCards,
+    handleBulkDeleteJobCards
+  } = useBulkJobCardDelete(setJobCards);
 
   // Set up keyboard shortcuts
   const shortcuts = {
@@ -91,16 +101,7 @@ const JobCardList = () => {
 
   const handleBulkDelete = () => {
     if (selectedJobCards.length === 0) return;
-    
-    if (window.confirm(`Are you sure you want to delete ${selectedJobCards.length} job cards?`)) {
-      // In a real implementation, you'd want to delete these in the database
-      setJobCards(prev => prev.filter(card => !selectedJobCards.includes(card.id)));
-      showToast({
-        title: `${selectedJobCards.length} job cards deleted`,
-        type: "success"
-      });
-      setSelectedJobCards([]);
-    }
+    confirmBulkDeleteJobCards(selectedJobCards);
   };
 
   const handleBulkStatusUpdate = (status: string) => {
@@ -203,6 +204,14 @@ const JobCardList = () => {
         onOpenChange={setDeleteDialogOpen}
         deleteLoading={deleteLoading}
         onDelete={handleDeleteJobCard}
+      />
+      
+      <BulkJobCardDeleteDialog
+        open={bulkDeleteDialogOpen}
+        onOpenChange={setBulkDeleteDialogOpen}
+        deleteLoading={bulkDeleteLoading}
+        onDelete={handleBulkDeleteJobCards}
+        jobCardCount={selectedJobCards.length}
       />
     </div>
   );
