@@ -9,9 +9,10 @@ import { stockFormSchema, StockFormValues, defaultValues } from "./StockFormSche
 
 interface UseStockFormProps {
   stockId?: string;
+  onSuccess?: (stockId: string) => void;
 }
 
-export function useStockForm({ stockId }: UseStockFormProps = {}) {
+export function useStockForm({ stockId, onSuccess }: UseStockFormProps = {}) {
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -103,14 +104,20 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       toast({
         title: "Stock created successfully",
         description: "New stock item has been added to inventory",
       });
-      // Use window.location.href instead of navigate for reliable page refresh
-      window.location.href = "/inventory/stock";
+      
+      // Call the onSuccess callback if provided
+      if (onSuccess && data && data[0]) {
+        onSuccess(data[0].id);
+      } else {
+        // Use window.location.href instead of navigate for reliable page refresh
+        window.location.href = "/inventory/stock";
+      }
     },
     onError: (error) => {
       console.error("Error creating stock:", error);
@@ -156,15 +163,21 @@ export function useStockForm({ stockId }: UseStockFormProps = {}) {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["stock", stockId] });
       toast({
         title: "Stock updated successfully",
         description: "The stock item has been updated",
       });
-      // Use window.location.href instead of navigate for reliable page refresh
-      window.location.href = "/inventory/stock";
+      
+      // Call the onSuccess callback if provided
+      if (onSuccess && data && data[0]) {
+        onSuccess(data[0].id);
+      } else {
+        // Use window.location.href instead of navigate for reliable page refresh
+        window.location.href = "/inventory/stock";
+      }
     },
     onError: (error) => {
       console.error("Error updating stock:", error);

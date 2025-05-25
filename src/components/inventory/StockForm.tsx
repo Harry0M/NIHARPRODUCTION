@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
@@ -13,9 +12,10 @@ import { Loader2 } from "lucide-react";
 
 interface StockFormProps {
   stockId?: string;
+  onSuccess?: (stockId: string) => void;
 }
 
-export const StockForm = ({ stockId }: StockFormProps) => {
+export const StockForm = ({ stockId, onSuccess }: StockFormProps) => {
   const {
     form,
     onSubmit,
@@ -23,7 +23,10 @@ export const StockForm = ({ stockId }: StockFormProps) => {
     hasAlternateUnit,
     setHasAlternateUnit,
     isLoading,
-  } = useStockForm({ stockId });
+  } = useStockForm({ 
+    stockId, 
+    onSuccess 
+  });
 
   if (isLoading) {
     return (

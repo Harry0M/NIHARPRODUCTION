@@ -12,8 +12,9 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
+import { X, Plus } from "lucide-react";
 import PaginationControls from "@/components/ui/pagination-controls";
+import { StockFormDialog } from "../StockFormDialog";
 
 // Custom DialogContent without animations
 const DialogContent = React.forwardRef<
@@ -55,8 +56,9 @@ export const MaterialSelector = ({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [stockFormOpen, setStockFormOpen] = useState(false);
   
-  const { data: materials = [], isLoading } = useInventoryItems();
+  const { data: materials = [], isLoading, refetch } = useInventoryItems();
   
   const filteredMaterials = materials.filter(material => {
     const searchLower = searchQuery.toLowerCase();
@@ -101,6 +103,21 @@ export const MaterialSelector = ({
     setPage(1); // Reset to first page when changing page size
   };
   
+  const handleCreateStockButtonClick = () => {
+    setStockFormOpen(true);
+  };
+  
+  const handleStockCreated = async (stockId: string) => {
+    // Refetch materials to get the newly created item
+    await refetch();
+    // Select the newly created material
+    onMaterialSelect(stockId);
+    // Close the stock form dialog
+    setStockFormOpen(false);
+    // Close the material selector dialog
+    setDialogOpen(false);
+  };
+  
   // Find the selected material to display its name
   const selectedMaterial = materials.find(m => m.id === selectedMaterialId);
 
@@ -143,12 +160,22 @@ export const MaterialSelector = ({
             <DialogTitle>Select Material for {componentType}</DialogTitle>
           </DialogHeader>
           
-          <div className="my-4">
-            <MaterialSearchBar 
-              searchQuery={searchQuery} 
-              setSearchQuery={setSearchQuery}
-              placeholder="Search for a material..." 
-            />
+          <div className="my-4 flex justify-between items-center">
+            <div className="flex-1 mr-4">
+              <MaterialSearchBar 
+                searchQuery={searchQuery} 
+                setSearchQuery={setSearchQuery}
+                placeholder="Search for a material..." 
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCreateStockButtonClick}
+              className="whitespace-nowrap"
+            >
+              <Plus className="h-4 w-4 mr-1" /> Create New Item
+            </Button>
           </div>
           
           <div className="my-4">
@@ -193,6 +220,12 @@ export const MaterialSelector = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      <StockFormDialog
+        open={stockFormOpen}
+        onOpenChange={setStockFormOpen}
+        onStockCreated={handleStockCreated}
+      />
     </div>
   );
 };
