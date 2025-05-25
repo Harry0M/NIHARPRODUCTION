@@ -37,6 +37,7 @@ interface ComponentType {
   baseConsumption?: string;
   materialRate?: number;
   materialCost?: number;
+  formula?: 'standard' | 'linear';
 }
 
 const CatalogNew = () => {
@@ -98,20 +99,40 @@ const CatalogNew = () => {
   };
   
   // Function to calculate consumption based on dimensions
-  const calculateConsumption = (length?: string, width?: string, rollWidth?: string): string | undefined => {
-    if (!length || !width || !rollWidth) return undefined;
+  const calculateConsumption = (
+    length?: string, 
+    width?: string, 
+    rollWidth?: string, 
+    formula: 'standard' | 'linear' = 'standard'
+  ): string | undefined => {
+    if (!length) return undefined;
     
     const lengthVal = parseFloat(length);
-    const widthVal = parseFloat(width);
-    const rollWidthVal = parseFloat(rollWidth);
     
-    if (isNaN(lengthVal) || isNaN(widthVal) || isNaN(rollWidthVal) || rollWidthVal <= 0) {
+    if (isNaN(lengthVal)) {
       return undefined;
     }
     
-    // Formula: (length * width) / (roll_width * 39.39)
-    const consumption = (lengthVal * widthVal) / (rollWidthVal * 39.39);
-    return consumption.toFixed(4);
+    if (formula === 'standard') {
+      // Standard formula: (length * width) / (roll_width * 39.39)
+      if (!width || !rollWidth) return undefined;
+      
+      const widthVal = parseFloat(width);
+      const rollWidthVal = parseFloat(rollWidth);
+      
+      if (isNaN(widthVal) || isNaN(rollWidthVal) || rollWidthVal <= 0) {
+        return undefined;
+      }
+      
+      const consumption = (lengthVal * widthVal) / (rollWidthVal * 39.39);
+      return consumption.toFixed(4);
+    } else {
+      // Linear formula: (quantity * length) / 39.39
+      // Note: in this context, we don't have quantity yet, so we calculate base consumption
+      // The quantity will be applied later
+      const consumption = lengthVal / 39.39;
+      return consumption.toFixed(4);
+    }
   };
   
   // Calculate material cost for a component
@@ -196,11 +217,48 @@ const CatalogNew = () => {
     
     Object.keys(updatedComponents).forEach(type => {
       const component = updatedComponents[type];
-      if (component.length && component.width && component.roll_width) {
+      const formula = component.formula || 'standard';
+      
+      // Check if we have the required fields based on formula
+      const hasRequiredFields = formula === 'standard' 
+        ? component.length && component.width && component.roll_width
+        : component.length;
+      
+      if (hasRequiredFields) {
         const baseConsumption = calculateConsumption(
           component.length,
           component.width,
-          component.roll_width
+          component.roll_width,
+          formula
+        );
+        
+        if (baseConsumption) {
+          const consumption = productData.default_quantity 
+            ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
+            : baseConsumption;
+            
+          updatedComponents[type] = {
+            ...component,
+            baseConsumption,
+            consumption
+          };
+          
+          // Also calculate material cost if material_id is present
+          if (component.material_id && materialPrices[component.material_id]) {
+            const materialRate = materialPrices[component.material_id];
+            const materialCost = parseFloat(consumption) * materialRate;
+            updatedComponents[type].materialCost = materialCost;
+          }
+          
+          hasUpdates = true;
+        }
+      } else if (formula === 'linear' && component.length) {
+        // Special case for linear formula with just length
+        const baseConsumption = calculateConsumption(
+          component.length,
+          undefined,
+          undefined,
+          'linear'
         );
         
         if (baseConsumption) {
@@ -232,11 +290,19 @@ const CatalogNew = () => {
     
     // Update custom components
     const updatedCustomComponents = customComponents.map(component => {
-      if (component.length && component.width && component.roll_width) {
+      const formula = component.formula || 'standard';
+      
+      // Check if we have the required fields based on formula
+      const hasRequiredFields = formula === 'standard' 
+        ? component.length && component.width && component.roll_width
+        : component.length;
+      
+      if (hasRequiredFields) {
         const baseConsumption = calculateConsumption(
           component.length,
           component.width,
-          component.roll_width
+          component.roll_width,
+          formula
         );
         
         if (baseConsumption) {
@@ -250,7 +316,36 @@ const CatalogNew = () => {
             consumption
           };
           
-          // Also calculate material cost if material_id is present
+          // Also calculate material cost if material_id and rate are present
+          if (component.material_id && materialPrices[component.material_id]) {
+            const materialRate = materialPrices[component.material_id];
+            const materialCost = parseFloat(consumption) * materialRate;
+            updatedComponent.materialCost = materialCost;
+          }
+          
+          return updatedComponent;
+        }
+      } else if (formula === 'linear' && component.length) {
+        // Special case for linear formula with just length
+        const baseConsumption = calculateConsumption(
+          component.length,
+          undefined,
+          undefined,
+          'linear'
+        );
+        
+        if (baseConsumption) {
+          const consumption = productData.default_quantity 
+            ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
+            : baseConsumption;
+            
+          const updatedComponent = {
+            ...component,
+            baseConsumption,
+            consumption
+          };
+          
+          // Also calculate material cost if material_id and rate are present
           if (component.material_id && materialPrices[component.material_id]) {
             const materialRate = materialPrices[component.material_id];
             const materialCost = parseFloat(consumption) * materialRate;
@@ -367,31 +462,67 @@ const CatalogNew = () => {
         updatedComponent.materialCost = parseFloat(value);
       }
       
-      // If dimensions or roll width changed, recalculate consumption
-      if (['length', 'width', 'roll_width'].includes(field) && 
-          updatedComponent.length && 
-          updatedComponent.width && 
-          updatedComponent.roll_width) {
+      // If formula is changed, immediately recalculate consumption
+      if (field === 'formula') {
+        const formula = value as 'standard' | 'linear';
+        const shouldRecalculate = 
+          (formula === 'standard' && updatedComponent.length && updatedComponent.width && updatedComponent.roll_width) ||
+          (formula === 'linear' && updatedComponent.length);
         
-        const baseConsumption = calculateConsumption(
-          updatedComponent.length,
-          updatedComponent.width,
-          updatedComponent.roll_width
-        );
-        
-        if (baseConsumption) {
-          updatedComponent.baseConsumption = baseConsumption;
-          updatedComponent.consumption = productData.default_quantity 
-            ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
-            : baseConsumption;
+        if (shouldRecalculate) {
+          const baseConsumption = calculateConsumption(
+            updatedComponent.length,
+            updatedComponent.width,
+            updatedComponent.roll_width,
+            formula
+          );
+          
+          if (baseConsumption) {
+            updatedComponent.baseConsumption = baseConsumption;
+            updatedComponent.consumption = productData.default_quantity 
+              ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
+              : baseConsumption;
             
-          // Also calculate material cost if material_id and rate are present
-          if (updatedComponent.material_id && materialPrices[updatedComponent.material_id]) {
-            const materialRate = materialPrices[updatedComponent.material_id];
-            const consumptionValue = parseFloat(updatedComponent.consumption);
-            const materialCost = consumptionValue * materialRate;
-            updatedComponent.materialCost = materialCost;
-            updatedComponent.materialRate = materialRate;
+            // Also calculate material cost if material_id and rate are present
+            if (updatedComponent.material_id && materialPrices[updatedComponent.material_id]) {
+              const materialRate = materialPrices[updatedComponent.material_id];
+              const consumptionValue = parseFloat(updatedComponent.consumption);
+              const materialCost = consumptionValue * materialRate;
+              updatedComponent.materialCost = materialCost;
+              updatedComponent.materialRate = materialRate;
+            }
+          }
+        }
+      }
+      // If dimensions changed, check if we can calculate consumption based on formula
+      else if (['length', 'width', 'roll_width'].includes(field)) {
+        const formula = updatedComponent.formula || 'standard';
+        const shouldRecalculate = 
+          (formula === 'standard' && updatedComponent.length && updatedComponent.width && updatedComponent.roll_width) ||
+          (formula === 'linear' && updatedComponent.length);
+        
+        if (shouldRecalculate) {
+          const baseConsumption = calculateConsumption(
+            updatedComponent.length,
+            updatedComponent.width,
+            updatedComponent.roll_width,
+            formula
+          );
+          
+          if (baseConsumption) {
+            updatedComponent.baseConsumption = baseConsumption;
+            updatedComponent.consumption = productData.default_quantity 
+              ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
+              : baseConsumption;
+            
+            // Also calculate material cost if material_id and rate are present
+            if (updatedComponent.material_id && materialPrices[updatedComponent.material_id]) {
+              const materialRate = materialPrices[updatedComponent.material_id];
+              const consumptionValue = parseFloat(updatedComponent.consumption);
+              const materialCost = consumptionValue * materialRate;
+              updatedComponent.materialCost = materialCost;
+              updatedComponent.materialRate = materialRate;
+            }
           }
         }
       }
@@ -440,31 +571,67 @@ const CatalogNew = () => {
         updatedComponent.materialCost = parseFloat(value);
       }
       
-      // If dimensions or roll width changed, recalculate consumption
-      if (['length', 'width', 'roll_width'].includes(field) && 
-          updatedComponent.length && 
-          updatedComponent.width && 
-          updatedComponent.roll_width) {
+      // If formula is changed, immediately recalculate consumption
+      if (field === 'formula') {
+        const formula = value as 'standard' | 'linear';
+        const shouldRecalculate = 
+          (formula === 'standard' && updatedComponent.length && updatedComponent.width && updatedComponent.roll_width) ||
+          (formula === 'linear' && updatedComponent.length);
         
-        const baseConsumption = calculateConsumption(
-          updatedComponent.length,
-          updatedComponent.width,
-          updatedComponent.roll_width
-        );
-        
-        if (baseConsumption) {
-          updatedComponent.baseConsumption = baseConsumption;
-          updatedComponent.consumption = productData.default_quantity 
-            ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
-            : baseConsumption;
+        if (shouldRecalculate) {
+          const baseConsumption = calculateConsumption(
+            updatedComponent.length,
+            updatedComponent.width,
+            updatedComponent.roll_width,
+            formula
+          );
+          
+          if (baseConsumption) {
+            updatedComponent.baseConsumption = baseConsumption;
+            updatedComponent.consumption = productData.default_quantity 
+              ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
+              : baseConsumption;
             
-          // Also calculate material cost if material_id and rate are present
-          if (updatedComponent.material_id && materialPrices[updatedComponent.material_id]) {
-            const materialRate = materialPrices[updatedComponent.material_id];
-            const consumptionValue = parseFloat(updatedComponent.consumption);
-            const materialCost = consumptionValue * materialRate;
-            updatedComponent.materialCost = materialCost;
-            updatedComponent.materialRate = materialRate;
+            // Also calculate material cost if material_id and rate are present
+            if (updatedComponent.material_id && materialPrices[updatedComponent.material_id]) {
+              const materialRate = materialPrices[updatedComponent.material_id];
+              const consumptionValue = parseFloat(updatedComponent.consumption);
+              const materialCost = consumptionValue * materialRate;
+              updatedComponent.materialCost = materialCost;
+              updatedComponent.materialRate = materialRate;
+            }
+          }
+        }
+      }
+      // If dimensions changed, check if we can calculate consumption based on formula
+      else if (['length', 'width', 'roll_width'].includes(field)) {
+        const formula = updatedComponent.formula || 'standard';
+        const shouldRecalculate = 
+          (formula === 'standard' && updatedComponent.length && updatedComponent.width && updatedComponent.roll_width) ||
+          (formula === 'linear' && updatedComponent.length);
+        
+        if (shouldRecalculate) {
+          const baseConsumption = calculateConsumption(
+            updatedComponent.length,
+            updatedComponent.width,
+            updatedComponent.roll_width,
+            formula
+          );
+          
+          if (baseConsumption) {
+            updatedComponent.baseConsumption = baseConsumption;
+            updatedComponent.consumption = productData.default_quantity 
+              ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
+              : baseConsumption;
+            
+            // Also calculate material cost if material_id and rate are present
+            if (updatedComponent.material_id && materialPrices[updatedComponent.material_id]) {
+              const materialRate = materialPrices[updatedComponent.material_id];
+              const consumptionValue = parseFloat(updatedComponent.consumption);
+              const materialCost = consumptionValue * materialRate;
+              updatedComponent.materialCost = materialCost;
+              updatedComponent.materialRate = materialRate;
+            }
           }
         }
       }

@@ -1,37 +1,83 @@
-
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+// Define formula types
+export type ConsumptionFormulaType = "standard" | "linear";
 
 interface ConsumptionCalculatorProps {
   length: number;
   width: number;
   quantity: number;
-  rollWidth: number; // Added roll width as a required parameter
+  rollWidth: number;
   materialRate?: number;
+  selectedFormula?: ConsumptionFormulaType;
   onConsumptionCalculated: (meters: number, cost?: number) => void;
+  onFormulaChange?: (formula: ConsumptionFormulaType) => void;
 }
 
 export const ConsumptionCalculator = ({ 
   length, 
   width, 
   quantity,
-  rollWidth, // Add roll width to destructuring
+  rollWidth,
   materialRate,
-  onConsumptionCalculated
+  selectedFormula = "standard",
+  onConsumptionCalculated,
+  onFormulaChange
 }: ConsumptionCalculatorProps) => {
   const [consumption, setConsumption] = useState<number>(0);
   const [materialCost, setMaterialCost] = useState<number | undefined>(undefined);
+  const [formula, setFormula] = useState<ConsumptionFormulaType>(selectedFormula);
 
-  // Calculate consumption in meters based on formula: [(length*width)/(roll_width*39.39)]*quantity
+  // Handle formula change
+  const handleFormulaChange = (value: ConsumptionFormulaType) => {
+    setFormula(value);
+    if (onFormulaChange) {
+      onFormulaChange(value);
+    }
+  };
+
+  // Calculate consumption based on selected formula
   useEffect(() => {
-    if (length && width && quantity && rollWidth) {
+    if (length && quantity) {
       try {
-        // Updated formula: (length * width) / (roll_width * 39.39) * quantity
-        const calculatedConsumption = ((length * width) / (rollWidth * 39.39)) * quantity;
+        let calculatedConsumption = 0;
+        let canCalculate = true;
+        let missingFields = [];
+        
+        if (formula === "standard") {
+          // Standard formula: (length * width) / (roll_width * 39.39) * quantity
+          if (!width) {
+            missingFields.push("width");
+            canCalculate = false;
+          }
+          if (!rollWidth) {
+            missingFields.push("roll width");
+            canCalculate = false;
+          }
+          
+          if (canCalculate) {
+            calculatedConsumption = ((length * width) / (rollWidth * 39.39)) * quantity;
+          } else {
+            console.log(`Missing required fields for standard formula: ${missingFields.join(", ")}`);
+            // Don't clear existing consumption if switching from linear to standard
+            if (!consumption) {
+              setConsumption(0);
+              setMaterialCost(undefined);
+              onConsumptionCalculated(0);
+            }
+            return;
+          }
+        } else if (formula === "linear") {
+          // Linear formula: (quantity * length) / 39.39
+          calculatedConsumption = (quantity * length) / 39.39;
+        }
+        
         const roundedConsumption = Math.round(calculatedConsumption * 100) / 100;
         
-        console.log("Calculated consumption:", roundedConsumption, "for length:", length, "width:", width, "roll width:", rollWidth, "quantity:", quantity);
+        console.log("Calculated consumption:", roundedConsumption, "using formula:", formula);
         
         // Calculate material cost if rate is provided
         let cost: number | undefined = undefined;
@@ -51,15 +97,28 @@ export const ConsumptionCalculator = ({
         onConsumptionCalculated(0);
       }
     } else {
-      console.log("Missing values for consumption calculation:", { length, width, rollWidth, quantity });
+      console.log("Missing required values for consumption calculation");
       setConsumption(0);
       setMaterialCost(undefined);
       onConsumptionCalculated(0);
     }
-  }, [length, width, rollWidth, quantity, materialRate, onConsumptionCalculated]);
+  }, [length, width, rollWidth, quantity, materialRate, formula, onConsumptionCalculated]);
 
   return (
     <div className="space-y-2">
+      <div className="flex items-center gap-2 mb-2">
+        <Label htmlFor="formula-select" className="whitespace-nowrap">Formula:</Label>
+        <Select value={formula} onValueChange={(value) => handleFormulaChange(value as ConsumptionFormulaType)}>
+          <SelectTrigger id="formula-select" className="flex-grow">
+            <SelectValue placeholder="Select formula" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="standard">Standard (L×W)÷(RW×39.39)</SelectItem>
+            <SelectItem value="linear">Linear (Q×L)÷39.39</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <Label htmlFor="consumption">Consumption (meters)</Label>
       <Input 
         id="consumption" 
@@ -68,6 +127,12 @@ export const ConsumptionCalculator = ({
         readOnly
         className="bg-gray-50"
       />
+      {formula === "standard" && (!width || !rollWidth) && (
+        <p className="text-xs text-amber-500">
+          {!width && !rollWidth ? "Width and roll width required" : 
+           !width ? "Width required" : "Roll width required"}
+        </p>
+      )}
       {materialRate && materialCost !== undefined && (
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">
@@ -79,7 +144,9 @@ export const ConsumptionCalculator = ({
         </div>
       )}
       <p className="text-xs text-muted-foreground">
-        Calculated using formula: [(length×width)÷(roll width×39.39)]×quantity
+        {formula === "standard" 
+          ? "Formula: [(length×width)÷(roll width×39.39)]×quantity" 
+          : "Formula: (quantity×length)÷39.39"}
       </p>
     </div>
   );

@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Trash2 } from "lucide-react";
 import { MaterialSelector } from "@/components/inventory/material-selector/MaterialSelector";
 import { useState, useEffect } from "react";
-import { ConsumptionCalculator } from "@/components/production/ConsumptionCalculator";
+import { ConsumptionCalculator, ConsumptionFormulaType } from "@/components/production/ConsumptionCalculator";
 
 // Export this interface for external use
 export interface CustomComponent {
@@ -28,6 +28,7 @@ export interface CustomComponent {
   baseConsumption?: string;
   materialRate?: number;
   materialCost?: number;
+  formula?: ConsumptionFormulaType;
 }
 
 interface CustomComponentSectionProps {
@@ -90,6 +91,7 @@ interface CustomComponentFormProps {
     baseConsumption?: string;
     materialRate?: number;
     materialCost?: number;
+    formula?: ConsumptionFormulaType;
   };
   index: number;
   componentOptions: {
@@ -156,6 +158,10 @@ const CustomComponentForm = ({
     }
   };
   
+  const handleFormulaChange = (formula: ConsumptionFormulaType) => {
+    handleCustomComponentChange(index, 'formula', formula);
+  };
+  
   const consumption = component.consumption || '';
   const baseConsumption = component.baseConsumption || '';
   
@@ -165,6 +171,9 @@ const CustomComponentForm = ({
   
   // Get material cost if available
   const materialCost = component.materialCost;
+  
+  // Get selected formula or default to standard
+  const selectedFormula = component.formula || 'standard';
   
   return (
     <Card className={component.consumption ? "border-blue-200" : ""}>
@@ -307,22 +316,28 @@ const CustomComponentForm = ({
             </div>
           </div>
           
-          {/* Consumption with integrated material cost calculation - Updated to pass rollWidth */}
-          {hasDimensions && component.length && component.width && component.roll_width && defaultQuantity ? (
+          {/* Consumption with integrated material cost calculation */}
+          {component.length && defaultQuantity ? (
             <ConsumptionCalculator
               length={parseFloat(component.length)}
-              width={parseFloat(component.width)}
-              rollWidth={parseFloat(component.roll_width)}
+              width={component.width ? parseFloat(component.width) : 0}
+              rollWidth={component.roll_width ? parseFloat(component.roll_width) : 0}
               quantity={parseFloat(defaultQuantity)}
               materialRate={materialRate}
+              selectedFormula={selectedFormula}
               onConsumptionCalculated={handleConsumptionCalculated}
+              onFormulaChange={handleFormulaChange}
             />
           ) : (
             <div>
               <Label htmlFor={`custom-${index}-consumption`} className="flex justify-between">
                 <span>Consumption</span>
                 {hasDimensions && !consumption && (
-                  <span className="text-amber-600 text-xs">Enter all dimensions + quantity</span>
+                  <span className="text-amber-600 text-xs">
+                    {selectedFormula === 'standard' 
+                      ? 'Enter all dimensions + quantity' 
+                      : 'Enter length + quantity'}
+                  </span>
                 )}
               </Label>
               <Input

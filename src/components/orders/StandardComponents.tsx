@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MaterialSelector } from "@/components/inventory/material-selector/MaterialSelector";
-import { ConsumptionCalculator } from "@/components/production/ConsumptionCalculator";
+import { ConsumptionCalculator, ConsumptionFormulaType } from "@/components/production/ConsumptionCalculator";
 
 interface StandardComponentsProps {
   components: Record<string, any>;
@@ -85,6 +85,7 @@ interface ComponentFormProps {
     baseConsumption?: string;
     materialRate?: number;
     materialCost?: number;
+    formula?: ConsumptionFormulaType;
   };
   componentOptions: {
     color: string[];
@@ -144,6 +145,10 @@ const ComponentForm = ({
     }
   };
   
+  const handleFormulaChange = (formula: ConsumptionFormulaType) => {
+    onChange(component.type, 'formula', formula);
+  };
+  
   // Get consumption - it should be already calculated from the parent component
   const consumption = component.consumption || '';
   const baseConsumption = component.baseConsumption || '';
@@ -153,6 +158,9 @@ const ComponentForm = ({
 
   // Get material cost if available
   const materialCost = component.materialCost;
+  
+  // Get selected formula or default to standard
+  const selectedFormula = component.formula || 'standard';
   
   return (
     <Card className={component.consumption ? "border-blue-200" : ""}>
@@ -277,22 +285,28 @@ const ComponentForm = ({
             </div>
           </div>
           
-          {/* Consumption with integrated material cost calculation - Updated to pass rollWidth */}
-          {hasDimensions && component.length && component.width && component.roll_width && defaultQuantity ? (
+          {/* Consumption with integrated material cost calculation */}
+          {component.length && defaultQuantity ? (
             <ConsumptionCalculator
               length={parseFloat(component.length)}
-              width={parseFloat(component.width)}
-              rollWidth={parseFloat(component.roll_width)}
+              width={component.width ? parseFloat(component.width) : 0}
+              rollWidth={component.roll_width ? parseFloat(component.roll_width) : 0}
               quantity={parseFloat(defaultQuantity)}
               materialRate={materialRate}
+              selectedFormula={selectedFormula}
               onConsumptionCalculated={handleConsumptionCalculated}
+              onFormulaChange={handleFormulaChange}
             />
           ) : (
             <div>
               <Label htmlFor={`${component.type}-consumption`} className="flex justify-between">
                 <span>Consumption</span>
                 {hasDimensions && !consumption && (
-                  <span className="text-amber-600 text-xs">Enter all dimensions + quantity</span>
+                  <span className="text-amber-600 text-xs">
+                    {selectedFormula === 'standard' 
+                      ? 'Enter all dimensions + quantity' 
+                      : 'Enter length + quantity'}
+                  </span>
                 )}
               </Label>
               <Input
