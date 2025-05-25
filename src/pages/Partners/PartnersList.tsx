@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -17,6 +16,7 @@ import {
 import { Plus, Search, Trash, Edit, BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import PaginationControls from "@/components/ui/pagination-controls";
 
 interface Partner {
   id: string;
@@ -38,42 +38,165 @@ const PartnersList = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'suppliers' | 'vendors'>('all');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
     fetchPartners();
-  }, []);
+  }, [page, pageSize, searchTerm, activeTab]);
 
   const fetchPartners = async () => {
     setLoading(true);
     try {
-      // Fetch suppliers
-      const { data: suppliersData, error: suppliersError } = await supabase
-        .from("suppliers")
-        .select("id, name, contact_person, phone, materials_provided, status")
-        .order("name");
+      // For pagination, we need to handle suppliers and vendors separately
+      if (activeTab === 'all' || activeTab === 'suppliers') {
+        // Fetch suppliers count
+        let suppliersCountQuery = supabase
+          .from("suppliers")
+          .select("id", { count: 'exact', head: true });
+        
+        if (searchTerm) {
+          suppliersCountQuery = suppliersCountQuery.or(
+            `name.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,materials_provided.ilike.%${searchTerm}%`
+          );
+        }
+        
+        const { count: suppliersCount, error: suppliersCountError } = await suppliersCountQuery;
+        
+        if (suppliersCountError) throw suppliersCountError;
+        
+        // Store suppliers count
+        const suppliersTotal = suppliersCount || 0;
+        
+        // If only showing suppliers, set total count now
+        if (activeTab === 'suppliers') {
+          setTotalCount(suppliersTotal);
+        }
+        
+        // If we're showing all, also fetch vendors count
+        if (activeTab === 'all') {
+          // Fetch vendors count
+          let vendorsCountQuery = supabase
+            .from("vendors")
+            .select("id", { count: 'exact', head: true });
+          
+          if (searchTerm) {
+            vendorsCountQuery = vendorsCountQuery.or(
+              `name.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,service_type.ilike.%${searchTerm}%`
+            );
+          }
+          
+          const { count: vendorsCount, error: vendorsCountError } = await vendorsCountQuery;
+          
+          if (vendorsCountError) throw vendorsCountError;
+          
+          // Set total count for both suppliers and vendors
+          setTotalCount((suppliersTotal || 0) + (vendorsCount || 0));
+        }
+      } else if (activeTab === 'vendors') {
+        // Fetch vendors count
+        let vendorsCountQuery = supabase
+          .from("vendors")
+          .select("id", { count: 'exact', head: true });
+        
+        if (searchTerm) {
+          vendorsCountQuery = vendorsCountQuery.or(
+            `name.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,service_type.ilike.%${searchTerm}%`
+          );
+        }
+        
+        const { count: vendorsCount, error: vendorsCountError } = await vendorsCountQuery;
+        
+        if (vendorsCountError) throw vendorsCountError;
+        
+        // Set total count for vendors only
+        setTotalCount(vendorsCount || 0);
+      }
       
-      if (suppliersError) throw suppliersError;
+      // Determine pagination for each type
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
       
-      // Fetch vendors
-      const { data: vendorsData, error: vendorsError } = await supabase
-        .from("vendors")
-        .select("id, name, contact_person, phone, service_type, status")
-        .order("name");
+      // Fetch the actual data based on active tab
+      const partnersData: Partner[] = [];
       
-      if (vendorsError) throw vendorsError;
+      if (activeTab === 'all' || activeTab === 'suppliers') {
+        // Fetch suppliers
+        let suppliersQuery = supabase
+          .from("suppliers")
+          .select("id, name, contact_person, phone, materials_provided, status");
+        
+        if (searchTerm) {
+          suppliersQuery = suppliersQuery.or(
+            `name.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,materials_provided.ilike.%${searchTerm}%`
+          );
+        }
+        
+        // If only showing suppliers, apply pagination directly
+        if (activeTab === 'suppliers') {
+          suppliersQuery = suppliersQuery.range(from, to);
+        }
+        
+        suppliersQuery = suppliersQuery.order("name");
+        
+        const { data: suppliersData, error: suppliersError } = await suppliersQuery;
+        
+        if (suppliersError) throw suppliersError;
+        
+        // Format suppliers data
+        const formattedSuppliers = (suppliersData || []).map(supplier => ({
+          ...supplier,
+          partnerType: 'supplier' as const
+        }));
+        
+        partnersData.push(...formattedSuppliers);
+      }
       
-      // Combine and format data
-      const formattedSuppliers = (suppliersData || []).map(supplier => ({
-        ...supplier,
-        partnerType: 'supplier' as const
-      }));
+      if (activeTab === 'all' || activeTab === 'vendors') {
+        // Fetch vendors
+        let vendorsQuery = supabase
+          .from("vendors")
+          .select("id, name, contact_person, phone, service_type, status");
+        
+        if (searchTerm) {
+          vendorsQuery = vendorsQuery.or(
+            `name.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,service_type.ilike.%${searchTerm}%`
+          );
+        }
+        
+        // If only showing vendors, apply pagination directly
+        if (activeTab === 'vendors') {
+          vendorsQuery = vendorsQuery.range(from, to);
+        }
+        
+        vendorsQuery = vendorsQuery.order("name");
+        
+        const { data: vendorsData, error: vendorsError } = await vendorsQuery;
+        
+        if (vendorsError) throw vendorsError;
+        
+        // Format vendors data
+        const formattedVendors = (vendorsData || []).map(vendor => ({
+          ...vendor, 
+          partnerType: 'vendor' as const
+        }));
+        
+        partnersData.push(...formattedVendors);
+      }
       
-      const formattedVendors = (vendorsData || []).map(vendor => ({
-        ...vendor, 
-        partnerType: 'vendor' as const
-      }));
-      
-      setPartners([...formattedSuppliers, ...formattedVendors]);
+      // If we're showing all partners, apply pagination manually after combining the data
+      if (activeTab === 'all') {
+        // Sort combined data by name
+        partnersData.sort((a, b) => a.name.localeCompare(b.name));
+        
+        // Apply pagination manually
+        const paginatedData = partnersData.slice(from, to + 1);
+        setPartners(paginatedData);
+      } else {
+        // For single partner type, pagination is already applied in the query
+        setPartners(partnersData);
+      }
     } catch (error: any) {
       toast({
         title: "Error fetching partners",
@@ -108,9 +231,19 @@ const PartnersList = () => {
         throw error;
       }
       
+      // Update partners state without causing a full re-fetch
       setPartners(partners.filter(partner => 
         !(partner.id === partnerToDelete.id && partner.partnerType === partnerToDelete.type)
       ));
+      
+      // Update total count
+      setTotalCount(prev => prev - 1);
+      
+      // If we deleted the last item on the page, go to previous page
+      if (partners.length === 1 && page > 1) {
+        setPage(page - 1);
+      }
+      
       toast({
         title: `${partnerToDelete.type === 'supplier' ? 'Supplier' : 'Vendor'} deleted`,
         description: `The ${partnerToDelete.type} has been successfully removed.`,
@@ -129,25 +262,8 @@ const PartnersList = () => {
     }
   };
 
-  const filteredPartners = partners.filter(partner => {
-    // Filter by search term
-    const searchLower = searchTerm.toLowerCase();
-    const matchesSearch = 
-      partner.name.toLowerCase().includes(searchLower) ||
-      (partner.contact_person && partner.contact_person.toLowerCase().includes(searchLower)) ||
-      (partner.partnerType === 'supplier' && partner.materials_provided && 
-        partner.materials_provided.toLowerCase().includes(searchLower)) ||
-      (partner.partnerType === 'vendor' && partner.service_type && 
-        partner.service_type.toLowerCase().includes(searchLower));
-    
-    // Filter by active tab
-    const matchesTab = 
-      activeTab === 'all' || 
-      (activeTab === 'suppliers' && partner.partnerType === 'supplier') ||
-      (activeTab === 'vendors' && partner.partnerType === 'vendor');
-      
-    return matchesSearch && matchesTab;
-  });
+  // Calculate total pages
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
     <div className="space-y-6 fade-in">
@@ -185,7 +301,10 @@ const PartnersList = () => {
             <Tabs 
               defaultValue="all" 
               className="w-full sm:w-auto" 
-              onValueChange={(value) => setActiveTab(value as any)}
+              onValueChange={(value) => {
+                setActiveTab(value as any);
+                setPage(1); // Reset to first page when tab changes
+              }}
             >
               <TabsList className="grid grid-cols-3 w-full sm:w-[360px]">
                 <TabsTrigger value="all" className="flex items-center gap-1.5">
@@ -209,7 +328,10 @@ const PartnersList = () => {
                 placeholder="Search partners..."
                 className="pl-9 w-full border-border/60 focus:border-primary/60"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1); // Reset to first page when search term changes
+                }}
               />
             </div>
           </div>
@@ -225,7 +347,7 @@ const PartnersList = () => {
             </div>
           ) : (
             <>
-              {filteredPartners.length === 0 ? (
+              {partners.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center scale-in">
                   <div className="w-16 h-16 mb-4 rounded-full bg-muted/50 flex items-center justify-center">
                     {searchTerm ? (
@@ -260,95 +382,74 @@ const PartnersList = () => {
                   )}
                 </div>
               ) : (
-                <div className="rounded-md border border-border/60 shadow-sm scale-in">
+                <div className="rounded-md border border-border/60 overflow-hidden">
                   <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/30 hover:bg-muted/40">
-                        <TableHead className="font-semibold">Name</TableHead>
-                        <TableHead className="font-semibold">Type</TableHead>
-                        <TableHead className="font-semibold">Contact Person</TableHead>
-                        <TableHead className="font-semibold">Phone</TableHead>
-                        <TableHead className="font-semibold">Services/Materials</TableHead>
-                        <TableHead className="font-semibold">Status</TableHead>
-                        <TableHead className="font-semibold w-[150px] text-right">Actions</TableHead>
+                    <TableHeader className="bg-muted/50 dark:bg-muted/20">
+                      <TableRow>
+                        <TableHead className="w-[200px]">Name</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Contact Person</TableHead>
+                        <TableHead>Phone</TableHead>
+                        <TableHead>{activeTab === 'vendors' ? 'Service Type' : 'Materials'}</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredPartners.map((partner, index) => (
-                        <TableRow 
-                          key={`${partner.partnerType}-${partner.id}`}
-                          className="group transition-colors duration-150 cursor-pointer hover:bg-muted"
-                          style={{ animationDelay: `${index * 0.05}s` }}
-                          onClick={(e) => {
-                            // Only navigate if click is on the row itself, not on action buttons
-                            if (e.currentTarget === e.target || !e.target.closest('button')) {
-                              navigate(`/partners/${partner.id}/performance?type=${partner.partnerType}`);
-                            }
-                          }}
-                        >
+                      {partners.map((partner) => (
+                        <TableRow key={`${partner.partnerType}-${partner.id}`} className="hover:bg-muted/30 dark:hover:bg-muted/10">
                           <TableCell className="font-medium">{partner.name}</TableCell>
                           <TableCell>
-                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                              partner.partnerType === 'supplier' 
-                                ? "bg-blue-500/10 text-blue-600 ring-1 ring-inset ring-blue-500/20 dark:bg-blue-500/20 dark:text-blue-300 dark:ring-blue-500/30" 
-                                : "bg-purple-500/10 text-purple-600 ring-1 ring-inset ring-purple-500/20 dark:bg-purple-500/20 dark:text-purple-300 dark:ring-purple-500/30"
-                            }`}>
-                              <span className={`h-1.5 w-1.5 rounded-full ${partner.partnerType === 'supplier' ? "bg-blue-500" : "bg-purple-500"}`}></span>
+                            <span 
+                              className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${
+                                partner.partnerType === 'supplier' 
+                                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40' 
+                                  : 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200 dark:border-purple-800/40'
+                              }`}
+                            >
+                              <span className={`h-1.5 w-1.5 rounded-full ${
+                                partner.partnerType === 'supplier' ? 'bg-blue-500' : 'bg-purple-500'
+                              }`}></span>
                               {partner.partnerType === 'supplier' ? 'Supplier' : 'Vendor'}
                             </span>
                           </TableCell>
-                          <TableCell>{partner.contact_person || "—"}</TableCell>
-                          <TableCell>{partner.phone || "—"}</TableCell>
-                          <TableCell>
+                          <TableCell>{partner.contact_person || '—'}</TableCell>
+                          <TableCell>{partner.phone || '—'}</TableCell>
+                          <TableCell className="max-w-[200px] truncate">
                             {partner.partnerType === 'supplier' 
-                              ? partner.materials_provided || "—"
-                              : partner.service_type || "—"
-                            }
+                              ? (partner.materials_provided || '—')
+                              : (partner.service_type || '—')}
                           </TableCell>
                           <TableCell>
-                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                            <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
                               partner.status === "active" 
-                                ? "bg-green-500/10 text-green-600 ring-1 ring-inset ring-green-500/20 dark:bg-green-500/20 dark:text-green-300 dark:ring-green-500/30" 
-                                : "bg-gray-200 text-gray-700 ring-1 ring-inset ring-gray-300/20 dark:bg-gray-600/30 dark:text-gray-300 dark:ring-gray-500/30"
+                                ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800/40' 
+                                : 'bg-gray-50 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300 border border-gray-200 dark:border-gray-800/40'
                             }`}>
-                              <span className={`h-1.5 w-1.5 rounded-full ${partner.status === "active" ? "bg-green-500" : "bg-gray-400"}`}></span>
                               {partner.status.charAt(0).toUpperCase() + partner.status.slice(1)}
                             </span>
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                            <div className="flex justify-end items-center space-x-2">
                               <Button
                                 variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/partners/${partner.id}/performance?type=${partner.partnerType}`);
-                                }}
-                                title="View Performance"
-                              >
-                                <BarChart3 className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/partners/${partner.id}/edit?type=${partner.partnerType}`);
-                                }}
+                                size="sm"
+                                onClick={() => navigate(`/partners/${partner.partnerType}/${partner.id}/edit`)}
+                                className="h-8 w-8 p-0"
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
                               <Button
                                 variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setPartnerToDelete({id: partner.id, type: partner.partnerType});
+                                size="sm"
+                                onClick={() => {
+                                  setPartnerToDelete({
+                                    id: partner.id, 
+                                    type: partner.partnerType
+                                  });
                                   setDeleteDialogOpen(true);
                                 }}
+                                className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/50 dark:hover:text-red-400"
                               >
                                 <Trash className="h-4 w-4" />
                               </Button>
@@ -360,57 +461,48 @@ const PartnersList = () => {
                   </Table>
                 </div>
               )}
+              
+              {/* Pagination UI */}
+              {totalPages > 1 && (
+                <div className="mt-6">
+                  <PaginationControls
+                    currentPage={page}
+                    totalPages={totalPages}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={(newSize) => {
+                      setPageSize(newSize);
+                      setPage(1); // Reset to first page when page size changes
+                    }}
+                    pageSizeOptions={[5, 10, 20, 50]}
+                    showPageSizeSelector={true}
+                  />
+                </div>
+              )}
             </>
           )}
         </CardContent>
       </Card>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="border-border/60">
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-              <Trash className="h-5 w-5" />
-              Confirm Deletion
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground space-y-3">
-              <p>
-                This action cannot be undone. This will permanently delete the selected
-                {partnerToDelete?.type === 'supplier' ? ' supplier' : ' vendor'} 
-                from the database.
-              </p>
-              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-md p-3 mt-2">
-                <p className="text-amber-800 dark:text-amber-400 text-sm font-medium">
-                  <span className="flex items-center gap-1">
-                    ⚠️ Important
-                  </span>
-                </p>
-                <p className="text-sm mt-1 text-amber-700 dark:text-amber-300">
-                  If this {partnerToDelete?.type} is referenced by any inventory items, orders, or other records, the deletion will fail.
-                  You must first update or remove those references before deleting this {partnerToDelete?.type}.
-                </p>
-              </div>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the {partnerToDelete?.type} and cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel disabled={deleteLoading} className="border-border/60">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              disabled={deleteLoading}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
               onClick={(e) => {
                 e.preventDefault();
                 handleDeletePartner();
               }}
+              disabled={deleteLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteLoading ? (
-                <>
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-destructive-foreground border-t-transparent"></div>
-                  Deleting...
-                </>
-              ) : (
-                "Delete"
-              )}
+              {deleteLoading ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,7 @@ import BulkJobCardDeleteDialog from "@/components/production/job-cards/BulkJobCa
 import { SkeletonTable } from "@/components/ui/skeleton-table";
 import { showToast } from "@/components/ui/enhanced-toast";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import PaginationControls from "@/components/ui/pagination-controls";
 
 import { useJobCards } from "@/hooks/job-cards/useJobCards";
 import { useJobCardStatus } from "@/hooks/job-cards/useJobCardStatus";
@@ -23,8 +23,10 @@ const JobCardList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedJobCards, setSelectedJobCards] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
   
-  const { jobCards, setJobCards, loading } = useJobCards();
+  const { jobCards, setJobCards, loading, totalCount } = useJobCards({ page, pageSize, searchTerm, statusFilter });
   const { getStatusColor, getStatusDisplay } = useJobCardStatus();
   const { canStartStage, handleStageClick, handleViewDetails } = useJobCardStages();
   const { 
@@ -47,9 +49,9 @@ const JobCardList = () => {
   const shortcuts = {
     'a': () => {
       if (selectedJobCards.length > 0) {
-        const allSelected = filteredJobCards.length === selectedJobCards.length;
+        const allSelected = jobCards.length === selectedJobCards.length;
         handleSelectAllJobCards(!allSelected);
-      } else if (filteredJobCards.length > 0) {
+      } else if (jobCards.length > 0) {
         handleSelectAllJobCards(true);
       }
     },
@@ -67,18 +69,6 @@ const JobCardList = () => {
   
   useKeyboardShortcuts(shortcuts);
 
-  const filteredJobCards = jobCards.filter(jobCard => {
-    const matchesSearch = (
-      jobCard.job_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      jobCard.order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      jobCard.order.company_name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    
-    const matchesStatus = statusFilter === "all" || jobCard.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
-
   const handleStageClickWrapper = (stage: string, id: string) => {
     handleStageClick(stage, id, jobCards);
   };
@@ -93,7 +83,7 @@ const JobCardList = () => {
 
   const handleSelectAllJobCards = (isSelected: boolean) => {
     if (isSelected) {
-      setSelectedJobCards(filteredJobCards.map(card => card.id));
+      setSelectedJobCards(jobCards.map(card => card.id));
     } else {
       setSelectedJobCards([]);
     }
@@ -122,6 +112,9 @@ const JobCardList = () => {
     });
     setSelectedJobCards([]);
   };
+
+  // Calculate total pages
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
     <div className="space-y-6">
@@ -169,20 +162,26 @@ const JobCardList = () => {
         <CardContent>
           <JobCardFilters 
             searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
+            setSearchTerm={(term) => {
+              setSearchTerm(term);
+              setPage(1); // Reset to first page when search term changes
+            }}
             statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
+            setStatusFilter={(status) => {
+              setStatusFilter(status);
+              setPage(1); // Reset to first page when status filter changes
+            }}
           />
 
           {loading ? (
             <SkeletonTable rows={5} columns={5} />
           ) : (
             <>
-              {filteredJobCards.length === 0 ? (
+              {jobCards.length === 0 ? (
                 <JobCardEmptyState searchTerm={searchTerm} statusFilter={statusFilter} />
               ) : (
                 <JobCardTable 
-                  jobCards={filteredJobCards}
+                  jobCards={jobCards}
                   handleViewDetails={handleViewDetails}
                   handleStageClick={handleStageClickWrapper}
                   confirmDeleteJobCard={confirmDeleteJobCard}
@@ -195,6 +194,25 @@ const JobCardList = () => {
                 />
               )}
             </>
+          )}
+          
+          {/* Pagination UI */}
+          {!loading && totalPages > 1 && (
+            <div className="mt-6">
+              <PaginationControls
+                currentPage={page}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(newSize) => {
+                  setPageSize(newSize);
+                  setPage(1); // Reset to first page when page size changes
+                }}
+                pageSizeOptions={[3, 5, 10, 20, 50]}
+                showPageSizeSelector={true}
+                totalCount={totalCount}
+              />
+            </div>
           )}
         </CardContent>
       </Card>

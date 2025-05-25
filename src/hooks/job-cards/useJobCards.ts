@@ -1,19 +1,51 @@
-
 import { useState, useEffect } from "react";
 import { JobCardData, JobStatus } from "@/types/production";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useJobCardStatus } from "./useJobCardStatus";
 
-export const useJobCards = () => {
+interface JobCardsOptions {
+  page?: number;
+  pageSize?: number;
+  searchTerm?: string;
+  statusFilter?: string;
+}
+
+export const useJobCards = (options: JobCardsOptions = {}) => {
+  const {
+    page = 1,
+    pageSize = 10,
+    searchTerm = "",
+    statusFilter = "all"
+  } = options;
+
   const [jobCards, setJobCards] = useState<JobCardData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
   const { getJobCardStatus } = useJobCardStatus();
 
   const fetchJobCards = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // First get total count for pagination
+      let countQuery = supabase
+        .from('job_cards')
+        .select('id', { count: 'exact', head: true });
+      
+      // Apply filters to count query if provided
+      if (searchTerm) {
+        countQuery = countQuery.or(`job_name.ilike.%${searchTerm}%,orders(order_number.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%)`);
+      }
+      
+      // Get the count
+      const { count, error: countError } = await countQuery;
+      
+      if (countError) throw countError;
+      
+      setTotalCount(count || 0);
+      
+      // Build main query with pagination
+      let query = supabase
         .from('job_cards')
         .select(`
           id, 
@@ -38,8 +70,21 @@ export const useJobCards = () => {
             id,
             status
           )
-        `)
-        .order('created_at', { ascending: false });
+        `);
+      
+      // Apply search filter if provided
+      if (searchTerm) {
+        query = query.or(`job_name.ilike.%${searchTerm}%,orders(order_number.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%)`);
+      }
+      
+      // Apply pagination
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      
+      // Execute query with ordering and pagination
+      const { data, error } = await query
+        .order('created_at', { ascending: false })
+        .range(from, to);
     
       if (error) throw error;
     
@@ -64,8 +109,13 @@ export const useJobCards = () => {
         jobCardData.status = getJobCardStatus(jobCardData);
         return jobCardData;
       });
+      
+      // Filter by status if needed - this is done client-side since it's a computed value
+      const filteredData = statusFilter === "all" 
+        ? formattedData 
+        : formattedData.filter(job => job.status === statusFilter);
     
-      setJobCards(formattedData);
+      setJobCards(filteredData);
     } catch (error: any) {
       toast({
         title: "Error fetching job cards",
@@ -79,12 +129,13 @@ export const useJobCards = () => {
 
   useEffect(() => {
     fetchJobCards();
-  }, []);
+  }, [page, pageSize, searchTerm, statusFilter]);
 
   return {
     jobCards,
     setJobCards,
     loading,
+    totalCount,
     fetchJobCards
   };
 };

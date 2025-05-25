@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
+    "build:analyze": "vite build --mode analyze",
+    "dev:perf": "VITE_DISABLE_HMR=true vite --mode performance",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -46,6 +48,7 @@
     "@syncfusion/ej2-react-gantt": "^29.1.41",
     "@tanstack/react-query": "^5.56.2",
     "@tanstack/react-table": "^8.21.3",
+    "@tanstack/react-virtual": "^3.13.9",
     "@types/uuid": "^10.0.0",
     "chart.js": "^4.4.9",
     "class-variance-authority": "^0.7.1",

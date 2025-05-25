@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Plus, Package, Trash2, RefreshCw, Eye, PenLine, ShoppingBag, Search, Box, FileCheck, Layers } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -23,11 +22,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect } from "react";
 import { showToast } from "@/components/ui/enhanced-toast";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import PaginationControls from "@/components/ui/pagination-controls";
 
 const CatalogList = () => {
   const navigate = useNavigate();
@@ -36,18 +37,58 @@ const CatalogList = () => {
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
-  const { data: products, isLoading, refetch, error } = useQuery({
-    queryKey: ['catalog'],
+  const { data: catalogData, isLoading, refetch, error } = useQuery({
+    queryKey: ['catalog', page, pageSize, searchTerm],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First get the total count for pagination
+      let countQuery = supabase
+        .from('catalog')
+        .select('id', { count: 'exact', head: true });
+      
+      if (searchTerm) {
+        countQuery = countQuery.or(
+          `name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`
+        );
+      }
+      
+      const { count, error: countError } = await countQuery;
+      
+      if (countError) throw countError;
+      
+      // Then fetch the paginated data
+      let query = supabase
         .from('catalog')
         .select('*');
       
+      if (searchTerm) {
+        query = query.or(
+          `name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`
+        );
+      }
+      
+      // Add pagination
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      
+      const { data, error } = await query
+        .order('name')
+        .range(from, to);
+      
       if (error) throw error;
-      return data;
+      
+      return {
+        products: data || [],
+        totalCount: count || 0
+      };
     },
   });
+
+  const products = catalogData?.products || [];
+  const totalCount = catalogData?.totalCount || 0;
 
   // Handle any errors in fetching the catalog
   useEffect(() => {
@@ -151,12 +192,8 @@ const CatalogList = () => {
     }
   };
 
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const filteredProducts = products?.filter(product => 
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // Calculate total pages
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
     <div className="space-y-6 fade-in">
@@ -196,26 +233,51 @@ const CatalogList = () => {
           <CardTitle className="flex items-center gap-2 text-xl">
             <span className="h-5 w-1 rounded-full bg-primary inline-block"></span>
             All Products
-            {!isLoading && !isRefreshing && filteredProducts && (
+            {!isLoading && !isRefreshing && (
               <Badge 
                 variant="outline" 
                 className="ml-2 bg-muted/50 text-foreground/80 hover:bg-muted transition-colors border-border/40 shadow-sm"
               >
                 <Box className="h-3 w-3 mr-1 text-primary" />
-                {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'}
+                {totalCount} {totalCount === 1 ? 'product' : 'products'}
               </Badge>
             )}
           </CardTitle>
           <CardDescription className="mt-1">View and manage all your bag products</CardDescription>
           
-          <div className="mt-4 relative">
-            <Input
-              placeholder="Search products..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 border-border/60 focus:border-primary/60"
-            />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="mt-4 flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
+            <div className="relative flex-1 max-w-md">
+              <Input
+                placeholder="Search products..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1); // Reset to first page when search term changes
+                }}
+                className="pl-9 border-border/60 focus:border-primary/60"
+              />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Select
+                value={pageSize.toString()}
+                onValueChange={(value) => {
+                  setPageSize(Number(value));
+                  setPage(1); // Reset to first page when page size changes
+                }}
+              >
+                <SelectTrigger className="w-[110px]">
+                  <SelectValue placeholder="Items per page" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5 per page</SelectItem>
+                  <SelectItem value="10">10 per page</SelectItem>
+                  <SelectItem value="20">20 per page</SelectItem>
+                  <SelectItem value="50">50 per page</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
 
@@ -225,7 +287,7 @@ const CatalogList = () => {
               <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent mb-4"></div>
               <p className="text-muted-foreground">{isRefreshing ? 'Refreshing catalog...' : 'Loading catalog...'}</p>
             </div>
-          ) : filteredProducts?.length === 0 ? (
+          ) : products.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-16 text-center bg-muted/20 dark:bg-muted/10 rounded-b-xl slide-up" style={{animationDelay: '0.2s'}}>
               <div className="w-16 h-16 mb-4 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary">
                 <Layers className="h-8 w-8" />
@@ -250,104 +312,85 @@ const CatalogList = () => {
               )}
             </div>
           ) : (
-            <div className="rounded-md border-t border-border/40 overflow-hidden">
+            <div className="rounded-md border-t border-border/40 overflow-x-auto">
               <Table>
                 <TableHeader className="bg-muted/50 dark:bg-muted/20">
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="font-medium">Product Name</TableHead>
-                    <TableHead className="font-medium">Size (L×W)</TableHead>
-                    <TableHead className="font-medium">Default Quantity</TableHead>
-                    <TableHead className="font-medium">Price</TableHead>
-                    <TableHead className="text-right font-medium">Actions</TableHead>
+                    <TableHead className="font-medium">Description</TableHead>
+                    <TableHead className="font-medium">Base Price</TableHead>
+                    <TableHead className="font-medium">Bag Size</TableHead>
+                    <TableHead className="w-[100px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredProducts.map((product, index) => (
-                    <TableRow 
+                  {products.map((product, index) => (
+                    <TableRow
                       key={product.id}
-                      className="hover:bg-muted/40 dark:hover:bg-muted/20 transition-colors cursor-pointer"
+                      className="cursor-pointer hover:bg-muted/40 dark:hover:bg-muted/20 transition-colors"
+                      onClick={() => navigate(`/inventory/catalog/${product.id}`)}
                       style={{animationDelay: `${0.05 * index}s`}}
                     >
-                      <TableCell className="font-medium" onClick={() => navigate(`/inventory/catalog/${product.id}`)}>
-                        <div className="flex items-center gap-2">
-                          <span className="text-primary">{product.name}</span>
-                          {product.description && (
-                            <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-                              {product.description}
-                            </span>
-                          )}
+                      <TableCell className="font-medium">
+                        {product.name}
+                      </TableCell>
+                      <TableCell className="max-w-[250px] truncate">
+                        {product.description || "—"}
+                      </TableCell>
+                      <TableCell>
+                        {product.base_price ? `₹${product.base_price.toFixed(2)}` : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {product.bag_length && product.bag_width
+                          ? `${product.bag_length}×${product.bag_width}`
+                          : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end items-center gap-1">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => e.stopPropagation()}
+                                className="h-8 w-8 p-0"
+                              >
+                                <ShoppingBag className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/inventory/catalog/${product.id}`);
+                                }}
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/inventory/catalog/${product.id}/edit`);
+                                }}
+                              >
+                                <PenLine className="h-4 w-4 mr-2" />
+                                Edit Product
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-red-600 focus:bg-red-50 focus:text-red-600 dark:focus:bg-red-950 dark:focus:text-red-500"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setProductToDelete(product.id);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete Product
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
-                      </TableCell>
-                      <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>
-                        <Badge variant="outline" className="font-mono text-xs bg-muted/30 dark:bg-muted/20 hover:bg-muted/50 border-border/60">
-                          {`${product.bag_length}×${product.bag_width}`}
-                        </Badge>
-                      </TableCell>
-                      <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>
-                        {product.default_quantity ? (
-                          <span className="font-medium">{product.default_quantity.toLocaleString()}</span>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">N/A</span>
-                        )}
-                      </TableCell>
-                      <TableCell onClick={() => navigate(`/inventory/catalog/${product.id}`)}>
-                        {product.default_rate ? (
-                          <span className="font-medium text-green-600 dark:text-green-400">₹{product.default_rate}</span>
-                        ) : product.selling_rate ? (
-                          <span className="font-medium text-green-600 dark:text-green-400">₹{product.selling_rate}</span>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">N/A</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 p-0 hover:bg-muted/50 dark:hover:bg-muted/20 rounded-full"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-more-horizontal">
-                                <circle cx="12" cy="12" r="1"/>
-                                <circle cx="19" cy="12" r="1"/>
-                                <circle cx="5" cy="12" r="1"/>
-                              </svg>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-[180px] border-border/60 shadow-md">
-                            <DropdownMenuItem asChild className="cursor-pointer">
-                              <div onClick={() => navigate(`/inventory/catalog/${product.id}`)} className="flex items-center">
-                                <Eye className="mr-2 h-4 w-4 text-blue-500" />
-                                <span>View Details</span>
-                              </div>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild className="cursor-pointer">
-                              <div onClick={() => navigate(`/inventory/catalog/${product.id}/edit`)} className="flex items-center">
-                                <PenLine className="mr-2 h-4 w-4 text-amber-500" />
-                                <span>Edit Product</span>
-                              </div>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem asChild className="cursor-pointer">
-                              <div onClick={() => navigate(`/inventory/catalog/${product.id}/orders`)} className="flex items-center">
-                                <ShoppingBag className="mr-2 h-4 w-4 text-green-500" />
-                                <span>View Orders</span>
-                              </div>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setProductToDelete(product.id);
-                              }}
-                              className="cursor-pointer text-destructive focus:text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              <span>Delete</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -355,37 +398,46 @@ const CatalogList = () => {
               </Table>
             </div>
           )}
+          
+          {/* Pagination UI */}
+          {!isLoading && !isRefreshing && totalPages > 1 && (
+            <div className="py-4 border-t border-border/40">
+              <PaginationControls
+                currentPage={page}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(newSize) => {
+                  setPageSize(newSize);
+                  setPage(1); // Reset to first page when page size changes
+                }}
+                pageSizeOptions={[5, 10, 20, 50]}
+                showPageSizeSelector={true}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      <AlertDialog open={!!productToDelete} onOpenChange={(isOpen) => !isDeleting && setProductToDelete(isOpen ? productToDelete : null)}>
-        <AlertDialogContent className="border-border/60 shadow-md">
+      <AlertDialog open={!!productToDelete} onOpenChange={(open) => !open && setProductToDelete(null)}>
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl flex items-center gap-2">
-              <Trash2 className="h-5 w-5 text-destructive" />
-              Are you sure?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="mt-2">
-              This action cannot be undone. This will permanently delete the product and its components from the catalog.
+            <AlertDialogTitle>Are you sure you want to delete this product?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the product from your catalog. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-2">
-            <AlertDialogCancel disabled={isDeleting} className="border-border/60">
-              Cancel
-            </AlertDialogCancel>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteProduct}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteProduct();
+              }}
               disabled={isDeleting}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting ? (
-                <div className="flex items-center gap-2">
-                  <span className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></span>
-                  Deleting...
-                </div>
-              ) : (
-                'Delete'
-              )}
+              {isDeleting ? "Deleting..." : "Delete Product"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

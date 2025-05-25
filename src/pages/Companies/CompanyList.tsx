@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -22,7 +21,9 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
-import { Trash2, Plus, Package } from "lucide-react";
+import { Trash2, Plus, Package, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import PaginationControls from "@/components/ui/pagination-controls";
 
 interface Company {
   id: string;
@@ -41,20 +42,60 @@ const CompanyList = () => {
   });
   const [isDeleting, setIsDeleting] = useState(false);
   const [loadingCompanies, setLoadingCompanies] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
   const navigate = useNavigate();
 
-  // Fetch companies on component mount
+  // Fetch companies when pagination parameters or search term changes
   useEffect(() => {
     fetchCompanies();
-  }, []);
+  }, [page, pageSize, searchTerm]);
 
   const fetchCompanies = async () => {
     try {
       setLoadingCompanies(true);
       console.log("Fetching companies...");
-      const { data, error } = await supabase
+      
+      // First get the total count for pagination
+      let countQuery = supabase
+        .from('companies')
+        .select('id', { count: 'exact', head: true });
+      
+      if (searchTerm) {
+        countQuery = countQuery.or(
+          `name.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`
+        );
+      }
+      
+      const { count, error: countError } = await countQuery;
+      
+      if (countError) {
+        console.error("Error fetching companies count:", countError);
+        throw countError;
+      }
+      
+      setTotalCount(count || 0);
+      
+      // Then fetch the paginated data
+      let query = supabase
         .from('companies')
         .select('*');
+      
+      if (searchTerm) {
+        query = query.or(
+          `name.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`
+        );
+      }
+      
+      // Add pagination
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      
+      const { data, error } = await query
+        .order('name')
+        .range(from, to);
 
       if (error) {
         console.error("Error fetching companies:", error);
@@ -96,8 +137,16 @@ const CompanyList = () => {
       
       console.log("Company deletion result:", data);
       
-      // Refresh the page after successful deletion
-      window.location.reload();
+      // Update local state without refetching
+      setCompanies(companies.filter(company => company.id !== companyId));
+      
+      // Update total count
+      setTotalCount(prev => prev - 1);
+      
+      // If we deleted the last item on the page, go to previous page
+      if (companies.length === 1 && page > 1) {
+        setPage(page - 1);
+      }
       
       toast({
         title: "Success",
@@ -126,10 +175,16 @@ const CompanyList = () => {
     });
   };
 
+  // Calculate total pages
+  const totalPages = Math.ceil(totalCount / pageSize);
+
   return (
-    <div className="p-6">
+    <div className="p-6 space-y-6">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Companies</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Companies</h1>
+          <p className="text-muted-foreground">Manage your customer companies</p>
+        </div>
         <Button 
           onClick={() => navigate('/companies/new')}
           className="flex items-center gap-2"
@@ -138,59 +193,94 @@ const CompanyList = () => {
         </Button>
       </div>
 
+      <div className="flex items-center justify-between mb-6">
+        <div className="relative w-64">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search companies..."
+            className="pl-8"
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setPage(1); // Reset to first page when search term changes
+            }}
+          />
+        </div>
+      </div>
+
       {loadingCompanies ? (
         <div className="flex justify-center p-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
         </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Contact Person</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {companies.length === 0 ? (
+        <>
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-6">
-                  No companies found
-                </TableCell>
+                <TableHead>Name</TableHead>
+                <TableHead>Contact Person</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
-            ) : (
-              companies.map((company) => (
-                <TableRow key={company.id}>
-                  <TableCell>{company.name}</TableCell>
-                  <TableCell>{company.contact_person || 'N/A'}</TableCell>
-                  <TableCell>{company.email || 'N/A'}</TableCell>
-                  <TableCell>{company.phone || 'N/A'}</TableCell>
-                  <TableCell className="flex items-center gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => navigate(`/companies/${company.id}/orders`)}
-                      className="flex items-center gap-1"
-                    >
-                      <Package size={16} />
-                      Orders
-                    </Button>
-                    <Button 
-                      variant="destructive" 
-                      size="sm"
-                      onClick={() => showDeleteConfirmation(company.id, company.name)}
-                      disabled={isDeleting}
-                    >
-                      <Trash2 size={16} />
-                    </Button>
+            </TableHeader>
+            <TableBody>
+              {companies.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-6">
+                    {searchTerm ? `No companies found matching "${searchTerm}"` : "No companies found"}
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                companies.map((company) => (
+                  <TableRow key={company.id}>
+                    <TableCell>{company.name}</TableCell>
+                    <TableCell>{company.contact_person || 'N/A'}</TableCell>
+                    <TableCell>{company.email || 'N/A'}</TableCell>
+                    <TableCell>{company.phone || 'N/A'}</TableCell>
+                    <TableCell className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => navigate(`/companies/${company.id}/orders`)}
+                        className="flex items-center gap-1"
+                      >
+                        <Package size={16} />
+                        Orders
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        onClick={() => showDeleteConfirmation(company.id, company.name)}
+                        disabled={isDeleting}
+                      >
+                        <Trash2 size={16} />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+          
+          {/* Pagination UI */}
+          {totalPages > 1 && (
+            <div className="mt-6">
+              <PaginationControls
+                currentPage={page}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(newSize) => {
+                  setPageSize(newSize);
+                  setPage(1); // Reset to first page when page size changes
+                }}
+                pageSizeOptions={[5, 10, 20, 50]}
+                showPageSizeSelector={true}
+              />
+            </div>
+          )}
+        </>
       )}
 
       {/* Confirmation Dialog */}

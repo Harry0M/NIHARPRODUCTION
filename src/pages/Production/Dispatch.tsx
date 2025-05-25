@@ -8,6 +8,7 @@ import { DispatchTable } from "@/components/production/dispatch/list/DispatchTab
 import type { OrderWithJobStatus } from "@/components/production/dispatch/types";
 import { useNavigate } from "react-router-dom";
 import { Database } from "@/integrations/supabase/types";
+import PaginationControls from "@/components/ui/pagination-controls";
 
 const Dispatch = () => {
   const navigate = useNavigate();
@@ -15,15 +16,43 @@ const Dispatch = () => {
   const [orders, setOrders] = useState<OrderWithJobStatus[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [page, pageSize, searchTerm, statusFilter]);
 
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // First get the total count for pagination
+      let countQuery = supabase
+        .from('orders')
+        .select('id', { count: 'exact', head: true });
+      
+      if (searchTerm) {
+        countQuery = countQuery.or(
+          `order_number.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%`
+        );
+      }
+      
+      if (statusFilter !== 'all') {
+        countQuery = countQuery.eq('status', statusFilter);
+      }
+      
+      const { count, error: countError } = await countQuery;
+      
+      if (countError) throw countError;
+      
+      setTotalCount(count || 0);
+      
+      // Then fetch the paginated data
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      
+      let query = supabase
         .from('orders')
         .select(`
           id, 
@@ -41,8 +70,21 @@ const Dispatch = () => {
             printing_jobs (status),
             stitching_jobs (status)
           )
-        `)
-        .order('created_at', { ascending: false });
+        `);
+      
+      if (searchTerm) {
+        query = query.or(
+          `order_number.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%`
+        );
+      }
+      
+      if (statusFilter !== 'all') {
+        query = query.eq('status', statusFilter);
+      }
+      
+      const { data, error } = await query
+        .order('created_at', { ascending: false })
+        .range(from, to);
       
       if (error) throw error;
       setOrders(data || []);
@@ -118,16 +160,8 @@ const Dispatch = () => {
     }
   };
 
-  const filteredOrders = orders.filter(order => {
-    const matchesSearch = (
-      order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.company_name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    
-    const matchesStatus = statusFilter === "all" || order.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
+  // Calculate total pages
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
     <div className="space-y-6">
@@ -147,9 +181,15 @@ const Dispatch = () => {
         <CardContent>
           <DispatchFilters
             searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
+            onSearchChange={(term) => {
+              setSearchTerm(term);
+              setPage(1); // Reset to first page when search term changes
+            }}
             statusFilter={statusFilter}
-            onStatusChange={setStatusFilter}
+            onStatusChange={(status) => {
+              setStatusFilter(status);
+              setPage(1); // Reset to first page when status filter changes
+            }}
             onRefresh={fetchOrders}
           />
 
@@ -159,7 +199,7 @@ const Dispatch = () => {
             </div>
           ) : (
             <>
-              {filteredOrders.length === 0 ? (
+              {orders.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Truck className="h-12 w-12 text-muted-foreground mb-4" />
                   <h3 className="text-lg font-medium">No orders found</h3>
@@ -170,11 +210,32 @@ const Dispatch = () => {
                   </p>
                 </div>
               ) : (
-                <DispatchTable
-                  orders={filteredOrders}
-                  isOrderReadyForDispatch={isOrderReadyForDispatch}
-                  onUpdateStatus={updateOrderStatus}
-                />
+                <>
+                  <DispatchTable
+                    orders={orders}
+                    isOrderReadyForDispatch={isOrderReadyForDispatch}
+                    onUpdateStatus={updateOrderStatus}
+                  />
+                  
+                  {/* Pagination UI */}
+                  {!loading && totalPages > 1 && (
+                    <div className="mt-6">
+                      <PaginationControls
+                        currentPage={page}
+                        totalPages={totalPages}
+                        pageSize={pageSize}
+                        onPageChange={setPage}
+                        onPageSizeChange={(newSize) => {
+                          setPageSize(newSize);
+                          setPage(1); // Reset to first page when page size changes
+                        }}
+                        pageSizeOptions={[5, 10, 20, 50]}
+                        showPageSizeSelector={true}
+                        totalCount={totalCount}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { BarChart, Package, Truck, Users, Layers, Calendar, AlertCircle } from "lucide-react";
@@ -8,6 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { SkeletonTable } from "@/components/ui/skeleton-table";
 import { StatusBadge, StatusType } from "@/components/ui/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 type Stats = {
   activeOrders: number;
@@ -35,93 +36,97 @@ type RecentOrder = {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [stats, setStats] = useState<Stats>({
-    activeOrders: 0,
-    inProduction: 0,
-    readyForDispatch: 0,
-    activePartners: 0,
-    dueThisWeek: 0,
-    jobsInProgress: 0,
-  });
-  const [productionStages, setProductionStages] = useState<ProductionStage[]>([
-    { name: "Cutting", complete: 0 },
-    { name: "Printing", complete: 0 },
-    { name: "Stitching", complete: 0 },
-    { name: "Dispatch", complete: 0 },
-  ]);
+  const queryClient = useQueryClient();
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchData = async () => {
+  // Fetch all dashboard data in a single query using React Query
+  const { data: dashboardData, isLoading } = useQuery({
+    queryKey: ['dashboard-data'],
+    queryFn: async () => {
       try {
-        setLoading(true);
+        // Execute all queries in parallel to improve performance
+        const [
+          activeOrdersResult, 
+          inProductionResult, 
+          readyForDispatchResult, 
+          activeVendorsResult,
+          activeSuppliersResult,
+          ordersData,
+          jobCardsResult,
+          dueThisWeekResult,
+          jobsInProgressResult
+        ] = await Promise.all([
+          // Active orders count
+          supabase
+            .from('orders')
+            .select('id', { count: 'exact', head: true })
+            .not('status', 'eq', 'completed'),
+          
+          // In production orders count
+          supabase
+            .from('orders')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'in_production'),
+          
+          // Ready for dispatch orders count
+          supabase
+            .from('orders')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'ready_for_dispatch'),
+          
+          // Active vendors count
+          supabase
+            .from('vendors')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'active'),
+          
+          // Active suppliers count
+          supabase
+            .from('suppliers')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'active'),
+          
+          // Recent orders with limit
+          supabase
+            .from('orders')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(5),
+          
+          // Job cards with related jobs
+          supabase
+            .from('job_cards')
+            .select(`
+              id,
+              cutting_jobs!left(status),
+              printing_jobs!left(status),
+              stitching_jobs!left(status)
+            `),
+          
+          // Orders due this week
+          supabase
+            .from('orders')
+            .select('id', { count: 'exact', head: true })
+            .lt('order_date', new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString())
+            .gt('order_date', new Date().toISOString())
+            .not('status', 'eq', 'completed'),
+          
+          // Jobs in progress
+          supabase
+            .from('job_cards')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'in_progress')
+        ]);
         
-        // Fetch active orders count
-        const { count: activeOrdersCount, error: activeOrdersError } = await supabase
-          .from('orders')
-          .select('id', { count: 'exact', head: true })
-          .not('status', 'eq', 'completed');
-        if (activeOrdersError) throw activeOrdersError;
-
-        // Fetch in production orders count
-        const { count: inProductionCount, error: inProductionError } = await supabase
-          .from('orders')
-          .select('id', { count: 'exact', head: true })
-          .eq('status', 'in_production');
-        if (inProductionError) throw inProductionError;
-
-        // Fetch ready for dispatch orders count
-        const { count: readyForDispatchCount, error: readyForDispatchError } = await supabase
-          .from('orders')
-          .select('id', { count: 'exact', head: true })
-          .eq('status', 'ready_for_dispatch');
-        if (readyForDispatchError) throw readyForDispatchError;
-
-        // Fetch active partners count (both vendors and suppliers)
-        const { count: activeVendorsCount, error: vendorsError } = await supabase
-          .from('vendors')
-          .select('id', { count: 'exact', head: true })
-          .eq('status', 'active');
-        if (vendorsError) throw vendorsError;
-        
-        // Fetch active suppliers count
-        const { count: activeSuppliersCount, error: suppliersError } = await supabase
-          .from('suppliers')
-          .select('id', { count: 'exact', head: true })
-          .eq('status', 'active');
-        if (suppliersError) throw suppliersError;
-        
-        // Calculate total active partners
-        const totalActivePartners = (activeVendorsCount || 0) + (activeSuppliersCount || 0);
-
-        // Fetch recent orders
-        const { data: ordersData, error: ordersError } = await supabase
-          .from('orders')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(5);
-        if (ordersError) throw ordersError;
-
-        // Fetch job cards with cutting, printing, stitching jobs for production stage calculations
-        const { data: jobCards, error: jobCardsError } = await supabase
-          .from('job_cards')
-          .select(`
-            id,
-            cutting_jobs!left(status),
-            printing_jobs!left(status),
-            stitching_jobs!left(status)
-          `);
-        if (jobCardsError) throw jobCardsError;
-
-        // Calculate counts for production stages
+        // Process job cards data for production stages
+        const jobCards = jobCardsResult.data || [];
         const stages = {
           cutting: { total: 0, completed: 0 },
           printing: { total: 0, completed: 0 },
           stitching: { total: 0, completed: 0 },
           dispatch: { total: 0, completed: 0 }
         };
-
+        
         jobCards.forEach(card => {
           if (card.cutting_jobs && card.cutting_jobs.length > 0) {
             stages.cutting.total += card.cutting_jobs.length;
@@ -136,9 +141,9 @@ const Dashboard = () => {
             stages.stitching.completed += card.stitching_jobs.filter((j: any) => j.status === 'completed').length;
           }
         });
-
-        // Calculate percentage completeness for each stage
-        const newProductionStages = [
+        
+        // Calculate production stages percentages
+        const productionStages = [
           {
             name: 'Cutting',
             complete: stages.cutting.total > 0 ? Math.round((stages.cutting.completed / stages.cutting.total) * 100) : 0,
@@ -156,9 +161,12 @@ const Dashboard = () => {
             complete: stages.dispatch.total > 0 ? Math.round((stages.dispatch.completed / stages.dispatch.total) * 100) : 0,
           },
         ];
-
-        // Format recent orders for display
-        const formattedOrders = ordersData?.map(order => ({
+        
+        // Calculate total active partners
+        const totalActivePartners = (activeVendorsResult.count || 0) + (activeSuppliersResult.count || 0);
+        
+        // Format recent orders
+        const formattedOrders = (ordersData.data || []).map(order => ({
           id: order.id,
           order_number: order.order_number,
           company_name: order.company_name,
@@ -166,36 +174,21 @@ const Dashboard = () => {
           quantity: order.quantity,
           status: order.status,
           date: order.order_date
-        })) || [];
-
-        // New: Fetch orders due this week
-        const nextWeek = new Date();
-        nextWeek.setDate(nextWeek.getDate() + 7);
-        const { count: dueThisWeekCount, error: dueThisWeekError } = await supabase
-          .from('orders')
-          .select('id', { count: 'exact', head: true })
-          .lt('order_date', nextWeek.toISOString())
-          .gt('order_date', new Date().toISOString())
-          .not('status', 'eq', 'completed');
-        if (dueThisWeekError) throw dueThisWeekError;
-
-        // New: Fetch jobs in progress
-        const { count: jobsInProgressCount, error: jobsInProgressError } = await supabase
-          .from('job_cards')
-          .select('id', { count: 'exact', head: true })
-          .eq('status', 'in_progress');
-        if (jobsInProgressError) throw jobsInProgressError;
-
-        setStats({
-          activeOrders: activeOrdersCount || 0,
-          inProduction: inProductionCount || 0,
-          readyForDispatch: readyForDispatchCount || 0,
-          activePartners: totalActivePartners,
-          dueThisWeek: dueThisWeekCount || 0,
-          jobsInProgress: jobsInProgressCount || 0,
-        });
-        setProductionStages(newProductionStages);
-        setRecentOrders(formattedOrders);
+        }));
+        
+        // Return all processed data
+        return {
+          stats: {
+            activeOrders: activeOrdersResult.count || 0,
+            inProduction: inProductionResult.count || 0,
+            readyForDispatch: readyForDispatchResult.count || 0,
+            activePartners: totalActivePartners,
+            dueThisWeek: dueThisWeekResult.count || 0,
+            jobsInProgress: jobsInProgressResult.count || 0,
+          },
+          productionStages,
+          recentOrders: formattedOrders
+        };
       } catch (error: any) {
         console.error('Error fetching dashboard data:', error);
         toast({
@@ -203,12 +196,40 @@ const Dashboard = () => {
           description: error.message,
           variant: "destructive"
         });
-      } finally {
-        setLoading(false);
+        throw error;
       }
-    };
-    fetchData();
-  }, []);
+    },
+    staleTime: 60000, // Data will be fresh for 1 minute
+    refetchOnWindowFocus: false // Don't refetch when window regains focus
+  });
+
+  // Use memoized values from the query result
+  const stats = useMemo(() => 
+    dashboardData?.stats || {
+      activeOrders: 0,
+      inProduction: 0,
+      readyForDispatch: 0,
+      activePartners: 0,
+      dueThisWeek: 0,
+      jobsInProgress: 0,
+    }, 
+  [dashboardData]);
+  
+  const productionStages = useMemo(() => 
+    dashboardData?.productionStages || [
+      { name: "Cutting", complete: 0 },
+      { name: "Printing", complete: 0 },
+      { name: "Stitching", complete: 0 },
+      { name: "Dispatch", complete: 0 },
+    ],
+  [dashboardData]);
+  
+  // Update recent orders when data is available
+  useEffect(() => {
+    if (dashboardData?.recentOrders) {
+      setRecentOrders(dashboardData.recentOrders);
+    }
+  }, [dashboardData]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
@@ -293,7 +314,7 @@ const Dashboard = () => {
     }
   ];
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-6 p-4 md:p-6">
         <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">

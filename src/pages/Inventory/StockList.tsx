@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, History, Bell, Search, Box, Layers, Package, FileCheck, AlertCircle, RefreshCw } from "lucide-react";
+import { Plus, Trash2, History, Bell, Search, Box, Layers, Package, FileCheck, AlertCircle, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +21,16 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { DownloadButton } from "@/components/DownloadButton";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const StockList = () => {
   const navigate = useNavigate();
@@ -34,6 +43,10 @@ const StockList = () => {
   const [hasTransactions, setHasTransactions] = useState(false);
   const [deleteWithTransactions, setDeleteWithTransactions] = useState(false);
   const [recentlyUpdatedItems, setRecentlyUpdatedItems] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
 
   // Track materials with recent updates
   useEffect(() => {
@@ -57,13 +70,52 @@ const StockList = () => {
     }
   }, []);
 
-  const { data: stock, isLoading, refetch } = useQuery({
-    queryKey: ['inventory'],
+  // Main inventory query with pagination
+  const { data: inventoryData, isLoading, refetch } = useQuery({
+    queryKey: ['inventory', page, pageSize, searchTerm],
     queryFn: async () => {
       console.log("Fetching inventory data...");
-      const { data, error } = await supabase
+      
+      // First get the total count for pagination
+      const countQuery = supabase
+        .from('inventory')
+        .select('id', { count: 'exact', head: true });
+      
+      if (searchTerm) {
+        countQuery.or(
+          `material_name.ilike.%${searchTerm}%,color.ilike.%${searchTerm}%`
+        );
+      }
+      
+      const { count, error: countError } = await countQuery;
+      
+      if (countError) {
+        console.error("Error fetching inventory count:", countError);
+        throw countError;
+      }
+      
+      setTotalCount(count || 0);
+      
+      // Then fetch the paginated data
+      let query = supabase
         .from('inventory')
         .select('*, suppliers(name)');
+      
+      if (searchTerm) {
+        query = query.or(
+          `material_name.ilike.%${searchTerm}%,color.ilike.%${searchTerm}%`
+        );
+      }
+      
+      // Add pagination
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      
+      query = query
+        .order('material_name')
+        .range(from, to);
+      
+      const { data, error } = await query;
       
       if (error) {
         console.error("Error fetching inventory:", error);
@@ -73,6 +125,7 @@ const StockList = () => {
       console.log(`Fetched ${data?.length || 0} inventory items`);
       return data;
     },
+    keepPreviousData: true, // Keep previous data while loading new data
   });
 
   // Also fetch transaction counts for each material
@@ -264,13 +317,8 @@ const StockList = () => {
     setIsDeleteDialogOpen(true);
   };
 
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const filteredStock = stock?.filter(item => 
-    (item.material_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.color?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.suppliers?.name?.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // Calculate total pages
+  const totalPages = Math.ceil(totalCount / pageSize);
   
   return (
     <div className="space-y-6 fade-in">
@@ -309,26 +357,51 @@ const StockList = () => {
           <CardTitle className="flex items-center gap-2 text-xl">
             <span className="h-5 w-1 rounded-full bg-primary inline-block"></span>
             All Materials
-            {!isLoading && filteredStock && (
+            {!isLoading && inventoryData && (
               <Badge 
                 variant="outline" 
                 className="ml-2 bg-muted/50 text-foreground/80 hover:bg-muted transition-colors border-border/40 shadow-sm"
               >
                 <Box className="h-3 w-3 mr-1 text-primary" />
-                {filteredStock.length} {filteredStock.length === 1 ? 'item' : 'items'}
+                {totalCount} {totalCount === 1 ? 'item' : 'items'}
               </Badge>
             )}
           </CardTitle>
           <CardDescription className="mt-1">View and manage all your raw materials and stock</CardDescription>
           
-          <div className="mt-4 relative">
-            <Input
-              placeholder="Search materials..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 border-border/60 focus:border-primary/60"
-            />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="mt-4 flex gap-2 flex-col sm:flex-row sm:items-center justify-between">
+            <div className="relative flex-1 max-w-md">
+              <Input
+                placeholder="Search materials..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1); // Reset to first page when search term changes
+                }}
+                className="pl-9 border-border/60 focus:border-primary/60"
+              />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Select
+                value={pageSize.toString()}
+                onValueChange={(value) => {
+                  setPageSize(Number(value));
+                  setPage(1); // Reset to first page when page size changes
+                }}
+              >
+                <SelectTrigger className="w-[110px]">
+                  <SelectValue placeholder="Items per page" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10 per page</SelectItem>
+                  <SelectItem value="20">20 per page</SelectItem>
+                  <SelectItem value="50">50 per page</SelectItem>
+                  <SelectItem value="100">100 per page</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
 
@@ -338,7 +411,7 @@ const StockList = () => {
               <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent mb-4"></div>
               <p className="text-muted-foreground">Loading inventory...</p>
             </div>
-          ) : filteredStock?.length === 0 ? (
+          ) : inventoryData?.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-16 text-center bg-muted/20 dark:bg-muted/10 rounded-b-xl slide-up" style={{animationDelay: '0.2s'}}>
               <div className="w-16 h-16 mb-4 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary">
                 <Layers className="h-8 w-8" />
@@ -372,10 +445,10 @@ const StockList = () => {
                     <TableHead className="font-medium">GSM</TableHead>
                     <TableHead className="font-medium text-right">Quantity</TableHead>
                     <TableHead className="font-medium">Unit</TableHead>
-                    {filteredStock?.some(item => item.alternate_unit) && (
+                    {inventoryData?.some(item => item.alternate_unit) && (
                       <TableHead className="font-medium">Alt. Quantity</TableHead>
                     )}
-                    {filteredStock?.some(item => item.track_cost) && (
+                    {inventoryData?.some(item => item.track_cost) && (
                       <>
                         <TableHead className="font-medium text-right">Purchase Price</TableHead>
                         <TableHead className="font-medium text-right">Selling Price</TableHead>
@@ -387,7 +460,7 @@ const StockList = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredStock?.map((item, index) => (
+                  {inventoryData?.map((item, index) => (
                     <TableRow
                       key={item.id}
                       className={`cursor-pointer hover:bg-muted/40 dark:hover:bg-muted/20 transition-colors ${recentlyUpdatedItems.includes(item.id) ? 'bg-amber-50/70 hover:bg-amber-100/70 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 border-l-2 border-l-amber-400' : ''}`}
@@ -419,14 +492,14 @@ const StockList = () => {
                       <TableCell className="text-right font-mono text-sm">{item.gsm || '—'}</TableCell>
                       <TableCell className="text-right font-medium">{item.quantity.toLocaleString()}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{item.unit}</TableCell>
-                      {filteredStock?.some(item => item.alternate_unit) && (
+                      {inventoryData?.some(item => item.alternate_unit) && (
                         <TableCell>
                           {item.alternate_unit && item.quantity && item.conversion_rate
                             ? <span className="text-sm">{(item.quantity * item.conversion_rate).toLocaleString()} <span className="text-muted-foreground">{item.alternate_unit}</span></span>
                             : <span className="text-muted-foreground">\u2014</span>}
                         </TableCell>
                       )}
-                      {filteredStock?.some(item => item.track_cost) && (
+                      {inventoryData?.some(item => item.track_cost) && (
                         <>
                           <TableCell className="text-right">
                             {item.track_cost 
@@ -497,6 +570,64 @@ const StockList = () => {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          )}
+          
+          {/* Pagination UI */}
+          {totalPages > 1 && (
+            <div className="flex justify-center py-4 border-t border-border/40">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                  
+                  {[...Array(totalPages)].map((_, i) => {
+                    // Show first, last, and a few around current page
+                    const pageNum = i + 1;
+                    if (
+                      pageNum === 1 ||
+                      pageNum === totalPages ||
+                      (pageNum >= page - 1 && pageNum <= page + 1)
+                    ) {
+                      return (
+                        <PaginationItem key={i}>
+                          <PaginationLink
+                            onClick={() => setPage(pageNum)}
+                            isActive={page === pageNum}
+                          >
+                            {pageNum}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    }
+                    
+                    // Add ellipsis but only once between ranges
+                    if (
+                      (pageNum === 2 && page > 3) ||
+                      (pageNum === totalPages - 1 && page < totalPages - 2)
+                    ) {
+                      return (
+                        <PaginationItem key={i}>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      );
+                    }
+                    
+                    return null;
+                  })}
+                  
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      className={page >= totalPages ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </div>
           )}
         </CardContent>

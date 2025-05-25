@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -13,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Check, Trash, ArrowUp, ArrowDown } from "lucide-react";
 import { showToast } from "@/components/ui/enhanced-toast";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import PaginationControls from "@/components/ui/pagination-controls";
 import type { Order, OrderStatus } from "@/types/order";
 
 interface OrderFilters {
@@ -33,12 +33,17 @@ const OrderList = () => {
     dateRange: { from: "", to: "" }
   });
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+  const [totalCount, setTotalCount] = useState(0);
   
   const handleOrderDeleted = (deletedOrderId: string) => {
     // Update orders state without causing a full re-fetch
     setOrders(prevOrders => prevOrders.filter(order => order.id !== deletedOrderId));
     // Remove from selected if it was selected
     setSelectedOrders(prev => prev.filter(id => id !== deletedOrderId));
+    // Update total count
+    setTotalCount(prev => prev - 1);
   };
   
   const handleOrdersDeleted = (deletedOrderIds: string[]) => {
@@ -46,6 +51,8 @@ const OrderList = () => {
     setOrders(prevOrders => prevOrders.filter(order => !deletedOrderIds.includes(order.id)));
     // Clear selection
     setSelectedOrders([]);
+    // Update total count
+    setTotalCount(prev => prev - deletedOrderIds.length);
   };
 
   const { 
@@ -66,7 +73,7 @@ const OrderList = () => {
 
   useEffect(() => {
     fetchOrders();
-  }, [filters]);
+  }, [filters, page, pageSize]);
 
   // Set up keyboard shortcuts
   const shortcuts = {
@@ -95,6 +102,32 @@ const OrderList = () => {
   const fetchOrders = async () => {
     setLoading(true);
     try {
+      // First get the total count for pagination
+      let countQuery = supabase.from('orders').select('id', { count: 'exact', head: true });
+
+      if (filters.status !== 'all') {
+        countQuery = countQuery.eq('status', filters.status as OrderStatus);
+      }
+
+      if (filters.dateRange.from) {
+        countQuery = countQuery.gte('order_date', filters.dateRange.from);
+      }
+
+      if (filters.dateRange.to) {
+        countQuery = countQuery.lte('order_date', filters.dateRange.to);
+      }
+
+      if (filters.searchTerm) {
+        countQuery = countQuery.or(`order_number.ilike.%${filters.searchTerm}%,company_name.ilike.%${filters.searchTerm}%`);
+      }
+      
+      const { count, error: countError } = await countQuery;
+      
+      if (countError) throw countError;
+      
+      setTotalCount(count || 0);
+      
+      // Then fetch the paginated data
       let query = supabase.from('orders').select('*');
 
       if (filters.status !== 'all') {
@@ -113,7 +146,13 @@ const OrderList = () => {
         query = query.or(`order_number.ilike.%${filters.searchTerm}%,company_name.ilike.%${filters.searchTerm}%`);
       }
 
-      const { data, error } = await query.order('created_at', { ascending: false });
+      // Add pagination
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      
+      const { data, error } = await query
+        .order('created_at', { ascending: false })
+        .range(from, to);
       
       if (error) throw error;
       setOrders(data || []);
@@ -195,6 +234,9 @@ const OrderList = () => {
     });
     setSelectedOrders([]);
   };
+  
+  // Calculate total pages
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
     <div className="space-y-6">
@@ -202,7 +244,7 @@ const OrderList = () => {
         onDownloadCsv={handleDownloadCSV}
         onDownloadPdf={handleDownloadPDF}
         loading={loading}
-        ordersCount={orders.length}
+        ordersCount={totalCount}
       />
       
       {selectedOrders.length > 0 && (
@@ -243,25 +285,47 @@ const OrderList = () => {
         orders={orders}
         loading={loading}
         filters={filters}
-        setFilters={setFilters}
+        setFilters={(newFilters) => {
+          setFilters(newFilters);
+          setPage(1); // Reset to first page when filters change
+        }}
         onDeleteClick={handleDeleteClick}
         selectedOrders={selectedOrders}
         onSelectOrder={handleSelectOrder}
         onSelectAllOrders={handleSelectAllOrders}
       />
+      
+      {/* Pagination UI */}
+      {!loading && totalPages > 1 && (
+        <div className="flex justify-center mt-6">
+          <PaginationControls
+            currentPage={page}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setPage(1); // Reset to first page when page size changes
+            }}
+            pageSizeOptions={[3, 5, 10, 20, 50]}
+            showPageSizeSelector={true}
+            totalCount={totalCount}
+          />
+        </div>
+      )}
 
       <DeleteOrderDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
-        onConfirm={handleDeleteOrder}
         isLoading={deleteLoading}
+        onConfirm={handleDeleteOrder}
       />
-      
+
       <BulkDeleteDialog
         open={bulkDeleteDialogOpen}
         onOpenChange={setBulkDeleteDialogOpen}
-        onConfirm={handleBulkDeleteOrders}
         isLoading={bulkDeleteLoading}
+        onConfirm={handleBulkDeleteOrders}
         orderCount={selectedOrders.length}
       />
     </div>
