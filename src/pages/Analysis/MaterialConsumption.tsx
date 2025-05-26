@@ -1,308 +1,487 @@
-
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { useInventoryAnalytics } from "@/hooks/analysis/useInventoryAnalytics";
+import { formatCurrency, formatQuantity } from "@/utils/analysisUtils";
+import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { Search, Download, Filter, TrendingUp, Package, Calendar } from "lucide-react";
-import { useInventoryAnalytics } from "@/hooks/analysis/useInventoryAnalytics";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, BarChart as BarChartIcon, Search, AlertCircle, Database, PieChart as PieChartIcon, Package, PercentIcon, DollarSign } from "lucide-react";
 import { LoadingSpinner } from "@/components/production/LoadingSpinner";
-import { formatCurrency } from "@/utils/analysisUtils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useNavigate } from "react-router-dom";
+import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { format } from "date-fns";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Progress } from "@/components/ui/progress";
 
-export const MaterialConsumption = () => {
-  const {
-    consumptionData,
-    orderConsumptionData,
-    filters,
-    updateFilters,
-    isLoading
-  } = useInventoryAnalytics();
+const MaterialConsumption = () => {
+  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
+  const { consumptionData, orderConsumptionData, filters, updateFilters, isLoading } = useInventoryAnalytics();
+  
+  // Colors for charts
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ff7300', '#a05195', '#d45087', '#2f4b7c'];
+  
+  // Filter data based on search
+  const filteredData = searchQuery 
+    ? consumptionData?.filter(item => 
+        item.material_name?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : consumptionData;
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("total_consumption");
-  const [selectedPeriod, setSelectedPeriod] = useState("all");
+  // Get detailed data for selected material
+  const selectedMaterial = selectedMaterialId 
+    ? filteredData?.find(item => item.material_id === selectedMaterialId)
+    : null;
+  
+  // Filter order consumption data based on selected material
+  const materialOrderDetails = selectedMaterialId
+    ? orderConsumptionData?.filter(item => item.material_id === selectedMaterialId)
+    : [];
 
+  // Organize order details by order for the selected material
+  const orderBreakdown = materialOrderDetails.reduce((acc: any, item) => {
+    const existingOrder = acc.find((o: any) => o.order_id === item.order_id);
+    if (existingOrder) {
+      existingOrder.quantity += Number(item.total_material_used || 0);
+    } else {
+      acc.push({
+        order_id: item.order_id,
+        order_number: item.order_number,
+        company_name: item.company_name,
+        usage_date: item.usage_date,
+        quantity: Number(item.total_material_used || 0),
+        unit: item.unit
+      });
+    }
+    return acc;
+  }, []);
+
+  // Calculate total quantity for percentage calculations
+  const totalMaterialQuantity = selectedMaterial ? Number(selectedMaterial.total_usage) : 0;
+  
+  // Add percentage to order breakdown
+  // Using a default purchase price (0) if not available
+  const materialPurchasePrice = selectedMaterial && 'purchase_rate' in selectedMaterial ? 
+    Number(selectedMaterial.purchase_rate) : 0;
+    
+  const orderBreakdownWithPercentage = orderBreakdown.map((order: any) => ({
+    ...order,
+    percentage: totalMaterialQuantity > 0 ? (order.quantity / totalMaterialQuantity) * 100 : 0,
+    value: order.quantity * materialPurchasePrice
+  }));
+
+  // Sort order breakdown by quantity descending
+  const sortedOrderBreakdown = [...orderBreakdownWithPercentage].sort((a, b) => b.quantity - a.quantity);
+
+  // Prepare data for charts
+  const chartData = filteredData?.slice(0, 10).map(item => ({
+    name: item.material_name,
+    value: Number(item.total_usage),
+    id: item.material_id,
+    unit: item.unit,
+    orders: item.orders_count
+  }));
+  
+  // Calculate total consumption
+  const totalConsumption = filteredData?.reduce((sum, item) => sum + Number(item.total_usage || 0), 0) || 0;
+  
   if (isLoading) {
     return <LoadingSpinner />;
   }
 
-  // Filter and sort consumption data
-  const filteredData = consumptionData
-    .filter(item => 
-      item.material_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.color && item.color.toLowerCase().includes(searchTerm.toLowerCase()))
-    )
-    .sort((a, b) => {
-      switch (sortBy) {
-        case "total_consumption":
-          return b.total_consumption - a.total_consumption;
-        case "orders_count":
-          return b.orders_count - a.orders_count;
-        case "material_name":
-          return a.material_name.localeCompare(b.material_name);
-        default:
-          return 0;
-      }
-    });
-
-  // Prepare chart data
-  const topMaterials = filteredData.slice(0, 10);
-  const chartData = topMaterials.map(item => ({
-    name: item.material_name,
-    consumption: item.total_consumption,
-    orders: item.orders_count,
-  }));
-
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#8dd1e1', '#d084d0'];
-
-  // Calculate total statistics
-  const totalConsumption = consumptionData.reduce((sum, item) => sum + item.total_consumption, 0);
-  const totalOrders = consumptionData.reduce((sum, item) => sum + item.orders_count, 0);
-  const avgConsumptionPerOrder = totalOrders > 0 ? totalConsumption / totalOrders : 0;
-
-  // Date filter handling
-  const handleDateRangeChange = (period: string) => {
-    setSelectedPeriod(period);
-    
-    const now = new Date();
-    let dateRange;
-    
-    switch (period) {
-      case "week":
-        dateRange = {
-          start: new Date(now.setDate(now.getDate() - 7)).toISOString(),
-          end: new Date().toISOString()
-        };
-        break;
-      case "month":
-        dateRange = {
-          start: new Date(now.setMonth(now.getMonth() - 1)).toISOString(),
-          end: new Date().toISOString()
-        };
-        break;
-      case "quarter":
-        dateRange = {
-          start: new Date(now.setMonth(now.getMonth() - 3)).toISOString(),
-          end: new Date().toISOString()
-        };
-        break;
-      default:
-        dateRange = undefined;
-    }
-    
-    updateFilters({ dateRange });
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-1.5">
-        <h1 className="text-3xl font-bold">Material Consumption Analysis</h1>
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="sm" onClick={() => navigate('/analysis')}>
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back
+          </Button>
+          <h1 className="text-2xl font-bold">Material Consumption Analysis</h1>
+        </div>
         <p className="text-muted-foreground">
-          Track material usage patterns and consumption trends across orders
+          Analyze which materials are being consumed the most across orders
         </p>
       </div>
-
-      {/* Key Metrics */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Consumption</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalConsumption.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">
-              Across all materials
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Materials</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{consumptionData.length}</div>
-            <p className="text-xs text-muted-foreground">
-              Materials in use
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalOrders}</div>
-            <p className="text-xs text-muted-foreground">
-              Orders processed
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg per Order</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{avgConsumptionPerOrder.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">
-              Units per order
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
+      
       {/* Filters */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Search materials..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="total_consumption">Consumption</SelectItem>
-                <SelectItem value="orders_count">Order Count</SelectItem>
-                <SelectItem value="material_name">Name</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={selectedPeriod} onValueChange={handleDateRangeChange}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Period" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Time</SelectItem>
-                <SelectItem value="week">Last Week</SelectItem>
-                <SelectItem value="month">Last Month</SelectItem>
-                <SelectItem value="quarter">Last Quarter</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Charts */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Consumed Materials</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[400px]">
-            {chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="name" 
-                    angle={-45}
-                    textAnchor="end"
-                    height={100}
-                  />
-                  <YAxis />
-                  <Tooltip formatter={(value) => [value.toFixed(2), 'Consumption']} />
-                  <Bar dataKey="consumption" fill="#8884d8" />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                No consumption data available
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Consumption Distribution</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[400px]">
-            {chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={chartData.slice(0, 8)}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="consumption"
-                  >
-                    {chartData.slice(0, 8).map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => [value.toFixed(2), 'Consumption']} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                No consumption data available
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Detailed Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Material Consumption Details</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-2">Material</th>
-                  <th className="text-left p-2">Color</th>
-                  <th className="text-left p-2">GSM</th>
-                  <th className="text-right p-2">Total Consumption</th>
-                  <th className="text-right p-2">Orders</th>
-                  <th className="text-right p-2">Avg per Order</th>
-                  <th className="text-left p-2">Unit</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredData.map((item, index) => (
-                  <tr key={item.material_id} className="border-b hover:bg-muted/50">
-                    <td className="p-2 font-medium">{item.material_name}</td>
-                    <td className="p-2">{item.color || '-'}</td>
-                    <td className="p-2">{item.gsm || '-'}</td>
-                    <td className="p-2 text-right font-mono">{item.total_consumption.toFixed(2)}</td>
-                    <td className="p-2 text-right">{item.orders_count}</td>
-                    <td className="p-2 text-right font-mono">
-                      {(item.total_consumption / item.orders_count).toFixed(2)}
-                    </td>
-                    <td className="p-2">{item.unit}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="flex flex-col space-y-4 md:flex-row md:space-y-0 md:space-x-4">
+            <div className="flex-1">
+              <Label htmlFor="search">Search Materials</Label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="search"
+                  placeholder="Search by name..."
+                  className="pl-8"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="w-full md:w-[300px]">
+              <Label>Date Range</Label>
+              <DatePickerWithRange 
+                date={{
+                  from: filters.dateRange.startDate,
+                  to: filters.dateRange.endDate
+                }}
+                onChange={(range) => {
+                  updateFilters({
+                    dateRange: {
+                      startDate: range.from,
+                      endDate: range.to
+                    }
+                  });
+                }}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
+      
+      {/* Main Content */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Left Side - Materials List */}
+        <div className="md:col-span-1 space-y-6">
+          {/* Overview Cards */}
+          <div className="grid grid-cols-1 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Materials Analyzed</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{filteredData?.length || 0}</div>
+                <p className="text-xs text-muted-foreground">Materials with consumption data</p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Total Consumption</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {totalConsumption.toFixed(2)}
+                  <span className="text-muted-foreground text-sm ml-1">units</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Across all materials</p>
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Materials List */}
+          <Card className="overflow-hidden">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center">
+                <Package className="h-4 w-4 mr-2" />
+                Materials Used
+              </CardTitle>
+              <CardDescription>Click on a material to see details</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <ScrollArea className="h-[500px]">
+                <div className="p-0">
+                  {filteredData && filteredData.length > 0 ? (
+                    filteredData.map((material) => (
+                      <div 
+                        key={material.material_id}
+                        className={`flex items-center justify-between p-3 border-b cursor-pointer hover:bg-muted/50 transition-colors ${selectedMaterialId === material.material_id ? 'bg-muted' : ''}`}
+                        onClick={() => setSelectedMaterialId(material.material_id)}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{material.material_name}</div>
+                          <div className="text-sm text-muted-foreground flex items-center gap-1">
+                            <span>{formatQuantity(Number(material.total_usage), material.unit || "")}</span>
+                            <span>•</span>
+                            <span>{material.orders_count} orders</span>
+                          </div>
+                        </div>
+                        <Badge variant="secondary" className="ml-2">
+                          {((Number(material.total_usage) / totalConsumption) * 100).toFixed(1)}%
+                        </Badge>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-muted-foreground">No materials found</div>
+                  )}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Right Side - Material Details or Charts */}
+        <div className="md:col-span-2 space-y-6">
+          {selectedMaterial ? (
+            <>
+              {/* Material Detail Card */}
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-xl">{selectedMaterial.material_name}</CardTitle>
+                      <CardDescription>
+                        {selectedMaterial.color ? `Color: ${selectedMaterial.color}` : ''} 
+                        {selectedMaterial.gsm ? ` • GSM: ${selectedMaterial.gsm}` : ''}
+                      </CardDescription>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setSelectedMaterialId(null)}
+                    >
+                      Back to Overview
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="space-y-1 p-4 bg-muted/30 rounded-lg">
+                      <div className="text-sm text-muted-foreground">Total Consumption</div>
+                      <div className="text-2xl font-bold">{formatQuantity(Number(selectedMaterial.total_usage), selectedMaterial.unit || "")}</div>
+                    </div>
+                    <div className="space-y-1 p-4 bg-muted/30 rounded-lg">
+                      <div className="text-sm text-muted-foreground">Used in Orders</div>
+                      <div className="text-2xl font-bold">{selectedMaterial.orders_count}</div>
+                    </div>
+                    <div className="space-y-1 p-4 bg-muted/30 rounded-lg">
+                        <div className="text-sm text-muted-foreground">Material Value</div>
+                        <div className="text-2xl font-bold">
+                          ₹{formatCurrency(Number(selectedMaterial.total_usage) * materialPurchasePrice)}
+                        </div>
+                    </div>
+                  </div>
+                  
+                  <Tabs defaultValue="orders">
+                    <TabsList className="mb-4">
+                      <TabsTrigger value="orders">Usage by Order</TabsTrigger>
+                      <TabsTrigger value="chart">Usage Distribution</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="orders" className="space-y-4">
+                      <div className="rounded-md border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Order</TableHead>
+                              <TableHead>Company</TableHead>
+                              <TableHead className="text-right">Quantity</TableHead>
+                              <TableHead className="text-right">Value</TableHead>
+                              <TableHead className="text-right">% of Use</TableHead>
+                              <TableHead className="text-right">Date</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {sortedOrderBreakdown.length > 0 ? (
+                              sortedOrderBreakdown.map((order: any) => (
+                                <TableRow key={order.order_id}>
+                                  <TableCell className="font-medium">{order.order_number}</TableCell>
+                                  <TableCell>{order.company_name || '-'}</TableCell>
+                                  <TableCell className="text-right">{formatQuantity(order.quantity, order.unit)}</TableCell>
+                                  <TableCell className="text-right">₹{formatCurrency(order.value)}</TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                      <span>{order.percentage.toFixed(1)}%</span>
+                                      <div className="w-16">
+                                        <Progress value={order.percentage} className="h-2" />
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-right">{order.usage_date ? format(new Date(order.usage_date), 'dd MMM yyyy') : '-'}</TableCell>
+                                </TableRow>
+                              ))
+                            ) : (
+                              <TableRow>
+                                <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                                  No order data available for this material
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="chart" className="space-y-4">
+                      <div className="h-[400px]">
+                        {sortedOrderBreakdown.length > 0 ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={sortedOrderBreakdown.slice(0, 10)}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                outerRadius={120}
+                                fill="#8884d8"
+                                dataKey="quantity"
+                                nameKey="order_number"
+                              >
+                                {sortedOrderBreakdown.slice(0, 10).map((entry: any, index: number) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip 
+                                formatter={(value: any, name: any, props: any) => [
+                                  `${value} ${props.payload.unit}`,
+                                  props.payload.order_number
+                                ]}
+                              />
+                              <Legend />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            <div className="text-center text-muted-foreground">
+                              <AlertCircle className="mx-auto h-8 w-8" />
+                              <h3 className="mt-2">No order data available for this material</h3>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <>
+              {/* Overview Charts */}
+              <div className="grid gap-6 grid-cols-1">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <PieChartIcon className="h-5 w-5 mr-2" />
+                      Top 10 Materials by Consumption
+                    </CardTitle>
+                    <CardDescription>Click on a material to see detailed breakdown</CardDescription>
+                  </CardHeader>
+                  <CardContent className="h-[400px]">
+                    {chartData && chartData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={chartData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                            outerRadius={150}
+                            fill="#8884d8"
+                            dataKey="value"
+                            onClick={(data) => setSelectedMaterialId(data.id)}
+                            className="cursor-pointer"
+                          >
+                            {chartData.map((entry, index) => (
+                              <Cell 
+                                key={`cell-${index}`} 
+                                fill={COLORS[index % COLORS.length]}
+                              />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            formatter={(value, name, props) => [
+                              `${value} ${props.payload.unit}`,
+                              `${props.payload.name} (${props.payload.orders} orders)`
+                            ]}
+                          />
+                          <Legend 
+                            onClick={(data) => setSelectedMaterialId(data.id)}
+                            className="cursor-pointer"
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="text-center text-muted-foreground">
+                          <AlertCircle className="mx-auto h-8 w-8" />
+                          <h3 className="mt-2">No consumption data available</h3>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <BarChartIcon className="h-5 w-5 mr-2" />
+                      Order Count by Material
+                    </CardTitle>
+                    <CardDescription>Number of orders where each material was used</CardDescription>
+                  </CardHeader>
+                  <CardContent className="h-[400px]">
+                    {chartData && chartData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          layout="vertical"
+                          data={chartData.sort((a, b) => b.orders - a.orders)}
+                          margin={{
+                            top: 5, right: 30, left: 60, bottom: 5,
+                          }}
+                          onClick={(data) => data && data.activePayload && setSelectedMaterialId(data.activePayload[0].payload.id)}
+                          className="cursor-pointer"
+                        >
+                          <XAxis type="number" />
+                          <YAxis dataKey="name" type="category" width={120} />
+                          <Tooltip 
+                            formatter={(value, name) => [value, 'Orders']}
+                          />
+                          <Legend />
+                          <Bar dataKey="orders" fill="#82ca9d" name="Order Count">
+                            {chartData.map((entry, index) => (
+                              <Cell 
+                                key={`cell-${index}`} 
+                                fill={COLORS[index % COLORS.length]}
+                              />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="text-center text-muted-foreground">
+                          <AlertCircle className="mx-auto h-8 w-8" />
+                          <h3 className="mt-2">No consumption data available</h3>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
+
+export default MaterialConsumption;

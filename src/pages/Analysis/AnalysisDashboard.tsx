@@ -1,290 +1,449 @@
+import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useInventoryAnalytics } from "@/hooks/analysis/useInventoryAnalytics";
-import { formatCurrency } from "@/utils/analysisUtils";
+import { formatCurrency, calculatePercentageChange, formatQuantity } from "@/utils/analysisUtils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useNavigate } from "react-router-dom";
+import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
+import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from "recharts";
 import { LoadingSpinner } from "@/components/production/LoadingSpinner";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from "recharts";
-import { AlertTriangle, TrendingUp, Package, DollarSign, Activity, Target, Zap, ChartBar } from "lucide-react";
-import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { AlertCircle, BarChart as BarChartIcon, FileText, TrendingDown, TrendingUp, ArchiveIcon, Package, RefreshCcw, Users, AlertTriangle } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 const AnalysisDashboard = () => {
-  const {
-    inventoryData,
-    consumptionData,
-    wastageData,
-    inventoryValueData,
-    refillNeedsData,
-    isLoading,
-    getInventoryValue,
-    getLowStockItems,
-    getTopConsumedMaterials,
-    getTotalWastage,
-    getWastageByWorker
+  const navigate = useNavigate();
+  const { 
+    consumptionData, 
+    inventoryValueData, 
+    refillNeedsData, 
+    isLoading 
   } = useInventoryAnalytics();
 
-  const totalValue = getInventoryValue();
-  const lowStockItems = getLowStockItems();
-  const topConsumed = getTopConsumedMaterials(5);
-  const totalWastage = getTotalWastage();
+  // Prepare data for pie chart
+  const pieData = consumptionData?.slice(0, 5).map(item => ({
+    name: item.material_name,
+    value: Number(item.total_usage),
+    id: item.material_id
+  }));
+
+  // Prepare data for value chart
+  const valueData = inventoryValueData?.slice(0, 5).map(item => ({
+    name: item.material_name,
+    value: item.totalValue,
+    id: item.id
+  }));
+
+  // Colors for charts
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+
+  // Calculate total inventory value
+  const totalInventoryValue = inventoryValueData?.reduce(
+    (sum, item) => sum + (item.totalValue || 0), 
+    0
+  ) || 0;
+
+  // Count materials below reorder level
+  const materialsNeedingRefill = refillNeedsData?.length || 0;
 
   if (isLoading) {
     return <LoadingSpinner />;
   }
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
-  
-  // Prepare data for consumption chart
-  const consumptionChartData = topConsumed.map(item => ({
-    name: item.material_name,
-    value: item.total_consumption,
-    fill: COLORS[topConsumed.indexOf(item) % COLORS.length]
-  }));
-
-  // Prepare data for inventory value chart
-  const valueChartData = inventoryValueData
-    .sort((a, b) => (b.totalValue || 0) - (a.totalValue || 0))
-    .slice(0, 5)
-    .map(item => ({
-      name: item.material_name,
-      value: item.totalValue || 0,
-      fill: COLORS[inventoryValueData.indexOf(item) % COLORS.length]
-    }));
-
-  // Prepare wastage by worker data
-  const wastageByWorkerData = getWastageByWorker()
-    .sort((a, b) => b.totalWastage - a.totalWastage)
-    .slice(0, 5)
-    .map(item => ({
-      name: item.worker,
-      value: item.totalWastage,
-      fill: COLORS[getWastageByWorker().indexOf(item) % COLORS.length]
-    }));
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-col space-y-1.5">
-        <h1 className="text-3xl font-bold">Analysis Dashboard</h1>
-        <p className="text-muted-foreground">
-          Comprehensive view of inventory, consumption, and production analytics
-        </p>
+      <div className="flex flex-col space-y-4">
+        <div>
+          <h1 className="text-2xl font-bold">Inventory Analysis</h1>
+          <p className="text-muted-foreground">
+            Analyze material consumption, inventory value, and refill requirements
+          </p>
+        </div>
+        
+        {/* Analysis Navigation Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+          {/* Material Consumption */}
+          <Card className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate('/analysis/materials')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center">
+                <BarChartIcon className="h-5 w-5 mr-2" />
+                Material Consumption
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Analyze which materials are being consumed the most
+              </p>
+            </CardContent>
+          </Card>
+          
+          {/* Order Consumption */}
+          <Card className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate('/analysis/orders')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center">
+                <FileText className="h-5 w-5 mr-2" />
+                Order Consumption
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                View which orders consumed the most materials
+              </p>
+            </CardContent>
+          </Card>
+          
+          {/* Transaction History */}
+          <Card className="hover:bg-accent/50 transition-colors cursor-pointer bg-accent/20" onClick={() => navigate('/analysis/transactions')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center">
+                <FileText className="h-5 w-5 mr-2" />
+                Transaction History
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                View detailed material transaction records
+              </p>
+            </CardContent>
+          </Card>
+          
+          {/* Inventory Value */}
+          <Card className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate('/analysis/value')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center">
+                <TrendingUp className="h-5 w-5 mr-2" />
+                Inventory Value
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Track the total value of your inventory
+              </p>
+            </CardContent>
+          </Card>
+          
+          {/* Refill Analysis */}
+          <Card className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate('/analysis/refill')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center">
+                <RefreshCcw className="h-5 w-5 mr-2" />
+                Refill Analysis
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Identify materials that need to be refilled
+              </p>
+            </CardContent>
+          </Card>
+          
+          {/* Wastage Analysis */}
+          <Card className="hover:bg-accent/50 transition-colors cursor-pointer bg-accent/20" onClick={() => navigate('/analysis/wastage')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center">
+                <AlertTriangle className="h-5 w-5 mr-2" />
+                Wastage Analysis
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Track material wastage by vendor in jobs
+              </p>
+            </CardContent>
+          </Card>
+          
+          {/* Partner Performance */}
+          <Card className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate('/analysis/partners')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center">
+                <Users className="h-5 w-5 mr-2" />
+                Partner Performance
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Analyze vendor and supplier job efficiency
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
-      {/* Key Metrics Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Inventory Value</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalValue)}</div>
-            <p className="text-xs text-muted-foreground">
-              Across {inventoryData.length} materials
-            </p>
-          </CardContent>
-        </Card>
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="consumption">Consumption</TabsTrigger>
+          <TabsTrigger value="value">Value Analysis</TabsTrigger>
+          <TabsTrigger value="refill">Refill Needs</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center text-lg">
+                  <BarChartIcon className="h-5 w-5 mr-2" />
+                  Top Material Consumption
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="h-[300px] w-full">
+                  {pieData && pieData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center text-muted-foreground">
+                        <ArchiveIcon className="mx-auto h-8 w-8" />
+                        <h3 className="mt-2">No consumption data available</h3>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center text-lg">
+                  <Package className="h-5 w-5 mr-2" />
+                  Materials by Value
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="h-[300px] w-full">
+                  {valueData && valueData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        layout="vertical"
+                        data={valueData}
+                        margin={{
+                          top: 20, right: 40, left: 40, bottom: 20,
+                        }}
+                      >
+                        <XAxis type="number" />
+                        <YAxis dataKey="name" type="category" width={100} />
+                        <Tooltip formatter={(value) => [`₹${value}`, 'Value']} />
+                        <Legend />
+                        <Bar dataKey="value" fill="#8884d8" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center text-muted-foreground">
+                        <ArchiveIcon className="mx-auto h-8 w-8" />
+                        <h3 className="mt-2">No value data available</h3>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Low Stock Items</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">{lowStockItems.length}</div>
-            <p className="text-xs text-muted-foreground">
-              Items below minimum level
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Wastage</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalWastage}</div>
-            <p className="text-xs text-muted-foreground">
-              Units across all jobs
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Materials</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{consumptionData.length}</div>
-            <p className="text-xs text-muted-foreground">
-              Materials in use
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <TrendingUp className="h-5 w-5 mr-2" />
-              Material Consumption
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Analyze material usage patterns and trends across orders
-            </p>
-            <Button asChild className="w-full">
-              <Link to="/analysis/material-consumption">
-                View Analysis
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <DollarSign className="h-5 w-5 mr-2" />
-              Inventory Value
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Track inventory value distribution and cost analysis
-            </p>
-            <Button asChild className="w-full">
-              <Link to="/analysis/inventory-value">
-                View Analysis
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <AlertTriangle className="h-5 w-5 mr-2" />
-              Refill Analysis
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Monitor stock levels and identify refill needs
-            </p>
-            <Button asChild className="w-full">
-              <Link to="/analysis/refill-analysis">
-                View Analysis
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts Section */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <ChartBar className="h-5 w-5 mr-2" />
-              Top Consumed Materials
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="h-[300px]">
-            {consumptionChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={consumptionChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="value" fill="#8884d8" />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                No consumption data available
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Target className="h-5 w-5 mr-2" />
-              Inventory Value Distribution
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="h-[300px]">
-            {valueChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={valueChartData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {valueChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => [formatCurrency(value as number), 'Value']} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                No value data available
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Alerts */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <AlertTriangle className="h-5 w-5 mr-2" />
-            Inventory Alerts
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {lowStockItems.length > 0 ? (
-              lowStockItems.slice(0, 5).map((item) => (
-                <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <p className="font-medium">{item.material_name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Current: {item.quantity} {item.unit} | Minimum: {item.min_stock_level} {item.unit}
-                    </p>
+          <div className="flex flex-col space-y-4">
+            <div className="grid gap-4 md:grid-cols-3">
+              <Button 
+                onClick={() => navigate('/analysis/materials')}
+                className="flex items-center justify-between"
+              >
+                <span>Material Consumption Details</span>
+                <FileText className="h-4 w-4 ml-2" />
+              </Button>
+              <Button 
+                onClick={() => navigate('/analysis/orders')}
+                className="flex items-center justify-between"
+              >
+                <span>Order Consumption Breakdown</span>
+                <FileText className="h-4 w-4 ml-2" />
+              </Button>
+              <Button 
+                onClick={() => navigate('/analysis/refill')}
+                className="flex items-center justify-between"
+              >
+                <span>View Refill Requirements</span>
+                <RefreshCcw className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="consumption" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Material Consumption Analysis</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <Button onClick={() => navigate('/analysis/materials')}>
+                  Go to Detailed Material Consumption
+                </Button>
+                
+                <Separator />
+                
+                {consumptionData && consumptionData.length > 0 ? (
+                  <div className="relative">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="py-2 text-left font-medium">Material</th>
+                          <th className="py-2 text-right font-medium">Total Usage</th>
+                          <th className="py-2 text-right font-medium">Unit</th>
+                          <th className="py-2 text-right font-medium">Orders</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {consumptionData.slice(0, 10).map((item, index) => (
+                          <tr key={item.material_id} className="border-b">
+                            <td className="py-2 text-left">{item.material_name}</td>
+                            <td className="py-2 text-right">{Number(item.total_usage).toFixed(2)}</td>
+                            <td className="py-2 text-right">{item.unit}</td>
+                            <td className="py-2 text-right">{item.orders_count}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                  <div className="text-right">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive">
-                      Low Stock
-                    </span>
+                ) : (
+                  <div className="flex justify-center py-8">
+                    <div className="text-center text-muted-foreground">
+                      <ArchiveIcon className="mx-auto h-8 w-8" />
+                      <h3 className="mt-2">No consumption data available</h3>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="value" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Value Analysis</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => navigate('/analysis/value')} className="mb-4">
+                Go to Detailed Value Analysis
+              </Button>
+              
+              <Separator className="my-2" />
+              
+              {inventoryValueData && inventoryValueData.length > 0 ? (
+                <div className="relative">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="py-2 text-left font-medium">Material</th>
+                        <th className="py-2 text-right font-medium">Quantity</th>
+                        <th className="py-2 text-right font-medium">Rate (₹)</th>
+                        <th className="py-2 text-right font-medium">Total Value (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {inventoryValueData.slice(0, 10).map((item) => (
+                        <tr key={item.id} className="border-b">
+                          <td className="py-2 text-left">{item.material_name}</td>
+                          <td className="py-2 text-right">{item.quantity.toFixed(2)} {item.unit}</td>
+                          <td className="py-2 text-right">{item.purchase_rate?.toFixed(2) || 'N/A'}</td>
+                          <td className="py-2 text-right">{item.totalValue.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="flex justify-center py-8">
+                  <div className="text-center text-muted-foreground">
+                    <ArchiveIcon className="mx-auto h-8 w-8" />
+                    <h3 className="mt-2">No inventory value data available</h3>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-6 text-muted-foreground">
-                <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>All materials are adequately stocked</p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="refill" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Refill Requirements</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => navigate('/analysis/refill')} className="mb-4">
+                Go to Detailed Refill Analysis
+              </Button>
+              
+              <Separator className="my-2" />
+              
+              {refillNeedsData && refillNeedsData.length > 0 ? (
+                <div className="relative">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="py-2 text-left font-medium">Material</th>
+                        <th className="py-2 text-right font-medium">Current</th>
+                        <th className="py-2 text-right font-medium">Reorder Level</th>
+                        <th className="py-2 text-right font-medium">Min Stock</th>
+                        <th className="py-2 text-right font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {refillNeedsData.map((item) => {
+                        const status = item.quantity < (item.min_stock_level || 0) 
+                          ? 'critical' 
+                          : 'warning';
+                        
+                        return (
+                          <tr key={item.id} className="border-b">
+                            <td className="py-2 text-left">{item.material_name}</td>
+                            <td className="py-2 text-right">{item.quantity.toFixed(2)} {item.unit}</td>
+                            <td className="py-2 text-right">{item.reorder_level?.toFixed(2) || 'N/A'}</td>
+                            <td className="py-2 text-right">{item.min_stock_level?.toFixed(2) || 'N/A'}</td>
+                            <td className="py-2 text-right">
+                              <span className={`inline-block px-2 py-1 rounded text-xs font-medium
+                                ${status === 'critical' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`
+                              }>
+                                {status === 'critical' ? 'Critical' : 'Low'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="flex justify-center py-8">
+                  <div className="text-center text-muted-foreground">
+                    <ArchiveIcon className="mx-auto h-8 w-8" />
+                    <h3 className="mt-2">No materials need refill</h3>
+                    <p className="text-sm mt-1">All inventory levels are above reorder points</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

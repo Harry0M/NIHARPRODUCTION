@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Purchase, PurchaseWithItems } from "@/types/purchase";
@@ -21,14 +22,7 @@ export const usePurchases = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      
-      // Type assertion for the fetched data to match our interface
-      const typedData = (data || []).map(item => ({
-        ...item,
-        status: item.status as 'pending' | 'completed' | 'cancelled'
-      })) as PurchaseWithItems[];
-      
-      setPurchases(typedData);
+      setPurchases(data || []);
     } catch (err: any) {
       setError(err.message);
       showToast({
@@ -43,10 +37,9 @@ export const usePurchases = () => {
 
   const createPurchase = async (purchaseData: any) => {
     try {
-      // Create purchase without purchase_number - let database handle it
       const { data: purchase, error: purchaseError } = await supabase
         .from('purchases')
-        .insert({
+        .insert([{
           supplier_id: purchaseData.supplier_id,
           purchase_date: purchaseData.purchase_date,
           transport_charge: purchaseData.transport_charge,
@@ -54,7 +47,7 @@ export const usePurchases = () => {
           total_amount: purchaseData.total_amount,
           notes: purchaseData.notes,
           status: 'pending'
-        })
+        }])
         .select()
         .single();
 
@@ -74,7 +67,7 @@ export const usePurchases = () => {
 
       showToast({
         title: "Purchase created",
-        description: `Purchase ${purchase.purchase_number || purchase.id} created successfully`,
+        description: `Purchase ${purchase.purchase_number} created successfully`,
         type: "success"
       });
 

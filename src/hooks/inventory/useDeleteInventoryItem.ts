@@ -17,27 +17,16 @@ export const useDeleteInventoryItem = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (itemId: string) => {
-      // Delete related transactions first
-      const { error: transactionError } = await supabase
-        .from('inventory_transactions')
-        .delete()
-        .eq('material_id', itemId);
+      // Use the custom database function to delete the item and all related transactions
+      const { data, error } = await supabase.rpc('delete_inventory_with_transactions', {
+        p_inventory_id: itemId
+      });
 
-      if (transactionError) {
-        throw transactionError;
+      if (error) {
+        throw error;
       }
 
-      // Delete the inventory item
-      const { error: inventoryError } = await supabase
-        .from('inventory')
-        .delete()
-        .eq('id', itemId);
-
-      if (inventoryError) {
-        throw inventoryError;
-      }
-
-      return true;
+      return data;
     },
     onSuccess: (_, itemId) => {
       // Invalidate relevant queries to refresh the data

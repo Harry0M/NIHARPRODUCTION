@@ -1,10 +1,11 @@
-import { createBrowserRouter, RouteObject } from "react-router-dom";
-import AppLayout from "@/components/layout/AppLayout";
+
+import { createBrowserRouter } from "react-router-dom";
+import { AppLayout } from "@/components/layout/AppLayout";
 import { AuthLayout } from "@/components/layout/AuthLayout";
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
-import AnalysisDashboard from "@/pages/Analysis/AnalysisDashboard";
+import { AnalysisDashboard } from "@/pages/Analysis/AnalysisDashboard";
 import { MaterialConsumption } from "@/pages/Analysis/MaterialConsumption";
 import { PartnerPerformance } from "@/pages/Analysis/PartnerPerformance";
 import { PartnersAnalysis } from "@/pages/Analysis/PartnersAnalysis";
@@ -51,7 +52,7 @@ import { PurchaseList } from "@/pages/Purchases/PurchaseList";
 import { PurchaseNew } from "@/pages/Purchases/PurchaseNew";
 import NotFound from "@/pages/NotFound";
 
-const routes: RouteObject[] = [
+export const router = createBrowserRouter([
   {
     path: "/",
     element: <Index />,
@@ -269,6 +270,4 @@ const routes: RouteObject[] = [
     path: "*",
     element: <NotFound />,
   },
-];
-
-export default routes;
+]);

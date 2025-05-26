@@ -26,8 +26,6 @@ export const PurchaseForm = ({ onSubmit, onCancel, isLoading = false }: Purchase
     supplier_id: '',
     purchase_date: new Date().toISOString().split('T')[0],
     transport_charge: 0,
-    subtotal: 0,
-    total_amount: 0,
     notes: '',
     items: [{ material_id: '', quantity: 0, unit_price: 0, line_total: 0 }]
   });

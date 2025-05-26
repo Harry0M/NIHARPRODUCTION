@@ -1,16 +1,17 @@
-
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Package, Eye, Edit, Trash2, DollarSign, Layers, Ruler } from "lucide-react";
+import { Plus, Package, Trash2, RefreshCw, Eye, PenLine, ShoppingBag, Search, Box, FileCheck, Layers } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Link, useNavigate } from "react-router-dom";
-import { usePagination } from "@/hooks/usePagination";
-import { showToast } from "@/components/ui/enhanced-toast";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,370 +21,429 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState, useEffect } from "react";
+import { showToast } from "@/components/ui/enhanced-toast";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import PaginationControls from "@/components/ui/pagination-controls";
 
-interface CatalogProduct {
-  id: string;
-  name: string;
-  description: string | null;
-  bag_length: number;
-  bag_width: number;
-  height: number;
-  border_dimension: number;
-  default_quantity: number | null;
-  default_rate: number | null;
-  total_cost: number | null;
-  material_cost: number;
-  cutting_charge: number;
-  printing_charge: number;
-  stitching_charge: number;
-  transport_charge: number;
-  selling_rate: number | null;
-  margin: number | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export const CatalogList = () => {
+const CatalogList = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const queryClient = useQueryClient();
+  const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState<string>("name");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
-  const {
-    data: catalogData,
-    isLoading,
-    error,
-    refetch
-  } = useQuery({
-    queryKey: ["catalog", searchTerm, sortBy, sortOrder],
+  const { data: catalogData, isLoading, refetch, error } = useQuery({
+    queryKey: ['catalog', page, pageSize, searchTerm],
     queryFn: async () => {
-      let query = supabase
-        .from("catalog")
-        .select("*");
-
+      // First get the total count for pagination
+      let countQuery = supabase
+        .from('catalog')
+        .select('id', { count: 'exact', head: true });
+      
       if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+        countQuery = countQuery.or(
+          `name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`
+        );
       }
-
-      query = query.order(sortBy, { ascending: sortOrder === "asc" });
-
-      const { data, error } = await query;
+      
+      const { count, error: countError } = await countQuery;
+      
+      if (countError) throw countError;
+      
+      // Then fetch the paginated data
+      let query = supabase
+        .from('catalog')
+        .select('*');
+      
+      if (searchTerm) {
+        query = query.or(
+          `name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`
+        );
+      }
+      
+      // Add pagination
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      
+      const { data, error } = await query
+        .order('name')
+        .range(from, to);
+      
       if (error) throw error;
-      return data as CatalogProduct[];
+      
+      return {
+        products: data || [],
+        totalCount: count || 0
+      };
     },
   });
 
-  const {
-    currentData,
-    currentPage,
-    totalPages,
-    itemsPerPage,
-    setItemsPerPage,
-    goToPage,
-    nextPage,
-    prevPage,
-  } = usePagination({
-    data: catalogData || [],
-    initialItemsPerPage: 12,
-  });
+  const products = catalogData?.products || [];
+  const totalCount = catalogData?.totalCount || 0;
 
-  const handleDelete = async (productId: string) => {
-    try {
-      const { error } = await supabase.rpc('delete_catalog_product', {
-        input_catalog_id: productId
-      });
-
-      if (error) throw error;
-
+  // Handle any errors in fetching the catalog
+  useEffect(() => {
+    if (error) {
+      console.error("Error fetching catalog:", error);
       showToast({
-        title: "Product deleted",
-        description: "Catalog product has been deleted successfully",
-        type: "success"
-      });
-
-      refetch();
-    } catch (error: any) {
-      console.error("Error deleting product:", error);
-      showToast({
-        title: "Error",
-        description: error.message || "Failed to delete product",
+        title: "Error loading products",
+        description: "Could not load product catalog. Please try again.",
         type: "error"
       });
     }
+  }, [error]);
+
+  // Force refresh on initial mount and location changes
+  useEffect(() => {
+    console.log("CatalogList mounted or location changed - refreshing data");
+    setIsRefreshing(true);
+    
+    refetch()
+      .then(() => {
+        console.log("Catalog data refreshed successfully");
+        
+        // Check URL parameters for any refresh flags
+        const urlParams = new URLSearchParams(window.location.search);
+        const refreshTrigger = urlParams.get('refresh');
+        
+        // Show welcome toast when product created flag is present
+        if (refreshTrigger === 'product-created') {
+          showToast({
+            title: "Product Created Successfully",
+            description: "Your new product has been added to the catalog.",
+            type: "success"
+          });
+          
+          // Clean URL by removing the query parameter
+          window.history.replaceState({}, '', location.pathname);
+        }
+      })
+      .catch((err) => {
+        console.error("Error refreshing catalog data:", err);
+      })
+      .finally(() => {
+        setIsRefreshing(false);
+      });
+  }, [refetch, location.key]); // Add location.key as a dependency to detect navigation
+
+  const handleManualRefresh = () => {
+    setIsRefreshing(true);
+    queryClient.invalidateQueries({ queryKey: ['catalog'] });
+    refetch()
+      .then(() => {
+        showToast({
+          title: "Data Refreshed",
+          description: "The catalog list has been refreshed.",
+          type: "info"
+        });
+      })
+      .catch((error) => {
+        console.error("Manual refresh error:", error);
+      })
+      .finally(() => {
+        setIsRefreshing(false);
+      });
   };
 
-  if (isLoading) {
-    return (
-      <div className="container mx-auto py-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader>
-                <div className="h-6 bg-gray-200 rounded"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="h-4 bg-gray-200 rounded"></div>
-                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const handleDeleteProduct = async () => {
+    if (!productToDelete) return;
 
-  if (error) {
-    return (
-      <div className="container mx-auto py-6">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-center text-red-600">
-              Error loading catalog: {error.message}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+    try {
+      setIsDeleting(true);
+      console.log(`Deleting product with ID: ${productToDelete}`);
+      
+      // Call the RPC function to delete the catalog product
+      const { data, error } = await supabase
+        .rpc('delete_catalog_product', { input_catalog_id: productToDelete });
+      
+      if (error) {
+        console.error("Error deleting product:", error);
+        throw error;
+      }
+      
+      // Success!
+      showToast({
+        title: "Product deleted successfully",
+        type: "success"
+      });
+      
+      // Invalidate the catalog query to force a refresh
+      queryClient.invalidateQueries({ queryKey: ['catalog'] });
+      await refetch();
+    } catch (error: any) {
+      console.error('Error in handleDeleteProduct:', error);
+      showToast({
+        title: "Failed to delete product",
+        description: error.message || "An unexpected error occurred",
+        type: "error"
+      });
+    } finally {
+      setProductToDelete(null);
+      setIsDeleting(false);
+    }
+  };
 
-  const EmptyState = () => (
-    <Card className="text-center py-12">
-      <CardContent>
-        <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">No products found</h3>
-        <p className="text-muted-foreground mb-4">
-          {searchTerm ? "No products match your search criteria." : "Get started by creating your first product."}
-        </p>
-        <Button asChild>
-          <Link to="/dashboard/catalog/new">
-            <Plus className="h-4 w-4 mr-2" />
-            Create Product
-          </Link>
-        </Button>
-      </CardContent>
-    </Card>
-  );
-
-  // Simple pagination controls component
-  const PaginationControls = () => (
-    <div className="flex items-center justify-between">
-      <div className="text-sm text-muted-foreground">
-        Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, catalogData?.length || 0)} of {catalogData?.length || 0} results
-      </div>
-      <div className="flex items-center space-x-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={prevPage}
-          disabled={currentPage <= 1}
-        >
-          Previous
-        </Button>
-        <span className="text-sm">
-          Page {currentPage} of {totalPages}
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={nextPage}
-          disabled={currentPage >= totalPages}
-        >
-          Next
-        </Button>
-      </div>
-    </div>
-  );
+  // Calculate total pages
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-6 fade-in">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 slide-in">
         <div>
-          <h1 className="text-3xl font-bold">Product Catalog</h1>
-          <p className="text-muted-foreground">Manage your product templates and configurations</p>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <span className="h-6 w-1.5 rounded-full bg-primary inline-block"></span>
+            Product Catalog
+          </h1>
+          <p className="text-muted-foreground mt-1">Manage your bag manufacturing products</p>
         </div>
-        <Button asChild>
-          <Link to="/dashboard/catalog/new">
-            <Plus className="h-4 w-4 mr-2" />
-            Create Product
-          </Link>
-        </Button>
+        
+        <div className="flex items-center gap-3 scale-in" style={{animationDelay: '0.1s'}}>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            className="border-border/60 shadow-sm transition-all"
+          >
+            <RefreshCw size={16} className={`mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
+          
+          <Button 
+            onClick={() => navigate('/inventory/catalog/new')}
+            className="shadow-sm transition-all font-medium"
+          >
+            <Plus size={16} className="mr-2" />
+            Add Product
+          </Button>
+        </div>
       </div>
 
-      {/* Search and Filter Controls */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+      <Card className="border-border/60 shadow-sm fade-in overflow-hidden">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <span className="h-5 w-1 rounded-full bg-primary inline-block"></span>
+            All Products
+            {!isLoading && !isRefreshing && (
+              <Badge 
+                variant="outline" 
+                className="ml-2 bg-muted/50 text-foreground/80 hover:bg-muted transition-colors border-border/40 shadow-sm"
+              >
+                <Box className="h-3 w-3 mr-1 text-primary" />
+                {totalCount} {totalCount === 1 ? 'product' : 'products'}
+              </Badge>
+            )}
+          </CardTitle>
+          <CardDescription className="mt-1">View and manage all your bag products</CardDescription>
+          
+          <div className="mt-4 flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
+            <div className="relative flex-1 max-w-md">
               <Input
                 placeholder="Search products..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1); // Reset to first page when search term changes
+                }}
+                className="pl-9 border-border/60 focus:border-primary/60"
               />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             </div>
-            <div className="flex gap-2">
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Sort by" />
+            
+            <div className="flex items-center gap-2">
+              <Select
+                value={pageSize.toString()}
+                onValueChange={(value) => {
+                  setPageSize(Number(value));
+                  setPage(1); // Reset to first page when page size changes
+                }}
+              >
+                <SelectTrigger className="w-[110px]">
+                  <SelectValue placeholder="Items per page" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="name">Name</SelectItem>
-                  <SelectItem value="created_at">Created Date</SelectItem>
-                  <SelectItem value="selling_rate">Price</SelectItem>
-                  <SelectItem value="total_cost">Cost</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as "asc" | "desc")}>
-                <SelectTrigger className="w-[100px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="asc">Asc</SelectItem>
-                  <SelectItem value="desc">Desc</SelectItem>
+                  <SelectItem value="5">5 per page</SelectItem>
+                  <SelectItem value="10">10 per page</SelectItem>
+                  <SelectItem value="20">20 per page</SelectItem>
+                  <SelectItem value="50">50 per page</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
+        </CardHeader>
+
+        <CardContent className="p-0">
+          {isLoading || isRefreshing ? (
+            <div className="flex flex-col justify-center items-center p-16 slide-up" style={{animationDelay: '0.2s'}}>
+              <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent mb-4"></div>
+              <p className="text-muted-foreground">{isRefreshing ? 'Refreshing catalog...' : 'Loading catalog...'}</p>
+            </div>
+          ) : products.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-16 text-center bg-muted/20 dark:bg-muted/10 rounded-b-xl slide-up" style={{animationDelay: '0.2s'}}>
+              <div className="w-16 h-16 mb-4 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary">
+                <Layers className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">
+                {searchTerm ? 'No matching products found' : 'No products in catalog'}
+              </h3>
+              <p className="text-muted-foreground max-w-md mb-6">
+                {searchTerm 
+                  ? `No products match your search term "${searchTerm}". Try another search or clear the filter.` 
+                  : 'You haven\'t added any products to your catalog yet. Add your first product to get started.'}
+              </p>
+              {searchTerm && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => setSearchTerm('')} 
+                  className="text-primary hover:bg-primary/5"
+                >
+                  <FileCheck className="h-4 w-4 mr-2" />
+                  Clear search
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-md border-t border-border/40 overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-muted/50 dark:bg-muted/20">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="font-medium">Product Name</TableHead>
+                    <TableHead className="font-medium">Description</TableHead>
+                    <TableHead className="font-medium">Base Price</TableHead>
+                    <TableHead className="font-medium">Bag Size</TableHead>
+                    <TableHead className="w-[100px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {products.map((product, index) => (
+                    <TableRow
+                      key={product.id}
+                      className="cursor-pointer hover:bg-muted/40 dark:hover:bg-muted/20 transition-colors"
+                      onClick={() => navigate(`/inventory/catalog/${product.id}`)}
+                      style={{animationDelay: `${0.05 * index}s`}}
+                    >
+                      <TableCell className="font-medium">
+                        {product.name}
+                      </TableCell>
+                      <TableCell className="max-w-[250px] truncate">
+                        {product.description || "—"}
+                      </TableCell>
+                      <TableCell>
+                        {product.base_price ? `₹${product.base_price.toFixed(2)}` : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {product.bag_length && product.bag_width
+                          ? `${product.bag_length}×${product.bag_width}`
+                          : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end items-center gap-1">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => e.stopPropagation()}
+                                className="h-8 w-8 p-0"
+                              >
+                                <ShoppingBag className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/inventory/catalog/${product.id}`);
+                                }}
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/inventory/catalog/${product.id}/edit`);
+                                }}
+                              >
+                                <PenLine className="h-4 w-4 mr-2" />
+                                Edit Product
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-red-600 focus:bg-red-50 focus:text-red-600 dark:focus:bg-red-950 dark:focus:text-red-500"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setProductToDelete(product.id);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete Product
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+          
+          {/* Pagination UI */}
+          {!isLoading && !isRefreshing && totalPages > 1 && (
+            <div className="py-4 border-t border-border/40">
+              <PaginationControls
+                currentPage={page}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(newSize) => {
+                  setPageSize(newSize);
+                  setPage(1); // Reset to first page when page size changes
+                }}
+                pageSizeOptions={[5, 10, 20, 50]}
+                showPageSizeSelector={true}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Products Grid */}
-      {currentData && currentData.length > 0 ? (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {currentData.map((product) => (
-              <Card key={product.id} className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg">{product.name}</CardTitle>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        asChild
-                      >
-                        <Link to={`/dashboard/catalog/${product.id}`}>
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        asChild
-                      >
-                        <Link to={`/dashboard/catalog/${product.id}/edit`}>
-                          <Edit className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Product</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete "{product.name}"? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(product.id)}>
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </div>
-                  {product.description && (
-                    <p className="text-sm text-muted-foreground">{product.description}</p>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {/* Dimensions */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex items-center gap-2">
-                        <Ruler className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">
-                          {product.bag_length}" × {product.bag_width}"
-                        </span>
-                      </div>
-                      {product.height > 0 && (
-                        <div className="flex items-center gap-2">
-                          <Layers className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">H: {product.height}"</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Pricing Information */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Cost:</span>
-                        <span className="font-medium">₹{(product.total_cost || product.selling_rate || 0).toFixed(2)}</span>
-                      </div>
-                      {product.selling_rate && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Selling Rate:</span>
-                          <span className="font-medium text-green-600">₹{(product.selling_rate || product.total_cost || 0).toFixed(2)}</span>
-                        </div>
-                      )}
-                      {product.margin && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Margin:</span>
-                          <Badge variant="outline">
-                            <DollarSign className="h-3 w-3 mr-1" />
-                            ₹{product.margin.toFixed(2)}
-                          </Badge>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Default Quantity */}
-                    {product.default_quantity && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Default Qty:</span>
-                        <Badge variant="secondary">{product.default_quantity}</Badge>
-                      </div>
-                    )}
-
-                    {/* Cost Breakdown */}
-                    <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                      <div>Material: ₹{product.material_cost.toFixed(2)}</div>
-                      <div>Cutting: ₹{product.cutting_charge.toFixed(2)}</div>
-                      <div>Printing: ₹{product.printing_charge.toFixed(2)}</div>
-                      <div>Stitching: ₹{product.stitching_charge.toFixed(2)}</div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex gap-2 pt-2">
-                      <Button variant="outline" size="sm" className="flex-1" asChild>
-                        <Link to={`/dashboard/catalog/${product.id}/orders`}>
-                          View Orders
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          <PaginationControls />
-        </>
-      ) : (
-        <EmptyState />
-      )}
+      <AlertDialog open={!!productToDelete} onOpenChange={(open) => !open && setProductToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this product?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the product from your catalog. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteProduct();
+              }}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete Product"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
+
+export default CatalogList;
