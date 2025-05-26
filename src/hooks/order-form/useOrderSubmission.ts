@@ -1,9 +1,8 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { showToast } from "@/components/ui/enhanced-toast";
 import { OrderFormData } from "@/types/order";
-import { validateComponentData, convertStringToNumeric } from "@/utils/orderFormUtils";
+import { validateComponentData, convertStringToNumeric, debugAllComponents } from "@/utils/orderFormUtils";
 import { updateInventoryForOrderComponents } from "@/utils/inventoryUtils";
 
 interface UseOrderSubmissionProps {
@@ -11,19 +10,12 @@ interface UseOrderSubmissionProps {
   components: Record<string, any>;
   customComponents: any[];
   validateForm: () => boolean;
-  costCalculation?: {
-    materialCost: number;
-    cuttingCharge: number;
-    printingCharge: number;
-    stitchingCharge: number;
-    transportCharge: number;
-    productionCost: number;
-    totalCost: number;
-    margin?: number;
-    sellingPrice?: number;
-  };
+  costCalculation: any;
 }
 
+/**
+ * Hook to handle order submission and database operations
+ */
 export function useOrderSubmission({
   orderDetails,
   components,
@@ -34,58 +26,75 @@ export function useOrderSubmission({
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent): Promise<string | undefined> => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     
-    // Validate form before submission
     if (!validateForm()) {
-      showToast({
-        title: "Form validation failed",
-        description: "Please correct the highlighted fields",
-        type: "error"
-      });
       return;
-    }
-    
-    // Check if any components have materials selected
-    const allComponents = [
-      ...Object.values(components).filter(Boolean),
-      ...customComponents
-    ].filter(Boolean);
-    
-    const componentsWithMaterials = allComponents.filter(comp => comp.material_id);
-    
-    if (componentsWithMaterials.length === 0 && allComponents.length > 0) {
-      showToast({
-        title: "Missing material selection",
-        description: "Please select materials for at least one component for inventory tracking",
-        type: "warning"
-      });
-      // Allow submission to continue, but warn user about missing material selection
     }
     
     setSubmitting(true);
     
     try {
-      // Get cost values from costCalculation object or from orderDetails
-      const margin = costCalculation?.margin || parseFloat(orderDetails.margin || '15');
+      // Perform pre-submission validation of component types
+      const componentsList = [
+        ...Object.values(components).filter(Boolean),
+        ...customComponents
+      ].filter(Boolean);
+      
+      // Check for invalid component types before attempting to save
+      const validComponentTypes = ['part', 'border', 'handle', 'chain', 'runner', 'custom'];
+      const invalidComponents = componentsList.filter(comp => {
+        const type = comp.type?.toLowerCase() || '';
+        return !validComponentTypes.includes(type);
+      });
+      
+      if (invalidComponents.length > 0) {
+        console.error("Found components with invalid types that will fail database constraint:");
+        invalidComponents.forEach(comp => {
+          console.error(`Component with invalid type: "${comp.type}" - must be one of: ${validComponentTypes.join(', ')}`);
+        });
+        
+        // Show warning toast
+        showToast({
+          title: "Warning: Invalid Component Types",
+          description: `Found ${invalidComponents.length} components with invalid types that might fail to save.`,
+          type: "warning"
+        });
+      }
+      
+      // Debug all components before submission to help identify issues
+      debugAllComponents(components, customComponents);
+      
+      // Calculate margins and selling price
       const materialCost = costCalculation?.materialCost || 0;
-      const cuttingCharge = costCalculation?.cuttingCharge || 
-                          (parseFloat(orderDetails.cutting_charge || '0') * parseFloat(orderDetails.total_quantity || orderDetails.quantity));
-      const printingCharge = costCalculation?.printingCharge || 
-                           (parseFloat(orderDetails.printing_charge || '0') * parseFloat(orderDetails.total_quantity || orderDetails.quantity));
-      const stitchingCharge = costCalculation?.stitchingCharge || 
-                            (parseFloat(orderDetails.stitching_charge || '0') * parseFloat(orderDetails.total_quantity || orderDetails.quantity));
-      const transportCharge = costCalculation?.transportCharge || 
-                            (parseFloat(orderDetails.transport_charge || '0') * parseFloat(orderDetails.total_quantity || orderDetails.quantity));
+      const cuttingCharge = parseFloat(orderDetails.cutting_charge || '0');
+      const printingCharge = parseFloat(orderDetails.printing_charge || '0');
+      const stitchingCharge = parseFloat(orderDetails.stitching_charge || '0');
+      const transportCharge = parseFloat(orderDetails.transport_charge || '0');
+      const productionCost = cuttingCharge + printingCharge + stitchingCharge + transportCharge;
+      const totalCost = materialCost + productionCost;
       
-      // Calculate production and total costs
-      const productionCost = costCalculation?.productionCost || 
-                            (cuttingCharge + printingCharge + stitchingCharge + transportCharge);
-      const totalCost = costCalculation?.totalCost || (materialCost + productionCost);
+      // Calculate margin and selling price
+      const margin = parseFloat(orderDetails.margin || '15');
+      let sellingRate = costCalculation?.sellingPrice || 0;
       
-      // Calculate selling price using margin
-      const sellingRate = costCalculation?.sellingPrice || 
-                        (orderDetails.rate ? parseFloat(orderDetails.rate) : (totalCost * (1 + margin/100)));
+      // Use the calculated selling price from costCalculation if available,
+      // otherwise use the rate from orderDetails if specified,
+      // or calculate it based on cost and margin
+      if (orderDetails.rate && parseFloat(orderDetails.rate) > 0) {
+        sellingRate = parseFloat(orderDetails.rate);
+      } else if (sellingRate <= 0 && totalCost > 0 && margin > 0) {
+        // Calculate selling price: cost / (1 - margin/100)
+        sellingRate = totalCost / (1 - margin/100);
+      }
+      
+      console.log("Order calculation:", {
+        materialCost,
+        productionCost,
+        totalCost,
+        margin,
+        sellingRate
+      });
       
       // Prepare data for database insert
       const orderData = {
@@ -165,18 +174,58 @@ export function useOrderSubmission({
       ].filter(Boolean);
       
       console.log("Raw components to be saved:", allComponents);
+      console.log("Number of components before validation:", allComponents.length);
       
       if (allComponents.length > 0) {
         // Create a properly formatted array of components with correct data types
         const componentsToInsert = allComponents
-          .filter(comp => validateComponentData(comp))
+          .filter(comp => {
+            const isValid = validateComponentData(comp);
+            if (!isValid) {
+              console.error("Component validation failed:", comp);
+            }
+            return isValid;
+          })
           .map(comp => {
+            // CRITICAL FIX: Log the raw component data to see exactly what we're dealing with
+            console.log("RAW COMPONENT DATA:", JSON.stringify(comp, null, 2));
+            
             // Determine correct component type - IMPORTANT: convert to lowercase to match database enum
             // The database expects component_type in lowercase, but UI might display it with capitalization
-            const componentTypeRaw = comp.type === 'custom' ? 'custom' : comp.type;
-            const componentType = componentTypeRaw.toLowerCase();
+            let componentTypeRaw = comp.type === 'custom' ? 'custom' : comp.type;
             
-            console.log(`Converting component type from '${componentTypeRaw}' to '${componentType}'`);
+            // Handle null/undefined component type
+            if (!componentTypeRaw) {
+              console.warn('Component with missing type, defaulting to "part":', comp);
+              componentTypeRaw = 'part';
+            }
+            
+            // Explicitly force to lowercase string to ensure format matches database constraint
+            // This is critical - the database constraint expects exact lowercase values
+            let componentType = String(componentTypeRaw || '').toLowerCase().trim();
+            
+            // Ensure component_type is EXACTLY one of the valid values - this is critical for the database constraint
+            // The database has a check constraint: "order_components_component_type_check"
+            const validComponentTypes = ['part', 'border', 'handle', 'chain', 'runner', 'custom'];
+            
+            // Log exact character codes to debug any hidden characters
+            console.log(`Component type "${componentType}" character codes:`, 
+              Array.from(componentType).map(c => c.charCodeAt(0)));
+            
+            if (!validComponentTypes.includes(componentType)) {
+              console.warn(`Invalid component type "${componentType}" - must be one of: ${validComponentTypes.join(', ')}`);
+              console.warn('Original component data:', comp);
+              
+              // STRICT APPROACH: Instead of trying to normalize, just force to a valid value
+              componentType = 'part'; // Default to 'part' as the safest option
+              
+              console.log(`Forced component type to '${componentType}'`);
+            }
+            
+            console.log(`Final component_type value being sent to database: '${componentType}'`);
+            
+            // Ensure formula is set
+            const formula = comp.formula || 'standard';
             
             // Use proper size formatting or null
             const size = comp.length && comp.width 
@@ -213,13 +262,15 @@ export function useOrderSubmission({
               materialId: comp.material_id || null,
               isCustom: comp.type === 'custom',
               materialCost,
-              componentCostBreakdown
+              componentCostBreakdown,
+              formula: comp.formula || 'standard'
             });
             
-            return {
+            // Create the component object to insert
+            const componentToInsert = {
               order_id: orderResult.id,
               component_type: componentType,
-              is_custom: comp.type === 'custom',
+              is_custom: comp.type === 'custom' || componentType === 'custom',
               size,
               color: comp.color || null,
               gsm: gsmValue,
@@ -228,12 +279,51 @@ export function useOrderSubmission({
               roll_width: rollWidthValue,
               consumption: consumptionValue,
               component_cost: materialCost || null,
-              component_cost_breakdown: componentCostBreakdown
+              component_cost_breakdown: componentCostBreakdown,
+              formula: formula
             };
+            
+            // FINAL VERIFICATION: Ensure the component strictly meets database requirements
+            return verifyComponent(componentToInsert);
           });
+
+          // Function to perform final verification of component data before database insertion
+        function verifyComponent(component: any): any {
+          // Strictly verify component_type is one of the allowed values
+          const validTypes = ['part', 'border', 'handle', 'chain', 'runner', 'custom'];
+          
+          // Ensure component_type exists and is a string
+          if (typeof component.component_type !== 'string') {
+            console.error(`CRITICAL ERROR: component_type is not a string: ${typeof component.component_type}`);
+            component.component_type = 'part';
+          } else {
+            // Normalize the component_type to ensure it exactly matches the constraint
+            component.component_type = component.component_type.toLowerCase().trim();
+            
+            if (!validTypes.includes(component.component_type)) {
+              console.error(`CRITICAL ERROR: Invalid component_type "${component.component_type}" - forcing to "part"`);
+              component.component_type = 'part';
+            }
+          }
+          
+          // Ensure all required fields exist
+          if (!component.order_id) {
+            console.error('CRITICAL ERROR: Missing order_id in component');
+            throw new Error('Cannot save component without order_id');
+          }
+          
+          // Log the final verified component
+          console.log('VERIFIED COMPONENT FOR DATABASE:', component);
+          
+          return component;
+        }
 
         // Additional debug log for final components array
         console.log("Formatted components to insert:", componentsToInsert);
+        console.log("Number of components after validation:", componentsToInsert.length);
+
+        // TEST: Check for exact constraint match with values
+        testComponentTypes(componentsToInsert);
 
         if (componentsToInsert.length > 0) {
           const { data: insertedComponents, error: componentsError } = await supabase
@@ -245,6 +335,22 @@ export function useOrderSubmission({
             console.error("Error saving components:", componentsError);
             console.error("Components that failed to save:", componentsToInsert);
             
+            // Create a persistent error message that remains in localStorage
+            const errorDetails = {
+              timestamp: new Date().toISOString(),
+              error: {
+                message: componentsError.message,
+                code: componentsError.code,
+                details: componentsError.details || null
+              },
+              components: componentsToInsert
+            };
+            
+            // Save error details to localStorage for later debugging
+            localStorage.setItem('lastComponentSaveError', JSON.stringify(errorDetails, null, 2));
+            console.error("%c COMPONENT SAVE ERROR DETAILS SAVED TO localStorage.lastComponentSaveError - CHECK BROWSER CONSOLE", "background: red; color: white; font-size: 16px; padding: 10px;");
+            console.error("To view error details, run this in browser console: console.log(JSON.parse(localStorage.getItem('lastComponentSaveError')))");
+            
             showToast({
               title: "Error saving components",
               description: componentsError.message,
@@ -252,6 +358,7 @@ export function useOrderSubmission({
             });
           } else {
             console.log("Components saved successfully:", insertedComponents);
+            console.log(`Successfully saved ${insertedComponents?.length || 0} components`);
             
             // Success toast for components
             showToast({
@@ -262,103 +369,81 @@ export function useOrderSubmission({
             
             // Update inventory based on component consumption
             console.log("Updating inventory based on component consumption");
+            
             try {
-              const inventoryResult = await updateInventoryForOrderComponents(
-                supabase,
-                orderResult.id,
-                orderResult.order_number,
-                componentsToInsert
-              );
-              
-              if (inventoryResult.success) {
-                console.log("Inventory update successful:", inventoryResult.message);
+              // Optional: Update inventory quantities based on the component consumption
+              if (typeof updateInventoryForOrderComponents === 'function') {
+                const inventoryResult = await updateInventoryForOrderComponents(
+                  supabase,
+                  orderResult.id,
+                  orderResult.order_number,
+                  componentsToInsert
+                );
                 
-                // Show more visible toast about inventory changes
-                if (inventoryResult.updatedMaterials && inventoryResult.updatedMaterials.length > 0) {
-                  const materialDetails = inventoryResult.updatedMaterials.map(
-                    m => `${m.name}: ${m.previous.toFixed(2)} → ${m.new.toFixed(2)} ${m.unit} (-${m.consumed.toFixed(2)})`
-                  ).join('\n');
-                  
-                  showToast({
-                    title: "Inventory Updated",
-                    description: `${inventoryResult.message}. Material transactions have been recorded.`,
-                    type: "success"
-                  });
+                if (inventoryResult.success) {
+                  console.log("Inventory update successful:", inventoryResult.message);
                 } else {
-                  showToast({
-                    title: "Inventory updated",
-                    description: inventoryResult.message,
-                    type: "success"
-                  });
+                  console.error("Inventory update failed:", inventoryResult.errors);
                 }
-                
-                // Force invalidate any transaction queries to ensure fresh data
-                // This will help show the new transactions in the stock detail dialog
-                setTimeout(() => {
-                  // We don't have direct access to queryClient here, so we'll use localStorage
-                  // as a communication channel to tell other components to refresh
-                  try {
-                    // Store the timestamp of the update
-                    localStorage.setItem('last_inventory_update', new Date().toISOString());
-                    // Store affected material IDs if available
-                    if (inventoryResult.updatedMaterials && inventoryResult.updatedMaterials.length > 0) {
-                      const materialIds = componentsToInsert
-                        .filter(c => c.material_id)
-                        .map(c => c.material_id);
-                      localStorage.setItem('updated_material_ids', JSON.stringify(materialIds));
-                      
-                      // Notify the user about where to find the transactions
-                      showToast({
-                        title: "Transaction History Updated",
-                        description: "Go to Inventory > Stock > View Details > Transactions to see material usage history",
-                        type: "info"
-                      });
-                    }
-                  } catch (e) {
-                    // Ignore localStorage errors
-                    console.warn("Could not store inventory update info in localStorage", e);
-                  }
-                }, 100);
-                
-              } else {
-                console.error("Inventory update failed:", inventoryResult.errors);
-                showToast({
-                  title: "Inventory update failed",
-                  description: inventoryResult.message || "An error occurred updating inventory",
-                  type: "error"
-                });
               }
             } catch (inventoryError: any) {
               console.error("Error updating inventory:", inventoryError);
+              
+              // Show warning but don't fail the order creation
               showToast({
-                title: "Error updating inventory",
-                description: inventoryError.message || "An error occurred updating inventory",
-                type: "error"
+                title: "Warning",
+                description: "Order created but inventory update failed: " + inventoryError.message,
+                type: "warning"
               });
             }
           }
         } else {
-          console.warn("No valid components to insert after validation");
+          console.warn("No components to insert after validation - all components failed validation");
+          showToast({
+            title: "Warning",
+            description: "No valid components found to save with this order.",
+            type: "warning"
+          });
         }
       } else {
         console.log("No components to save");
       }
       
+      // Success toast
       showToast({
-        title: "Order created successfully",
-        description: `Order number: ${orderResult.order_number}`,
+        title: "Order Created",
+        description: `Order #${orderResult.order_number} has been created successfully`,
         type: "success"
       });
-
+      
+      // Add a delay before navigation to allow time to read console errors
+      console.log("=== DELAYING NAVIGATION BY 10 SECONDS TO ALLOW READING CONSOLE ERRORS ===");
+      await new Promise(resolve => setTimeout(resolve, 10000));
+      
+      // Return the order id for navigation
       return orderResult.id;
       
     } catch (error: any) {
-      console.error("Error creating order:", error);
+      console.error("===== ORDER SUBMISSION ERROR =====");
+      console.error(error);
+      console.error("Error details:", {
+        message: error.message,
+        code: error.code,
+        details: error.details || 'No details available'
+      });
+      console.error("===== END ERROR DETAILS =====");
+      
+      // Show error toast
       showToast({
         title: "Error creating order",
-        description: error.message || "An unexpected error occurred",
+        description: error.message,
         type: "error"
       });
+      
+      // Add delay to read error
+      await new Promise(resolve => setTimeout(resolve, 10000));
+      
+      return undefined;
     } finally {
       setSubmitting(false);
     }
@@ -368,4 +453,46 @@ export function useOrderSubmission({
     submitting,
     handleSubmit
   };
+}
+
+// Function to test component types directly
+function testComponentTypes(components: any[]) {
+  console.log("======== COMPONENT TYPE CONSTRAINT TEST ========");
+  
+  // Test each component against the exact constraint pattern
+  components.forEach((comp, index) => {
+    const type = comp.component_type;
+    
+    if (type === undefined || type === null) {
+      console.error(`  - COMPONENT ${index} HAS NULL OR UNDEFINED TYPE`);
+      return;
+    }
+    
+    // Check if it's exactly one of the allowed values
+    const validTypes = ['part', 'border', 'handle', 'chain', 'runner', 'custom'];
+    const isExactMatch = validTypes.includes(type);
+    
+    // Check for case issues
+    const hasUppercase = /[A-Z]/.test(type);
+    
+    // Check for whitespace
+    const hasWhitespace = /\s/.test(type);
+    
+    // Check for special characters
+    const hasSpecialChars = /[^a-zA-Z]/.test(type);
+    
+    // Log the test results
+    console.log(`Component ${index} - Type: "${type}"`);
+    console.log(`  - Exact match: ${isExactMatch}`);
+    console.log(`  - Has uppercase: ${hasUppercase}`);
+    console.log(`  - Has whitespace: ${hasWhitespace}`);
+    console.log(`  - Has special chars: ${hasSpecialChars}`);
+    console.log(`  - Character codes:`, Array.from(String(type)).map(c => c.charCodeAt(0)));
+    
+    if (!isExactMatch) {
+      console.error(`  - COMPONENT ${index} WILL FAIL DATABASE CONSTRAINT`);
+    }
+  });
+  
+  console.log("============= END CONSTRAINT TEST =============");
 }

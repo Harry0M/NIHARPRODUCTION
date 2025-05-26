@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -47,6 +46,10 @@ const OrderNew = () => {
       return;
     }
     
+    // Add debug logging
+    console.log("Submitting form with components:", components);
+    console.log("Custom components:", customComponents);
+    
     const orderId = await handleSubmit(e);
     if (orderId) {
       // Use window.location.href instead of navigate for reliable page refresh
@@ -60,6 +63,10 @@ const OrderNew = () => {
       const consumption = comp?.consumption ? parseFloat(comp.consumption) : 0;
       return isNaN(consumption) ? total : total + consumption;
     }, 0);
+  
+  // Count number of components for debugging
+  const standardComponentCount = Object.values(components).filter(Boolean).length;
+  const customComponentCount = customComponents.length;
   
   return (
     <div className="space-y-6">
@@ -80,6 +87,20 @@ const OrderNew = () => {
           </div>
         </div>
       </div>
+      
+      {/* Debug information */}
+      <Card className="bg-amber-50">
+        <CardHeader>
+          <CardTitle>Debug Information</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div>
+            <p><strong>Standard Components:</strong> {standardComponentCount}</p>
+            <p><strong>Custom Components:</strong> {customComponentCount}</p>
+            <p><strong>Total Components:</strong> {standardComponentCount + customComponentCount}</p>
+          </div>
+        </CardContent>
+      </Card>
       
       <form onSubmit={onSubmit} className="space-y-6">
         <OrderDetailsForm 

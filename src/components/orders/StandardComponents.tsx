@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MaterialSelector } from "@/components/inventory/material-selector/MaterialSelector";
 import { ConsumptionCalculator, ConsumptionFormulaType } from "@/components/production/ConsumptionCalculator";
+import { Button } from "@/components/ui/button";
+import { PlusCircle } from "lucide-react";
 
 interface StandardComponentsProps {
   components: Record<string, any>;
@@ -44,16 +46,52 @@ export const StandardComponents = ({
     onChange(componentType, 'material_id', materialId || '');
   };
 
+  // For debugging: Manually add a test component
+  const addTestComponent = () => {
+    // Create a test component with all required fields and a valid component_type
+    const testComponent = {
+      type: "Part", // This matches one of the standardComponents types
+      color: "Red",
+      length: "10",
+      width: "5",
+      roll_width: "40",
+      formula: "standard", // Ensure formula field is set
+      consumption: "0.32"
+    };
+    
+    // Add the test component to components
+    console.log("Adding test component:", testComponent);
+    
+    // Update each field individually
+    Object.entries(testComponent).forEach(([field, value]) => {
+      if (field !== 'type') {
+        onChange("Part", field, value);
+      }
+    });
+    
+    // Log for confirmation that component was added with correct type
+    console.log("Test component added with type: Part (lowercase: part)");
+  };
+
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-medium">Standard Components</h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-medium">Standard Components</h2>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={addTestComponent}
+          className="h-7 text-xs bg-blue-50 border-blue-200 hover:bg-blue-100"
+        >
+          <PlusCircle className="mr-1 h-3 w-3" />
+          Add Test Component
+        </Button>
+      </div>
       
       <div className="grid md:grid-cols-2 gap-4">
         {standardComponents.map((component) => {
           // Get the actual component data if it exists
           const componentData = components[component.type] || { type: component.type };
-          
-          console.log(`Rendering ${component.type}, data:`, componentData);
           
           return (
             <ComponentForm
@@ -109,13 +147,11 @@ const ComponentForm = ({
   const [customGSM, setCustomGSM] = useState("");
   const [materialRate, setMaterialRate] = useState<number | undefined>(component.materialRate);
   
-  console.log("Component Form rendering for:", component.type, "with data:", component);
-  
   useEffect(() => {
     if (component.materialRate !== materialRate) {
       setMaterialRate(component.materialRate);
     }
-  }, [component.materialRate]);
+  }, [component.materialRate, materialRate]);
   
   const handleCustomColorChange = (value: string) => {
     setCustomColor(value);
@@ -148,6 +184,14 @@ const ComponentForm = ({
   const handleFormulaChange = (formula: ConsumptionFormulaType) => {
     onChange(component.type, 'formula', formula);
   };
+  
+  // Make sure formula is always set - run only once when component is mounted
+  useEffect(() => {
+    if (!component.formula) {
+      // If formula is not set, default to 'standard'
+      onChange(component.type, 'formula', 'standard');
+    }
+  }, [component.type, component.formula, onChange]);
   
   // Get consumption - it should be already calculated from the parent component
   const consumption = component.consumption || '';

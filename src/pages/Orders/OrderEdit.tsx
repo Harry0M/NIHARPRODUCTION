@@ -480,7 +480,8 @@ const OrderEdit = () => {
               custom_name: customName,
               material_id: comp.material_id || null,
               roll_width: rollWidthValue,
-              consumption: consumptionValue
+              consumption: consumptionValue,
+              formula: comp.formula || 'standard'
             };
         });
 

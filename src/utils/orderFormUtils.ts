@@ -1,4 +1,3 @@
-
 /**
  * Converts a string value to a numeric value, returning null if the conversion fails
  */
@@ -19,13 +18,20 @@ export const validateComponentData = (component: any): boolean => {
     return false;
   }
   
+  // Log the component being validated
+  console.log("Validating component:", component);
+  
+  // Debug component type
+  debugComponentType(component);
+  
   // Check for required type field (using either type or component_type)
   if (!component.type && !component.component_type) {
     console.warn("Invalid component data: missing type/component_type", component);
     return false;
   }
   
-  // Validate numeric fields to ensure they're not NaN when parsed
+  // We'll make validation less strict - only validate numeric fields if they exist
+  // but don't require them to exist
   if (component.length && isNaN(parseFloat(component.length))) {
     console.warn("Invalid component data: length is not a valid number", component);
     return false;
@@ -51,7 +57,77 @@ export const validateComponentData = (component: any): boolean => {
     return false;
   }
   
+  // Component passed validation
+  console.log("Component validation passed for:", component.type || component.component_type);
   return true;
+};
+
+/**
+ * Helper function to debug component type issues
+ */
+export const debugComponentType = (component: any): void => {
+  if (!component) return;
+  
+  const type = component.type || component.component_type;
+  const typeToString = String(type || '');
+  const typeLower = typeToString.toLowerCase();
+  
+  // Valid types for database
+  const validTypes = ['part', 'border', 'chain', 'piping', 'runner', 'handle', 'custom'];
+  const isValidType = validTypes.includes(typeLower);
+  
+  console.log("Component type debug:", {
+    originalType: type,
+    typeAsString: typeToString,
+    typeLower,
+    isValidType,
+    component_type: component.component_type,
+    hasFormula: !!component.formula
+  });
+};
+
+/**
+ * Helper function to check all components for potential issues
+ * This can be called from the browser console to debug component issues
+ */
+export const debugAllComponents = (components: Record<string, any>, customComponents: any[]): void => {
+  // First, create a global variable for easy access in browser console
+  (window as any).orderComponentDebug = {
+    timestamp: new Date().toISOString(),
+    standardComponents: components,
+    customComponents
+  };
+  
+  console.log("%c COMPONENT DEBUG INFO", "background: blue; color: white; font-size: 16px; padding: 5px;");
+  console.log("Debug data saved to window.orderComponentDebug");
+  console.log("To inspect in console: console.log(window.orderComponentDebug)");
+  
+  // Log summary
+  const allComponents = [
+    ...Object.values(components).filter(Boolean),
+    ...customComponents
+  ].filter(Boolean);
+  
+  console.log(`Total components: ${allComponents.length} (${Object.values(components).filter(Boolean).length} standard, ${customComponents.length} custom)`);
+  
+  // Check for common issues
+  const componentsWithoutFormula = allComponents.filter(c => !c.formula);
+  const componentsWithInvalidType = allComponents.filter(c => {
+    const type = (c.type || '').toLowerCase();
+    return !['part', 'border', 'chain', 'piping', 'runner', 'handle', 'custom'].includes(type);
+  });
+  
+  if (componentsWithoutFormula.length > 0) {
+    console.warn(`Found ${componentsWithoutFormula.length} components without formula field`);
+    console.warn(componentsWithoutFormula);
+  }
+  
+  if (componentsWithInvalidType.length > 0) {
+    console.error(`Found ${componentsWithInvalidType.length} components with invalid type`);
+    console.error(componentsWithInvalidType);
+  }
+  
+  return;
 };
 
 /**

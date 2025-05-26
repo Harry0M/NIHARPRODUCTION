@@ -43,6 +43,7 @@ import { Component, InventoryMaterial } from "@/types/order";
 import { getStatusColor, getStatusDisplay } from "@/utils/orderUtils";
 import { useCostCalculation } from "@/hooks/order-form/useCostCalculation";
 import { CostCalculationDisplay } from "@/components/orders/CostCalculationDisplay";
+import { testInsertOrderComponents } from "@/utils/testOrderComponents";
 
 interface Order {
   id: string;
@@ -144,6 +145,10 @@ const OrderDetail = () => {
           
         if (componentsError) throw componentsError;
         
+        // Add these logs:
+        console.log("ORDER DETAIL - Fetched components data:", componentsData);
+        console.log("ORDER DETAIL - Components count:", componentsData?.length || 0);
+        
         // Convert components data to match our Component type
         const typeSafeComponents: Component[] = componentsData?.map(comp => ({
           ...comp,
@@ -157,6 +162,8 @@ const OrderDetail = () => {
             ? (comp.inventory as any).purchase_rate
             : null
         })) || [];
+        
+        console.log("ORDER DETAIL - Processed components:", typeSafeComponents);
         
         setComponents(typeSafeComponents);
 
@@ -504,7 +511,66 @@ const OrderDetail = () => {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <p className="text-muted-foreground">No components found for this order</p>
+                  <p className="text-muted-foreground mb-2">No components found for this order</p>
+                  <p className="text-sm text-red-500">
+                    If you just created this order and added components, please try refreshing the page.
+                    If the issue persists, check the browser console for any errors.
+                  </p>
+                  
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-4"
+                    onClick={async () => {
+                      if (id) {
+                        const result = await testInsertOrderComponents(id);
+                        if (result.success) {
+                          toast({
+                            title: "Test Successful",
+                            description: "A test component was added. Please refresh the page to see it.",
+                          });
+                          // Reload components
+                          const { data, error } = await supabase
+                            .from("order_components")
+                            .select(`
+                              *,
+                              inventory:material_id (
+                                id,
+                                material_name,
+                                unit,
+                                color,
+                                gsm,
+                                purchase_rate
+                              )
+                            `)
+                            .eq("order_id", id);
+                            
+                          if (!error && data) {
+                            console.log("Reloaded components:", data);
+                            // Convert components data to match our Component type
+                            const reloadedComponents: Component[] = data.map(comp => ({
+                              ...comp,
+                              gsm: comp.gsm !== null ? String(comp.gsm) : null,
+                              inventory: comp.inventory && typeof comp.inventory === 'object' ? 
+                                comp.inventory as InventoryMaterial : null,
+                              materialRate: comp.inventory && typeof comp.inventory === 'object' 
+                                ? (comp.inventory as any).purchase_rate
+                                : null
+                            }));
+                            setComponents(reloadedComponents);
+                          }
+                        } else {
+                          toast({
+                            title: "Test Failed",
+                            description: "Failed to insert test component. See console for details.",
+                            variant: "destructive"
+                          });
+                        }
+                      }
+                    }}
+                  >
+                    Test Add Component
+                  </Button>
                 </div>
               )}
             </CardContent>

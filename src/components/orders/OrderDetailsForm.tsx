@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -115,7 +114,14 @@ export const OrderDetailsForm = ({
           default_quantity: selectedProduct.default_quantity || 1
         }));
         
-        console.log("Passing components with material data and default quantity:", componentsWithQuantity);
+        console.log("DEBUG - Component types for product:", selectedProduct.catalog_components.map(c => ({
+          type: c.component_type,
+          lowercase_type: c.component_type?.toLowerCase(),
+          id: c.id
+        })));
+
+        console.log("DEBUG - Components for product with quantity:", componentsWithQuantity);
+        
         onProductSelect(componentsWithQuantity);
         
         // If quantity is already set, update consumption values based on total quantity

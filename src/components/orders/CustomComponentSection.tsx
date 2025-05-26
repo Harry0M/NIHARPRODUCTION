@@ -175,6 +175,15 @@ const CustomComponentForm = ({
   // Get selected formula or default to standard
   const selectedFormula = component.formula || 'standard';
   
+  // Make sure formula is always set
+  useEffect(() => {
+    if (!component.formula) {
+      // If formula is not set, default to 'standard'
+      handleCustomComponentChange(index, 'formula', 'standard');
+      console.log(`Set default formula 'standard' for custom component ${index}`);
+    }
+  }, [component, index, handleCustomComponentChange]);
+  
   return (
     <Card className={component.consumption ? "border-blue-200" : ""}>
       <CardHeader className="flex flex-row items-center justify-between p-4">

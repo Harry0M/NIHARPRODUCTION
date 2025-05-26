@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -146,7 +145,12 @@ export function useProductSelection({
     const processComponent = (component: any) => {
       if (!component) return null;
       
-      console.log("Processing component:", component);
+      console.log("Processing component with types:", {
+        originalType: component.component_type,
+        type: component.type,
+        lowerOriginal: component.component_type?.toLowerCase(),
+        lowerType: component.type?.toLowerCase()
+      });
       
       // Extract length and width from size format "length x width"
       let length = '', width = '';
@@ -210,13 +214,36 @@ export function useProductSelection({
         }
       }
 
-      // Make sure component_type exists and is a string before converting to lower case
-      if (!component.component_type || typeof component.component_type !== 'string') {
-        console.warn('Component has no valid component_type:', component);
-        return null;
+      // Ensure we have a valid componentType for the database - must be lowercase
+      const componentType = component.component_type || component.type;
+      let componentTypeLower = componentType?.toLowerCase() || '';
+
+      // Validate against the list of valid component types
+      const validComponentTypes = ['part', 'border', 'chain', 'piping', 'runner', 'handle', 'custom'];
+      if (!validComponentTypes.includes(componentTypeLower)) {
+        console.warn(`Invalid component type "${componentTypeLower}" - defaulting to "part"`);
+        
+        // Try to normalize component type to a valid value
+        if (componentTypeLower.includes('part') || componentTypeLower.includes('body')) {
+          componentTypeLower = 'part';
+        } else if (componentTypeLower.includes('border')) {
+          componentTypeLower = 'border';
+        } else if (componentTypeLower.includes('chain')) {
+          componentTypeLower = 'chain';
+        } else if (componentTypeLower.includes('piping')) {
+          componentTypeLower = 'piping';
+        } else if (componentTypeLower.includes('runner')) {
+          componentTypeLower = 'runner';
+        } else if (componentTypeLower.includes('handle')) {
+          componentTypeLower = 'handle';
+        } else if (componentTypeLower.includes('custom')) {
+          componentTypeLower = 'custom';
+        } else {
+          componentTypeLower = 'part';
+        }
+        
+        console.log(`Normalized component type to: ${componentTypeLower}`);
       }
-      
-      const componentTypeLower = component.component_type.toLowerCase();
       
       // Calculate the base consumption (per unit) from the total consumption
       // Divide by product default quantity to get the base consumption per unit
@@ -282,19 +309,27 @@ export function useProductSelection({
         }
       } else if (standardTypesLower.includes(componentTypeLower)) {
         // Map the component type to the capitalized version used in the UI
-        const componentTypeKey = comp.component_type;
+        // Get the properly capitalized UI version from the lowercase database version
+        const componentTypeCapitalized = {
+          'part': 'Part',
+          'border': 'Border',
+          'chain': 'Chain',
+          'piping': 'Piping',
+          'runner': 'Runner',
+          'handle': 'Handle'
+        }[componentTypeLower] || 'Part';
         
-        console.log(`Found standard component ${componentTypeLower} -> mapping to key ${componentTypeKey}`);
+        console.log(`Found standard component ${componentTypeLower} -> mapping to UI key ${componentTypeCapitalized}`);
         
-        newOrderComponents[componentTypeKey] = {
+        newOrderComponents[componentTypeCapitalized] = {
           id: uuidv4(),
-          type: componentTypeKey, // Preserve original capitalization
+          type: componentTypeCapitalized, // Use properly capitalized version for UI
           ...comp
         };
         
         // Store base consumption for standard component
         if (baseConsumption) {
-          newBaseConsumptions[componentTypeKey] = baseConsumption;
+          newBaseConsumptions[componentTypeCapitalized] = baseConsumption;
         }
       }
     });
