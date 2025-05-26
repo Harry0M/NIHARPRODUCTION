@@ -46,7 +46,7 @@ export const usePurchases = () => {
     try {
       const { data: purchase, error: purchaseError } = await supabase
         .from('purchases')
-        .insert([{
+        .insert({
           supplier_id: purchaseData.supplier_id,
           purchase_date: purchaseData.purchase_date,
           transport_charge: purchaseData.transport_charge,
@@ -54,7 +54,7 @@ export const usePurchases = () => {
           total_amount: purchaseData.total_amount,
           notes: purchaseData.notes,
           status: 'pending'
-        }])
+        })
         .select()
         .single();
 

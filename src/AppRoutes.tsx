@@ -1,7 +1,8 @@
+
 import { useRoutes, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { router } from "./routes";
+import routes from "./routes";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthProvider } from "@/context/AuthContext";
 
@@ -70,7 +71,7 @@ const AppRoutes = () => {
 
   // Create a component that renders the routes
   const AppRouteContent = () => {
-    const routeElement = useRoutes(router);
+    const routeElement = useRoutes(routes);
     return routeElement || <Navigate to="/auth" replace />;
   };
 
