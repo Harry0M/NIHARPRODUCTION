@@ -11,6 +11,8 @@ interface InventoryItem {
   min_stock_level: number | null;
   color?: string;
   gsm?: string;
+  totalValue?: number;
+  percentage?: number;
 }
 
 interface MaterialConsumption {
@@ -36,10 +38,45 @@ interface WastageData {
   wastage_percentage: number;
 }
 
+interface OrderConsumptionData {
+  order_id: string;
+  order_number: string;
+  company_name: string;
+  material_id: string;
+  material_name: string;
+  total_material_used: number;
+  unit: string;
+  component_type: string;
+  usage_date: string;
+}
+
+interface RefillNeedsData {
+  id: string;
+  material_name: string;
+  current_quantity: number;
+  min_stock_level: number;
+  unit: string;
+  shortage: number;
+  refill_urgency: 'critical' | 'medium' | 'low';
+}
+
+interface AnalyticsFilters {
+  dateRange?: {
+    start: string;
+    end: string;
+  };
+  materialIds?: string[];
+  orderIds?: string[];
+}
+
 export const useInventoryAnalytics = () => {
   const [inventoryData, setInventoryData] = useState<InventoryItem[]>([]);
   const [consumptionData, setConsumptionData] = useState<MaterialConsumption[]>([]);
   const [wastageData, setWastageData] = useState<WastageData[]>([]);
+  const [orderConsumptionData, setOrderConsumptionData] = useState<OrderConsumptionData[]>([]);
+  const [inventoryValueData, setInventoryValueData] = useState<InventoryItem[]>([]);
+  const [refillNeedsData, setRefillNeedsData] = useState<RefillNeedsData[]>([]);
+  const [filters, setFilters] = useState<AnalyticsFilters>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,7 +88,31 @@ export const useInventoryAnalytics = () => {
         .order('material_name');
 
       if (error) throw error;
+      
+      // Calculate inventory value data
+      const valueData = (data || []).map(item => ({
+        ...item,
+        totalValue: (item.quantity || 0) * (item.purchase_rate || 0)
+      }));
+      
       setInventoryData(data || []);
+      setInventoryValueData(valueData);
+      
+      // Calculate refill needs
+      const refillNeeds = (data || [])
+        .filter(item => item.min_stock_level && item.quantity <= item.min_stock_level)
+        .map(item => ({
+          id: item.id,
+          material_name: item.material_name,
+          current_quantity: item.quantity,
+          min_stock_level: item.min_stock_level || 0,
+          unit: item.unit,
+          shortage: (item.min_stock_level || 0) - item.quantity,
+          refill_urgency: item.quantity <= (item.min_stock_level || 0) * 0.5 ? 'critical' as const : 
+                        item.quantity <= (item.min_stock_level || 0) * 0.8 ? 'medium' as const : 'low' as const
+        }));
+      
+      setRefillNeedsData(refillNeeds);
     } catch (err: any) {
       console.error('Error fetching inventory data:', err);
       setError(err.message);
@@ -86,13 +147,33 @@ export const useInventoryAnalytics = () => {
     }
   };
 
+  const fetchOrderConsumptionData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('order_material_breakdown')
+        .select('*')
+        .order('usage_date', { ascending: false });
+
+      if (error) throw error;
+      setOrderConsumptionData(data || []);
+    } catch (err: any) {
+      console.error('Error fetching order consumption data:', err);
+      setError(err.message);
+    }
+  };
+
+  const updateFilters = (newFilters: Partial<AnalyticsFilters>) => {
+    setFilters(prev => ({ ...prev, ...newFilters }));
+  };
+
   useEffect(() => {
     const fetchAllData = async () => {
       setIsLoading(true);
       await Promise.all([
         fetchInventoryData(),
         fetchConsumptionData(),
-        fetchWastageData()
+        fetchWastageData(),
+        fetchOrderConsumptionData()
       ]);
       setIsLoading(false);
     };
@@ -167,6 +248,10 @@ export const useInventoryAnalytics = () => {
     inventoryData,
     consumptionData,
     wastageData,
+    orderConsumptionData,
+    inventoryValueData,
+    refillNeedsData,
+    filters,
     isLoading,
     error,
     getInventoryValue,
@@ -175,10 +260,12 @@ export const useInventoryAnalytics = () => {
     getTotalWastage,
     getWastageByWorker,
     getInventoryTurnover,
+    updateFilters,
     refetch: () => {
       fetchInventoryData();
       fetchConsumptionData();
       fetchWastageData();
+      fetchOrderConsumptionData();
     }
   };
 };

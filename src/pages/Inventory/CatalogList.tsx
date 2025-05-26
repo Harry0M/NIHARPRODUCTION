@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +9,6 @@ import { Plus, Search, Package, Eye, Edit, Trash2, DollarSign, Layers, Ruler } f
 import { supabase } from "@/integrations/supabase/client";
 import { Link, useNavigate } from "react-router-dom";
 import { usePagination } from "@/hooks/usePagination";
-import { PaginationControls } from "@/components/ui/pagination-controls";
 import { showToast } from "@/components/ui/enhanced-toast";
 import {
   AlertDialog,
@@ -167,6 +165,36 @@ export const CatalogList = () => {
         </Button>
       </CardContent>
     </Card>
+  );
+
+  // Simple pagination controls component
+  const PaginationControls = () => (
+    <div className="flex items-center justify-between">
+      <div className="text-sm text-muted-foreground">
+        Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, catalogData?.length || 0)} of {catalogData?.length || 0} results
+      </div>
+      <div className="flex items-center space-x-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={prevPage}
+          disabled={currentPage <= 1}
+        >
+          Previous
+        </Button>
+        <span className="text-sm">
+          Page {currentPage} of {totalPages}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={nextPage}
+          disabled={currentPage >= totalPages}
+        >
+          Next
+        </Button>
+      </div>
+    </div>
   );
 
   return (
@@ -350,16 +378,7 @@ export const CatalogList = () => {
             ))}
           </div>
 
-          <PaginationControls
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={goToPage}
-            onNextPage={nextPage}
-            onPrevPage={prevPage}
-            itemsPerPage={itemsPerPage}
-            onItemsPerPageChange={setItemsPerPage}
-            totalItems={catalogData?.length || 0}
-          />
+          <PaginationControls />
         </>
       ) : (
         <EmptyState />
