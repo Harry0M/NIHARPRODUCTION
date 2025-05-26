@@ -191,16 +191,7 @@ export const StockDetailDialog = ({
     }
   };
 
-  // Function to handle creating a test transaction for debugging
-  const handleCreateTestTransaction = async () => {
-    if (!stockId) return;
-    
-    try {
-      await createTestTransaction();
-    } catch (error) {
-      console.error("Error in handleCreateTestTransaction:", error);
-    }
-  };
+
 
   // Calculate if there are any transactions to show
   const hasTransactions = (transactions && transactions.length > 0) ||
@@ -328,20 +319,7 @@ export const StockDetailDialog = ({
                 </div>
               )}
               
-              {/* Add option to manually create test transaction if no transactions found */}
-              {!hasTransactions && stockItem && (
-                <div className="mt-8 flex justify-center">
-                  <Button
-                    variant="outline"
-                    onClick={handleCreateTestTransaction}
-                    className="flex items-center gap-2"
-                    size="sm"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create Test Transaction
-                  </Button>
-                </div>
-              )}
+
             </TabsContent>
             
             <TabsContent value="transactions">
@@ -374,15 +352,6 @@ export const StockDetailDialog = ({
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={handleCreateTestTransaction}
-                    className="flex items-center gap-1"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    Test Transaction
-                  </Button>
                   <Button 
                     size="sm" 
                     variant="outline" 

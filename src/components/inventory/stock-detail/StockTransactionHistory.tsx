@@ -3,12 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StockTransaction, TransactionLog } from "@/types/inventory";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, ArrowDownRight, ArrowUpRight, RefreshCcw, History, Info, FileText, Database } from "lucide-react";
+import { AlertCircle, ArrowDownRight, ArrowUpRight, RefreshCcw, History, Info, FileText, Database, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { showToast } from "@/components/ui/enhanced-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 
 interface StockTransactionHistoryProps {
   transactions?: StockTransaction[];
@@ -26,7 +27,7 @@ export const StockTransactionHistory = ({
   materialId
 }: StockTransactionHistoryProps) => {
   const [localLoading, setLocalLoading] = useState<boolean>(isLoading);
-  const [activeTab, setActiveTab] = useState<string>("transactions");
+  const [hoveredTransaction, setHoveredTransaction] = useState<string | null>(null);
 
   // Format date for display
   const formatDate = (dateString: string) => {
@@ -42,22 +43,60 @@ export const StockTransactionHistory = ({
     const typeLower = type?.toLowerCase();
     
     if (typeLower?.includes('purchase') || typeLower?.includes('increase')) {
-      return { label: "Addition", variant: "default", icon: ArrowUpRight };
+      return { label: "Addition", variant: "default", icon: ArrowUpRight, color: "bg-green-100 border-green-300 text-green-800 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400" };
     }
     else if (typeLower?.includes('order') || typeLower?.includes('consumption')) {
-      return { label: "Consumption", variant: "destructive", icon: ArrowDownRight };
+      return { label: "Consumption", variant: "destructive", icon: ArrowDownRight, color: "bg-red-100 border-red-300 text-red-800 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400" };
     }
     else if (typeLower?.includes('sale')) {
-      return { label: "Sale", variant: "secondary", icon: ArrowDownRight };
+      return { label: "Sale", variant: "secondary", icon: ArrowDownRight, color: "bg-purple-100 border-purple-300 text-purple-800 dark:bg-purple-900/30 dark:border-purple-800 dark:text-purple-400" };
     }
     else if (typeLower?.includes('adjustment')) {
       if (typeLower.includes('decrease')) {
-        return { label: "Decrease", variant: "outline", icon: ArrowDownRight };
+        return { label: "Decrease", variant: "outline", icon: ArrowDownRight, color: "bg-amber-100 border-amber-300 text-amber-800 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-400" };
       } else {
-        return { label: "Adjustment", variant: "outline", icon: null };
+        return { label: "Adjustment", variant: "outline", icon: null, color: "bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400" };
       }
     }
-    return { label: type || "Unknown", variant: "outline", icon: null };
+    return { label: type || "Unknown", variant: "outline", icon: null, color: "bg-gray-100 border-gray-300 text-gray-800 dark:bg-gray-800/30 dark:border-gray-700 dark:text-gray-400" };
+  };
+  
+  // Get reference information for display
+  const getReferenceInfo = (transaction: TransactionLog) => {
+    const { reference_type, reference_number, reference_id, metadata } = transaction;
+    
+    if (reference_type?.toLowerCase().includes('order')) {
+      const orderNumber = reference_number || metadata?.order_number;
+      const componentType = metadata?.component_type;
+      
+      return {
+        label: orderNumber ? `Order #${orderNumber}` : 'Order',
+        detail: componentType ? `for ${componentType}` : '',
+        icon: Package
+      };
+    }
+    
+    if (reference_type?.toLowerCase().includes('purchase')) {
+      return {
+        label: reference_number ? `Purchase #${reference_number}` : 'Purchase',
+        detail: metadata?.company_name ? `from ${metadata.company_name}` : '',
+        icon: ArrowUpRight
+      };
+    }
+    
+    if (reference_type?.toLowerCase().includes('adjustment')) {
+      return {
+        label: 'Adjustment',
+        detail: metadata?.update_source || '',
+        icon: Database
+      };
+    }
+    
+    return {
+      label: reference_type || 'Unknown',
+      detail: reference_number ? `#${reference_number}` : '',
+      icon: Info
+    };
   };
 
   // Local refresh function when parent handler not provided
@@ -227,215 +266,141 @@ export const StockTransactionHistory = ({
         </div>
       </CardHeader>
       <CardContent className="p-4">
-        <Tabs defaultValue="transactions" value={activeTab} onValueChange={setActiveTab} className="mb-4">
-          <TabsList className="grid grid-cols-2">
-            <TabsTrigger value="transactions" className="flex items-center gap-1">
-              <History className="h-4 w-4" />
-              Transactions
-              {transactions.length > 0 && (
-                <span className="ml-1 text-xs bg-primary/20 rounded-full px-1.5 py-0.5">
-                  {transactions.length}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="logs" className="flex items-center gap-1">
-              <Database className="h-4 w-4" />
-              Detailed Logs
-              {transactionLogs.length > 0 && (
-                <span className="ml-1 text-xs bg-primary/20 rounded-full px-1.5 py-0.5">
-                  {transactionLogs.length}
-                </span>
-              )}
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="transactions" className="space-y-4 mt-2">
-            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-              {transactions.map((transaction) => {
-                const typeInfo = getTransactionTypeLabel(transaction.transaction_type);
-                const isNegative = transaction.quantity < 0;
-                const Icon = typeInfo.icon;
-                const isRecent = new Date(transaction.created_at).getTime() > Date.now() - 1000 * 60 * 10; // Within last 10 minutes
-                
-                return (
-                  <div 
-                    key={transaction.id} 
-                    className={`border rounded-md p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-muted/50 transition-colors
-                      ${isRecent ? 'border-primary bg-primary/5' : ''}`}
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={typeInfo.variant as any} className={`px-2 py-1 ${isRecent ? 'animate-pulse' : ''}`}>
-                          {Icon && <Icon className="h-3.5 w-3.5 mr-1" />}
-                          {typeInfo.label}
-                        </Badge>
-                        <span className="text-sm font-medium flex items-center gap-1">
-                          {isRecent && (
-                            <span className="relative flex h-2 w-2 mr-1">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                            </span>
-                          )}
-                          {formatDate(transaction.created_at)}
-                          <span className="text-xs text-muted-foreground ml-1">
-                            ({getTimeAgo(transaction.created_at)})
-                          </span>
-                        </span>
-                      </div>
-                      
-                      {transaction.notes && (
-                        <p className="text-sm text-muted-foreground mt-2">{transaction.notes}</p>
-                      )}
-                      
-                      {transaction.reference_number && (
-                        <div className="flex flex-col gap-1 mt-2">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div className="flex items-center text-sm text-muted-foreground gap-2">
-                                  <FileText className="h-3.5 w-3.5" />
-                                  <span>
-                                    {transaction.reference_type || 'Reference'} #{transaction.reference_number}
-                                  </span>
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Reference information</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          
-                          {transaction.updated_at && transaction.updated_at !== transaction.created_at && (
-                            <div className="text-xs text-muted-foreground">
-                              Last modified: {formatDate(transaction.updated_at)}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
+        <div className="flex items-center mb-3 gap-2">
+          <History className="h-4 w-4" />
+          <h3 className="text-sm font-medium">Transactions</h3>
+          {transactionLogs.length > 0 && (
+            <span className="text-xs bg-primary/20 rounded-full px-1.5 py-0.5">
+              {transactionLogs.length}
+            </span>
+          )}
+        </div>
+        
+        <div className="space-y-3">
+              {/* Deduplicate transactions to only show consumption (not decrease) when both exist */}
+              {transactionLogs
+                // Group transactions by reference_id and timestamp proximity
+                .reduce((result, log) => {
+                  // Skip if this is a decrease and we already added its consumption pair
+                  const isDecrease = log.transaction_type.toLowerCase().includes('decrease');
+                  if (isDecrease) {
+                    // Check if we already have a consumption with matching reference
+                    const hasMatchingConsumption = result.some(t => {
+                      return t.reference_id === log.reference_id && 
+                             t.transaction_type.toLowerCase().includes('consumption') &&
+                             Math.abs(t.quantity) === Math.abs(log.quantity);
+                    });
                     
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className={`text-lg font-semibold flex items-center ${isNegative ? 'text-red-500' : 'text-green-500'}`}>
-                        {Icon && <Icon className="h-5 w-5 mr-1" />}
-                        {isNegative ? '' : '+'}{transaction.quantity.toFixed(2)}
-                      </span>
-                      
-                      {transaction.unit && (
-                        <span className="text-sm text-muted-foreground">
-                          {transaction.unit}
-                        </span>
-                      )}
-                      
-                      {transaction.unit_price && (
-                        <span className="text-sm text-muted-foreground">
-                          @ ₹{transaction.unit_price.toFixed(2)}
-                        </span>
-                      )}
+                    if (hasMatchingConsumption) {
+                      return result; // Skip this decrease transaction
+                    }
+                  }
+                  
+                  // For consumption transactions, check if we should replace a decrease
+                  if (log.transaction_type.toLowerCase().includes('consumption')) {
+                    // Find and remove any matching decrease transactions
+                    const withoutDecrease = result.filter(t => 
+                      !(t.transaction_type.toLowerCase().includes('decrease') && 
+                        t.reference_id === log.reference_id &&
+                        Math.abs(t.quantity) === Math.abs(log.quantity))
+                    );
+                    
+                    return [...withoutDecrease, log];
+                  }
+                  
+                  // For all other transactions, just add them
+                  return [...result, log];
+                }, [] as TransactionLog[])
+                .map((log) => {
+              const typeInfo = getTransactionTypeLabel(log.transaction_type);
+              const { icon: Icon } = typeInfo;
+              const isRecent = new Date(log.transaction_date) > new Date(Date.now() - 3600000 * 24);
+              const isNegative = log.quantity < 0;
+              const referenceInfo = getReferenceInfo(log);
+              
+              return (
+                <div 
+                  key={log.id} 
+                  className={`border rounded-md p-0 overflow-hidden ${hoveredTransaction === log.id ? 'border-primary' : 'border-border'}`}
+                  onMouseEnter={() => setHoveredTransaction(log.id)}
+                  onMouseLeave={() => setHoveredTransaction(null)}
+                >
+                  {/* Header with transaction type */}
+                  <div className={`py-1.5 px-3 ${typeInfo.color}`}>
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-1 font-medium">
+                        {Icon && <Icon className="h-3.5 w-3.5" />}
+                        <span>{typeInfo.label}</span>
+                      </div>
+                      <span className="text-xs">{formatDate(log.transaction_date)}</span>
                     </div>
                   </div>
-                );
-              })}
-              
-              {transactions.length === 0 && (
-                <div className="text-center py-6 text-muted-foreground">
-                  No transactions found for this material
-                </div>
-              )}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="logs" className="space-y-4 mt-2">
-            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-              {transactionLogs.map((log) => {
-                const typeInfo = getTransactionTypeLabel(log.transaction_type);
-                const isNegative = log.quantity < 0;
-                const Icon = typeInfo.icon;
-                const isRecent = new Date(log.transaction_date).getTime() > Date.now() - 1000 * 60 * 10; // Within last 10 minutes
-                
-                return (
-                  <div 
-                    key={log.id} 
-                    className={`border rounded-md p-4 flex flex-col gap-3 hover:bg-muted/50 transition-colors
-                      ${isRecent ? 'border-primary bg-primary/5' : ''}`}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <Badge variant={typeInfo.variant as any} className={`px-2 py-1 ${isRecent ? 'animate-pulse' : ''}`}>
-                          {Icon && <Icon className="h-3.5 w-3.5 mr-1" />}
-                          {typeInfo.label}
-                        </Badge>
-                        <span className="text-sm font-medium flex items-center gap-1">
-                          {isRecent && (
-                            <span className="relative flex h-2 w-2 mr-1">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                            </span>
-                          )}
-                          {formatDate(log.transaction_date)}
-                          <span className="text-xs text-muted-foreground ml-1">
-                            ({getTimeAgo(log.transaction_date)})
-                          </span>
-                        </span>
+                  
+                  {/* Main content */}
+                  <div className="p-3">
+                    {/* Stock changes */}
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="text-sm font-medium">
+                        <span className="text-muted-foreground">Opening:</span>{" "}
+                        <span>{log.previous_quantity.toFixed(2)}</span>
                       </div>
-                      
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className={`text-lg font-semibold flex items-center ${isNegative ? 'text-red-500' : 'text-green-500'}`}>
-                          {Icon && <Icon className="h-5 w-5 mr-1" />}
+                      <div className="flex items-center gap-1">
+                        <span className={`text-sm font-semibold ${isNegative ? 'text-red-500 dark:text-red-400' : 'text-green-500 dark:text-green-400'}`}>
                           {isNegative ? '' : '+'}{log.quantity.toFixed(2)}
                         </span>
                       </div>
+                      <div className="text-sm font-medium">
+                        <span className="text-muted-foreground">Closing:</span>{" "}
+                        <span>{log.new_quantity.toFixed(2)}</span>
+                      </div>
                     </div>
                     
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm border-t border-muted pt-3">
-                      <div>
-                        <p className="text-muted-foreground">Previous quantity</p>
-                        <p className="font-medium">{log.previous_quantity.toFixed(2)}</p>
+                    {/* Reference information */}
+                    {log.reference_id && (
+                      <div className="flex items-center gap-1 text-sm">
+                        {referenceInfo.icon && <referenceInfo.icon className="h-3.5 w-3.5 text-muted-foreground" />}
+                        <span>{referenceInfo.label}</span>
+                        {referenceInfo.detail && (
+                          <span className="text-muted-foreground">{referenceInfo.detail}</span>
+                        )}
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">New quantity</p>
-                        <p className="font-medium">{log.new_quantity.toFixed(2)}</p>
+                    )}
+                    
+                    {/* Notes if available */}
+                    {log.notes && (
+                      <div className="mt-1 text-sm text-muted-foreground italic">
+                        "{log.notes}"
                       </div>
-                      
-                      {log.notes && (
-                        <div className="col-span-2">
-                          <p className="text-muted-foreground">Notes</p>
-                          <p className="font-medium">{log.notes}</p>
-                        </div>
-                      )}
-                      
-                      {log.reference_id && (
-                        <div className="col-span-2">
-                          <p className="text-muted-foreground">Reference</p>
-                          <p className="font-medium">{log.reference_type} #{log.reference_number || log.reference_id}</p>
-                        </div>
-                      )}
-                      
-                      {log.metadata && (
-                        <div className="col-span-2 bg-muted/30 p-2 rounded-md mt-1">
-                          <p className="text-muted-foreground text-xs mb-1">Additional information</p>
-                          <div className="text-xs">
-                            {Object.entries(log.metadata || {}).map(([key, value]) => (
-                              <div key={key} className="grid grid-cols-2">
-                                <span className="font-medium">{key}:</span>
-                                <span>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    )}
                   </div>
-                );
-              })}
-              
-              {transactionLogs.length === 0 && (
-                <div className="text-center py-6 text-muted-foreground">
-                  No detailed transaction logs found for this material
+                  
+                  {/* Additional information on hover */}
+                  {hoveredTransaction === log.id && log.metadata && Object.keys(log.metadata).length > 0 && (
+                    <div className="border-t border-border p-2 bg-muted/30 text-xs">
+                      <div className="grid grid-cols-2 gap-1">
+                        {Object.entries(log.metadata).filter(([key]) => 
+                          !['material_name', 'unit'].includes(key) && 
+                          typeof key === 'string' && 
+                          key.trim() !== ''
+                        ).map(([key, value], index) => (
+                          <React.Fragment key={index}>
+                            <span className="text-muted-foreground">{key.replace(/_/g, ' ')}:</span>
+                            <span>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
+              );
+            })}
+            
+            {transactionLogs.length === 0 && (
+              <div className="text-center py-6 text-muted-foreground">
+                No transaction logs found for this material
+              </div>
+            )}
+          </div>
       </CardContent>
     </Card>
   );

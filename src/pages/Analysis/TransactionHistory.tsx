@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -186,23 +186,51 @@ const TransactionHistory = () => {
   
   // Get transaction type badge color
   const getTransactionTypeColor = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'consumption':
-      case 'order':
-      case 'usage':
-        return 'destructive';
-      case 'purchase':
-      case 'addition':
-      case 'refill':
-        return 'green';
-      case 'adjustment':
-        return 'yellow';
-      default:
-        return 'secondary';
+    const typeLower = type.toLowerCase();
+    
+    if (typeLower.includes('purchase') || typeLower.includes('increase')) {
+      return {
+        bg: "bg-green-100 border-green-300 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400",
+        label: "Addition",
+        icon: ArrowUpCircle
+      };
     }
+    else if (typeLower.includes('order') || typeLower.includes('consumption')) {
+      return {
+        bg: "bg-red-100 border-red-300 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400",
+        label: "Consumption",
+        icon: ArrowDownCircle
+      };
+    }
+    else if (typeLower.includes('sale')) {
+      return {
+        bg: "bg-purple-100 border-purple-300 text-purple-800 dark:bg-purple-900/20 dark:border-purple-800 dark:text-purple-400",
+        label: "Sale",
+        icon: ArrowDownCircle
+      };
+    }
+    else if (typeLower.includes('adjustment')) {
+      if (typeLower.includes('decrease')) {
+        return {
+          bg: "bg-amber-100 border-amber-300 text-amber-800 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-400",
+          label: "Decrease",
+          icon: ArrowDownCircle
+        };
+      }
+      return {
+        bg: "bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400",
+        label: "Adjustment",
+        icon: Info
+      };
+    }
+    
+    return {
+      bg: "bg-gray-100 border-gray-300 text-gray-800 dark:bg-gray-800/30 dark:border-gray-700 dark:text-gray-400",
+      label: "Unknown",
+      icon: Info
+    };
   };
-  
-  // Get reference type display text
+
   const getReferenceTypeDisplay = (type: string | null) => {
     if (!type) return "Manual Entry";
     
@@ -348,138 +376,149 @@ const TransactionHistory = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date & Time</TableHead>
-                  <TableHead>Material</TableHead>
-                  <TableHead>Transaction Type</TableHead>
-                  <TableHead className="text-right">Quantity</TableHead>
-                  <TableHead className="hidden md:table-cell">Previous Qty</TableHead>
-                  <TableHead className="hidden md:table-cell">New Qty</TableHead>
-                  <TableHead>Reference</TableHead>
-                  <TableHead className="hidden md:table-cell">Notes</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {transactionData?.transactions.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={9} className="h-24 text-center">
-                      No transactions found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  transactionData?.transactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
-                      <TableCell className="font-medium">
-                        {format(new Date(transaction.transaction_date), "MMM d, yyyy")}
-                        <div className="text-xs text-muted-foreground">
-                          {format(new Date(transaction.transaction_date), "h:mm a")}
+          <div className="grid gap-3">
+            {transactionData?.transactions.length === 0 ? (
+              <div className="border rounded-md h-24 flex items-center justify-center text-muted-foreground">
+                No transactions found
+              </div>
+            ) : (
+              // Deduplicate transactions to only show consumption (not decrease) when both exist
+              transactionData?.transactions
+                // Group transactions by reference_id and timestamp proximity
+                .reduce((result, transaction) => {
+                  // Skip if this is a decrease and we already added its consumption pair
+                  const isDecrease = transaction.transaction_type.toLowerCase().includes('decrease');
+                  if (isDecrease) {
+                    // Check if we already have a consumption with matching reference
+                    const hasMatchingConsumption = result.some(t => {
+                      return t.reference_id === transaction.reference_id && 
+                             t.transaction_type.toLowerCase().includes('consumption') &&
+                             Math.abs(t.quantity) === Math.abs(transaction.quantity);
+                    });
+                    
+                    if (hasMatchingConsumption) {
+                      return result; // Skip this decrease transaction
+                    }
+                  }
+                  
+                  // For consumption transactions, check if we should replace a decrease
+                  if (transaction.transaction_type.toLowerCase().includes('consumption')) {
+                    // Find and remove any matching decrease transactions
+                    const withoutDecrease = result.filter(t => 
+                      !(t.transaction_type.toLowerCase().includes('decrease') && 
+                        t.reference_id === transaction.reference_id &&
+                        Math.abs(t.quantity) === Math.abs(transaction.quantity))
+                    );
+                    
+                    return [...withoutDecrease, transaction];
+                  }
+                  
+                  // For all other transactions, just add them
+                  return [...result, transaction];
+                }, [] as typeof transactionData.transactions)
+                .map((transaction) => {
+                const typeInfo = getTransactionTypeColor(transaction.transaction_type);
+                const { icon: Icon } = typeInfo;
+                const isNegative = transaction.quantity < 0;
+                
+                return (
+                  <div 
+                    key={transaction.id} 
+                    className={`border rounded-md p-0 overflow-hidden hover:border-primary transition-colors`}
+                  >
+                    {/* Header with transaction type & date */}
+                    <div className={`py-1.5 px-3 ${typeInfo.bg || 'bg-gray-100'}`}>
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-1 font-medium">
+                          {typeInfo.label === "Addition" && <ArrowUpCircle className="h-3.5 w-3.5" />}
+                          {typeInfo.label === "Consumption" && <ArrowDownCircle className="h-3.5 w-3.5" />}
+                          {typeInfo.label === "Adjustment" && <Info className="h-3.5 w-3.5" />}
+                          {typeInfo.label === "Sale" && <ArrowDownCircle className="h-3.5 w-3.5" />}
+                          {(typeInfo.label === "Unknown" || !typeInfo.label) && <Info className="h-3.5 w-3.5" />}
+                          <span>{typeInfo.label || transaction.transaction_type}</span>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        {transaction.material_name}
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={getTransactionTypeColor(transaction.transaction_type) as any}
-                          className="capitalize"
-                        >
-                          {transaction.transaction_type}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        <div className="flex items-center justify-end space-x-1">
-                          {transaction.quantity < 0 ? (
-                            <ArrowDownCircle className="h-4 w-4 text-destructive" />
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs">{format(new Date(transaction.transaction_date), "MMM d, yyyy")}</span>
+                          <span className="text-xs text-muted-foreground">{format(new Date(transaction.transaction_date), "h:mm a")}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="p-3">
+                      {/* Material name */}
+                      <div className="font-medium mb-2">{transaction.material_name}</div>
+                      
+                      {/* Stock changes */}
+                      <div className="flex justify-between items-center mb-2 bg-muted/30 p-2 rounded-md">
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Opening:</span>{" "}
+                          <span className="font-medium">{transaction.previous_quantity.toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className={`text-sm font-semibold ${isNegative ? 'text-red-500 dark:text-red-400' : 'text-green-500 dark:text-green-400'}`}>
+                            {isNegative ? '' : '+'}{transaction.quantity.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Closing:</span>{" "}
+                          <span className="font-medium">{transaction.new_quantity.toFixed(2)}</span>
+                        </div>
+                      </div>
+                      
+                      {/* Reference information */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1 text-sm">
+                          {transaction.reference_type ? (
+                            <div
+                              className="underline cursor-pointer flex items-center"
+                              onClick={() => navigateToReference(transaction.reference_type, transaction.reference_id)}
+                            >
+                              <span>{getReferenceTypeDisplay(transaction.reference_type)}</span>
+                              {transaction.reference_number && (
+                                <span className="ml-1">#{transaction.reference_number}</span>
+                              )}
+                              <ExternalLink className="h-3 w-3 ml-1" />
+                            </div>
                           ) : (
-                            <ArrowUpCircle className="h-4 w-4 text-green-500" />
+                            <span className="text-muted-foreground">Manual Entry</span>
                           )}
-                          <span>
-                            {Math.abs(transaction.quantity)} {transaction.unit}
-                          </span>
                         </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {transaction.previous_quantity} {transaction.unit}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {transaction.new_quantity} {transaction.unit}
-                      </TableCell>
-                      <TableCell>
-                        {transaction.reference_id ? (
-                          <Button
-                            variant="link"
-                            className="p-0 h-auto text-left flex items-center text-sm"
-                            onClick={() => navigateToReference(transaction.reference_type, transaction.reference_id)}
-                          >
-                            <span>{getReferenceTypeDisplay(transaction.reference_type)}</span>
-                            <span className="ml-1">{transaction.reference_number}</span>
-                            <ExternalLink className="h-3 w-3 ml-1" />
-                          </Button>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">
-                            {getReferenceTypeDisplay(transaction.reference_type)}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell max-w-[200px] truncate">
-                        {transaction.notes || "-"}
-                      </TableCell>
-                      <TableCell>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <Info className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="left" className="w-[300px]">
-                              <div className="space-y-2">
-                                <div className="font-semibold">Transaction Details</div>
-                                <div className="grid grid-cols-2 gap-1 text-xs">
-                                  <span className="text-muted-foreground">ID:</span>
-                                  <span>{transaction.id}</span>
-                                  
-                                  <span className="text-muted-foreground">Material ID:</span>
-                                  <span>{transaction.material_id}</span>
-                                  
-                                  <span className="text-muted-foreground">Transaction Date:</span>
-                                  <span>{format(new Date(transaction.transaction_date), "PPpp")}</span>
-                                  
-                                  <span className="text-muted-foreground">Quantity Change:</span>
-                                  <span>
-                                    {transaction.previous_quantity} → {transaction.new_quantity} {transaction.unit}
-                                  </span>
-                                  
-                                  {transaction.notes && (
-                                    <>
-                                      <span className="text-muted-foreground">Notes:</span>
-                                      <span className="truncate">{transaction.notes}</span>
-                                    </>
-                                  )}
-                                  
-                                  {transaction.reference_id && (
-                                    <>
-                                      <span className="text-muted-foreground">Reference:</span>
-                                      <span>
-                                        {transaction.reference_type} {transaction.reference_number}
-                                      </span>
-                                    </>
-                                  )}
-                                </div>
+                        
+                        {/* Unit display */}
+                        <span className="text-sm text-muted-foreground">{transaction.unit}</span>
+                      </div>
+                      
+                      {/* Notes if available */}
+                      {transaction.notes && (
+                        <div className="mt-2 text-sm text-muted-foreground border-t border-border pt-2 italic">
+                          "{transaction.notes}"
+                        </div>
+                      )}
+                      
+                      {/* Additional metadata if available */}
+                      {transaction.metadata && typeof transaction.metadata === 'object' && Object.keys(transaction.metadata).length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-border">
+                          <div className="text-xs text-muted-foreground mb-1">Additional information</div>
+                          <div className="grid grid-cols-2 gap-1 text-xs">
+                            {Object.entries(transaction.metadata || {}).filter(([key]) => 
+                              key && 
+                              !['material_name', 'unit'].includes(key) && 
+                              typeof key === 'string' && 
+                              key.trim() !== ''
+                            ).map(([key, value], index) => (
+                              <div key={index} className="contents">
+                                <span className="text-muted-foreground">{key.replace(/_/g, ' ')}:</span>
+                                <span>{typeof value === 'object' ? JSON.stringify(value) : String(value || '')}</span>
                               </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
           
           {/* Pagination */}
