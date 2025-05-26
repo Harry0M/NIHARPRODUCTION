@@ -14,6 +14,8 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import { OrderFormOptimizer, setupCacheInterceptor, optimizeComponentRendering } from "@/components/optimization/OrderFormOptimizer";
+import { useEffect } from "react";
 
 const componentOptions = {
   color: ["Red", "Blue", "Green", "Black", "White", "Yellow", "Brown", "Orange", "Purple", "Gray", "Custom"],
@@ -41,14 +43,25 @@ const OrderNew = () => {
     updateMargin // Add function to update margin
   } = useOrderForm();
   
+  // Initialize performance optimizations when component mounts
+  useEffect(() => {
+    // Set up the cache interceptor for API requests
+    setupCacheInterceptor();
+    
+    // Apply rendering optimizations after component is mounted
+    const timer = setTimeout(() => {
+      optimizeComponentRendering();
+    }, 500); // Wait for the component to fully render
+    
+    return () => {
+      clearTimeout(timer);
+    };
+  }, []);
+  
   const onSubmit = async (e: React.FormEvent) => {
     if (!validateForm()) {
       return;
     }
-    
-    // Add debug logging
-    console.log("Submitting form with components:", components);
-    console.log("Custom components:", customComponents);
     
     const orderId = await handleSubmit(e);
     if (orderId) {
@@ -69,6 +82,7 @@ const OrderNew = () => {
   const customComponentCount = customComponents.length;
   
   return (
+    <OrderFormOptimizer>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -88,19 +102,7 @@ const OrderNew = () => {
         </div>
       </div>
       
-      {/* Debug information */}
-      <Card className="bg-amber-50">
-        <CardHeader>
-          <CardTitle>Debug Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div>
-            <p><strong>Standard Components:</strong> {standardComponentCount}</p>
-            <p><strong>Custom Components:</strong> {customComponentCount}</p>
-            <p><strong>Total Components:</strong> {standardComponentCount + customComponentCount}</p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Debug information card removed */}
       
       <form onSubmit={onSubmit} className="space-y-6">
         <OrderDetailsForm 
@@ -183,6 +185,7 @@ const OrderNew = () => {
         </Card>
       </form>
     </div>
+    </OrderFormOptimizer>
   );
 };
 

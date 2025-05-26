@@ -87,9 +87,13 @@ export function useOrderForm(): UseOrderFormReturn {
   
   // Update cost calculation when relevant data changes
   useEffect(() => {
-    // Get quantity 
-    const quantity = parseInt(orderDetails.total_quantity || orderDetails.quantity || '0');
-    if (isNaN(quantity) || quantity <= 0) return;
+    // Get the order quantity and total quantity separately
+    const orderQuantity = parseInt(orderDetails.quantity || '0');
+    const totalQuantity = parseInt(orderDetails.total_quantity || '0');
+    
+    // Use order quantity for production costs and total quantity for material costs
+    // This ensures production costs are per order, not per total quantity
+    if ((isNaN(orderQuantity) || orderQuantity <= 0) && (isNaN(totalQuantity) || totalQuantity <= 0)) return;
 
     // Get production charges
     const cuttingCharge = parseFloat(orderDetails.cutting_charge || '0');
@@ -97,7 +101,7 @@ export function useOrderForm(): UseOrderFormReturn {
     const stitchingCharge = parseFloat(orderDetails.stitching_charge || '0');
     const transportCharge = parseFloat(orderDetails.transport_charge || '0');
 
-    // Calculate costs
+    // Calculate costs - use orderQuantity for production costs
     const costs = calculateTotalCost(
       components,
       customComponents,
@@ -105,7 +109,7 @@ export function useOrderForm(): UseOrderFormReturn {
       printingCharge,
       stitchingCharge,
       transportCharge,
-      quantity
+      orderQuantity  // Use orderQuantity for production costs, not total quantity
     );
 
     // Get margin

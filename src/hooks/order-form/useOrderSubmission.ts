@@ -42,7 +42,7 @@ export function useOrderSubmission({
       ].filter(Boolean);
       
       // Check for invalid component types before attempting to save
-      const validComponentTypes = ['part', 'border', 'handle', 'chain', 'runner', 'custom'];
+      const validComponentTypes = ['part', 'border', 'handle', 'chain', 'runner', 'custom', 'piping'];
       const invalidComponents = componentsList.filter(comp => {
         const type = comp.type?.toLowerCase() || '';
         return !validComponentTypes.includes(type);
@@ -206,7 +206,7 @@ export function useOrderSubmission({
             
             // Ensure component_type is EXACTLY one of the valid values - this is critical for the database constraint
             // The database has a check constraint: "order_components_component_type_check"
-            const validComponentTypes = ['part', 'border', 'handle', 'chain', 'runner', 'custom'];
+            const validComponentTypes = ['part', 'border', 'handle', 'chain', 'runner', 'custom', 'piping'];
             
             // Log exact character codes to debug any hidden characters
             console.log(`Component type "${componentType}" character codes:`, 
@@ -290,7 +290,7 @@ export function useOrderSubmission({
           // Function to perform final verification of component data before database insertion
         function verifyComponent(component: any): any {
           // Strictly verify component_type is one of the allowed values
-          const validTypes = ['part', 'border', 'handle', 'chain', 'runner', 'custom'];
+          const validTypes = ['part', 'border', 'handle', 'chain', 'runner', 'custom', 'piping'];
           
           // Ensure component_type exists and is a string
           if (typeof component.component_type !== 'string') {
@@ -416,9 +416,7 @@ export function useOrderSubmission({
         type: "success"
       });
       
-      // Add a delay before navigation to allow time to read console errors
-      console.log("=== DELAYING NAVIGATION BY 10 SECONDS TO ALLOW READING CONSOLE ERRORS ===");
-      await new Promise(resolve => setTimeout(resolve, 10000));
+      // Navigation is now immediate
       
       // Return the order id for navigation
       return orderResult.id;
@@ -440,8 +438,7 @@ export function useOrderSubmission({
         type: "error"
       });
       
-      // Add delay to read error
-      await new Promise(resolve => setTimeout(resolve, 10000));
+      // Error handling is now immediate
       
       return undefined;
     } finally {
@@ -469,7 +466,7 @@ function testComponentTypes(components: any[]) {
     }
     
     // Check if it's exactly one of the allowed values
-    const validTypes = ['part', 'border', 'handle', 'chain', 'runner', 'custom'];
+    const validTypes = ['part', 'border', 'handle', 'chain', 'runner', 'custom', 'piping'];
     const isExactMatch = validTypes.includes(type);
     
     // Check for case issues

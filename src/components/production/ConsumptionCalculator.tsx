@@ -41,23 +41,35 @@ export const ConsumptionCalculator = ({
       
       if (formula === "standard") {
         // Standard formula: (length * width) / (roll_width * 39.39) * quantity
+        // Width and roll_width are required for this formula
         if (!width || !rollWidth) {
           canCalculate = false;
         }
         
         if (canCalculate) {
-          calculatedConsumption = ((length * width) / (rollWidth * 39.39)) * quantity;
+          // Convert inches to meters:
+          // 1. Calculate area in square inches: length * width
+          // 2. Divide by roll width in inches
+          // 3. Convert to meters (39.37 inches = 1 meter)
+          // 4. Multiply by quantity
+          const areaInSqInches = length * width;
+          const lengthPerUnit = areaInSqInches / rollWidth; // length in inches per unit
+          calculatedConsumption = (lengthPerUnit / 39.37) * quantity; // convert to meters and multiply by quantity
         } else {
           // Don't recalculate if missing required fields
           return consumption;
         }
       } else if (formula === "linear") {
-        // Linear formula: (quantity * length) / 39.39
-        calculatedConsumption = (quantity * length) / 39.39;
+        // Linear formula: (length * quantity) / 39.37 
+        // This is just a direct conversion of inches to meters multiplied by quantity
+        const totalLengthInInches = length * quantity;
+        calculatedConsumption = totalLengthInInches / 39.37; // convert to meters
       }
       
+      // Round to 2 decimal places for better precision
       return Math.round(calculatedConsumption * 100) / 100;
     } catch (error) {
+      console.error("Error calculating consumption:", error);
       return 0;
     }
   }, [length, width, rollWidth, quantity, formula, consumption]);

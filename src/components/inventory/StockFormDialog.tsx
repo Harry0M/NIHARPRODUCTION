@@ -18,20 +18,32 @@ export const StockFormDialog = ({
   onOpenChange,
   onStockCreated,
 }: StockFormDialogProps) => {
+  // Prevent form submission from bubbling up to parent forms
+  const handleDialogClick = (e: React.MouseEvent) => {
+    // Stop click events from reaching parent forms
+    e.stopPropagation();
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent 
+        className="max-w-4xl max-h-[90vh] overflow-y-auto" 
+        onClick={handleDialogClick}
+      >
         <DialogHeader>
           <DialogTitle>Create New Stock Item</DialogTitle>
         </DialogHeader>
-        <StockForm 
-          onSuccess={(stockId) => {
-            if (onStockCreated) {
-              onStockCreated(stockId);
-            }
-            onOpenChange(false);
-          }}
-        />
+        {/* Wrap StockForm in a div with onSubmit that prevents propagation */}
+        <div onSubmit={(e) => e.stopPropagation()}>
+          <StockForm 
+            onSuccess={(stockId) => {
+              if (onStockCreated) {
+                onStockCreated(stockId);
+              }
+              onOpenChange(false);
+            }}
+          />
+        </div>
       </DialogContent>
     </Dialog>
   );

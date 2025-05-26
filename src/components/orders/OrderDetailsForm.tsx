@@ -42,16 +42,75 @@ export const OrderDetailsForm = ({
   const { data: catalogProducts, isLoading } = useCatalogProducts();
   const [selectedProductId, setSelectedProductId] = useState<string | undefined>();
 
-  // Fetch companies on component mount
+  // Fetch companies with caching to improve performance
   useEffect(() => {
     const fetchCompanies = async () => {
-      const { data, error } = await supabase
-        .from('companies')
-        .select('id, name')
-        .eq('status', 'active');
+      try {
+        // Try to get companies from localStorage first
+        const cachedData = localStorage.getItem('companiesCache');
+        let cachedCompanies = null;
+        let shouldFetch = true;
+        
+        if (cachedData) {
+          try {
+            const cache = JSON.parse(cachedData);
+            cachedCompanies = cache.companies;
+            const cacheTimestamp = cache.timestamp;
+            const cacheCount = cache.count || 0;
+            
+            // Set companies from cache immediately for fast UI rendering
+            if (Array.isArray(cachedCompanies) && cachedCompanies.length > 0) {
+              setCompanies(cachedCompanies);
+              
+              // Check if cache is still valid (less than 24 hours old)
+              const cacheAge = Date.now() - cacheTimestamp;
+              const oneDayInMs = 24 * 60 * 60 * 1000;
+              
+              if (cacheAge < oneDayInMs) {
+                // Cache is fresh enough, but still check counts to ensure data integrity
+                // Just fetch the count to see if we need to update the cache
+                const { count, error: countError } = await supabase
+                  .from('companies')
+                  .select('id', { count: 'exact', head: true })
+                  .eq('status', 'active');
+                
+                if (!countError && count !== null && count === cacheCount) {
+                  // The count matches, so we can use the cached data
+                  shouldFetch = false;
+                  console.log('Using cached companies data - count matches:', count);
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Error parsing cached companies:', e);
+            // Cache is invalid, will fetch fresh data
+          }
+        }
+        
+        if (shouldFetch) {
+          console.log('Fetching fresh companies data from database...');
+          const { data, error, count } = await supabase
+            .from('companies')
+            .select('id, name', { count: 'exact' })
+            .eq('status', 'active');
 
-      if (!error && data) {
-        setCompanies(data);
+          if (!error && data) {
+            setCompanies(data);
+            
+            // Update the cache with fresh data
+            localStorage.setItem('companiesCache', JSON.stringify({
+              companies: data,
+              timestamp: Date.now(),
+              count: count || data.length
+            }));
+            
+            console.log(`Cached ${data.length} companies`);
+          } else if (error) {
+            console.error('Error fetching companies:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Exception in fetchCompanies:', error);
       }
     };
 

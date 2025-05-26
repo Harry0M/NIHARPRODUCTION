@@ -43,7 +43,6 @@ import { Component, InventoryMaterial } from "@/types/order";
 import { getStatusColor, getStatusDisplay } from "@/utils/orderUtils";
 import { useCostCalculation } from "@/hooks/order-form/useCostCalculation";
 import { CostCalculationDisplay } from "@/components/orders/CostCalculationDisplay";
-import { testInsertOrderComponents } from "@/utils/testOrderComponents";
 
 interface Order {
   id: string;

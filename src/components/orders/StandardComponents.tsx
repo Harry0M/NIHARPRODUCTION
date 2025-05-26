@@ -46,46 +46,12 @@ export const StandardComponents = ({
     onChange(componentType, 'material_id', materialId || '');
   };
 
-  // For debugging: Manually add a test component
-  const addTestComponent = () => {
-    // Create a test component with all required fields and a valid component_type
-    const testComponent = {
-      type: "Part", // This matches one of the standardComponents types
-      color: "Red",
-      length: "10",
-      width: "5",
-      roll_width: "40",
-      formula: "standard", // Ensure formula field is set
-      consumption: "0.32"
-    };
-    
-    // Add the test component to components
-    console.log("Adding test component:", testComponent);
-    
-    // Update each field individually
-    Object.entries(testComponent).forEach(([field, value]) => {
-      if (field !== 'type') {
-        onChange("Part", field, value);
-      }
-    });
-    
-    // Log for confirmation that component was added with correct type
-    console.log("Test component added with type: Part (lowercase: part)");
-  };
+  // Test component function removed
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-medium">Standard Components</h2>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={addTestComponent}
-          className="h-7 text-xs bg-blue-50 border-blue-200 hover:bg-blue-100"
-        >
-          <PlusCircle className="mr-1 h-3 w-3" />
-          Add Test Component
-        </Button>
       </div>
       
       <div className="grid md:grid-cols-2 gap-4">
