@@ -40,6 +40,8 @@ export interface PurchaseFormData {
   supplier_id: string;
   purchase_date: string;
   transport_charge: number;
+  subtotal: number;
+  total_amount: number;
   notes: string;
   items: PurchaseItemFormData[];
 }

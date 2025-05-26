@@ -22,7 +22,14 @@ export const usePurchases = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setPurchases(data || []);
+      
+      // Type assertion for the fetched data to match our interface
+      const typedData = (data || []).map(item => ({
+        ...item,
+        status: item.status as 'pending' | 'completed' | 'cancelled'
+      })) as PurchaseWithItems[];
+      
+      setPurchases(typedData);
     } catch (err: any) {
       setError(err.message);
       showToast({

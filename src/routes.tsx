@@ -1,4 +1,3 @@
-
 import { createBrowserRouter } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AuthLayout } from "@/components/layout/AuthLayout";
@@ -52,7 +51,7 @@ import { PurchaseList } from "@/pages/Purchases/PurchaseList";
 import { PurchaseNew } from "@/pages/Purchases/PurchaseNew";
 import NotFound from "@/pages/NotFound";
 
-export const router = createBrowserRouter([
+const router = createBrowserRouter([
   {
     path: "/",
     element: <Index />,
@@ -271,3 +270,6 @@ export const router = createBrowserRouter([
     element: <NotFound />,
   },
 ]);
+
+export { router };
+export default router;
