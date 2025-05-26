@@ -1,373 +1,358 @@
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useInventoryAnalytics } from "@/hooks/analysis/useInventoryAnalytics";
-import { formatCurrency, calculateRefillUrgency } from "@/utils/analysisUtils";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useState, useMemo } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
-  ArrowLeft, 
-  Search, 
-  AlertCircle, 
-  ShoppingCart, 
-  TrendingDown, 
-  BarChart as BarChartIcon,
-  CheckCircle,
-  RefreshCcw
-} from "lucide-react";
-import { LoadingSpinner } from "@/components/production/LoadingSpinner";
-import { useNavigate } from "react-router-dom";
-import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { AlertTriangle, Package, TrendingDown, Search, Download, ShoppingCart } from "lucide-react";
+import { useInventoryAnalytics } from "@/hooks/analysis/useInventoryAnalytics";
+import { LoadingSpinner } from "@/components/production/LoadingSpinner";
+import { formatCurrency } from "@/utils/analysisUtils";
 
-const RefillAnalysis = () => {
-  const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const { refillNeedsData, inventoryValueData, isLoading } = useInventoryAnalytics();
-  
-  // Combine refill needs with all inventory data for complete analysis
-  const combinedData = inventoryValueData?.map(item => {
-    const needsRefill = refillNeedsData?.find(r => r.id === item.id);
-    const urgency = calculateRefillUrgency(
-      item.quantity,
-      item.reorder_level,
-      item.min_stock_level
-    );
-    
-    return {
-      ...item,
-      needsRefill: !!needsRefill,
-      urgency
-    };
-  });
-  
-  // Filter data based on search and status
-  const filteredData = combinedData
-    ?.filter(item => {
-      // Apply search filter
-      const matchesSearch = !searchQuery || 
-        item.material_name.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      // Apply status filter
-      let matchesStatus = true;
-      if (statusFilter === "critical") {
-        matchesStatus = item.urgency === "critical";
-      } else if (statusFilter === "warning") {
-        matchesStatus = item.urgency === "warning";
-      } else if (statusFilter === "normal") {
-        matchesStatus = item.urgency === "normal";
-      }
-      
-      return matchesSearch && matchesStatus;
-    })
-    .sort((a, b) => {
-      // Sort by urgency (critical first, then warning, then normal)
-      const urgencyOrder: Record<string, number> = { critical: 0, warning: 1, normal: 2 };
-      return urgencyOrder[a.urgency] - urgencyOrder[b.urgency];
-    });
-  
-  // Count materials by status
-  const criticalCount = combinedData?.filter(item => item.urgency === "critical").length || 0;
-  const warningCount = combinedData?.filter(item => item.urgency === "warning").length || 0;
-  const normalCount = combinedData?.filter(item => item.urgency === "normal").length || 0;
-  
-  // Calculate how much money needed to refill all critical and warning items
-  const estimatedRefillCost = combinedData
-    ?.filter(item => item.urgency === "critical" || item.urgency === "warning")
-    .reduce((total, item) => {
-      const reorderLevel = item.reorder_level || 0;
-      const currentQuantity = item.quantity || 0;
-      const deficitQuantity = Math.max(0, reorderLevel - currentQuantity);
-      const unitCost = item.purchase_rate || 0;
-      return total + (deficitQuantity * unitCost);
-    }, 0) || 0;
-  
+export const RefillAnalysis = () => {
+  const {
+    inventoryData,
+    inventoryValueData,
+    refillNeedsData,
+    isLoading
+  } = useInventoryAnalytics();
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [urgencyFilter, setUrgencyFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("urgency");
+
   if (isLoading) {
     return <LoadingSpinner />;
   }
 
+  // Process inventory data to determine refill needs
+  const processedInventoryData = useMemo(() => {
+    return inventoryData
+      .filter(item => item.min_stock_level && item.min_stock_level > 0)
+      .map(item => {
+        const stockRatio = item.quantity / (item.min_stock_level || 1);
+        const needsRefill = item.quantity <= (item.min_stock_level || 0);
+        
+        let urgency: 'critical' | 'warning' | 'normal' = 'normal';
+        if (stockRatio <= 0.2) urgency = 'critical';
+        else if (stockRatio <= 0.5) urgency = 'warning';
+        
+        return {
+          ...item,
+          needsRefill,
+          urgency,
+          stockRatio,
+          shortage: Math.max(0, (item.min_stock_level || 0) - item.quantity),
+          estimatedCost: item.shortage * (item.purchase_rate || 0)
+        };
+      });
+  }, [inventoryData]);
+
+  // Filter and sort data
+  const filteredData = useMemo(() => {
+    return processedInventoryData
+      .filter(item => {
+        const matchesSearch = item.material_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            (item.color && item.color.toLowerCase().includes(searchTerm.toLowerCase()));
+        
+        const matchesUrgency = urgencyFilter === "all" || 
+                              (urgencyFilter === "needs_refill" && item.needsRefill) ||
+                              item.urgency === urgencyFilter;
+        
+        return matchesSearch && matchesUrgency;
+      })
+      .sort((a, b) => {
+        switch (sortBy) {
+          case "urgency":
+            const urgencyOrder = { critical: 0, warning: 1, normal: 2 };
+            return urgencyOrder[a.urgency] - urgencyOrder[b.urgency];
+          case "shortage":
+            return b.shortage - a.shortage;
+          case "stock_ratio":
+            return a.stockRatio - b.stockRatio;
+          case "material_name":
+            return a.material_name.localeCompare(b.material_name);
+          default:
+            return 0;
+        }
+      });
+  }, [processedInventoryData, searchTerm, urgencyFilter, sortBy]);
+
+  // Calculate statistics
+  const criticalItems = processedInventoryData.filter(item => item.urgency === 'critical').length;
+  const warningItems = processedInventoryData.filter(item => item.urgency === 'warning').length;
+  const totalRefillCost = processedInventoryData
+    .filter(item => item.needsRefill)
+    .reduce((sum, item) => sum + (item.estimatedCost || 0), 0);
+  const totalItemsNeedingRefill = processedInventoryData.filter(item => item.needsRefill).length;
+
+  // Chart data
+  const urgencyDistribution = [
+    { name: 'Critical', value: criticalItems, fill: '#ef4444' },
+    { name: 'Warning', value: warningItems, fill: '#f59e0b' },
+    { name: 'Normal', value: processedInventoryData.length - criticalItems - warningItems, fill: '#10b981' }
+  ];
+
+  const topShortages = filteredData
+    .filter(item => item.needsRefill)
+    .slice(0, 10)
+    .map(item => ({
+      name: item.material_name.substring(0, 20) + '...',
+      shortage: item.shortage,
+      cost: item.estimatedCost || 0
+    }));
+
+  const getUrgencyColor = (urgency: string) => {
+    switch (urgency) {
+      case 'critical': return 'destructive';
+      case 'warning': return 'secondary';
+      default: return 'default';
+    }
+  };
+
+  const getUrgencyText = (urgency: string) => {
+    switch (urgency) {
+      case 'critical': return 'Critical';
+      case 'warning': return 'Warning';
+      default: return 'Normal';
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-1.5">
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm" onClick={() => navigate('/analysis')}>
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back
-          </Button>
-          <h1 className="text-2xl font-bold">Inventory Refill Analysis</h1>
-        </div>
+        <h1 className="text-3xl font-bold">Inventory Refill Analysis</h1>
         <p className="text-muted-foreground">
-          Analyze which materials need replenishment and track inventory levels
+          Monitor stock levels and identify materials that need replenishment
         </p>
       </div>
-      
+
+      {/* Key Metrics */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Critical Items</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-destructive">{criticalItems}</div>
+            <p className="text-xs text-muted-foreground">
+              Immediate attention required
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Warning Items</CardTitle>
+            <TrendingDown className="h-4 w-4 text-yellow-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-600">{warningItems}</div>
+            <p className="text-xs text-muted-foreground">
+              Need refill soon
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Refill Cost</CardTitle>
+            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(totalRefillCost)}</div>
+            <p className="text-xs text-muted-foreground">
+              Estimated cost to refill
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Items Needing Refill</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalItemsNeedingRefill}</div>
+            <p className="text-xs text-muted-foreground">
+              Out of {processedInventoryData.length} tracked
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Filters */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Filters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col space-y-4 md:flex-row md:space-y-0 md:space-x-4">
-            <div className="flex-1">
-              <Label htmlFor="search">Search Materials</Label>
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="search"
-                  placeholder="Search by name..."
-                  className="pl-8"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
+        <CardContent className="pt-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="Search materials..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
-            <div className="w-full md:w-[200px]">
-              <Label htmlFor="status">Status</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger id="status">
-                  <SelectValue placeholder="All Statuses" />
-                </SelectTrigger>
-                <SelectContent position="popper">
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
-                  <SelectItem value="warning">Warning</SelectItem>
-                  <SelectItem value="normal">Normal</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={urgencyFilter} onValueChange={setUrgencyFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by urgency" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Items</SelectItem>
+                <SelectItem value="needs_refill">Needs Refill</SelectItem>
+                <SelectItem value="critical">Critical</SelectItem>
+                <SelectItem value="warning">Warning</SelectItem>
+                <SelectItem value="normal">Normal</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="urgency">Urgency</SelectItem>
+                <SelectItem value="shortage">Shortage</SelectItem>
+                <SelectItem value="stock_ratio">Stock Ratio</SelectItem>
+                <SelectItem value="material_name">Name</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline">
+              <Download className="h-4 w-4 mr-2" />
+              Export Report
+            </Button>
           </div>
         </CardContent>
       </Card>
-      
-      {/* Overview */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+
+      {/* Charts */}
+      <div className="grid gap-6 md:grid-cols-2">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Critical Items</CardTitle>
+          <CardHeader>
+            <CardTitle>Stock Level Distribution</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center">
-              <div className="text-2xl font-bold">{criticalCount}</div>
-              <Badge variant="destructive" className="ml-2">Urgent Refill</Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Materials below minimum stock level
-            </p>
+          <CardContent className="h-[300px]">
+            {urgencyDistribution.some(item => item.value > 0) ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={urgencyDistribution}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {urgencyDistribution.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                No stock level data available
+              </div>
+            )}
           </CardContent>
         </Card>
+
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Warning Items</CardTitle>
+          <CardHeader>
+            <CardTitle>Top Shortages</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center">
-              <div className="text-2xl font-bold">{warningCount}</div>
-              <Badge variant="outline" className="ml-2 bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-                Order Soon
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Materials below reorder level
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Healthy Stock</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center">
-              <div className="text-2xl font-bold">{normalCount}</div>
-              <Badge variant="outline" className="ml-2 bg-green-100 text-green-800 hover:bg-green-100">
-                Good
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Materials with adequate stock
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Est. Refill Cost</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(estimatedRefillCost)}</div>
-            <p className="text-xs text-muted-foreground">
-              Cost to restock all low items
-            </p>
+          <CardContent className="h-[300px]">
+            {topShortages.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topShortages}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="name" 
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                  />
+                  <YAxis />
+                  <Tooltip formatter={(value) => [value.toFixed(2), 'Shortage']} />
+                  <Bar dataKey="shortage" fill="#ef4444" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                No shortage data available
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Detailed Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Material Refill Requirements</CardTitle>
-          <CardDescription>Detailed analysis of inventory levels and refill needs</CardDescription>
+          <CardTitle>Inventory Refill Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="relative rounded-md border">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="py-2 px-4 text-left font-medium">Material</th>
-                  <th className="py-2 px-4 text-left font-medium">Current Stock</th>
-                  <th className="py-2 px-4 text-left font-medium">Unit</th>
-                  <th className="py-2 px-4 text-center font-medium">Reorder Level</th>
-                  <th className="py-2 px-4 text-center font-medium">Min Stock</th>
-                  <th className="py-2 px-4 text-right font-medium">Status</th>
-                  <th className="py-2 px-4 text-right font-medium">Stock Level</th>
+                <tr className="border-b">
+                  <th className="text-left p-2">Material</th>
+                  <th className="text-left p-2">Color</th>
+                  <th className="text-right p-2">Current</th>
+                  <th className="text-right p-2">Min Level</th>
+                  <th className="text-right p-2">Stock %</th>
+                  <th className="text-right p-2">Shortage</th>
+                  <th className="text-right p-2">Est. Cost</th>
+                  <th className="text-left p-2">Status</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredData && filteredData.length > 0 ? (
-                  filteredData.map((item) => {
-                    const stockLevel = item.reorder_level 
-                      ? (item.quantity / item.reorder_level) * 100
-                      : 100;
-                    
-                    // Determine status badge styling
-                    let badgeClass = "";
-                    let statusLabel = "";
-                    if (item.urgency === "critical") {
-                      badgeClass = "bg-red-100 text-red-800";
-                      statusLabel = "Critical";
-                    } else if (item.urgency === "warning") {
-                      badgeClass = "bg-yellow-100 text-yellow-800";
-                      statusLabel = "Reorder";
-                    } else {
-                      badgeClass = "bg-green-100 text-green-800";
-                      statusLabel = "Good";
-                    }
-                    
-                    return (
-                      <tr key={item.id} className="border-b">
-                        <td className="py-2 px-4 text-left font-medium">{item.material_name}</td>
-                        <td className="py-2 px-4 text-left">
-                          {item.quantity.toFixed(2)}
-                          {item.urgency === "critical" && (
-                            <AlertCircle className="inline h-4 w-4 ml-1 text-destructive" />
-                          )}
-                        </td>
-                        <td className="py-2 px-4 text-left">{item.unit}</td>
-                        <td className="py-2 px-4 text-center">
-                          {item.reorder_level?.toFixed(2) || 'Not set'}
-                        </td>
-                        <td className="py-2 px-4 text-center">
-                          {item.min_stock_level?.toFixed(2) || 'Not set'}
-                        </td>
-                        <td className="py-2 px-4 text-right">
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${badgeClass}`}>
-                            {statusLabel}
-                          </span>
-                        </td>
-                        <td className="py-2 px-4 text-right">
-                          <div className="w-full flex items-center gap-2">
-                            <Progress 
-                              value={Math.min(100, stockLevel)} 
-                              className={`h-2 ${
-                                item.urgency === "critical" ? "bg-red-100" : 
-                                item.urgency === "warning" ? "bg-yellow-100" : "bg-green-100"
-                              }`} 
-                            />
-                            <span className="text-xs w-12 text-right">
-                              {stockLevel.toFixed(0)}%
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={7} className="py-4 text-center text-muted-foreground">
-                      No materials found matching the current filters
+                {filteredData.map((item) => (
+                  <tr key={item.id} className="border-b hover:bg-muted/50">
+                    <td className="p-2 font-medium">{item.material_name}</td>
+                    <td className="p-2">{item.color || '-'}</td>
+                    <td className="p-2 text-right font-mono">{item.quantity.toFixed(2)} {item.unit}</td>
+                    <td className="p-2 text-right font-mono">{item.min_stock_level?.toFixed(2)} {item.unit}</td>
+                    <td className="p-2 text-right">
+                      <div className="flex items-center space-x-2">
+                        <Progress 
+                          value={Math.min(100, item.stockRatio * 100)} 
+                          className="w-16 h-2"
+                        />
+                        <span className="text-xs font-mono">{(item.stockRatio * 100).toFixed(0)}%</span>
+                      </div>
+                    </td>
+                    <td className="p-2 text-right font-mono">
+                      {item.shortage > 0 ? `${item.shortage.toFixed(2)} ${item.unit}` : '-'}
+                    </td>
+                    <td className="p-2 text-right font-mono">
+                      {item.estimatedCost ? formatCurrency(item.estimatedCost) : '-'}
+                    </td>
+                    <td className="p-2">
+                      <Badge variant={getUrgencyColor(item.urgency)}>
+                        {getUrgencyText(item.urgency)}
+                      </Badge>
                     </td>
                   </tr>
-                )}
+                ))}
               </tbody>
             </table>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* Action Card */}
-      <Card className="bg-muted/30">
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <ShoppingCart className="h-5 w-5 mr-2" />
-            Recommended Actions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {criticalCount > 0 && (
-              <div className="flex items-start space-x-4">
-                <AlertCircle className="h-6 w-6 text-destructive mt-0.5" />
-                <div>
-                  <h4 className="font-medium">Critical Inventory Alert</h4>
-                  <p className="text-sm text-muted-foreground">
-                    {criticalCount} material(s) are below minimum stock levels. 
-                    Urgent restocking required to avoid production delays.
-                  </p>
-                  <Button className="mt-2" size="sm">
-                    Create Purchase Orders
-                  </Button>
-                </div>
+            {filteredData.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                No items found matching your criteria
               </div>
             )}
-            
-            {warningCount > 0 && (
-              <div className="flex items-start space-x-4">
-                <RefreshCcw className="h-6 w-6 text-yellow-600 mt-0.5" />
-                <div>
-                  <h4 className="font-medium">Reorder Recommendation</h4>
-                  <p className="text-sm text-muted-foreground">
-                    {warningCount} material(s) have fallen below their reorder levels. 
-                    Consider placing orders soon to maintain optimal inventory levels.
-                  </p>
-                  <Button variant="outline" className="mt-2" size="sm">
-                    View Reorder List
-                  </Button>
-                </div>
-              </div>
-            )}
-            
-            {criticalCount === 0 && warningCount === 0 && (
-              <div className="flex items-start space-x-4">
-                <CheckCircle className="h-6 w-6 text-green-600 mt-0.5" />
-                <div>
-                  <h4 className="font-medium">All Inventory Levels Healthy</h4>
-                  <p className="text-sm text-muted-foreground">
-                    All materials are currently at adequate stock levels. 
-                    No immediate reordering is required.
-                  </p>
-                </div>
-              </div>
-            )}
-            
-            <div className="flex items-start space-x-4">
-              <BarChartIcon className="h-6 w-6 text-blue-600 mt-0.5" />
-              <div>
-                <h4 className="font-medium">Optimize Inventory</h4>
-                <p className="text-sm text-muted-foreground">
-                  Review material usage patterns to adjust reorder points and minimize excess inventory.
-                  This can help reduce holding costs while maintaining production readiness.
-                </p>
-                <Button variant="outline" className="mt-2" size="sm" onClick={() => navigate('/analysis/materials')}>
-                  View Consumption Patterns
-                </Button>
-              </div>
-            </div>
           </div>
         </CardContent>
       </Card>
     </div>
   );
 };
-
-export default RefillAnalysis;

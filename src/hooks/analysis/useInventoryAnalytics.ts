@@ -9,6 +9,7 @@ interface InventoryItem {
   unit: string;
   purchase_rate: number | null;
   min_stock_level: number | null;
+  reorder_level: number | null;
   color?: string;
   gsm?: string;
   totalValue?: number;
@@ -48,6 +49,7 @@ interface OrderConsumptionData {
   unit: string;
   component_type: string;
   usage_date: string;
+  purchase_price?: number;
 }
 
 interface RefillNeedsData {
