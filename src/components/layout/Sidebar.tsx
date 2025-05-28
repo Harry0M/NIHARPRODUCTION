@@ -16,7 +16,8 @@ import {
   FileText,
   ShoppingCart,
   Building,
-  BarChart
+  BarChart,
+  ShoppingBag
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -27,6 +28,7 @@ const navItems = [
   { name: "Production", path: "/production", icon: Factory },
   { name: "Job Cards", path: "/production/job-cards", icon: FileText },
   { name: "Partners", path: "/partners", icon: Users },
+  { name: "Purchases", path: "/purchases", icon: ShoppingBag },
   { name: "Dispatch", path: "/dispatch", icon: Truck },
   { name: "Inventory", path: "/inventory", icon: Database },
   { name: "Analysis", path: "/analysis", icon: BarChart },
