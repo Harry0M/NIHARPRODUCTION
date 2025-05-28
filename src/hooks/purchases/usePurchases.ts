@@ -38,7 +38,7 @@ export const usePurchases = () => {
   // Create purchase mutation
   const createMutation = useMutation({
     mutationFn: async (purchaseData: CreatePurchaseData) => {
-      // Create the purchase first
+      // Create the purchase first without purchase_number (will be auto-generated)
       const { data: purchase, error: purchaseError } = await supabase
         .from("purchases")
         .insert({
@@ -73,6 +73,7 @@ export const usePurchases = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["purchases"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
       toast({
         title: "Success",
         description: "Purchase created successfully",
