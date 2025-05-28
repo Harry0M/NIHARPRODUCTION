@@ -21,7 +21,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
-import { Trash2, Plus, Package, Search } from "lucide-react";
+import { Trash2, Plus, Package, Search, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import PaginationControls from "@/components/ui/pagination-controls";
 
@@ -233,8 +233,17 @@ const CompanyList = () => {
                 </TableRow>
               ) : (
                 companies.map((company) => (
-                  <TableRow key={company.id}>
-                    <TableCell>{company.name}</TableCell>
+                  <TableRow 
+                    key={company.id}
+                    className="group cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => navigate(`/companies/${company.id}`)}
+                  >
+                    <TableCell className="font-medium">
+                      <div className="flex items-center justify-between">
+                        <span>{company.name}</span>
+                        <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    </TableCell>
                     <TableCell>{company.contact_person || 'N/A'}</TableCell>
                     <TableCell>{company.email || 'N/A'}</TableCell>
                     <TableCell>{company.phone || 'N/A'}</TableCell>
@@ -242,7 +251,10 @@ const CompanyList = () => {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => navigate(`/companies/${company.id}/orders`)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/companies/${company.id}/orders`);
+                        }}
                         className="flex items-center gap-1"
                       >
                         <Package size={16} />
@@ -251,7 +263,10 @@ const CompanyList = () => {
                       <Button 
                         variant="destructive" 
                         size="sm"
-                        onClick={() => showDeleteConfirmation(company.id, company.name)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          showDeleteConfirmation(company.id, company.name);
+                        }}
                         disabled={isDeleting}
                       >
                         <Trash2 size={16} />

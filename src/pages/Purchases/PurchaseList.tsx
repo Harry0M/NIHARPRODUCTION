@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, Eye } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -262,12 +262,15 @@ const PurchaseList = () => {
                     <TableHead>Items</TableHead>
                     <TableHead>Total Amount</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {purchasesData.map((purchase) => (
-                    <TableRow key={purchase.id}>
+                    <TableRow 
+                      key={purchase.id}
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => goToDetail(purchase.id)}
+                    >
                       <TableCell className="font-medium">
                         {purchase.purchase_number}
                       </TableCell>
@@ -281,15 +284,6 @@ const PurchaseList = () => {
                         <Badge className={getStatusBadgeClass(purchase.status)}>
                           {purchase.status}
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => goToDetail(purchase.id)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}

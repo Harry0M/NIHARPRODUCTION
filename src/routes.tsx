@@ -33,6 +33,7 @@ import Dispatch from "@/pages/Production/Dispatch";
 import DispatchDetail from "@/pages/Production/DispatchDetail";
 import CompanyList from "@/pages/Companies/CompanyList";
 import CompanyNew from "@/pages/Companies/CompanyNew";
+import CompanyDetails from "@/pages/Companies/CompanyDetails";
 import CompanyOrders from "@/pages/Companies/CompanyOrders";
 import PartnersList from "@/pages/Partners/PartnersList";
 import PartnerNew from "@/pages/Partners/PartnerNew";
@@ -125,6 +126,7 @@ const routes = [
             children: [
               { path: "", element: <CompanyList /> },
               { path: "new", element: <CompanyNew /> },
+              { path: ":id", element: <CompanyDetails /> },
               { path: ":id/orders", element: <CompanyOrders /> },
             ],
           },

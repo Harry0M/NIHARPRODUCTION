@@ -397,7 +397,14 @@ const PurchaseDetail = () => {
                     <TableHead>Main Unit</TableHead>
                     <TableHead>Alt. Quantity</TableHead>
                     <TableHead>Alt. Unit</TableHead>
-                    <TableHead className="text-right">Unit Price</TableHead>
+                    <TableHead className="text-right">
+                      <div>Unit Price</div>
+                      <div className="text-xs text-muted-foreground">(Main Unit)</div>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <div>Alt. Unit Price</div>
+                      <div className="text-xs text-muted-foreground">(Per unit)</div>
+                    </TableHead>
                     <TableHead className="text-right">Line Total</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -416,7 +423,14 @@ const PurchaseDetail = () => {
                         {(item.quantity * (item.material.conversion_rate || 1)).toFixed(2)}
                       </TableCell>
                       <TableCell>{item.material.alternate_unit}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(item.unit_price)}</TableCell>
+                      <TableCell className="text-right">
+                        <div>{formatCurrency(item.unit_price)}</div>
+                        <div className="text-xs text-muted-foreground">per {item.material.unit}</div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div>{formatCurrency(item.unit_price / item.material.conversion_rate)}</div>
+                        <div className="text-xs text-muted-foreground">per {item.material.alternate_unit}</div>
+                      </TableCell>
                       <TableCell className="text-right">{formatCurrency(item.line_total)}</TableCell>
                     </TableRow>
                   ))}

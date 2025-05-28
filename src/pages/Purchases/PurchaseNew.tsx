@@ -370,7 +370,14 @@ const PurchaseNew = () => {
                       <TableHead>Main Unit</TableHead>
                       <TableHead>Alt. Quantity</TableHead>
                       <TableHead>Alt. Unit</TableHead>
-                      <TableHead>Unit Price</TableHead>
+                      <TableHead>
+                        <div>Unit Price</div>
+                        <div className="text-xs text-muted-foreground">(Main Unit)</div>
+                      </TableHead>
+                      <TableHead>
+                        <div>Alt. Unit Price</div>
+                        <div className="text-xs text-muted-foreground">(Per unit)</div>
+                      </TableHead>
                       <TableHead>Total</TableHead>
                       <TableHead></TableHead>
                     </TableRow>
@@ -455,6 +462,17 @@ const PurchaseNew = () => {
                             }
                             className="w-24"
                           />
+                          <div className="text-xs text-muted-foreground">
+                            per {item.material?.unit || 'unit'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {item.material?.conversion_rate 
+                            ? formatCurrency((item.unit_price || 0) / item.material.conversion_rate)
+                            : 'N/A'}
+                          <div className="text-xs text-muted-foreground">
+                            per {item.material?.alternate_unit || 'unit'}
+                          </div>
                         </TableCell>
                         <TableCell>
                           {formatCurrency(item.line_total || 0)}
@@ -473,7 +491,7 @@ const PurchaseNew = () => {
                     
                     {/* Add Item button as a table row */}
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center p-2">
+                      <TableCell colSpan={9} className="text-center p-2">
                         <Button
                           variant="outline"
                           size="sm"
