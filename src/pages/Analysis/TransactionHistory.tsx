@@ -382,41 +382,199 @@ const TransactionHistory = () => {
                 No transactions found
               </div>
             ) : (
-              // Deduplicate transactions to only show consumption (not decrease) when both exist
-              transactionData?.transactions
-                // Group transactions by reference_id and timestamp proximity
-                .reduce((result, transaction) => {
-                  // Skip if this is a decrease and we already added its consumption pair
-                  const isDecrease = transaction.transaction_type.toLowerCase().includes('decrease');
-                  if (isDecrease) {
-                    // Check if we already have a consumption with matching reference
-                    const hasMatchingConsumption = result.some(t => {
-                      return t.reference_id === transaction.reference_id && 
-                             t.transaction_type.toLowerCase().includes('consumption') &&
-                             Math.abs(t.quantity) === Math.abs(transaction.quantity);
-                    });
+              // Enhanced deduplication to avoid showing duplicate transactions with different labels
+              ((() => {
+                const DEBUG = false; // Set to true to enable console debugging
+                
+                if (DEBUG) {
+                  console.log('===== TRANSACTION HISTORY DEDUPLICATION =====');
+                  console.log(`Starting with ${transactionData?.transactions.length} transactions`);
+                }
+                
+                // First, group transactions by their numerical characteristics AND time proximity
+                const groupedByQuantity: { [key: string]: typeof transactionData.transactions } = {};
+                
+                // Sort by transaction date to process in chronological order
+                const chronologicalTransactions = [...transactionData!.transactions].sort((a, b) => 
+                  new Date(a.transaction_date).getTime() - new Date(b.transaction_date).getTime()
+                );
+                
+                // Simple approach: Filter out all "Decrease" transactions with closing stock of 0
+                // These are typically the automatic adjustments when a consumption exceeds available stock
+                const filteredTransactions = chronologicalTransactions.filter(tx => 
+                  !(tx.transaction_type.toLowerCase().includes('decrease') && 
+                    tx.new_quantity === 0 && 
+                    Math.abs(tx.previous_quantity - Math.abs(tx.quantity)) < 0.01) // Available exactly matches the decrease amount
+                );
+                
+                if (DEBUG) {
+                  const removedCount = chronologicalTransactions.length - filteredTransactions.length;
+                  if (removedCount > 0) {
+                    console.log(`Filtered out ${removedCount} decrease transactions that represent excess consumption`);
                     
-                    if (hasMatchingConsumption) {
-                      return result; // Skip this decrease transaction
+                    const removedTransactions = chronologicalTransactions.filter(tx => 
+                      tx.transaction_type.toLowerCase().includes('decrease') && 
+                      tx.new_quantity === 0 && 
+                      Math.abs(tx.previous_quantity - Math.abs(tx.quantity)) < 0.01
+                    );
+                    console.log('Removed transactions:', removedTransactions);
+                  }
+                }
+                
+                // Create groups of transactions with same numerical values and close timestamps
+                // (using the pre-filtered list without the duplicate decrease transactions)
+                filteredTransactions.forEach(transaction => {
+                  let foundGroup = false;
+                  const transactionTime = new Date(transaction.transaction_date).getTime();
+                  
+                  // Check existing groups for a match based on quantity and time proximity
+                  Object.keys(groupedByQuantity).forEach(key => {
+                    if (foundGroup) return; // Skip if already found a group
+                    
+                    const group = groupedByQuantity[key];
+                    if (group.length === 0) return;
+                    
+                    // Check first transaction in group to see if this transaction belongs with it
+                    const firstTransaction = group[0];
+                    const firstTime = new Date(firstTransaction.transaction_date).getTime();
+                    
+                    // If quantities match exactly and time is within 1 minute, add to this group
+                    if (Math.abs(firstTransaction.quantity - transaction.quantity) < 0.01 &&
+                        Math.abs(firstTransaction.previous_quantity - transaction.previous_quantity) < 0.01 &&
+                        Math.abs(firstTransaction.new_quantity - transaction.new_quantity) < 0.01 &&
+                        Math.abs(transactionTime - firstTime) < 60000) { // 1 minute
+                      
+                      groupedByQuantity[key].push(transaction);
+                      foundGroup = true;
+                    }
+                  });
+                  
+                  // If no matching group found, create a new one
+                  if (!foundGroup) {
+                    const key = `${transaction.previous_quantity}-${transaction.new_quantity}-${transaction.quantity}-${transactionTime}`;
+                    groupedByQuantity[key] = [transaction];
+                  }
+                });
+                
+                if (DEBUG) {
+                  console.log('Grouped transactions by numerical values:');
+                  Object.keys(groupedByQuantity).forEach(key => {
+                    console.log(`Group ${key}:`, groupedByQuantity[key]);
+                  });
+                }
+                
+                // Process each group to eliminate duplicates
+                const deduplicatedTransactions: typeof transactionData.transactions = [];
+                
+                Object.values(groupedByQuantity).forEach(group => {
+                  if (group.length === 1) {
+                    // If only one transaction in the group, keep it
+                    deduplicatedTransactions.push(group[0]);
+                    if (DEBUG) console.log(`Single transaction in group - keeping:`, group[0]);
+                    return;
+                  }
+                  
+                  // Check for purchase + manual entry duplicate pattern
+                  const hasPurchase = group.some(transaction => 
+                    transaction.transaction_type.toLowerCase().includes('purchase'));
+                  const hasManual = group.some(transaction => 
+                    !transaction.reference_type || 
+                    transaction.transaction_type.toLowerCase().includes('manual') || 
+                    transaction.transaction_type.toLowerCase().includes('adjustment'));
+                  
+                  if (hasPurchase && hasManual) {
+                    // Keep only purchase transactions from this group
+                    const purchases = group.filter(transaction => 
+                      transaction.transaction_type.toLowerCase().includes('purchase'));
+                    
+                    if (DEBUG) {
+                      console.log('Found purchase + manual entry group:');
+                      console.log('- All transactions in group:', group);
+                      console.log('- Keeping only purchases:', purchases);
+                    }
+                    
+                    deduplicatedTransactions.push(...purchases);
+                  } else {
+                    // Check for consumption + decrease duplicate pattern
+                    const hasConsumption = group.some(transaction => 
+                      transaction.transaction_type.toLowerCase().includes('consumption'));
+                    const hasDecrease = group.some(transaction => 
+                      transaction.transaction_type.toLowerCase().includes('decrease'));
+                    
+                    if (hasConsumption && hasDecrease) {
+                      // Keep only consumption transactions
+                      const consumptions = group.filter(transaction => 
+                        transaction.transaction_type.toLowerCase().includes('consumption'));
+                      
+                      if (DEBUG) {
+                        console.log('Found consumption + decrease group:');
+                        console.log('- All transactions in group:', group);
+                        console.log('- Keeping only consumptions:', consumptions);
+                      }
+                      
+                      deduplicatedTransactions.push(...consumptions);
+                    } 
+                    // Check if we have a consumption that exceeds available stock
+                    // This will result in a separate 'decrease' transaction but with different quantities
+                    else if (group.length > 1 && 
+                             (hasConsumption || hasDecrease) &&
+                             group.some(t => t.new_quantity === 0)) {
+                      // In cases where we consumed more than what's available,
+                      // keep only the consumption transaction that shows the full amount
+                      const consumptionTransactions = group.filter(transaction => 
+                        transaction.transaction_type.toLowerCase().includes('consumption'));
+                      
+                      if (consumptionTransactions.length > 0) {
+                        // Prefer keeping consumption transactions when available
+                        if (DEBUG) {
+                          console.log('Found over-consumption pattern:');
+                          console.log('- All transactions in group:', group);
+                          console.log('- Keeping consumptions only:', consumptionTransactions);
+                        }
+                        deduplicatedTransactions.push(...consumptionTransactions);
+                      } else {
+                        // Otherwise, find the transaction with the largest quantity (to show the full consumption amount)
+                        const sortedByQuantity = [...group].sort(
+                          (a, b) => Math.abs(b.quantity) - Math.abs(a.quantity)
+                        );
+                        
+                        if (DEBUG) {
+                          console.log('Found excess consumption with no consumption label:');
+                          console.log('- All transactions in group:', group);
+                          console.log('- Keeping largest quantity transaction:', sortedByQuantity[0]);
+                        }
+                        
+                        deduplicatedTransactions.push(sortedByQuantity[0]);
+                      }
+                    } else {
+                      // Otherwise keep the most recent transaction from the group
+                      const sortedGroup = [...group].sort(
+                        (a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime()
+                      );
+                      
+                      if (DEBUG) {
+                        console.log('Other duplicate group - keeping most recent:');
+                        console.log('- All transactions in group:', group);
+                        console.log('- Keeping:', sortedGroup[0]);
+                      }
+                      
+                      deduplicatedTransactions.push(sortedGroup[0]);
                     }
                   }
-                  
-                  // For consumption transactions, check if we should replace a decrease
-                  if (transaction.transaction_type.toLowerCase().includes('consumption')) {
-                    // Find and remove any matching decrease transactions
-                    const withoutDecrease = result.filter(t => 
-                      !(t.transaction_type.toLowerCase().includes('decrease') && 
-                        t.reference_id === transaction.reference_id &&
-                        Math.abs(t.quantity) === Math.abs(transaction.quantity))
-                    );
-                    
-                    return [...withoutDecrease, transaction];
-                  }
-                  
-                  // For all other transactions, just add them
-                  return [...result, transaction];
-                }, [] as typeof transactionData.transactions)
-                .map((transaction) => {
+                });
+                
+                // Sort by transaction date (newest first)
+                const finalTransactions = deduplicatedTransactions.sort(
+                  (a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime()
+                );
+                
+                if (DEBUG) {
+                  console.log(`Deduplication complete. Reduced from ${transactionData?.transactions.length} to ${finalTransactions.length} transactions`);
+                  console.log('===== END TRANSACTION HISTORY DEDUPLICATION =====');
+                }
+                
+                return finalTransactions;
+              })()).map((transaction) => {
                 const typeInfo = getTransactionTypeColor(transaction.transaction_type);
                 const { icon: Icon } = typeInfo;
                 const isNegative = transaction.quantity < 0;

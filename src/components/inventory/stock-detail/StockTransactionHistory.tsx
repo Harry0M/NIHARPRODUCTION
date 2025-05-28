@@ -277,41 +277,125 @@ export const StockTransactionHistory = ({
         </div>
         
         <div className="space-y-3">
-              {/* Deduplicate transactions to only show consumption (not decrease) when both exist */}
-              {transactionLogs
-                // Group transactions by reference_id and timestamp proximity
-                .reduce((result, log) => {
-                  // Skip if this is a decrease and we already added its consumption pair
-                  const isDecrease = log.transaction_type.toLowerCase().includes('decrease');
-                  if (isDecrease) {
-                    // Check if we already have a consumption with matching reference
-                    const hasMatchingConsumption = result.some(t => {
-                      return t.reference_id === log.reference_id && 
-                             t.transaction_type.toLowerCase().includes('consumption') &&
-                             Math.abs(t.quantity) === Math.abs(log.quantity);
-                    });
+              {/* Deduplicate transactions to avoid showing the same transaction with different labels */}
+              {(() => {
+                // Enable this for deep debugging
+                const DEBUG = true;
+                
+                if (DEBUG) {
+                  console.log('===== TRANSACTION DEDUPLICATION DEBUG =====');
+                  console.log(`Starting with ${transactionLogs.length} transaction logs`);
+                  console.log('All transaction logs:', transactionLogs);
+                }
+                
+                // First, group transactions by their numerical characteristics AND time proximity
+                const groupedByQuantity: { [key: string]: TransactionLog[] } = {};
+                
+                // Sort by transaction date to process in chronological order
+                const chronologicalLogs = [...transactionLogs].sort((a, b) => 
+                  new Date(a.transaction_date).getTime() - new Date(b.transaction_date).getTime()
+                );
+                
+                // Create groups of transactions with same numerical values and close timestamps
+                chronologicalLogs.forEach(log => {
+                  let foundGroup = false;
+                  const logTime = new Date(log.transaction_date).getTime();
+                  
+                  // Check existing groups for a match based on quantity and time proximity
+                  Object.keys(groupedByQuantity).forEach(key => {
+                    if (foundGroup) return; // Skip if already found a group
                     
-                    if (hasMatchingConsumption) {
-                      return result; // Skip this decrease transaction
+                    const group = groupedByQuantity[key];
+                    if (group.length === 0) return;
+                    
+                    // Check first transaction in the group to see if this log belongs with it
+                    const firstLog = group[0];
+                    const firstTime = new Date(firstLog.transaction_date).getTime();
+                    
+                    // If quantities match exactly and time is within 1 minute, add to this group
+                    if (Math.abs(firstLog.quantity - log.quantity) < 0.01 &&
+                        Math.abs(firstLog.previous_quantity - log.previous_quantity) < 0.01 &&
+                        Math.abs(firstLog.new_quantity - log.new_quantity) < 0.01 &&
+                        Math.abs(logTime - firstTime) < 60000) { // 1 minute
+                      
+                      groupedByQuantity[key].push(log);
+                      foundGroup = true;
                     }
+                  });
+                  
+                  // If no matching group found, create a new one
+                  if (!foundGroup) {
+                    const key = `${log.previous_quantity}-${log.new_quantity}-${log.quantity}-${logTime}`;
+                    groupedByQuantity[key] = [log];
+                  }
+                });
+                
+                if (DEBUG) {
+                  console.log('Grouped transactions by numerical values:');
+                  Object.keys(groupedByQuantity).forEach(key => {
+                    console.log(`Group ${key}:`, groupedByQuantity[key]);
+                  });
+                }
+                
+                // Process each group to eliminate duplicates
+                const deduplicatedLogs: TransactionLog[] = [];
+                
+                Object.values(groupedByQuantity).forEach(group => {
+                  if (group.length === 1) {
+                    // If only one transaction in the group, keep it
+                    deduplicatedLogs.push(group[0]);
+                    if (DEBUG) console.log(`Single transaction in group - keeping:`, group[0]);
+                    return;
                   }
                   
-                  // For consumption transactions, check if we should replace a decrease
-                  if (log.transaction_type.toLowerCase().includes('consumption')) {
-                    // Find and remove any matching decrease transactions
-                    const withoutDecrease = result.filter(t => 
-                      !(t.transaction_type.toLowerCase().includes('decrease') && 
-                        t.reference_id === log.reference_id &&
-                        Math.abs(t.quantity) === Math.abs(log.quantity))
+                  // Check for purchase + manual entry duplicate pattern
+                  const hasPurchase = group.some(log => 
+                    log.transaction_type.toLowerCase().includes('purchase'));
+                  const hasManual = group.some(log => 
+                    log.transaction_type.toLowerCase().includes('manual') || 
+                    log.transaction_type.toLowerCase().includes('adjustment'));
+                  
+                  if (hasPurchase && hasManual) {
+                    // Keep only purchase transactions from this group
+                    const purchases = group.filter(log => 
+                      log.transaction_type.toLowerCase().includes('purchase'));
+                    
+                    if (DEBUG) {
+                      console.log('Found purchase + manual entry group:');
+                      console.log('- All logs in group:', group);
+                      console.log('- Keeping only purchases:', purchases);
+                    }
+                    
+                    deduplicatedLogs.push(...purchases);
+                  } else {
+                    // Otherwise keep the most recent transaction from the group
+                    const sortedGroup = [...group].sort(
+                      (a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime()
                     );
                     
-                    return [...withoutDecrease, log];
+                    if (DEBUG) {
+                      console.log('Other duplicate group - keeping most recent:');
+                      console.log('- All logs in group:', group);
+                      console.log('- Keeping:', sortedGroup[0]);
+                    }
+                    
+                    deduplicatedLogs.push(sortedGroup[0]);
                   }
-                  
-                  // For all other transactions, just add them
-                  return [...result, log];
-                }, [] as TransactionLog[])
-                .map((log) => {
+                });
+                
+                // Sort by transaction date (newest first)
+                const finalSortedLogs = deduplicatedLogs.sort(
+                  (a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime()
+                );
+                
+                if (DEBUG) {
+                  console.log(`Deduplication complete. Reduced from ${transactionLogs.length} to ${finalSortedLogs.length} logs`);
+                  console.log('Final deduplicated logs:', finalSortedLogs);
+                  console.log('===== END TRANSACTION DEDUPLICATION DEBUG =====');
+                }
+                
+                return finalSortedLogs;
+              })().map((log) => {
               const typeInfo = getTransactionTypeLabel(log.transaction_type);
               const { icon: Icon } = typeInfo;
               const isRecent = new Date(log.transaction_date) > new Date(Date.now() - 3600000 * 24);

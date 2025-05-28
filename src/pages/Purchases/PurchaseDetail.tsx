@@ -202,9 +202,9 @@ const PurchaseDetail = () => {
       // Check final transaction logs
       const { data: finalLogs, error: finalLogError } = await supabase
         .from("inventory_transaction_log")
-        .select("id, material_id, quantity, reference_id, reference_type, notes, created_at")
+        .select("id, material_id, quantity, reference_id, reference_type, notes, transaction_date")
         .eq("reference_id", id)
-        .order('created_at', { ascending: false });
+        .order('transaction_date', { ascending: false });
         
       if (finalLogError) {
         console.error("Error checking final transaction logs:", finalLogError);

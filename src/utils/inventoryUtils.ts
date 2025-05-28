@@ -215,7 +215,8 @@ export const updateInventoryForOrderComponents = async (
       }
       
       const previousQuantity = materialData.quantity;
-      const newQuantity = Math.max(0, previousQuantity - consumption);
+      // Allow negative inventory to track over-consumption
+      const newQuantity = previousQuantity - consumption;
       
       // Call the RPC function to record the usage
       const { error: rpcError } = await supabaseClient.rpc(
