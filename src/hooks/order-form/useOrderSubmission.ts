@@ -3,8 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { showToast } from "@/components/ui/enhanced-toast";
 import { OrderFormData } from "@/types/order";
 import { validateComponentData, convertStringToNumeric, debugAllComponents } from "@/utils/orderFormUtils";
-import { updateInventoryForOrderComponents } from "@/utils/inventoryUtils";
-import { recordOrderMaterialUsageWithNegatives } from "@/utils/allowNegativeInventory";
 
 interface UseOrderSubmissionProps {
   orderDetails: OrderFormData;
@@ -368,52 +366,9 @@ export function useOrderSubmission({
               type: "success"
             });
             
-            // Update inventory based on component consumption - ALLOW NEGATIVE QUANTITIES
-            console.log("Updating inventory based on component consumption - with negative quantities allowed");
-            
-            try {
-              // Process each component with material consumption
-              for (const component of componentsToInsert) {
-                if (component.material_id && component.consumption > 0) {
-                  console.log(`Processing material consumption for ${component.component_type}:`, {
-                    materialId: component.material_id,
-                    consumption: component.consumption,
-                    orderId: orderResult.id,
-                    orderNumber: orderResult.order_number
-                  });
-                  
-                  // Use our custom function that allows negative inventory
-                  const result = await recordOrderMaterialUsageWithNegatives(
-                    orderResult.id,
-                    orderResult.order_number,
-                    component.material_id,
-                    component.consumption,
-                    `Material used for ${component.component_type} component`
-                  );
-                  
-                  if (!result.success) {
-                    console.warn(`Warning: Inventory update failed for component ${component.component_type}:`, result);
-                  } else {
-                    console.log(`Inventory updated for component ${component.component_type}:`, {
-                      previousQuantity: result.previousQuantity,
-                      newQuantity: result.newQuantity,
-                      consumed: component.consumption
-                    });
-                  }
-                }
-              }
-              
-              console.log("All inventory updates completed");
-            } catch (inventoryError: any) {
-              console.error("Error updating inventory:", inventoryError);
-              
-              // Show warning but don't fail the order creation
-              showToast({
-                title: "Warning",
-                description: "Order created but inventory update failed: " + inventoryError.message,
-                type: "warning"
-              });
-            }
+            // NOTE: Material consumption is now calculated when job cards are created, not at order creation
+            // This ensures inventory is only decremented when production actually begins
+            console.log("Material consumption will be calculated when job cards are created for this order");
           }
         } else {
           console.warn("No components to insert after validation - all components failed validation");

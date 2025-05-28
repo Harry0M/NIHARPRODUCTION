@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { recordOrderMaterialUsageWithNegatives } from "@/utils/allowNegativeInventory";
 
 interface Order {
   id: string;
@@ -129,6 +130,106 @@ const JobCardNew = () => {
       
       if (!jobCardResult) {
         throw new Error("Failed to create job card after multiple attempts");
+      }
+      
+      // After job card is created, calculate and record material consumption
+      try {
+        console.log("Fetching order components for consumption calculation");
+        const { data: components, error: componentsError } = await supabase
+          .from("order_components")
+          .select("*")
+          .eq("order_id", selectedOrderId);
+          
+        if (componentsError) {
+          console.error("Error fetching order components:", componentsError);
+          throw componentsError;
+        }
+        
+        console.log(`Found ${components?.length || 0} components for order ${selectedOrderId}`);
+        
+        if (components && components.length > 0) {
+          // Get the order number for reference
+          const { data: orderData, error: orderError } = await supabase
+            .from("orders")
+            .select("order_number")
+            .eq("id", selectedOrderId)
+            .single();
+            
+          if (orderError) {
+            console.error("Error fetching order details:", orderError);
+            throw orderError;
+          }
+          
+          const orderNumber = orderData.order_number;
+          console.log(`Processing material consumption for order #${orderNumber}`);
+          
+          // Track material consumption results
+          const consumptionResults = [];
+          let successCount = 0;
+          let errorCount = 0;
+          
+          // Process each component with material consumption
+          for (const component of components) {
+            if (component.material_id && component.consumption > 0) {
+              console.log(`Processing consumption for ${component.component_type} component:`, {
+                materialId: component.material_id,
+                consumption: component.consumption
+              });
+              
+              try {
+                // Use the function that allows negative inventory
+                const result = await recordOrderMaterialUsageWithNegatives(
+                  selectedOrderId,
+                  orderNumber,
+                  component.material_id,
+                  component.consumption,
+                  `Material used for ${component.component_type} component (Job Card: ${jobCardResult.job_number || 'New Job'})`
+                );
+                
+                if (!result.success) {
+                  console.warn(`Warning: Inventory update failed for component ${component.component_type}:`, result);
+                  errorCount++;
+                } else {
+                  console.log(`Inventory updated for component ${component.component_type}:`, {
+                    previousQuantity: result.previousQuantity,
+                    newQuantity: result.newQuantity,
+                    consumed: component.consumption
+                  });
+                  successCount++;
+                  consumptionResults.push(result);
+                }
+              } catch (materialError) {
+                console.error(`Error processing material ${component.material_id}:`, materialError);
+                errorCount++;
+              }
+            }
+          }
+          
+          console.log(`Material consumption complete: ${successCount} successful, ${errorCount} errors`);
+          
+          // Show toast with consumption summary
+          if (successCount > 0) {
+            toast({
+              title: "Material consumption recorded",
+              description: `Updated inventory for ${successCount} materials${errorCount > 0 ? ` (${errorCount} errors)` : ''}`,
+            });
+          } else if (errorCount > 0) {
+            toast({
+              title: "Warning: Material consumption issues",
+              description: `Failed to update inventory for ${errorCount} materials`,
+              variant: "destructive",
+            });
+          }
+        } else {
+          console.log("No components found for this order, skipping material consumption");
+        }
+      } catch (consumptionError: any) {
+        console.error("Error processing material consumption:", consumptionError);
+        toast({
+          title: "Warning: Material consumption issue",
+          description: `Job card created but failed to process material consumption: ${consumptionError.message}`,
+          variant: "destructive",
+        });
       }
       
       toast({
