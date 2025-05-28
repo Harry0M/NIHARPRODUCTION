@@ -29,6 +29,7 @@ const navItems = [
   { name: "Partners", path: "/partners", icon: Users },
   { name: "Dispatch", path: "/dispatch", icon: Truck },
   { name: "Inventory", path: "/inventory", icon: Database },
+  { name: "Purchases", path: "/purchases", icon: ShoppingCart },
   { name: "Analysis", path: "/analysis", icon: BarChart },
   { name: "Settings", path: "/settings", icon: Settings },
   { name: "Companies", path: "/companies", icon: Building },

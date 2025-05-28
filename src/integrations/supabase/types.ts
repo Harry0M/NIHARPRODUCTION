@@ -1287,6 +1287,107 @@ export type Database = {
           },
         ]
       }
+      purchases: {
+        Row: {
+          id: string
+          supplier_id: string
+          purchase_date: string
+          transport_charge: number | null
+          subtotal: number
+          total_amount: number
+          created_by: string | null
+          created_at: string
+          updated_at: string
+          status: string
+          notes: string | null
+          purchase_number: string
+        }
+        Insert: {
+          id?: string
+          supplier_id: string
+          purchase_date: string
+          transport_charge?: number | null
+          subtotal: number
+          total_amount: number
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+          status?: string
+          notes?: string | null
+          purchase_number?: string
+        }
+        Update: {
+          id?: string
+          supplier_id?: string
+          purchase_date?: string
+          transport_charge?: number | null
+          subtotal?: number
+          total_amount?: number
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+          status?: string
+          notes?: string | null
+          purchase_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchases_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      purchase_items: {
+        Row: {
+          id: string
+          purchase_id: string
+          material_id: string
+          quantity: number
+          unit_price: number
+          line_total: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          purchase_id: string
+          material_id: string
+          quantity: number
+          unit_price: number
+          line_total: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          purchase_id?: string
+          material_id?: string
+          quantity?: number
+          unit_price?: number
+          line_total?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_items_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_items_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       orders: {
         Row: {
           bag_length: number

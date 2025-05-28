@@ -19,6 +19,9 @@ import CatalogNew from "@/pages/Inventory/CatalogNew";
 import CatalogDetail from "@/pages/Inventory/CatalogDetail";
 import CatalogEdit from "@/pages/Inventory/CatalogEdit";
 import CatalogOrders from "@/pages/Inventory/CatalogOrders";
+import PurchaseList from "@/pages/Purchases/PurchaseList";
+import PurchaseNew from "@/pages/Purchases/PurchaseNew";
+import PurchaseDetail from "@/pages/Purchases/PurchaseDetail";
 import ProductionDashboard from "@/pages/Production/ProductionDashboard";
 import JobCardList from "@/pages/Production/JobCardList";
 import JobCardNew from "@/pages/Production/JobCardNew";
@@ -132,6 +135,14 @@ const routes = [
               { path: "new", element: <PartnerNew /> },
               { path: ":id/edit", element: <PartnerNew /> },
               { path: ":id/performance", element: <PartnerPerformance /> },
+            ],
+          },
+          {
+            path: "purchases",
+            children: [
+              { path: "", element: <PurchaseList /> },
+              { path: "new", element: <PurchaseNew /> },
+              { path: ":id", element: <PurchaseDetail /> },
             ],
           },
           // Redirects from old routes
