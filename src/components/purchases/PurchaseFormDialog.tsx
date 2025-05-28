@@ -58,7 +58,7 @@ interface PurchaseFormDialogProps {
 export function PurchaseFormDialog({ open, onOpenChange }: PurchaseFormDialogProps) {
   const { createPurchase, isCreating } = usePurchases();
   const { data: suppliers = [] } = useSuppliers();
-  const { data: materials = [] } = useInventoryStocks();
+  const { stocks: materials = [] } = useInventoryStocks();
   
   const [items, setItems] = useState([
     { material_id: "", quantity: 0, unit_price: 0 }
@@ -67,7 +67,7 @@ export function PurchaseFormDialog({ open, onOpenChange }: PurchaseFormDialogPro
   const form = useForm<PurchaseFormData>({
     resolver: zodResolver(purchaseSchema),
     defaultValues: {
-      supplier_id: "",
+      supplier_id: "none",
       purchase_date: new Date().toISOString().split('T')[0],
       transport_charge: 0,
       notes: "",
@@ -158,7 +158,7 @@ export function PurchaseFormDialog({ open, onOpenChange }: PurchaseFormDialogPro
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">No Supplier</SelectItem>
+                        <SelectItem value="none">No Supplier</SelectItem>
                         {suppliers.map((supplier) => (
                           <SelectItem key={supplier.id} value={supplier.id}>
                             {supplier.name}
