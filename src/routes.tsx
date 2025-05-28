@@ -1,3 +1,4 @@
+
 import { Navigate } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import AuthLayout from "@/components/layout/AuthLayout";
@@ -43,7 +44,6 @@ import RefillAnalysis from "@/pages/Analysis/RefillAnalysis";
 import TransactionHistory from "@/pages/Analysis/TransactionHistory";
 import PartnersAnalysis from "@/pages/Analysis/PartnersAnalysis";
 import WastageAnalysis from "@/pages/Analysis/WastageAnalysis";
-import PurchaseList from "@/pages/Purchases/PurchaseList";
 
 const routes = [
   {
@@ -101,12 +101,6 @@ const routes = [
             children: [
               { path: "", element: <Dispatch /> },
               { path: ":id", element: <DispatchDetail /> },
-            ],
-          },
-          {
-            path: "purchases",
-            children: [
-              { path: "", element: <PurchaseList /> },
             ],
           },
           {

@@ -1139,7 +1139,6 @@ export type Database = {
           consumption: number | null
           created_at: string | null
           custom_name: string | null
-          formula: string | null
           from_template: boolean | null
           gsm: number | null
           id: string
@@ -1158,7 +1157,6 @@ export type Database = {
           consumption?: number | null
           created_at?: string | null
           custom_name?: string | null
-          formula?: string | null
           from_template?: boolean | null
           gsm?: number | null
           id?: string
@@ -1177,7 +1175,6 @@ export type Database = {
           consumption?: number | null
           created_at?: string | null
           custom_name?: string | null
-          formula?: string | null
           from_template?: boolean | null
           gsm?: number | null
           id?: string
@@ -1613,128 +1610,6 @@ export type Database = {
         }
         Relationships: []
       }
-      purchase_items: {
-        Row: {
-          created_at: string
-          id: string
-          line_total: number
-          material_id: string
-          purchase_id: string
-          quantity: number
-          unit_price: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          line_total: number
-          material_id: string
-          purchase_id: string
-          quantity: number
-          unit_price: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          line_total?: number
-          material_id?: string
-          purchase_id?: string
-          quantity?: number
-          unit_price?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "purchase_items_material_id_fkey"
-            columns: ["material_id"]
-            isOneToOne: false
-            referencedRelation: "inventory"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "purchase_items_material_id_fkey"
-            columns: ["material_id"]
-            isOneToOne: false
-            referencedRelation: "material_consumption_analysis"
-            referencedColumns: ["material_id"]
-          },
-          {
-            foreignKeyName: "purchase_items_material_id_fkey"
-            columns: ["material_id"]
-            isOneToOne: false
-            referencedRelation: "material_consumption_summary"
-            referencedColumns: ["material_id"]
-          },
-          {
-            foreignKeyName: "purchase_items_material_id_fkey"
-            columns: ["material_id"]
-            isOneToOne: false
-            referencedRelation: "material_usage_summary"
-            referencedColumns: ["material_id"]
-          },
-          {
-            foreignKeyName: "purchase_items_purchase_id_fkey"
-            columns: ["purchase_id"]
-            isOneToOne: false
-            referencedRelation: "purchases"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      purchases: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          id: string
-          notes: string | null
-          purchase_date: string
-          purchase_number: string
-          status: string | null
-          subtotal: number
-          supplier_id: string | null
-          total_amount: number
-          transport_charge: number | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          notes?: string | null
-          purchase_date?: string
-          purchase_number: string
-          status?: string | null
-          subtotal?: number
-          supplier_id?: string | null
-          total_amount?: number
-          transport_charge?: number | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          notes?: string | null
-          purchase_date?: string
-          purchase_number?: string
-          status?: string | null
-          subtotal?: number
-          supplier_id?: string | null
-          total_amount?: number
-          transport_charge?: number | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "purchases_supplier_id_fkey"
-            columns: ["supplier_id"]
-            isOneToOne: false
-            referencedRelation: "suppliers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       stitching_jobs: {
         Row: {
           border_quantity: number | null
@@ -2098,13 +1973,6 @@ export type Database = {
       }
     }
     Functions: {
-      bulk_delete_orders: {
-        Args: { order_ids: string[] }
-        Returns: {
-          deleted_count: number
-          status: string
-        }[]
-      }
       calculate_consumption: {
         Args: {
           p_length: number
@@ -2134,6 +2002,10 @@ export type Database = {
       delete_order_completely: {
         Args: { order_id: string }
         Returns: boolean
+      }
+      bulk_delete_orders: {
+        Args: { order_ids: string[] }
+        Returns: { deleted_count: number, status: string }[]
       }
       emergency_delete_order: {
         Args: { target_id: string }
