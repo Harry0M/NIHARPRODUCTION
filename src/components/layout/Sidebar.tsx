@@ -1,152 +1,109 @@
 
-import React from "react";
-import { useLocation, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+// Using NavLink for client-side routing without page refreshes
+import { Link, useLocation } from "react-router-dom";
 import { 
+  Package, 
+  Layers, 
   LayoutDashboard, 
-  ShoppingBag, 
-  Building2, 
   Users, 
-  TrendingUp, 
-  BarChart3,
-  Package,
-  Clipboard,
-  Truck,
-  ShoppingCart,
+  Truck, 
+  Database, 
   Settings,
-  ChevronDown,
-  ChevronRight
+  ChevronLeft,
+  ChevronRight,
+  Factory,
+  FileText,
+  ShoppingCart,
+  Building,
+  BarChart
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useAuth } from "@/context/AuthContext";
 
-const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  {
-    name: "Analysis",
-    icon: BarChart3,
-    children: [
-      { name: "Analysis Dashboard", href: "/dashboard/analysis" },
-      { name: "Material Consumption", href: "/dashboard/analysis/material-consumption" },
-      { name: "Order Consumption", href: "/dashboard/analysis/order-consumption" },
-      { name: "Refill Analysis", href: "/dashboard/analysis/refill" },
-      { name: "Wastage Analysis", href: "/dashboard/analysis/wastage" },
-      { name: "Transaction History", href: "/dashboard/analysis/transactions" },
-      { name: "Inventory Value", href: "/dashboard/analysis/inventory-value" },
-      { name: "Partners Analysis", href: "/dashboard/analysis/partners" },
-    ],
-  },
-  {
-    name: "Inventory",
-    icon: Package,
-    children: [
-      { name: "Stock Management", href: "/dashboard/inventory" },
-      { name: "Product Catalog", href: "/dashboard/catalog" },
-    ],
-  },
-  { name: "Orders", href: "/dashboard/orders", icon: Clipboard },
-  { name: "Production", href: "/dashboard/production", icon: Settings },
-  {
-    name: "Partners",
-    icon: Users,
-    children: [
-      { name: "Companies", href: "/dashboard/companies" },
-      { name: "Suppliers", href: "/dashboard/suppliers" },
-      { name: "Vendors", href: "/dashboard/vendors" },
-      { name: "All Partners", href: "/dashboard/partners" },
-    ],
-  },
-  { name: "Purchases", href: "/dashboard/purchases", icon: ShoppingCart },
+const navItems = [
+  { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+  { name: "Orders", path: "/orders", icon: Package },
+  { name: "Production", path: "/production", icon: Factory },
+  { name: "Job Cards", path: "/production/job-cards", icon: FileText },
+  { name: "Partners", path: "/partners", icon: Users },
+  { name: "Dispatch", path: "/dispatch", icon: Truck },
+  { name: "Inventory", path: "/inventory", icon: Database },
+  { name: "Analysis", path: "/analysis", icon: BarChart },
+  { name: "Settings", path: "/settings", icon: Settings },
+  { name: "Companies", path: "/companies", icon: Building },
 ];
 
-export const Sidebar = () => {
+const Sidebar = () => {
+  const [collapsed, setCollapsed] = useState(false);
+  const { signOut } = useAuth();
   const location = useLocation();
-  const [openSections, setOpenSections] = useState<string[]>([]);
-
-  const toggleSection = (sectionName: string) => {
-    setOpenSections(prev => 
-      prev.includes(sectionName) 
-        ? prev.filter(name => name !== sectionName)
-        : [...prev, sectionName]
-    );
-  };
-
-  const isActivePath = (href: string) => {
-    return location.pathname === href || location.pathname.startsWith(href + "/");
-  };
-
-  const isSectionActive = (children: any[]) => {
-    return children.some(child => isActivePath(child.href));
-  };
 
   return (
-    <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
-      <div className="flex-1 flex flex-col min-h-0 bg-white border-r border-gray-200">
-        <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-          <div className="flex items-center flex-shrink-0 px-4">
-            <h1 className="text-xl font-bold text-gray-900">ERP System</h1>
-          </div>
-          <nav className="mt-5 flex-1 px-2 space-y-1">
-            {navigation.map((item) => {
-              if (item.children) {
-                const isOpen = openSections.includes(item.name);
-                const isActive = isSectionActive(item.children);
-                
-                return (
-                  <Collapsible key={item.name} open={isOpen} onOpenChange={() => toggleSection(item.name)}>
-                    <CollapsibleTrigger className={cn(
-                      "w-full flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors",
-                      isActive ? "bg-blue-50 text-blue-700" : "text-gray-600"
-                    )}>
-                      <div className="flex items-center">
-                        <item.icon className="mr-3 h-5 w-5" />
-                        {item.name}
-                      </div>
-                      {isOpen ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )}
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="ml-8 mt-1 space-y-1">
-                      {item.children.map((child) => (
-                        <Link
-                          key={child.name}
-                          to={child.href}
-                          className={cn(
-                            "block px-2 py-1 text-sm rounded-md hover:bg-gray-50 transition-colors",
-                            isActivePath(child.href)
-                              ? "bg-blue-50 text-blue-700 font-medium"
-                              : "text-gray-600"
-                          )}
-                        >
-                          {child.name}
-                        </Link>
-                      ))}
-                    </CollapsibleContent>
-                  </Collapsible>
-                );
-              }
-
-              return (
+    <div
+      className={cn(
+        "bg-sidebar/95 backdrop-blur-sm text-sidebar-foreground border-r border-border flex flex-col transition-all duration-300 shadow-lg",
+        collapsed ? "w-16" : "w-64"
+      )}
+    >
+      <div className="flex items-center justify-between h-16 px-4 border-b border-border">
+        <h1 className={cn("font-bold text-lg transition-opacity", collapsed ? "opacity-0 w-0" : "opacity-100")}>
+          Nihar
+        </h1>
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="p-1 rounded-md hover:bg-sidebar-accent"
+        >
+          {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+        </button>
+      </div>
+      <nav className="flex-1 py-4 overflow-y-auto">
+        <ul className="space-y-1 px-2">
+          {navItems.map((item) => {
+            // Check if current path matches this navigation item using react-router's location
+            const isActive = location.pathname.startsWith(item.path);
+            
+            return (
+              <li key={item.name}>
                 <Link
-                  key={item.name}
-                  to={item.href}
+                  to={item.path}
                   className={cn(
-                    "flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors",
-                    isActivePath(item.href)
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-gray-600"
+                    "flex items-center px-3 py-2 rounded-md transition-all duration-200",
+                    isActive
+                      ? "bg-sidebar-accent/80 text-sidebar-accent-foreground font-medium shadow-sm"
+                      : "hover:bg-sidebar-accent/50 text-sidebar-foreground/80 hover:shadow-sm"
                   )}
                 >
-                  <item.icon className="mr-3 h-5 w-5" />
-                  {item.name}
+                  <item.icon size={20} className={cn("flex-shrink-0", collapsed ? "mr-0" : "mr-3")} />
+                  <span className={cn("transition-opacity", collapsed ? "opacity-0 w-0" : "opacity-100")}>
+                    {item.name}
+                  </span>
                 </Link>
-              );
-            })}
-          </nav>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      <div className="p-4 border-t border-border/50">
+        <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-between")}>
+          <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center ring-2 ring-primary/20">
+            <span className="font-medium text-sm">BM</span>
+          </div>
+          {!collapsed && (
+            <div className="ml-3">
+              <button 
+                onClick={signOut}
+                className="text-sm text-sidebar-foreground/80 hover:text-primary transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 };
+
+export default Sidebar;
