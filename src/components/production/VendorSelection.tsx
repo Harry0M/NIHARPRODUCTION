@@ -140,7 +140,7 @@ export const VendorSelection = ({
     <div className={`flex gap-2 ${className}`}>
       <div className="flex-1">
         <Select
-          value={vendors.some(v => v.name === value) ? value : ""}
+          value={vendors.some(v => v.name === value) ? value : "none"}
           onValueChange={handleSelectChange}
           disabled={isLoading}
         >
@@ -148,6 +148,7 @@ export const VendorSelection = ({
             <SelectValue placeholder={placeholder} />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="none">No Vendor Selected</SelectItem>
             {vendors.map((vendor) => (
               <SelectItem key={vendor.id} value={vendor.name}>
                 {vendor.name}
