@@ -67,7 +67,7 @@ export function PurchaseFormDialog({ open, onOpenChange }: PurchaseFormDialogPro
   const form = useForm<PurchaseFormData>({
     resolver: zodResolver(purchaseSchema),
     defaultValues: {
-      supplier_id: "",
+      supplier_id: "none",
       purchase_date: new Date().toISOString().split('T')[0],
       transport_charge: 0,
       notes: "",
@@ -94,18 +94,6 @@ export function PurchaseFormDialog({ open, onOpenChange }: PurchaseFormDialogPro
     const newItems = [...items];
     newItems[index] = { ...newItems[index], [field]: value };
     setItems(newItems);
-  };
-
-  const getSelectedMaterial = (materialId: string) => {
-    return materials.find(m => m.id === materialId);
-  };
-
-  const getAlternateQuantity = (materialId: string, quantity: number) => {
-    const material = getSelectedMaterial(materialId);
-    if (!material || !material.conversion_rate || !material.alternate_unit) {
-      return null;
-    }
-    return (quantity * material.conversion_rate).toFixed(2);
   };
 
   const calculateTotals = () => {
@@ -163,14 +151,14 @@ export function PurchaseFormDialog({ open, onOpenChange }: PurchaseFormDialogPro
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Supplier</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a supplier" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">No Supplier</SelectItem>
+                        <SelectItem value="none">No Supplier</SelectItem>
                         {suppliers.map((supplier) => (
                           <SelectItem key={supplier.id} value={supplier.id}>
                             {supplier.name}
@@ -209,94 +197,67 @@ export function PurchaseFormDialog({ open, onOpenChange }: PurchaseFormDialogPro
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {items.map((item, index) => {
-                  const selectedMaterial = getSelectedMaterial(item.material_id);
-                  const alternateQty = getAlternateQuantity(item.material_id, item.quantity);
-                  
-                  return (
-                    <div key={index} className="grid grid-cols-1 gap-4 p-4 border rounded">
-                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                        <div className="md:col-span-2">
-                          <label className="text-sm font-medium">Material</label>
-                          <Select
-                            value={item.material_id}
-                            onValueChange={(value) => updateItem(index, "material_id", value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select material" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {materials.map((material) => (
-                                <SelectItem key={material.id} value={material.id}>
-                                  {material.material_name} 
-                                  {material.color && ` - ${material.color}`}
-                                  {material.gsm && ` (${material.gsm} GSM)`}
-                                  {` [${material.unit}]`}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                {items.map((item, index) => (
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded">
+                    <div>
+                      <label className="text-sm font-medium">Material</label>
+                      <Select
+                        value={item.material_id}
+                        onValueChange={(value) => updateItem(index, "material_id", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select material" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {materials.map((material) => (
+                            <SelectItem key={material.id} value={material.id}>
+                              {material.material_name} - {material.color} ({material.unit})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                        <div>
-                          <label className="text-sm font-medium">
-                            Quantity {selectedMaterial && `(${selectedMaterial.unit})`}
-                          </label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={item.quantity}
-                            onChange={(e) => updateItem(index, "quantity", parseFloat(e.target.value) || 0)}
-                          />
-                          {alternateQty && selectedMaterial?.alternate_unit && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              = {alternateQty} {selectedMaterial.alternate_unit}
-                            </p>
-                          )}
-                        </div>
+                    <div>
+                      <label className="text-sm font-medium">Quantity</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={item.quantity}
+                        onChange={(e) => updateItem(index, "quantity", parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
 
-                        <div>
-                          <label className="text-sm font-medium">Unit Price (₹)</label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={item.unit_price}
-                            onChange={(e) => updateItem(index, "unit_price", parseFloat(e.target.value) || 0)}
-                          />
-                        </div>
+                    <div>
+                      <label className="text-sm font-medium">Unit Price</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={item.unit_price}
+                        onChange={(e) => updateItem(index, "unit_price", parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
 
-                        <div className="flex items-end">
-                          <div className="flex-1">
-                            <label className="text-sm font-medium">Line Total</label>
-                            <div className="text-lg font-semibold">
-                              ₹{(item.quantity * item.unit_price).toFixed(2)}
-                            </div>
-                          </div>
-                          {items.length > 1 && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => removeItem(index)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
+                    <div className="flex items-end">
+                      <div className="flex-1">
+                        <label className="text-sm font-medium">Line Total</label>
+                        <div className="text-lg font-semibold">
+                          ₹{(item.quantity * item.unit_price).toFixed(2)}
                         </div>
                       </div>
-                      
-                      {selectedMaterial && (
-                        <div className="bg-muted/50 p-3 rounded text-sm">
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                            <div>Current Stock: {selectedMaterial.quantity} {selectedMaterial.unit}</div>
-                            {selectedMaterial.color && <div>Color: {selectedMaterial.color}</div>}
-                            {selectedMaterial.gsm && <div>GSM: {selectedMaterial.gsm}</div>}
-                          </div>
-                        </div>
+                      {items.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeItem(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       )}
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </CardContent>
             </Card>
 
@@ -306,7 +267,7 @@ export function PurchaseFormDialog({ open, onOpenChange }: PurchaseFormDialogPro
                 name="transport_charge"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Transport Charge (₹)</FormLabel>
+                    <FormLabel>Transport Charge</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -347,7 +308,7 @@ export function PurchaseFormDialog({ open, onOpenChange }: PurchaseFormDialogPro
                     <span>₹{(form.watch("transport_charge") || 0).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-lg font-semibold border-t pt-2">
-                    <span>Total Amount:</span>
+                    <span>Total:</span>
                     <span>₹{total.toFixed(2)}</span>
                   </div>
                 </div>
