@@ -98,7 +98,19 @@ export const BasicInfoFields = () => {
           </FormItem>
         )}
       />
-      {/* Removed GSM field as requested */}
+      <FormField
+        control={control}
+        name="gsm"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>GSM (Grams per Square Meter)</FormLabel>
+            <FormControl>
+              <Input placeholder="e.g., 80, 120, 250" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
     </div>
   );
 };

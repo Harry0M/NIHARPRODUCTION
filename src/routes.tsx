@@ -34,9 +34,11 @@ import DispatchDetail from "@/pages/Production/DispatchDetail";
 import CompanyList from "@/pages/Companies/CompanyList";
 import CompanyNew from "@/pages/Companies/CompanyNew";
 import CompanyDetails from "@/pages/Companies/CompanyDetails";
+import CompanyEdit from "@/pages/Companies/CompanyEdit";
 import CompanyOrders from "@/pages/Companies/CompanyOrders";
 import PartnersList from "@/pages/Partners/PartnersList";
 import PartnerNew from "@/pages/Partners/PartnerNew";
+import PartnerDetails from "@/pages/Partners/PartnerDetails";
 import PartnerPerformance from "@/pages/Analysis/PartnerPerformance";
 import Index from "@/pages/Index";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -127,6 +129,7 @@ const routes = [
               { path: "", element: <CompanyList /> },
               { path: "new", element: <CompanyNew /> },
               { path: ":id", element: <CompanyDetails /> },
+              { path: "edit/:id", element: <CompanyEdit /> },
               { path: ":id/orders", element: <CompanyOrders /> },
             ],
           },
@@ -135,7 +138,8 @@ const routes = [
             children: [
               { path: "", element: <PartnersList /> },
               { path: "new", element: <PartnerNew /> },
-              { path: ":id/edit", element: <PartnerNew /> },
+              { path: ":type/:id", element: <PartnerDetails /> },
+              { path: ":type/:id/edit", element: <PartnerNew /> },
               { path: ":id/performance", element: <PartnerPerformance /> },
             ],
           },

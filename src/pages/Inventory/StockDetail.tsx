@@ -3,7 +3,8 @@ import { useParams } from "react-router-dom";
 import { StockForm } from "@/components/inventory/StockForm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SkeletonForm } from "@/components/ui/skeleton-loader";
-import { AlertCircle, History, Plus, Database } from "lucide-react";
+import { AlertCircle, History, Plus, Database, ShoppingBag } from "lucide-react";
+import { SupplierHistory } from "@/components/inventory/stock-detail/SupplierHistory";
 import { useStockDetail } from "@/hooks/inventory/useStockDetail";
 import { StockInfoGrid } from "@/components/inventory/stock-detail/StockInfoGrid";
 import { Card } from "@/components/ui/card";
@@ -200,12 +201,22 @@ const StockDetail = () => {
                     </div>
                     
                     <StockTransactionHistory 
+                      materialId={id}
                       transactions={transactions || []}
                       transactionLogs={transactionLogs || []}
+                      isLoading={isTransactionsLoading}
                       onRefresh={handleRefreshTransactions}
-                      isLoading={isRefreshing || isTransactionsLoading}
-                      materialId={id}
                     />
+                    
+                    <div className="mt-8">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-medium flex items-center gap-2">
+                          <ShoppingBag className="h-5 w-5" />
+                          Supplier Management
+                        </h3>
+                      </div>
+                      <SupplierHistory materialId={id} onUpdate={() => {}} />
+                    </div>
                   </div>
                 </div>
               ) : (

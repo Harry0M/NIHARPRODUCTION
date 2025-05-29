@@ -62,11 +62,23 @@ const PartnerNew = () => {
   }, [searchParams]);
 
   const fetchPartnerData = async () => {
-    if (!id || !searchParams.get('type')) return;
+    if (!id) return;
     
     setLoading(true);
     try {
-      const tableName = partnerType === 'supplier' ? 'suppliers' : 'vendors';
+      // Determine partner type from URL path params if available
+      const pathType = window.location.pathname.includes('/supplier/') ? 'supplier' : 
+                      window.location.pathname.includes('/vendor/') ? 'vendor' : null;
+                      
+      // Use path type or search param type or current state
+      const effectiveType = pathType || searchParams.get('type') || partnerType;
+      
+      // Update state if needed
+      if (effectiveType === 'supplier' || effectiveType === 'vendor') {
+        setPartnerType(effectiveType);
+      }
+      
+      const tableName = effectiveType === 'supplier' ? 'suppliers' : 'vendors';
       
       const { data, error } = await supabase
         .from(tableName)
@@ -330,19 +342,7 @@ const PartnerNew = () => {
                 />
               </div>
               
-              {partnerType === 'supplier' ? (
-                <div className="grid gap-3">
-                  <Label htmlFor="materials_provided">Materials Provided</Label>
-                  <Textarea
-                    id="materials_provided"
-                    name="materials_provided"
-                    value={formData.materials_provided}
-                    onChange={handleChange}
-                    placeholder="List of materials this supplier provides"
-                    rows={3}
-                  />
-                </div>
-              ) : (
+              {partnerType === 'vendor' && (
                 <div className="grid gap-3">
                   <Label htmlFor="service_type">Service Type/Role</Label>
                   <Select

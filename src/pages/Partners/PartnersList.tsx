@@ -397,7 +397,11 @@ const PartnersList = () => {
                     </TableHeader>
                     <TableBody>
                       {partners.map((partner) => (
-                        <TableRow key={`${partner.partnerType}-${partner.id}`} className="hover:bg-muted/30 dark:hover:bg-muted/10">
+                        <TableRow 
+                          key={`${partner.partnerType}-${partner.id}`} 
+                          className="hover:bg-muted/30 dark:hover:bg-muted/10 cursor-pointer group"
+                          onClick={() => navigate(`/partners/${partner.partnerType}/${partner.id}`)}>
+                        
                           <TableCell className="font-medium">{partner.name}</TableCell>
                           <TableCell>
                             <span 
