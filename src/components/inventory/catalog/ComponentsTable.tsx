@@ -114,39 +114,32 @@ export const ComponentsTable = ({
                       <span className="font-medium">Total Consumption:</span> 
                       {(() => {
                         // Recalculate consumption based on formula type
-                        let consumptionValue = component.consumption;
+                        let calculatedConsumption = component.consumption;
                         
-                        // If component has length, width, and formula is defined, we can potentially recalculate
-                        if (component.length && component.roll_width && component.formula) {
+                        // If we have the necessary values and a formula is specified, recalculate
+                        if (component.length && defaultQuantity && component.formula) {
                           if (component.formula === 'linear') {
                             // Linear formula: (length * quantity) / 39.37
-                            const totalLengthInInches = component.length * (defaultQuantity || 1);
-                            consumptionValue = totalLengthInInches / 39.37; // convert to meters
+                            const totalLengthInInches = component.length * defaultQuantity;
+                            calculatedConsumption = totalLengthInInches / 39.37;
                           } else {
-                            // Standard formula already stored in consumption field
-                            consumptionValue = defaultQuantity && defaultQuantity > 1
-                              ? component.consumption * defaultQuantity
-                              : component.consumption;
+                            // For standard formula, use the stored consumption value
+                            // which is already calculated using the standard formula
+                            calculatedConsumption = component.consumption * defaultQuantity;
                           }
-                        } else {
-                          // If we can't recalculate, use the stored value
-                          consumptionValue = defaultQuantity && defaultQuantity > 1
-                            ? component.consumption * defaultQuantity
-                            : component.consumption;
+                        } else if (defaultQuantity && defaultQuantity > 1) {
+                          // If no formula specified but we have quantity, just multiply
+                          calculatedConsumption = component.consumption * defaultQuantity;
                         }
                         
-                        return consumptionValue.toFixed(2);
+                        return calculatedConsumption.toFixed(2);
                       })()}
-                      
-                      {defaultQuantity && defaultQuantity > 1 && component.formula !== 'linear' && (
+                      {defaultQuantity && defaultQuantity > 1 && (
                         <span className="text-xs text-muted-foreground ml-1">
-                          ({component.consumption.toFixed(2)} × {defaultQuantity})
-                        </span>
-                      )}
-                      
-                      {component.formula === 'linear' && component.length && (
-                        <span className="text-xs text-muted-foreground ml-1">
-                          (Linear: {(component.length / 39.37).toFixed(2)} m/unit)
+                          {component.formula === 'linear' 
+                            ? `(${(component.length / 39.37).toFixed(2)} × ${defaultQuantity})` 
+                            : `(${component.consumption.toFixed(2)} × ${defaultQuantity})`
+                          }
                         </span>
                       )}
                     </span>
