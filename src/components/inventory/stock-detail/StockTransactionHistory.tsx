@@ -184,8 +184,32 @@ export const StockTransactionHistory = ({
     }
   };
 
+  // Deduplicate transactions to get an accurate count
+  const deduplicateTransactions = () => {
+    // Create a map to track unique transactions
+    const uniqueTransactions = new Map();
+    
+    // Add transactions to the map
+    transactions.forEach(tx => {
+      const key = tx.id || tx.reference_id || `${tx.created_at}-${tx.quantity}`;
+      uniqueTransactions.set(key, tx);
+    });
+    
+    // Add transaction logs, but avoid duplicates
+    transactionLogs.forEach(log => {
+      const key = log.id || log.reference_id || `${log.transaction_date}-${log.new_quantity}`;
+      
+      // Only add if not already in the map or if we want to prioritize log entry
+      if (!uniqueTransactions.has(key)) {
+        uniqueTransactions.set(key, log);
+      }
+    });
+    
+    return uniqueTransactions.size;
+  };
+  
   const isEmpty = !transactions.length && !transactionLogs.length;
-  const totalRecords = transactions.length + transactionLogs.length;
+  const totalRecords = deduplicateTransactions();
 
   // Show empty state if no transactions
   if (isEmpty) {
@@ -240,7 +264,7 @@ export const StockTransactionHistory = ({
           <History className="h-5 w-5" />
           <span>Transaction History</span>
           <Badge variant="outline" className="ml-2 bg-primary/10 dark:bg-primary/20 border-primary/20 dark:border-primary/30 text-primary hover:bg-primary/15">
-            {totalRecords} record{totalRecords !== 1 ? 's' : ''}
+            Transaction Log
           </Badge>
         </CardTitle>
         <div className="flex items-center gap-2">

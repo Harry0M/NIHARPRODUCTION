@@ -27,8 +27,9 @@ export interface CatalogComponent {
   width?: number | null;
   consumption?: number | null;
   material_id?: string | null;
-  material?: Material | null;
   material_linked?: boolean | null;
+  material?: Material | null;
+  formula?: 'standard' | 'linear';
 }
 
 interface ComponentsTableProps {
@@ -111,15 +112,49 @@ export const ComponentsTable = ({
                   {component.consumption !== null && component.consumption !== undefined && (
                     <span className="text-xs flex items-center gap-1">
                       <span className="font-medium">Total Consumption:</span> 
-                      {defaultQuantity && defaultQuantity > 1 
-                        ? (component.consumption * defaultQuantity).toFixed(2)
-                        : component.consumption.toFixed(2)
-                      }
-                      {defaultQuantity && defaultQuantity > 1 && (
+                      {(() => {
+                        // Recalculate consumption based on formula type
+                        let consumptionValue = component.consumption;
+                        
+                        // If component has length, width, and formula is defined, we can potentially recalculate
+                        if (component.length && component.roll_width && component.formula) {
+                          if (component.formula === 'linear') {
+                            // Linear formula: (length * quantity) / 39.37
+                            const totalLengthInInches = component.length * (defaultQuantity || 1);
+                            consumptionValue = totalLengthInInches / 39.37; // convert to meters
+                          } else {
+                            // Standard formula already stored in consumption field
+                            consumptionValue = defaultQuantity && defaultQuantity > 1
+                              ? component.consumption * defaultQuantity
+                              : component.consumption;
+                          }
+                        } else {
+                          // If we can't recalculate, use the stored value
+                          consumptionValue = defaultQuantity && defaultQuantity > 1
+                            ? component.consumption * defaultQuantity
+                            : component.consumption;
+                        }
+                        
+                        return consumptionValue.toFixed(2);
+                      })()}
+                      
+                      {defaultQuantity && defaultQuantity > 1 && component.formula !== 'linear' && (
                         <span className="text-xs text-muted-foreground ml-1">
                           ({component.consumption.toFixed(2)} × {defaultQuantity})
                         </span>
                       )}
+                      
+                      {component.formula === 'linear' && component.length && (
+                        <span className="text-xs text-muted-foreground ml-1">
+                          (Linear: {(component.length / 39.37).toFixed(2)} m/unit)
+                        </span>
+                      )}
+                    </span>
+                  )}
+                  {component.formula && (
+                    <span className="text-xs flex items-center gap-1">
+                      <span className="font-medium">Formula:</span> 
+                      {component.formula === 'standard' ? 'Standard' : 'Linear'}
                     </span>
                   )}
                   {component.roll_width && (

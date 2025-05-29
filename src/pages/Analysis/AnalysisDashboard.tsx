@@ -102,7 +102,22 @@ const AnalysisDashboard = () => {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                View detailed material transaction records
+                View detailed history of inventory transactions
+              </p>
+            </CardContent>
+          </Card>
+          
+          {/* Price Trend Analysis */}
+          <Card className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate('/analysis/price-trends')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center">
+                <TrendingUp className="h-5 w-5 mr-2" />
+                Price Trend Analysis
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Analyze price changes and trends for materials over time
               </p>
             </CardContent>
           </Card>

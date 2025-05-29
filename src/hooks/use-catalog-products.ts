@@ -27,6 +27,7 @@ interface CatalogComponent {
   material_linked?: boolean | null;
   material?: Material | null;
   catalog_id?: string;
+  formula?: 'standard' | 'linear';
 }
 
 export interface CatalogProduct {
@@ -119,7 +120,8 @@ export const useCatalogProducts = () => {
           width,
           consumption,
           material_id,
-          material_linked
+          material_linked,
+          formula
         `)
         .in('catalog_id', productIds);
         

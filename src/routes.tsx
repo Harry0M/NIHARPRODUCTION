@@ -5,7 +5,6 @@ import AuthLayout from "@/components/layout/AuthLayout";
 import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
 import NotFound from "@/pages/NotFound";
-import MaterialRequirements from "@/pages/Analysis/MaterialRequirements";
 import OrderList from "@/pages/Orders/OrderList";
 import OrderNew from "@/pages/Orders/OrderNew";
 import OrderDetail from "@/pages/Orders/OrderDetail";
@@ -50,6 +49,7 @@ import RefillAnalysis from "@/pages/Analysis/RefillAnalysis";
 import TransactionHistory from "@/pages/Analysis/TransactionHistory";
 import PartnersAnalysis from "@/pages/Analysis/PartnersAnalysis";
 import WastageAnalysis from "@/pages/Analysis/WastageAnalysis";
+import PriceTrendAnalysis from "@/pages/Analysis/PriceTrendAnalysis";
 
 const routes = [
   {
@@ -121,6 +121,7 @@ const routes = [
               { path: "wastage", element: <WastageAnalysis /> },
               { path: "partners", element: <PartnersAnalysis /> },
               { path: "partner/:id/:type", element: <PartnerPerformance /> },
+              { path: "price-trends", element: <PriceTrendAnalysis /> },
             ],
           },
           {

@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Plus, Trash, Calculator, FilePlus } from "lucide-react";
+import { ArrowLeft, Plus, Trash, Calculator, FilePlus, Search } from "lucide-react";
 import { showToast } from "@/components/ui/enhanced-toast";
 import { formatCurrency } from "@/utils/formatters";
 import { NewInventoryDialog } from "@/components/inventory/NewInventoryDialog";
+import { SearchSelectDialog } from "@/components/purchases/SearchSelectDialog";
 import {
   Select,
   SelectContent,
@@ -30,6 +31,7 @@ import {
 interface Supplier {
   id: string;
   name: string;
+  [key: string]: any;
 }
 
 interface InventoryItem {
@@ -57,6 +59,7 @@ const PurchaseNew = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>("");
+  const [selectedSupplierName, setSelectedSupplierName] = useState<string>("");
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
   const [transportCharge, setTransportCharge] = useState<number>(0);
   const [purchaseDate, setPurchaseDate] = useState<string>(
@@ -68,6 +71,8 @@ const PurchaseNew = () => {
   const [totalAmount, setTotalAmount] = useState<number>(0);
   const [isNewInventoryDialogOpen, setIsNewInventoryDialogOpen] = useState<boolean>(false);
   const [currentPurchaseItemId, setCurrentPurchaseItemId] = useState<string>("");
+  const [isSupplierSearchOpen, setIsSupplierSearchOpen] = useState<boolean>(false);
+  const [isMaterialSearchOpen, setIsMaterialSearchOpen] = useState<boolean>(false);
   
   // Load suppliers
   useEffect(() => {
@@ -327,21 +332,30 @@ const PurchaseNew = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label htmlFor="supplier">Supplier</Label>
-              <Select
-                value={selectedSupplierId}
-                onValueChange={setSelectedSupplierId}
-              >
-                <SelectTrigger id="supplier">
-                  <SelectValue placeholder="Select supplier" />
-                </SelectTrigger>
-                <SelectContent>
-                  {suppliers.map((supplier) => (
-                    <SelectItem key={supplier.id} value={supplier.id}>
-                      {supplier.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Button
+                  id="supplier"
+                  variant="outline"
+                  className="w-full justify-between text-left font-normal"
+                  onClick={() => setIsSupplierSearchOpen(true)}
+                >
+                  {selectedSupplierName || "Select supplier"}
+                  <Search className="h-4 w-4 opacity-50" />
+                </Button>
+              </div>
+              
+              <SearchSelectDialog
+                open={isSupplierSearchOpen}
+                onOpenChange={setIsSupplierSearchOpen}
+                title="Select Supplier"
+                items={suppliers}
+                onSelect={(supplier) => {
+                  setSelectedSupplierId(supplier.id);
+                  setSelectedSupplierName(supplier.name);
+                }}
+                displayField="name"
+                searchFields={["name"]}
+              />
             </div>
             
             <div>
@@ -388,23 +402,19 @@ const PurchaseNew = () => {
                         <TableCell>
                           <div className="flex gap-2">
                             <div className="flex-1">
-                              <Select
-                                value={item.material_id}
-                                onValueChange={(value) =>
-                                  updatePurchaseItem(item.id, "material_id", value)
-                                }
+                              <Button
+                                variant="outline"
+                                className="w-full justify-between text-left font-normal"
+                                onClick={() => {
+                                  setCurrentPurchaseItemId(item.id);
+                                  setIsMaterialSearchOpen(true);
+                                }}
                               >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select material" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {inventoryItems.map((inv) => (
-                                    <SelectItem key={inv.id} value={inv.id}>
-                                      {inv.material_name} {inv.color ? `- ${inv.color}` : ''}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                                {item.material 
+                                  ? `${item.material.material_name}${item.material.color ? ` - ${item.material.color}` : ''}` 
+                                  : "Select material"}
+                                <Search className="h-4 w-4 opacity-50" />
+                              </Button>
                             </div>
                             <Button
                               variant="outline"
@@ -629,6 +639,42 @@ const PurchaseNew = () => {
             setCurrentPurchaseItemId("");
           }
         }}
+      />
+      
+      {/* Material search dialog */}
+      <SearchSelectDialog
+        open={isMaterialSearchOpen}
+        onOpenChange={setIsMaterialSearchOpen}
+        title="Select Material"
+        items={inventoryItems.map(item => ({
+          id: item.id,
+          name: `${item.material_name}${item.color ? ` - ${item.color}` : ''}`,
+          ...item
+        }))}
+        onSelect={(material) => {
+          if (currentPurchaseItemId) {
+            const selectedMaterial = inventoryItems.find(inv => inv.id === material.id);
+            if (selectedMaterial) {
+              // Update the purchase item with the selected material
+              setPurchaseItems(prevItems => 
+                prevItems.map(item => {
+                  if (item.id === currentPurchaseItemId) {
+                    return {
+                      ...item,
+                      material: selectedMaterial,
+                      material_id: selectedMaterial.id,
+                      unit_price: selectedMaterial.purchase_price || 0,
+                      line_total: item.quantity * (selectedMaterial.purchase_price || 0)
+                    };
+                  }
+                  return item;
+                })
+              );
+            }
+          }
+        }}
+        displayField="name"
+        searchFields={["material_name", "color"]}
       />
     </div>
   );

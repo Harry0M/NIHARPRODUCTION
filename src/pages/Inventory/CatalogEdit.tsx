@@ -33,6 +33,7 @@ interface ComponentType {
   baseConsumption?: string;
   materialRate?: number;
   materialCost?: number;
+  formula?: 'standard' | 'linear';
 }
 
 const CatalogEdit = () => {
@@ -108,6 +109,9 @@ const CatalogEdit = () => {
             length: comp.length?.toString() || undefined,
             width: comp.width?.toString() || undefined,
             roll_width: comp.roll_width?.toString() || undefined,
+            formula: comp.formula || 'standard', // Add formula with default to standard
+            consumption: comp.consumption?.toString() || undefined,
+            material_id: comp.material_id || undefined,
           };
         } else {
           // Custom components
@@ -120,6 +124,9 @@ const CatalogEdit = () => {
             length: comp.length?.toString() || undefined,
             width: comp.width?.toString() || undefined,
             roll_width: comp.roll_width?.toString() || undefined,
+            formula: comp.formula || 'standard', // Add formula with default to standard
+            consumption: comp.consumption?.toString() || undefined,
+            material_id: comp.material_id || undefined,
           });
         }
       });
@@ -446,8 +453,11 @@ const CatalogEdit = () => {
           material_id: comp.material_id || null,
           material_linked: comp.material_id ? true : false,
           consumption: comp.consumption || null,
+          formula: comp.formula || 'standard', // Add formula field with default to standard
           updated_at: new Date().toISOString()
         };
+        
+        console.log(`Component ${comp.id} using formula: ${comp.formula || 'standard'}`);
         
         if (isExisting) {
           console.log(`Updating existing component ${comp.id}:`, comp.type);
