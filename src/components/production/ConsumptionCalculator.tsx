@@ -86,23 +86,29 @@ export const ConsumptionCalculator = ({
   useEffect(() => {
     const newConsumption = calculateConsumption();
     
-    // Only update state and call the callback if the value has changed
-    if (newConsumption !== consumption) {
-      setConsumption(newConsumption);
+    // Always recalculate the material cost when consumption changes
+    // or when material rate changes
+    setConsumption(newConsumption);
+    
+    // Calculate material cost if rate is provided
+    let cost: number | undefined = undefined;
+    if (materialRate && materialRate > 0 && newConsumption > 0) {
+      // Use high precision calculation and store full precision
+      cost = newConsumption * materialRate;
+      // Round to 4 decimal places for display purposes
+      const roundedCost = Math.round(cost * 10000) / 10000;
+      setMaterialCost(roundedCost);
       
-      // Calculate material cost if rate is provided
-      let cost: number | undefined = undefined;
-      if (materialRate && materialRate > 0 && newConsumption > 0) {
-        cost = newConsumption * materialRate;
-        cost = Math.round(cost * 100) / 100;
-        setMaterialCost(cost);
-      } else {
-        setMaterialCost(undefined);
-      }
-      
-      // Notify parent component of the new consumption and cost
-      onConsumptionCalculated(newConsumption, cost);
+      // Log the calculation for debugging
+      console.log(`%c MATERIAL COST: ${newConsumption} meters × ₹${materialRate}/meter = ₹${roundedCost}`, 
+        'background:#27ae60;color:white;font-weight:bold;padding:3px;');
+    } else {
+      setMaterialCost(undefined);
     }
+    
+    // Always notify parent component of the new consumption and cost
+    // to ensure component state stays in sync
+    onConsumptionCalculated(newConsumption, cost);
   }, [length, width, rollWidth, quantity, materialRate, formula, calculateConsumption, consumption, onConsumptionCalculated]);
 
   return (
@@ -126,7 +132,9 @@ export const ConsumptionCalculator = ({
         type="text"
         value={consumption ? consumption.toString() : ''}
         readOnly
-        className="bg-gray-50"
+        className="bg-gray-50 border-blue-300 text-blue-800 font-medium"
+        // Add data attribute to easily identify the correct value during submission
+        data-final-consumption={consumption ? consumption.toString() : ''}
       />
       {formula === "standard" && (!width || !rollWidth) && (
         <p className="text-xs text-amber-500">

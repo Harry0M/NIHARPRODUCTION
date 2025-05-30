@@ -780,8 +780,11 @@ const CatalogNew = () => {
           custom_name: comp.type === 'custom' ? comp.customName : null,
           material_id: comp.material_id || null,
           material_linked: comp.material_id ? true : false,
-          consumption: comp.consumption || null  // Save the calculated consumption
+          consumption: comp.consumption || null,  // Save the calculated consumption
+          formula: comp.formula || 'standard'  // Save the formula type
         }));
+        
+        console.log('Saving components with formula:', componentsToInsert);
 
         // Insert components
         const { error: componentsError } = await supabase

@@ -39,18 +39,32 @@ export function useCostCalculation() {
         return total;
       }, 0);
 
-    // Calculate production costs
-    const totalCuttingCharge = quantity * cuttingCharge;
-    const totalPrintingCharge = quantity * printingCharge;
-    const totalStitchingCharge = quantity * stitchingCharge;
-    const totalTransportCharge = quantity * transportCharge;
+    // Calculate production costs - per unit costs
+    const perUnitCuttingCharge = cuttingCharge;
+    const perUnitPrintingCharge = printingCharge;
+    const perUnitStitchingCharge = stitchingCharge;
+    const perUnitTransportCharge = transportCharge;
+    
+    // Calculate total production costs (cost * quantity)
+    const totalCuttingCharge = quantity * perUnitCuttingCharge;
+    const totalPrintingCharge = quantity * perUnitPrintingCharge;
+    const totalStitchingCharge = quantity * perUnitStitchingCharge;
+    // Transport charge is not multiplied by quantity as it's per order
+    const totalTransportCharge = perUnitTransportCharge;
 
     // Sum up all costs
     const productionCost = totalCuttingCharge + totalPrintingCharge + 
                           totalStitchingCharge + totalTransportCharge;
     const totalCost = materialCosts + productionCost;
+    
+    // Calculate per unit cost (excluding transport which is per order)
+    const perUnitMaterialCost = quantity > 0 ? materialCosts / quantity : materialCosts;
+    const perUnitProductionCost = 
+      perUnitCuttingCharge + perUnitPrintingCharge + perUnitStitchingCharge;
+    const perUnitCost = perUnitMaterialCost + perUnitProductionCost + (totalTransportCharge / (quantity || 1));
 
     return {
+      // Total costs
       materialCost: materialCosts,
       cuttingCharge: totalCuttingCharge,
       printingCharge: totalPrintingCharge, 
@@ -58,6 +72,15 @@ export function useCostCalculation() {
       transportCharge: totalTransportCharge,
       productionCost,
       totalCost,
+      
+      // Per unit costs
+      perUnitMaterialCost,
+      perUnitCuttingCharge,
+      perUnitPrintingCharge,
+      perUnitStitchingCharge,
+      perUnitTransportCharge,
+      perUnitProductionCost,
+      perUnitCost
     };
   }, []);
 

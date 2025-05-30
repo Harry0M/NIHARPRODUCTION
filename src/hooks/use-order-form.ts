@@ -100,29 +100,62 @@ export function useOrderForm(): UseOrderFormReturn {
     const printingCharge = parseFloat(orderDetails.printing_charge || '0');
     const stitchingCharge = parseFloat(orderDetails.stitching_charge || '0');
     const transportCharge = parseFloat(orderDetails.transport_charge || '0');
+    
+    // Get margin
+    const margin = parseFloat(orderDetails.margin || '15');
 
-    // Calculate costs - use orderQuantity for production costs
-    const costs = calculateTotalCost(
-      components,
-      customComponents,
+    // Debug log components for troubleshooting
+    console.log('Recalculating costs with components:', components);
+    
+    // Sum up all material costs from components with improved precision
+    const materialCost = [...Object.values(components), ...customComponents].reduce(
+      (total, comp) => {
+        // Ensure we use the correct material cost
+        const cost = comp?.materialCost ? parseFloat(comp.materialCost) : 0;
+        
+        if (comp && comp.type) {
+          console.log(`Material cost for ${comp.type}: ${cost}`);
+        }
+        
+        return total + (isNaN(cost) ? 0 : cost);
+      }, 0
+    );
+    
+    console.log(`%c TOTAL MATERIAL COST: ${materialCost.toFixed(2)}`, 
+      'background:#8e44ad;color:white;font-weight:bold;padding:3px;');
+    
+    // Calculate production cost
+    const productionCost = cuttingCharge + printingCharge + stitchingCharge + transportCharge;
+    
+    // Calculate total cost
+    const totalCost = materialCost + productionCost;
+    
+    // Calculate selling price based on margin
+    const sellingPrice = totalCost * (1 + margin / 100);
+    
+    // For orders with quantity, calculate per-unit costs
+    let perUnitData = {};
+    
+    if (!isNaN(orderQuantity) && orderQuantity > 0) {
+      perUnitData = {
+        perUnitCost: totalCost / orderQuantity,
+        perUnitMaterialCost: materialCost / orderQuantity,
+        perUnitProductionCost: productionCost / orderQuantity
+      };
+    }
+    
+    // Update cost calculation state
+    setCostCalculation({
+      materialCost,
       cuttingCharge,
       printingCharge,
       stitchingCharge,
       transportCharge,
-      orderQuantity  // Use orderQuantity for production costs, not total quantity
-    );
-
-    // Get margin
-    const margin = parseFloat(orderDetails.margin || '15');
-    
-    // Calculate selling price
-    const sellingPrice = calculateSellingPrice(costs.totalCost, margin);
-
-    // Update cost calculation state
-    setCostCalculation({
-      ...costs,
+      productionCost,
+      totalCost,
       margin,
-      sellingPrice
+      sellingPrice,
+      ...perUnitData
     });
 
     // Also update the rate field in orderDetails

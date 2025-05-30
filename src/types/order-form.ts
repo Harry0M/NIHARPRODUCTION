@@ -15,6 +15,17 @@ export interface Component {
   materialRate?: number;
   materialCost?: number;
   material_id?: string;
+  // New fields for tracking final consumption values
+  finalConsumptionValue?: string;
+  exactConsumption?: string;
+  // Additional fields for cost calculation
+  formula?: string;
+  component_cost?: number;
+  component_cost_breakdown?: {
+    material_cost: number;
+    material_rate: number;
+    consumption: number | null;
+  };
 }
 
 export interface FormErrors {

@@ -140,11 +140,77 @@ const ComponentForm = ({
     onChange(component.type, field, value);
   };
 
-  const handleConsumptionCalculated = (consumption: number, cost?: number) => {
-    onChange(component.type, 'consumption', consumption.toString());
-    if (cost !== undefined) {
-      onChange(component.type, 'materialCost', cost.toString());
+  // Track the local consumption value to ensure badge and input field match exactly
+  const [displayConsumption, setDisplayConsumption] = useState<string>(
+    component.consumption || ''
+  );
+
+  // Update local display value when component prop changes
+  useEffect(() => {
+    if (component.consumption !== displayConsumption && component.consumption) {
+      setDisplayConsumption(component.consumption);
     }
+  }, [component.consumption]);
+
+  // Synchronize consumption calculation with component state
+  const handleConsumptionCalculated = (consumption: number, cost?: number) => {
+    // CRITICAL FIX: Ensure consumption is properly formatted with high precision
+    // This is the value that will be saved to the database
+    const preciseConsumption = consumption.toFixed(4);
+    
+    // Update local display state first to ensure UI consistency
+    setDisplayConsumption(preciseConsumption);
+    
+    // IMPORTANT: Store the exact value directly in the component state 
+    // with additional data marker to ensure correct value is saved
+    onChange(component.type, 'consumption', preciseConsumption);
+    onChange(component.type, 'exactConsumption', preciseConsumption); // Additional safety backup
+    
+    // Mark the component to ensure this exact value is used during submission
+    onChange(component.type, 'finalConsumptionValue', preciseConsumption);
+    
+    // MATERIAL COST FIX: Ensure material cost is precisely calculated based on rate and consumption
+    // Get material rate from component if available
+    const materialRate = component.materialRate || 0;
+    
+    // Calculate the material cost directly based on consumption and rate
+    if (materialRate > 0) {
+      // Calculate with high precision
+      const calculatedCost = consumption * materialRate;
+      // Format with 4 decimal places for consistency
+      const preciseCost = calculatedCost.toFixed(4);
+      
+      // Store the calculated cost
+      onChange(component.type, 'materialCost', preciseCost);
+      
+      // Log detailed calculation for debugging
+      console.log(`%c ${component.type} COST: ${consumption} meters × ₹${materialRate}/meter = ₹${preciseCost}`, 
+        'background:#e67e22;color:white;font-weight:bold;padding:3px;');
+    } else if (cost !== undefined) {
+      // Fallback to the cost provided by the calculator if available
+      const preciseCost = cost.toFixed(4);
+      onChange(component.type, 'materialCost', preciseCost);
+    }
+    
+    // Also update baseConsumption if defaultQuantity is available
+    if (defaultQuantity && parseFloat(defaultQuantity) > 0) {
+      const baseConsumptionValue = consumption / parseFloat(defaultQuantity);
+      const preciseBaseConsumption = baseConsumptionValue.toFixed(6);
+      onChange(component.type, 'baseConsumption', preciseBaseConsumption);
+    }
+    
+    // Log with clear high-visibility formatting to make it obvious what values are being used
+    console.log(`%c ${component.type} CONSUMPTION VALUE %c ${preciseConsumption} %c WILL BE SAVED TO DATABASE`, 
+      'background:#3498db;color:white;font-weight:bold;padding:3px;', 
+      'background:#e74c3c;color:white;font-weight:bold;padding:3px;', 
+      'background:#3498db;color:white;font-weight:bold;padding:3px;');
+    
+    console.log('Component consumption details:', {
+      component: component.type,
+      finalConsumptionValue: preciseConsumption,
+      materialCost: cost?.toFixed(4),
+      baseConsumption: defaultQuantity ? (consumption / parseFloat(defaultQuantity)).toFixed(6) : 'N/A'
+    });
   };
   
   const handleFormulaChange = (formula: ConsumptionFormulaType) => {
@@ -177,18 +243,7 @@ const ComponentForm = ({
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex justify-between items-center">
           <span>{component.type}</span>
-          <div className="flex gap-2 items-center">
-            {showConsumption && component.consumption && (
-              <span className="text-sm font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
-                {parseFloat(component.consumption).toFixed(2)} m
-              </span>
-            )}
-            {materialCost && (
-              <span className="text-sm font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                ₹{parseFloat(materialCost.toString()).toFixed(2)}
-              </span>
-            )}
-          </div>
+          {/* Removed all badges to simplify */}
         </CardTitle>
       </CardHeader>
       <CardContent>

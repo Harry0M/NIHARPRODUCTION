@@ -98,7 +98,24 @@ export const debugAllComponents = (components: Record<string, any>, customCompon
     customComponents
   };
   
-  console.log("%c COMPONENT DEBUG INFO", "background: blue; color: white; font-size: 16px; padding: 5px;");
+  console.log("%c ORDER SUBMISSION COMPONENT DATA", "background: blue; color: white; font-size: 16px; padding: 5px;");
+  
+  // Log specific consumption values that will be saved to the database
+  console.log("%c CONSUMPTION VALUES BEING SAVED TO DATABASE", "background: red; color: white; font-size: 14px; padding: 3px;");
+  
+  // Standard components consumption values
+  Object.entries(components).forEach(([type, comp]) => {
+    if (comp && comp.consumption) {
+      console.log(`${type} consumption: ${comp.consumption} (${typeof comp.consumption})`);
+    }
+  });
+  
+  // Custom components consumption values
+  customComponents.forEach((comp, index) => {
+    if (comp && comp.consumption) {
+      console.log(`Custom ${index} consumption: ${comp.consumption} (${typeof comp.consumption})`);
+    }
+  });
   console.log("Debug data saved to window.orderComponentDebug");
   console.log("To inspect in console: console.log(window.orderComponentDebug)");
   

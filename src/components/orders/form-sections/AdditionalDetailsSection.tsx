@@ -16,22 +16,7 @@ export const AdditionalDetailsSection = ({
   readOnly = false
 }: AdditionalDetailsSectionProps) => {
   return (
-    <div className="grid md:grid-cols-2 gap-4">
-      <div className="space-y-2">
-        <Label htmlFor="rate">Rate per Bag</Label>
-        <Input 
-          id="rate" 
-          name="rate"
-          type="number"
-          step="0.01"
-          value={formData.rate}
-          onChange={handleOrderChange}
-          placeholder="Price per bag"
-          min="0"
-          readOnly={readOnly}
-          className={readOnly ? "bg-muted cursor-not-allowed" : ""}
-        />
-      </div>
+    <div>
       <div className="space-y-2">
         <Label htmlFor="special_instructions">Special Instructions (optional)</Label>
         <Textarea 

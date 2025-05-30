@@ -237,7 +237,38 @@ export function useOrderSubmission({
             // Convert string values to appropriate types for numeric fields
             const gsmValue = convertStringToNumeric(comp.gsm);
             const rollWidthValue = convertStringToNumeric(comp.roll_width);
-            const consumptionValue = convertStringToNumeric(comp.consumption);
+            
+            // IMPORTANT FIX: Ensure we're using the correct consumption value
+            // Log what we're dealing with to diagnose the problem
+            console.log(`%c CONSUMPTION DEBUG for ${comp.type}`, "background: #f00; color: #fff; padding: 2px; font-weight: bold");
+            console.log("Raw consumption from component:", comp.consumption, typeof comp.consumption);
+            
+            // CRITICAL FIX: Ensure we use the exact, correct consumption value
+            // First check for the special marker field we added specifically for this purpose
+            let consumptionValue = null;
+            
+            // Try to get the exact consumption value using various fallbacks
+            if (comp.finalConsumptionValue) {
+              // Use our special marker field first (most reliable)
+              consumptionValue = parseFloat(comp.finalConsumptionValue);
+              console.log(`Using finalConsumptionValue: ${consumptionValue}`);
+            } else if (comp.exactConsumption) {
+              // Try our backup field next
+              consumptionValue = parseFloat(comp.exactConsumption);
+              console.log(`Using exactConsumption: ${consumptionValue}`);
+            } else if (comp.consumption) {
+              // Last resort - parse the standard field
+              consumptionValue = parseFloat(comp.consumption);
+              console.log(`Using standard consumption field: ${consumptionValue}`);
+            }
+            
+            // Extra validation to ensure we have a valid number
+            if (consumptionValue !== null && isNaN(consumptionValue)) {
+              console.error(`Invalid consumption value: ${consumptionValue}, resetting to null`);
+              consumptionValue = null;
+            }
+            
+            console.log("Final consumption value to be saved:", consumptionValue);
             
             // Get material cost if available
             const materialCost = comp.materialCost;

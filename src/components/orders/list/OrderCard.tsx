@@ -44,10 +44,17 @@ export const OrderCard = ({ order, onDeleteClick, isSelected = false, onSelectCh
                 <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded text-xs">
                   {order.order_number}
                 </span>
-                <Link to={`/orders/${order.id}`} className="text-primary hover:text-primary/80 hover:underline flex items-center gap-1 transition-colors text-sm">
+                <a 
+                  href="#" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    window.location.href = `/orders/${order.id}`;
+                  }} 
+                  className="text-primary hover:text-primary/80 hover:underline flex items-center gap-1 transition-colors text-sm"
+                >
                   View details
                   <ChevronRight className="h-3 w-3 opacity-70" />
-                </Link>
+                </a>
               </CardTitle>
               <CardDescription className="mt-1 flex items-center gap-1">
                 <Package className="h-3 w-3 text-muted-foreground/70" />
@@ -66,24 +73,27 @@ export const OrderCard = ({ order, onDeleteClick, isSelected = false, onSelectCh
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 border-border/60 shadow-md">
-              <DropdownMenuItem asChild className="cursor-pointer">
-                <Link to={`/orders/${order.id}`} className="flex items-center">
-                  <Eye className="mr-2 h-4 w-4 text-blue-500" /> 
-                  <span>View Details</span>
-                </Link>
+              <DropdownMenuItem 
+                className="cursor-pointer"
+                onClick={() => window.location.href = `/orders/${order.id}`}
+              >
+                <Eye className="mr-2 h-4 w-4 text-blue-500" /> 
+                <span>View Details</span>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild className="cursor-pointer">
-                <Link to={`/orders/${order.id}/edit`} className="flex items-center">
-                  <Edit className="mr-2 h-4 w-4 text-amber-500" /> 
-                  <span>Edit Order</span>
-                </Link>
+              <DropdownMenuItem 
+                className="cursor-pointer"
+                onClick={() => window.location.href = `/orders/${order.id}/edit`}
+              >
+                <Edit className="mr-2 h-4 w-4 text-amber-500" /> 
+                <span>Edit Order</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild className="cursor-pointer">
-                <Link to={`/production/job-cards/new?orderId=${order.id}`} className="flex items-center">
-                  <FileText className="mr-2 h-4 w-4 text-green-500" /> 
-                  <span>Create Job Card</span>
-                </Link>
+              <DropdownMenuItem 
+                className="cursor-pointer"
+                onClick={() => window.location.href = `/production/job-cards/new?orderId=${order.id}`}
+              >
+                <FileText className="mr-2 h-4 w-4 text-green-500" /> 
+                <span>Create Job Card</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 

@@ -140,6 +140,19 @@ export function useProductSelection({
       transport_charge: productCosts.transport_charge?.toString() || '0',
       margin: productCosts.margin?.toString() || '15'
     }));
+    
+    // Pre-initialize cost calculation with the production costs
+    // This ensures costs appear immediately even before consumption is calculated
+    if (setCostCalculation) {
+      setCostCalculation(prev => ({
+        ...prev,
+        cuttingCharge: productCosts.cutting_charge || 0,
+        printingCharge: productCosts.printing_charge || 0,
+        stitchingCharge: productCosts.stitching_charge || 0,
+        transportCharge: productCosts.transport_charge || 0,
+        margin: productCosts.margin || 15
+      }));
+    }
 
     // Create a function to process each component
     const processComponent = (component: any) => {
@@ -171,16 +184,37 @@ export function useProductSelection({
       let totalConsumption = component.consumption?.toString() || '';
       const rollWidth = component.roll_width?.toString() || '';
       
-      // If consumption isn't available, calculate it
-      if (!totalConsumption && length && width && rollWidth) {
-        const lengthVal = parseFloat(length);
-        const widthVal = parseFloat(width);
-        const rollWidthVal = parseFloat(rollWidth);
+      // If consumption isn't available, calculate it based on formula type
+      if (!totalConsumption) {
+        // Get formula type, defaulting to standard if not specified
+        const formula = component.formula || 'standard';
+        console.log(`Calculating consumption using formula type: ${formula}`, {
+          length,
+          width,
+          rollWidth,
+          componentType: component.component_type || component.type
+        });
         
-        if (!isNaN(lengthVal) && !isNaN(widthVal) && !isNaN(rollWidthVal) && rollWidthVal > 0) {
-          // Formula: (length * width) / (roll_width * 39.39)
-          const calculatedConsumption = (lengthVal * widthVal) / (rollWidthVal * 39.39);
-          totalConsumption = calculatedConsumption.toFixed(2);
+        if (formula === 'standard' && length && width && rollWidth) {
+          // Standard formula: (length * width) / (roll_width * 39.39)
+          const lengthVal = parseFloat(length);
+          const widthVal = parseFloat(width);
+          const rollWidthVal = parseFloat(rollWidth);
+          
+          if (!isNaN(lengthVal) && !isNaN(widthVal) && !isNaN(rollWidthVal) && rollWidthVal > 0) {
+            const calculatedConsumption = (lengthVal * widthVal) / (rollWidthVal * 39.39);
+            totalConsumption = calculatedConsumption.toFixed(2);
+            console.log(`Standard formula calculation: (${lengthVal} * ${widthVal}) / (${rollWidthVal} * 39.39) = ${totalConsumption}`);
+          }
+        } else if (formula === 'linear' && length) {
+          // Linear formula: (length) / 39.39
+          const lengthVal = parseFloat(length);
+          
+          if (!isNaN(lengthVal)) {
+            const calculatedConsumption = lengthVal / 39.39;
+            totalConsumption = calculatedConsumption.toFixed(2);
+            console.log(`Linear formula calculation: ${lengthVal} / 39.39 = ${totalConsumption}`);
+          }
         }
       }
       
@@ -254,6 +288,8 @@ export function useProductSelection({
         if (!isNaN(totalConsumptionVal)) {
           // Calculate base consumption per unit from total consumption
           baseConsumption = totalConsumptionVal / productQuantity;
+          // Ensure it's at least a small positive number to avoid calculation issues
+          if (baseConsumption <= 0) baseConsumption = 0.001;
           console.log(`Calculated base consumption: ${baseConsumption} (total: ${totalConsumptionVal} / product qty: ${productQuantity})`);
         }
       }
@@ -349,16 +385,49 @@ export function useProductSelection({
       const materialCost = [...Object.values(newOrderComponents), ...newCustomComponents].reduce(
         (total, comp) => total + (comp.materialCost || 0), 0
       );
-
-      setCostCalculation(prev => ({
-        ...prev,
+      
+      // Get order quantity for production cost calculation
+      const orderQty = parseFloat(orderDetails.quantity || '1');
+      
+      // Calculate production costs based on order quantity
+      const totalCuttingCharge = orderQty * (productCosts.cutting_charge || 0);
+      const totalPrintingCharge = orderQty * (productCosts.printing_charge || 0);
+      const totalStitchingCharge = orderQty * (productCosts.stitching_charge || 0);
+      const totalTransportCharge = productCosts.transport_charge || 0; // Transport is usually per order, not per unit
+      
+      // Sum up production costs
+      const productionCost = totalCuttingCharge + totalPrintingCharge + totalStitchingCharge + totalTransportCharge;
+      
+      // Calculate total cost
+      const totalCost = materialCost + productionCost;
+      
+      // Calculate selling price based on margin
+      const margin = productCosts.margin || 15;
+      const sellingPrice = totalCost * (1 + margin / 100);
+      
+      console.log('Setting initial cost calculation:', {
         materialCost,
-        cuttingCharge: productCosts.cutting_charge || 0,
-        printingCharge: productCosts.printing_charge || 0,
-        stitchingCharge: productCosts.stitching_charge || 0,
-        transportCharge: productCosts.transport_charge || 0,
-        margin: productCosts.margin || 15
-      }));
+        cuttingCharge: totalCuttingCharge,
+        printingCharge: totalPrintingCharge,
+        stitchingCharge: totalStitchingCharge,
+        transportCharge: totalTransportCharge,
+        productionCost,
+        totalCost,
+        margin,
+        sellingPrice
+      });
+      
+      setCostCalculation({
+        materialCost,
+        cuttingCharge: totalCuttingCharge,
+        printingCharge: totalPrintingCharge,
+        stitchingCharge: totalStitchingCharge,
+        transportCharge: totalTransportCharge,
+        productionCost,
+        totalCost,
+        margin,
+        sellingPrice
+      });
     }
 
     // If quantity already entered, recalculate total quantity and update consumption

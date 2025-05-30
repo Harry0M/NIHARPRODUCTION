@@ -22,8 +22,10 @@ interface Company {
   email: string | null;
   phone: string | null;
   address: string | null;
+  gst_number?: string | null; // Make this optional to handle legacy data
   created_at: string;
   updated_at: string;
+  [key: string]: any; // Allow additional properties for flexibility
 }
 
 const CompanyDetails = () => {
@@ -45,7 +47,8 @@ const CompanyDetails = () => {
           .single();
 
         if (error) throw error;
-        setCompany(data);
+        // Add type assertion to ensure gst_number is handled correctly
+        setCompany(data as Company);
       } catch (error: any) {
         console.error('Error fetching company:', error);
         toast({
@@ -154,6 +157,10 @@ const CompanyDetails = () => {
             <div className="space-y-1">
               <h3 className="text-sm font-medium text-muted-foreground">Address</h3>
               <p className="text-sm whitespace-pre-line">{company.address || 'N/A'}</p>
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-medium text-muted-foreground">GST Number</h3>
+              <p className="text-sm">{company.gst_number || 'N/A'}</p>
             </div>
             <div className="space-y-1">
               <h3 className="text-sm font-medium text-muted-foreground">Created</h3>

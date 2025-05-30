@@ -89,7 +89,7 @@ const OrderNew = () => {
           <Button 
             variant="ghost"
             size="sm"
-            onClick={() => navigate("/orders")}
+            onClick={() => window.location.href = "/orders"}
             className="gap-1"
           >
             <ArrowLeft size={16} />
@@ -173,7 +173,7 @@ const OrderNew = () => {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => navigate("/orders")}
+                onClick={() => window.location.href = "/orders"}
               >
                 Cancel
               </Button>

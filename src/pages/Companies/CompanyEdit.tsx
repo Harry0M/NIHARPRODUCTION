@@ -15,6 +15,7 @@ interface CompanyFormData {
   email?: string;
   phone?: string;
   address?: string;
+  gst_number?: string;
 }
 
 const CompanyEdit = () => {
@@ -42,7 +43,8 @@ const CompanyEdit = () => {
           email: data.email || '',
           phone: data.phone || '',
           address: data.address || '',
-        });
+          gst_number: data.gst_number || '', // TypeScript doesn't recognize this field from database
+        } as CompanyFormData); // Use type assertion to handle the gst_number field
       } catch (error: any) {
         console.error('Error fetching company:', error);
         toast({
@@ -153,6 +155,14 @@ const CompanyEdit = () => {
           <Input 
             {...register('address')}
             placeholder="Enter company address"
+          />
+        </div>
+
+        <div>
+          <Label>GST Number</Label>
+          <Input 
+            {...register('gst_number')}
+            placeholder="Enter GST registration number"
           />
         </div>
 

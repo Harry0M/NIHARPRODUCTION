@@ -16,6 +16,7 @@ interface CompanyFormData {
   email?: string;
   phone?: string;
   address?: string;
+  gst_number?: string; // Changed from gst to gst_number to match database schema
 }
 
 const CompanyNew = () => {
@@ -31,15 +32,27 @@ const CompanyNew = () => {
         throw userError;
       }
 
+      // Create a clean company data object
+      const companyData = {
+        name: data.name,
+        contact_person: data.contact_person || null,
+        email: data.email || null,
+        phone: data.phone || null,
+        address: data.address || null,
+        gst_number: data.gst_number || null, // Updated field name to match database schema
+        created_by: authData.user?.id // Add the current user's ID
+      };
+
+      console.log('Submitting company data:', companyData);
+
       // Include created_by field to track which user created the company
-      const { error } = await supabase
+      const { error, data: newCompany } = await supabase
         .from('companies')
-        .insert({
-          ...data,
-          created_by: authData.user?.id // Add the current user's ID
-        });
+        .insert(companyData)
+        .select();
 
       if (error) {
+        console.error('Supabase error details:', error);
         throw error;
       }
 
@@ -48,11 +61,21 @@ const CompanyNew = () => {
         description: "Company created successfully",
       });
       navigate('/companies');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating company:', error);
+      let errorMessage = 'Unknown error';
+      
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.details) {
+        errorMessage = error.details;
+      } else if (error.hint) {
+        errorMessage = error.hint;
+      }
+      
       toast({
         title: "Error",
-        description: `Failed to create company: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        description: `Failed to create company: ${errorMessage}`,
         variant: "destructive"
       });
     }
@@ -116,6 +139,14 @@ const CompanyNew = () => {
           <Input 
             {...register('address')}
             placeholder="Enter company address"
+          />
+        </div>
+
+        <div>
+          <Label>GST Number</Label>
+          <Input 
+            {...register('gst_number')} // Updated field name to match database schema
+            placeholder="Enter GST registration number"
           />
         </div>
 
