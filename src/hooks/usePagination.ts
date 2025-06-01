@@ -1,131 +1,174 @@
+import { useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
-import { useState, useEffect, useMemo } from "react";
-import { supabase } from "@/integrations/supabase/client";
-
-export interface PaginationConfig {
+type PaginationOptions = {
   initialPage?: number;
-  pageSize?: number;
-  tableName: string;
-  selectQuery?: string;
-  orderBy?: string;
-  ascending?: boolean;
-  filters?: Record<string, any>;
-}
+  initialPageSize?: number;
+  saveInURL?: boolean;
+  queryStringPage?: string;
+  queryStringPageSize?: string;
+};
 
-export interface PaginationResult<T> {
-  data: T[];
-  loading: boolean;
-  error: string | null;
-  currentPage: number;
-  totalPages: number;
+interface PaginationResult<T> {
+  items: T[];
+  page: number;
+  setPage: (page: number) => void;
+  pageSize: number;
+  setPageSize: (size: number) => void;
   totalCount: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
-  goToPage: (page: number) => void;
-  nextPage: () => void;
-  prevPage: () => void;
-  refetch: () => void;
+  totalPages: number;
+  isLoading: boolean;
+  isFirstPage: boolean;
+  isLastPage: boolean;
+  goToNextPage: () => void;
+  goToPreviousPage: () => void;
 }
 
-export function usePagination<T = any>({
-  initialPage = 1,
-  pageSize = 20,
-  tableName,
-  selectQuery = "*",
-  orderBy = "created_at",
-  ascending = false,
-  filters = {}
-}: PaginationConfig): PaginationResult<T> {
-  const [data, setData] = useState<T[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(initialPage);
+/**
+ * A hook for implementing pagination in components
+ * 
+ * @param tableName The Supabase table to query
+ * @param queryFn Optional custom query function
+ * @param options Pagination options
+ * @returns Pagination state and controls
+ */
+export function usePagination<T>(
+  tableName: string,
+  queryFn?: (page: number, pageSize: number) => Promise<{ data: T[] | null; count: number | null; error: any }>,
+  options: PaginationOptions = {}
+): PaginationResult<T> {
+  const {
+    initialPage = 1,
+    initialPageSize = 10,
+    saveInURL = false,
+    queryStringPage = 'page',
+    queryStringPageSize = 'pageSize'
+  } = options;
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [items, setItems] = useState<T[]>([]);
   const [totalCount, setTotalCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const totalPages = Math.ceil(totalCount / pageSize);
-  const hasNextPage = currentPage < totalPages;
-  const hasPrevPage = currentPage > 1;
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Build the query
-      let query = supabase
-        .from(tableName as any)
-        .select(selectQuery, { count: 'exact' });
-
-      // Apply filters
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-          if (typeof value === 'string' && value.includes('%')) {
-            query = query.ilike(key, value);
-          } else {
-            query = query.eq(key, value);
-          }
-        }
-      });
-
-      // Apply ordering and pagination
-      query = query
-        .order(orderBy, { ascending })
-        .range((currentPage - 1) * pageSize, currentPage * pageSize - 1);
-
-      const { data: result, error: queryError, count } = await query;
-
-      if (queryError) throw queryError;
-
-      setData(result || []);
-      setTotalCount(count || 0);
-    } catch (err: any) {
-      setError(err.message || 'An error occurred while fetching data');
-      setData([]);
-      setTotalCount(0);
-    } finally {
-      setLoading(false);
+  // Get page and pageSize from URL if saveInURL is true
+  const getInitialPageFromURL = useCallback(() => {
+    if (saveInURL) {
+      const pageParam = searchParams.get(queryStringPage);
+      return pageParam ? parseInt(pageParam, 10) : initialPage;
     }
-  };
+    return initialPage;
+  }, [saveInURL, searchParams, queryStringPage, initialPage]);
 
-  // Fetch data when dependencies change
+  const getInitialPageSizeFromURL = useCallback(() => {
+    if (saveInURL) {
+      const pageSizeParam = searchParams.get(queryStringPageSize);
+      return pageSizeParam ? parseInt(pageSizeParam, 10) : initialPageSize;
+    }
+    return initialPageSize;
+  }, [saveInURL, searchParams, queryStringPageSize, initialPageSize]);
+
+  const [page, setPageInternal] = useState(getInitialPageFromURL());
+  const [pageSize, setPageSizeInternal] = useState(getInitialPageSizeFromURL());
+
+  // Update URL when page or pageSize changes
   useEffect(() => {
+    if (saveInURL) {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set(queryStringPage, page.toString());
+      newParams.set(queryStringPageSize, pageSize.toString());
+      setSearchParams(newParams);
+    }
+  }, [page, pageSize, saveInURL, searchParams, setSearchParams, queryStringPage, queryStringPageSize]);
+
+  // Fetch data
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        let result;
+        
+        if (queryFn) {
+          // Use custom query function if provided
+          result = await queryFn(page, pageSize);
+        } else {
+          // Calculate pagination range
+          const from = (page - 1) * pageSize;
+          const to = from + pageSize - 1;
+          
+          // First get the total count
+          const { count, error: countError } = await supabase
+            .from(tableName)
+            .select('*', { count: 'exact', head: true });
+          
+          if (countError) throw countError;
+          
+          // Then fetch the paginated data
+          const { data, error } = await supabase
+            .from(tableName)
+            .select('*')
+            .range(from, to);
+          
+          if (error) throw error;
+          
+          result = { data, count, error: null };
+        }
+        
+        setItems(result.data || []);
+        setTotalCount(result.count || 0);
+      } catch (error) {
+        console.error(`Error fetching data from ${tableName}:`, error);
+        setItems([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchData();
-  }, [currentPage, pageSize, tableName, selectQuery, orderBy, ascending, JSON.stringify(filters)]);
+  }, [tableName, page, pageSize, queryFn]);
 
-  const goToPage = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const isFirstPage = page === 1;
+  const isLastPage = page >= totalPages;
+
+  // Set page with validation
+  const setPage = (newPage: number) => {
+    const validPage = Math.max(1, Math.min(newPage, totalPages));
+    setPageInternal(validPage);
+  };
+
+  // Set page size and reset to page 1
+  const setPageSize = (newPageSize: number) => {
+    setPageSizeInternal(newPageSize);
+    setPageInternal(1); // Reset to first page when changing page size
+  };
+
+  const goToNextPage = () => {
+    if (!isLastPage) {
+      setPage(page + 1);
     }
   };
 
-  const nextPage = () => {
-    if (hasNextPage) {
-      setCurrentPage(prev => prev + 1);
+  const goToPreviousPage = () => {
+    if (!isFirstPage) {
+      setPage(page - 1);
     }
-  };
-
-  const prevPage = () => {
-    if (hasPrevPage) {
-      setCurrentPage(prev => prev - 1);
-    }
-  };
-
-  const refetch = () => {
-    fetchData();
   };
 
   return {
-    data,
-    loading,
-    error,
-    currentPage,
-    totalPages,
+    items,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
     totalCount,
-    hasNextPage,
-    hasPrevPage,
-    goToPage,
-    nextPage,
-    prevPage,
-    refetch
+    totalPages,
+    isLoading,
+    isFirstPage,
+    isLastPage,
+    goToNextPage,
+    goToPreviousPage
   };
 }
+
+export default usePagination; 
