@@ -19,7 +19,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { StandardComponents } from "@/components/orders/StandardComponents";
 import { CustomComponentSection } from "@/components/orders/CustomComponentSection";
 import { useProductForm } from "./CatalogNew/hooks/useProductForm";
-import { v4 as uuidv4 } from "uuid";
 
 const componentOptions = {
   color: ["Red", "Blue", "Green", "Black", "White", "Yellow", "Brown", "Orange", "Purple", "Gray", "Custom"],
@@ -163,7 +162,7 @@ const CatalogEdit = () => {
             // Only add if we don't already have this type
             if (!standardComps[componentKey]) {
               const materialRate = comp.material_id ? materialPrices[comp.material_id] : undefined;
-              const consumption = comp.consumption ? parseFloat(comp.consumption) : 0;
+              const consumption = comp.consumption ? parseFloat(comp.consumption.toString()) : 0;
               const materialCost = materialRate && consumption ? (consumption * materialRate).toString() : undefined;
               
               standardComps[componentKey] = {
@@ -173,7 +172,7 @@ const CatalogEdit = () => {
                 length: comp.length?.toString() || undefined,
                 width: comp.width?.toString() || undefined,
                 roll_width: comp.roll_width?.toString() || undefined,
-                formula: comp.formula || 'standard', // Fix: Use actual formula from database
+                formula: comp.formula || 'standard',
                 consumption: comp.consumption?.toString() || undefined,
                 material_id: comp.material_id || undefined,
                 materialRate: materialRate?.toString(),
@@ -185,7 +184,7 @@ const CatalogEdit = () => {
           } else {
             // For custom components
             const materialRate = comp.material_id ? materialPrices[comp.material_id] : undefined;
-            const consumption = comp.consumption ? parseFloat(comp.consumption) : 0;
+            const consumption = comp.consumption ? parseFloat(comp.consumption.toString()) : 0;
             const materialCost = materialRate && consumption ? (consumption * materialRate).toString() : undefined;
             
             customComps.push({
@@ -196,7 +195,7 @@ const CatalogEdit = () => {
               length: comp.length?.toString() || undefined,
               width: comp.width?.toString() || undefined,
               roll_width: comp.roll_width?.toString() || undefined,
-              formula: comp.formula || 'standard', // Fix: Use actual formula from database
+              formula: comp.formula as 'standard' | 'linear' || 'standard',
               consumption: comp.consumption?.toString() || undefined,
               material_id: comp.material_id || undefined,
               materialRate: materialRate?.toString(),
@@ -329,7 +328,7 @@ const CatalogEdit = () => {
       
       console.log("Product updated successfully");
       
-      // Process components - collect all components
+      // Process components using improved strategy
       const allComponents = [
         ...Object.values(components).filter(Boolean),
         ...customComponents.filter(comp => comp.customName || comp.color || comp.length || comp.width || comp.roll_width)
@@ -337,71 +336,110 @@ const CatalogEdit = () => {
       
       console.log("Processing components for save:", allComponents);
       
-      if (allComponents.length > 0) {
-        // Get existing components from database
-        const { data: existingComponents, error: fetchError } = await supabase
-          .from("catalog_components")
-          .select("id")
-          .eq("catalog_id", id);
+      // Get existing components from database
+      const { data: existingComponents, error: fetchError } = await supabase
+        .from("catalog_components")
+        .select("id, component_type, custom_name")
+        .eq("catalog_id", id);
+      
+      if (fetchError) {
+        throw fetchError;
+      }
+      
+      console.log("Existing components in DB:", existingComponents);
+      
+      // Create maps for easier lookup
+      const existingComponentsMap = new Map(
+        existingComponents.map(comp => [comp.id, comp])
+      );
+      
+      const currentComponentIds = new Set(
+        allComponents
+          .filter(comp => comp.id)
+          .map(comp => comp.id)
+      );
+      
+      // Find components to delete (exist in DB but not in current form)
+      const componentsToDelete = existingComponents.filter(
+        comp => !currentComponentIds.has(comp.id)
+      );
+      
+      // Separate updates from inserts
+      const componentsToUpdate: any[] = [];
+      const componentsToInsert: any[] = [];
+      
+      allComponents.forEach(comp => {
+        const componentData = {
+          catalog_id: id,
+          component_type: comp.type === 'custom' ? (comp.customName || 'custom') : comp.type.toLowerCase(),
+          size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
+          color: comp.color || null,
+          roll_width: comp.roll_width ? parseFloat(comp.roll_width) : null,
+          length: comp.length ? parseFloat(comp.length) : null,
+          width: comp.width ? parseFloat(comp.width) : null,
+          custom_name: comp.type === 'custom' ? comp.customName : null,
+          material_id: comp.material_id || null,
+          material_linked: comp.material_id ? true : false,
+          consumption: comp.consumption ? parseFloat(comp.consumption) : null,
+          formula: comp.formula || 'standard'
+        };
         
-        if (fetchError) {
-          throw fetchError;
-        }
-        
-        const existingComponentIds = existingComponents.map(comp => comp.id);
-        console.log("Existing component IDs:", existingComponentIds);
-        
-        // Prepare components for database
-        const componentsToSave = allComponents.map(comp => {
-          const componentData = {
-            catalog_id: id,
-            component_type: comp.type === 'custom' ? (comp.customName || 'custom') : comp.type.toLowerCase(), // Fix: Convert to lowercase
-            size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
-            color: comp.color || null,
-            roll_width: comp.roll_width ? parseFloat(comp.roll_width) : null,
-            length: comp.length ? parseFloat(comp.length) : null,
-            width: comp.width ? parseFloat(comp.width) : null,
-            custom_name: comp.type === 'custom' ? comp.customName : null,
-            material_id: comp.material_id || null,
-            material_linked: comp.material_id ? true : false,
-            consumption: comp.consumption ? parseFloat(comp.consumption) : null,
-            formula: comp.formula || 'standard' // Fix: Ensure formula is saved
-          };
-          
-          console.log(`Preparing component for save:`, {
-            type: comp.type,
-            formula: comp.formula,
-            componentData: componentData
+        if (comp.id && existingComponentsMap.has(comp.id)) {
+          // This is an update
+          componentsToUpdate.push({
+            id: comp.id,
+            ...componentData
           });
-          
-          return componentData;
-        });
-        
-        console.log("Components prepared for save:", componentsToSave);
-        
-        // Delete existing components first
+        } else {
+          // This is a new component
+          componentsToInsert.push(componentData);
+        }
+      });
+      
+      console.log("Components to delete:", componentsToDelete);
+      console.log("Components to update:", componentsToUpdate);
+      console.log("Components to insert:", componentsToInsert);
+      
+      // Delete components that were removed
+      if (componentsToDelete.length > 0) {
+        const deleteIds = componentsToDelete.map(comp => comp.id);
         const { error: deleteError } = await supabase
           .from("catalog_components")
           .delete()
-          .eq("catalog_id", id);
+          .in("id", deleteIds);
         
         if (deleteError) {
           throw deleteError;
         }
-        
-        console.log("Existing components deleted");
-        
-        // Insert new components
-        const { error: componentsError } = await supabase
+        console.log("Deleted components:", deleteIds);
+      }
+      
+      // Update existing components
+      for (const comp of componentsToUpdate) {
+        const { id: componentId, ...updateData } = comp;
+        const { error: updateError } = await supabase
           .from("catalog_components")
-          .insert(componentsToSave);
+          .update(updateData)
+          .eq("id", componentId);
         
-        if (componentsError) {
-          console.error("Error saving components:", componentsError);
-          throw componentsError;
+        if (updateError) {
+          console.error("Error updating component:", componentId, updateError);
+          throw updateError;
         }
+        console.log("Updated component:", componentId);
+      }
+      
+      // Insert new components
+      if (componentsToInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from("catalog_components")
+          .insert(componentsToInsert);
         
-        console.log("New components inserted successfully");
+        if (insertError) {
+          console.error("Error inserting components:", insertError);
+          throw insertError;
+        }
+        console.log("Inserted new components:", componentsToInsert.length);
       }
       
       toast({

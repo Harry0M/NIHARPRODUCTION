@@ -72,7 +72,7 @@ export const ComponentsTable = ({
     return componentTypeLabels[componentType] || componentType;
   };
 
-  // Function to calculate consumption based on formula
+  // Function to calculate consumption based on formula and quantity
   const calculateDisplayConsumption = (component: CatalogComponent) => {
     const quantity = defaultQuantity || 1;
     
@@ -89,22 +89,23 @@ export const ComponentsTable = ({
     }
     
     let calculatedConsumption = 0;
+    const baseConsumption = Number(component.consumption);
     
     if (component.formula === 'linear') {
       // Linear formula: (length * quantity) / 39.37
       if (component.length && quantity > 0) {
-        const totalLengthInInches = component.length * quantity;
+        const totalLengthInInches = Number(component.length) * quantity;
         calculatedConsumption = totalLengthInInches / 39.37;
         console.log(`Linear calculation: ${component.length} × ${quantity} ÷ 39.37 = ${calculatedConsumption}`);
       } else {
         // Fallback: use stored consumption * quantity for linear
-        calculatedConsumption = component.consumption * quantity;
-        console.log(`Linear fallback: ${component.consumption} × ${quantity} = ${calculatedConsumption}`);
+        calculatedConsumption = baseConsumption * quantity;
+        console.log(`Linear fallback: ${baseConsumption} × ${quantity} = ${calculatedConsumption}`);
       }
     } else {
       // Standard formula: stored consumption * quantity
-      calculatedConsumption = component.consumption * quantity;
-      console.log(`Standard calculation: ${component.consumption} × ${quantity} = ${calculatedConsumption}`);
+      calculatedConsumption = baseConsumption * quantity;
+      console.log(`Standard calculation: ${baseConsumption} × ${quantity} = ${calculatedConsumption}`);
     }
     
     return calculatedConsumption;
@@ -160,7 +161,7 @@ export const ComponentsTable = ({
                           <span className="text-xs text-muted-foreground ml-1">
                             {component.formula === 'linear' 
                               ? `(${component.length} × ${defaultQuantity} ÷ 39.37)` 
-                              : `(${component.consumption.toFixed(4)} × ${defaultQuantity})`
+                              : `(${Number(component.consumption).toFixed(4)} × ${defaultQuantity})`
                             }
                           </span>
                         )}
