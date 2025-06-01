@@ -105,10 +105,20 @@ const CatalogEdit = () => {
           total_cost: product.total_cost ? product.total_cost.toString() : "0"
         });
 
-        // Fetch components
+        // Fetch components with material details
         const { data: componentsData, error: componentsError } = await supabase
           .from("catalog_components")
-          .select("*")
+          .select(`
+            *,
+            material:inventory(
+              id,
+              material_name,
+              color,
+              gsm,
+              unit,
+              purchase_rate
+            )
+          `)
           .eq("catalog_id", id);
           
         if (componentsError) throw componentsError;
@@ -120,38 +130,7 @@ const CatalogEdit = () => {
         const standardComps: Record<string, any> = {};
         const customComps: ComponentType[] = [];
         
-        // First, clear any existing components
-        setComponents({});
-        setCustomComponents([]);
-        
-        // Create a map to track processed components
-        const processedComponents = new Set<string>();
-        
-        // Fetch material prices for all components
-        const materialIds = componentsData
-          .filter(comp => comp.material_id)
-          .map(comp => comp.material_id);
-        
-        let materialPrices: Record<string, number> = {};
-        if (materialIds.length > 0) {
-          const { data: materials, error: materialsError } = await supabase
-            .from("inventory")
-            .select("id, purchase_rate, rate")
-            .in("id", materialIds);
-            
-          if (materialsError) throw materialsError;
-          
-          materialPrices = materials.reduce((acc, material) => ({
-            ...acc,
-            [material.id]: material.purchase_rate || material.rate || 0
-          }), {});
-        }
-        
         componentsData.forEach(comp => {
-          // Skip if we've already processed this component
-          if (processedComponents.has(comp.id)) return;
-          processedComponents.add(comp.id);
-          
           const componentType = comp.component_type.toLowerCase();
           console.log(`Processing component: ${comp.component_type} with formula: ${comp.formula}`);
           
@@ -159,31 +138,28 @@ const CatalogEdit = () => {
             // For standard components, use the capitalized version as the key
             const componentKey = componentType.charAt(0).toUpperCase() + componentType.slice(1);
             
-            // Only add if we don't already have this type
-            if (!standardComps[componentKey]) {
-              const materialRate = comp.material_id ? materialPrices[comp.material_id] : undefined;
-              const consumption = comp.consumption ? parseFloat(comp.consumption.toString()) : 0;
-              const materialCost = materialRate && consumption ? (consumption * materialRate).toString() : undefined;
-              
-              standardComps[componentKey] = {
-                id: comp.id,
-                type: componentKey,
-                color: comp.color || undefined,
-                length: comp.length?.toString() || undefined,
-                width: comp.width?.toString() || undefined,
-                roll_width: comp.roll_width?.toString() || undefined,
-                formula: comp.formula || 'standard',
-                consumption: comp.consumption?.toString() || undefined,
-                material_id: comp.material_id || undefined,
-                materialRate: materialRate?.toString(),
-                materialCost: materialCost
-              };
-              
-              console.log(`Standard component ${componentKey} loaded with formula: ${comp.formula || 'standard'}`);
-            }
+            const materialRate = comp.material?.purchase_rate || 0;
+            const consumption = comp.consumption ? parseFloat(comp.consumption.toString()) : 0;
+            const materialCost = materialRate && consumption ? (consumption * materialRate).toString() : undefined;
+            
+            standardComps[componentKey] = {
+              id: comp.id,
+              type: componentKey,
+              color: comp.color || undefined,
+              length: comp.length?.toString() || undefined,
+              width: comp.width?.toString() || undefined,
+              roll_width: comp.roll_width?.toString() || undefined,
+              formula: comp.formula || 'standard',
+              consumption: comp.consumption?.toString() || undefined,
+              material_id: comp.material_id || undefined,
+              materialRate: materialRate?.toString(),
+              materialCost: materialCost
+            };
+            
+            console.log(`Standard component ${componentKey} loaded with formula: ${comp.formula || 'standard'}`);
           } else {
             // For custom components
-            const materialRate = comp.material_id ? materialPrices[comp.material_id] : undefined;
+            const materialRate = comp.material?.purchase_rate || 0;
             const consumption = comp.consumption ? parseFloat(comp.consumption.toString()) : 0;
             const materialCost = materialRate && consumption ? (consumption * materialRate).toString() : undefined;
             
@@ -206,7 +182,7 @@ const CatalogEdit = () => {
           }
         });
         
-        // Set the components after processing all of them
+        // Set the components
         setComponents(standardComps);
         setCustomComponents(customComps);
         
@@ -223,7 +199,9 @@ const CatalogEdit = () => {
       }
     };
 
-    fetchProductData();
+    if (id) {
+      fetchProductData();
+    }
   }, [id]);
 
   const validateForm = () => {
@@ -316,25 +294,32 @@ const CatalogEdit = () => {
       
       console.log("Updating product with data:", productDbData);
       
-      // Update the product
+      // Update the product first
       const { error: productError } = await supabase
         .from("catalog")
         .update(productDbData)
         .eq("id", id);
       
       if (productError) {
+        console.error("Product update error:", productError);
         throw productError;
       }
       
       console.log("Product updated successfully");
       
-      // Process components using improved strategy
-      const allComponents = [
-        ...Object.values(components).filter(Boolean),
+      // Now handle components - get current components and prepare updates
+      const allCurrentComponents = [
+        ...Object.entries(components)
+          .filter(([_, comp]) => comp && Object.keys(comp).length > 0)
+          .map(([type, comp]) => ({
+            ...comp,
+            type: type.toLowerCase(), // Convert to lowercase for DB
+            component_type: type.toLowerCase()
+          })),
         ...customComponents.filter(comp => comp.customName || comp.color || comp.length || comp.width || comp.roll_width)
       ];
       
-      console.log("Processing components for save:", allComponents);
+      console.log("Current components to save:", allCurrentComponents);
       
       // Get existing components from database
       const { data: existingComponents, error: fetchError } = await supabase
@@ -343,35 +328,21 @@ const CatalogEdit = () => {
         .eq("catalog_id", id);
       
       if (fetchError) {
+        console.error("Fetch existing components error:", fetchError);
         throw fetchError;
       }
       
       console.log("Existing components in DB:", existingComponents);
       
-      // Create maps for easier lookup
-      const existingComponentsMap = new Map(
-        existingComponents.map(comp => [comp.id, comp])
-      );
-      
-      const currentComponentIds = new Set(
-        allComponents
-          .filter(comp => comp.id)
-          .map(comp => comp.id)
-      );
-      
-      // Find components to delete (exist in DB but not in current form)
-      const componentsToDelete = existingComponents.filter(
-        comp => !currentComponentIds.has(comp.id)
-      );
-      
-      // Separate updates from inserts
+      // Build component update/insert data
       const componentsToUpdate: any[] = [];
       const componentsToInsert: any[] = [];
+      const existingComponentIds = new Set();
       
-      allComponents.forEach(comp => {
+      allCurrentComponents.forEach(comp => {
         const componentData = {
           catalog_id: id,
-          component_type: comp.type === 'custom' ? (comp.customName || 'custom') : comp.type.toLowerCase(),
+          component_type: comp.type === 'custom' ? (comp.customName || 'custom') : comp.type,
           size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
           color: comp.color || null,
           roll_width: comp.roll_width ? parseFloat(comp.roll_width) : null,
@@ -381,26 +352,33 @@ const CatalogEdit = () => {
           material_id: comp.material_id || null,
           material_linked: comp.material_id ? true : false,
           consumption: comp.consumption ? parseFloat(comp.consumption) : null,
-          formula: comp.formula || 'standard'
+          formula: comp.formula || 'standard',
+          updated_at: new Date().toISOString()
         };
         
-        if (comp.id && existingComponentsMap.has(comp.id)) {
-          // This is an update
+        if (comp.id) {
+          // This is an existing component to update
+          existingComponentIds.add(comp.id);
           componentsToUpdate.push({
             id: comp.id,
             ...componentData
           });
         } else {
-          // This is a new component
+          // This is a new component to insert
           componentsToInsert.push(componentData);
         }
       });
+      
+      // Find components to delete (exist in DB but not in current form)
+      const componentsToDelete = existingComponents.filter(
+        comp => !existingComponentIds.has(comp.id)
+      );
       
       console.log("Components to delete:", componentsToDelete);
       console.log("Components to update:", componentsToUpdate);
       console.log("Components to insert:", componentsToInsert);
       
-      // Delete components that were removed
+      // Delete removed components
       if (componentsToDelete.length > 0) {
         const deleteIds = componentsToDelete.map(comp => comp.id);
         const { error: deleteError } = await supabase
@@ -409,6 +387,7 @@ const CatalogEdit = () => {
           .in("id", deleteIds);
         
         if (deleteError) {
+          console.error("Delete components error:", deleteError);
           throw deleteError;
         }
         console.log("Deleted components:", deleteIds);
@@ -426,7 +405,7 @@ const CatalogEdit = () => {
           console.error("Error updating component:", componentId, updateError);
           throw updateError;
         }
-        console.log("Updated component:", componentId);
+        console.log("Updated component:", componentId, updateData);
       }
       
       // Insert new components
@@ -439,7 +418,7 @@ const CatalogEdit = () => {
           console.error("Error inserting components:", insertError);
           throw insertError;
         }
-        console.log("Inserted new components:", componentsToInsert.length);
+        console.log("Inserted new components:", componentsToInsert);
       }
       
       toast({
@@ -449,7 +428,7 @@ const CatalogEdit = () => {
       });
 
       // Navigate back to the product view
-      window.location.href = `/inventory/catalog/${id}`;
+      navigate(`/inventory/catalog/${id}`);
       
     } catch (error: any) {
       toast({
@@ -478,7 +457,7 @@ const CatalogEdit = () => {
           <Button 
             variant="ghost" 
             size="sm"
-            onClick={() => window.location.href = `/inventory/catalog/${id}`}
+            onClick={() => navigate(`/inventory/catalog/${id}`)}
             className="gap-1"
           >
             <ArrowLeft size={16} />
@@ -771,7 +750,7 @@ const CatalogEdit = () => {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => window.location.href = `/inventory/catalog/${id}`}
+                onClick={() => navigate(`/inventory/catalog/${id}`)}
               >
                 Cancel
               </Button>
