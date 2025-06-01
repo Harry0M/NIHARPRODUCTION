@@ -121,6 +121,13 @@ export type Database = {
             foreignKeyName: "catalog_component_materials_material_id_fkey"
             columns: ["material_id"]
             isOneToOne: false
+            referencedRelation: "active_inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_component_materials_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
             referencedRelation: "inventory"
             referencedColumns: ["id"]
           },
@@ -155,6 +162,7 @@ export type Database = {
           consumption: number | null
           created_at: string
           custom_name: string | null
+          formula: string | null
           gsm: number | null
           id: string
           length: number | null
@@ -172,6 +180,7 @@ export type Database = {
           consumption?: number | null
           created_at?: string
           custom_name?: string | null
+          formula?: string | null
           gsm?: number | null
           id?: string
           length?: number | null
@@ -189,6 +198,7 @@ export type Database = {
           consumption?: number | null
           created_at?: string
           custom_name?: string | null
+          formula?: string | null
           gsm?: number | null
           id?: string
           length?: number | null
@@ -216,6 +226,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           email: string | null
+          gst_number: string | null
           id: string
           name: string
           phone: string | null
@@ -228,6 +239,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           email?: string | null
+          gst_number?: string | null
           id?: string
           name: string
           phone?: string | null
@@ -240,6 +252,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           email?: string | null
+          gst_number?: string | null
           id?: string
           name?: string
           phone?: string | null
@@ -469,8 +482,10 @@ export type Database = {
           color: string | null
           conversion_rate: number | null
           created_at: string
+          deleted_at: string | null
           gsm: string | null
           id: string
+          is_deleted: boolean | null
           location_id: string | null
           material_name: string
           min_stock_level: number | null
@@ -494,8 +509,10 @@ export type Database = {
           color?: string | null
           conversion_rate?: number | null
           created_at?: string
+          deleted_at?: string | null
           gsm?: string | null
           id?: string
+          is_deleted?: boolean | null
           location_id?: string | null
           material_name: string
           min_stock_level?: number | null
@@ -519,8 +536,10 @@ export type Database = {
           color?: string | null
           conversion_rate?: number | null
           created_at?: string
+          deleted_at?: string | null
           gsm?: string | null
           id?: string
+          is_deleted?: boolean | null
           location_id?: string | null
           material_name?: string
           min_stock_level?: number | null
@@ -600,6 +619,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "inventory_batches_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "active_inventory"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "inventory_batches_material_id_fkey"
             columns: ["material_id"]
@@ -701,6 +727,13 @@ export type Database = {
           transaction_type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "inventory_transaction_log_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "active_inventory"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "inventory_transaction_log_material_id_fkey"
             columns: ["material_id"]
@@ -824,6 +857,13 @@ export type Database = {
             foreignKeyName: "inventory_transactions_inventory_id_fkey"
             columns: ["inventory_id"]
             isOneToOne: false
+            referencedRelation: "active_inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
             referencedRelation: "inventory"
             referencedColumns: ["id"]
           },
@@ -853,6 +893,13 @@ export type Database = {
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "inventory_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "active_inventory"
             referencedColumns: ["id"]
           },
           {
@@ -1090,6 +1137,13 @@ export type Database = {
             foreignKeyName: "material_order_usage_material_id_fkey"
             columns: ["material_id"]
             isOneToOne: false
+            referencedRelation: "active_inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_order_usage_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
             referencedRelation: "inventory"
             referencedColumns: ["id"]
           },
@@ -1130,6 +1184,85 @@ export type Database = {
           },
         ]
       }
+      material_suppliers: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_default: boolean | null
+          last_purchase_date: string | null
+          material_id: string
+          notes: string | null
+          purchase_price: number | null
+          supplier_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_default?: boolean | null
+          last_purchase_date?: string | null
+          material_id: string
+          notes?: string | null
+          purchase_price?: number | null
+          supplier_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_default?: boolean | null
+          last_purchase_date?: string | null
+          material_id?: string
+          notes?: string | null
+          purchase_price?: number | null
+          supplier_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_suppliers_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "active_inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_suppliers_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_suppliers_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_consumption_analysis"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "material_suppliers_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_consumption_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "material_suppliers_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_usage_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "material_suppliers_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_components: {
         Row: {
           color: string | null
@@ -1139,6 +1272,7 @@ export type Database = {
           consumption: number | null
           created_at: string | null
           custom_name: string | null
+          formula: string | null
           from_template: boolean | null
           gsm: number | null
           id: string
@@ -1157,6 +1291,7 @@ export type Database = {
           consumption?: number | null
           created_at?: string | null
           custom_name?: string | null
+          formula?: string | null
           from_template?: boolean | null
           gsm?: number | null
           id?: string
@@ -1175,6 +1310,7 @@ export type Database = {
           consumption?: number | null
           created_at?: string | null
           custom_name?: string | null
+          formula?: string | null
           from_template?: boolean | null
           gsm?: number | null
           id?: string
@@ -1186,6 +1322,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_order_components_material_id"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "active_inventory"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fk_order_components_material_id"
             columns: ["material_id"]
@@ -1285,107 +1428,6 @@ export type Database = {
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      purchases: {
-        Row: {
-          id: string
-          supplier_id: string
-          purchase_date: string
-          transport_charge: number | null
-          subtotal: number
-          total_amount: number
-          created_by: string | null
-          created_at: string
-          updated_at: string
-          status: string
-          notes: string | null
-          purchase_number: string
-        }
-        Insert: {
-          id?: string
-          supplier_id: string
-          purchase_date: string
-          transport_charge?: number | null
-          subtotal: number
-          total_amount: number
-          created_by?: string | null
-          created_at?: string
-          updated_at?: string
-          status?: string
-          notes?: string | null
-          purchase_number?: string
-        }
-        Update: {
-          id?: string
-          supplier_id?: string
-          purchase_date?: string
-          transport_charge?: number | null
-          subtotal?: number
-          total_amount?: number
-          created_by?: string | null
-          created_at?: string
-          updated_at?: string
-          status?: string
-          notes?: string | null
-          purchase_number?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "purchases_supplier_id_fkey"
-            columns: ["supplier_id"]
-            isOneToOne: false
-            referencedRelation: "suppliers"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      purchase_items: {
-        Row: {
-          id: string
-          purchase_id: string
-          material_id: string
-          quantity: number
-          unit_price: number
-          line_total: number
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          purchase_id: string
-          material_id: string
-          quantity: number
-          unit_price: number
-          line_total: number
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          purchase_id?: string
-          material_id?: string
-          quantity?: number
-          unit_price?: number
-          line_total?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "purchase_items_purchase_id_fkey"
-            columns: ["purchase_id"]
-            isOneToOne: false
-            referencedRelation: "purchases"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "purchase_items_material_id_fkey"
-            columns: ["material_id"]
-            isOneToOne: false
-            referencedRelation: "inventory"
-            referencedColumns: ["id"]
-          }
         ]
       }
       orders: {
@@ -1573,6 +1615,104 @@ export type Database = {
           },
         ]
       }
+      processed_events: {
+        Row: {
+          event_type: string
+          id: string
+          processed_at: string
+          reference_id: string
+        }
+        Insert: {
+          event_type: string
+          id?: string
+          processed_at?: string
+          reference_id: string
+        }
+        Update: {
+          event_type?: string
+          id?: string
+          processed_at?: string
+          reference_id?: string
+        }
+        Relationships: []
+      }
+      product_details: {
+        Row: {
+          bag_length: number
+          bag_width: number
+          border_dimension: number | null
+          catalog_id: string
+          created_at: string | null
+          cutting_charge: number | null
+          default_quantity: number | null
+          default_rate: number | null
+          description: string | null
+          height: number | null
+          id: string
+          margin: number | null
+          material_calculation_complete: boolean | null
+          name: string
+          printing_charge: number | null
+          selling_rate: number | null
+          stitching_charge: number | null
+          total_cost: number | null
+          transport_charge: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          bag_length: number
+          bag_width: number
+          border_dimension?: number | null
+          catalog_id: string
+          created_at?: string | null
+          cutting_charge?: number | null
+          default_quantity?: number | null
+          default_rate?: number | null
+          description?: string | null
+          height?: number | null
+          id?: string
+          margin?: number | null
+          material_calculation_complete?: boolean | null
+          name: string
+          printing_charge?: number | null
+          selling_rate?: number | null
+          stitching_charge?: number | null
+          total_cost?: number | null
+          transport_charge?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          bag_length?: number
+          bag_width?: number
+          border_dimension?: number | null
+          catalog_id?: string
+          created_at?: string | null
+          cutting_charge?: number | null
+          default_quantity?: number | null
+          default_rate?: number | null
+          description?: string | null
+          height?: number | null
+          id?: string
+          margin?: number | null
+          material_calculation_complete?: boolean | null
+          name?: string
+          printing_charge?: number | null
+          selling_rate?: number | null
+          stitching_charge?: number | null
+          total_cost?: number | null
+          transport_charge?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_details_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_materials: {
         Row: {
           created_at: string
@@ -1602,6 +1742,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "product_materials_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "active_inventory"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "product_materials_material_id_fkey"
             columns: ["material_id"]
@@ -1710,6 +1857,138 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      purchase_items: {
+        Row: {
+          created_at: string
+          id: string
+          line_total: number
+          material_id: string
+          purchase_id: string
+          quantity: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          line_total: number
+          material_id: string
+          purchase_id: string
+          quantity: number
+          unit_price: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          line_total?: number
+          material_id?: string
+          purchase_id?: string
+          quantity?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_items_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "active_inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_items_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_items_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_consumption_analysis"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "purchase_items_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_consumption_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "purchase_items_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_usage_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "purchase_items_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchases: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_number: string | null
+          notes: string | null
+          purchase_date: string
+          purchase_number: string
+          status: string | null
+          subtotal: number
+          supplier_id: string | null
+          total_amount: number
+          transport_charge: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_number?: string | null
+          notes?: string | null
+          purchase_date?: string
+          purchase_number: string
+          status?: string | null
+          subtotal?: number
+          supplier_id?: string | null
+          total_amount?: number
+          transport_charge?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_number?: string | null
+          notes?: string | null
+          purchase_date?: string
+          purchase_number?: string
+          status?: string | null
+          subtotal?: number
+          supplier_id?: string | null
+          total_amount?: number
+          transport_charge?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchases_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stitching_jobs: {
         Row: {
@@ -1951,6 +2230,112 @@ export type Database = {
       }
     }
     Views: {
+      active_inventory: {
+        Row: {
+          alternate_unit: string | null
+          category_id: string | null
+          color: string | null
+          conversion_rate: number | null
+          created_at: string | null
+          deleted_at: string | null
+          gsm: string | null
+          id: string | null
+          is_deleted: boolean | null
+          location_id: string | null
+          material_name: string | null
+          min_stock_level: number | null
+          purchase_price: number | null
+          purchase_rate: number | null
+          quantity: number | null
+          rate: number | null
+          reorder_level: number | null
+          reorder_quantity: number | null
+          roll_width: number | null
+          selling_price: number | null
+          status: string | null
+          supplier_id: string | null
+          track_cost: boolean | null
+          unit: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          alternate_unit?: string | null
+          category_id?: string | null
+          color?: string | null
+          conversion_rate?: number | null
+          created_at?: string | null
+          deleted_at?: string | null
+          gsm?: string | null
+          id?: string | null
+          is_deleted?: boolean | null
+          location_id?: string | null
+          material_name?: string | null
+          min_stock_level?: number | null
+          purchase_price?: number | null
+          purchase_rate?: number | null
+          quantity?: number | null
+          rate?: number | null
+          reorder_level?: number | null
+          reorder_quantity?: number | null
+          roll_width?: number | null
+          selling_price?: number | null
+          status?: string | null
+          supplier_id?: string | null
+          track_cost?: boolean | null
+          unit?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          alternate_unit?: string | null
+          category_id?: string | null
+          color?: string | null
+          conversion_rate?: number | null
+          created_at?: string | null
+          deleted_at?: string | null
+          gsm?: string | null
+          id?: string | null
+          is_deleted?: boolean | null
+          location_id?: string | null
+          material_name?: string | null
+          min_stock_level?: number | null
+          purchase_price?: number | null
+          purchase_rate?: number | null
+          quantity?: number | null
+          rate?: number | null
+          reorder_level?: number | null
+          reorder_quantity?: number | null
+          roll_width?: number | null
+          selling_price?: number | null
+          status?: string | null
+          supplier_id?: string | null
+          track_cost?: boolean | null
+          unit?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "material_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       material_consumption_analysis: {
         Row: {
           color: string | null
@@ -2009,6 +2394,13 @@ export type Database = {
           usage_date: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "material_order_usage_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "active_inventory"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "material_order_usage_material_id_fkey"
             columns: ["material_id"]
@@ -2074,6 +2466,13 @@ export type Database = {
       }
     }
     Functions: {
+      bulk_delete_orders: {
+        Args: { order_ids: string[] }
+        Returns: {
+          deleted_count: number
+          status: string
+        }[]
+      }
       calculate_consumption: {
         Args: {
           p_length: number
@@ -2103,10 +2502,6 @@ export type Database = {
       delete_order_completely: {
         Args: { order_id: string }
         Returns: boolean
-      }
-      bulk_delete_orders: {
-        Args: { order_ids: string[] }
-        Returns: { deleted_count: number, status: string }[]
       }
       emergency_delete_order: {
         Args: { target_id: string }
@@ -2171,6 +2566,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      migrate_catalog_to_product_details: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       record_material_usage: {
         Args: {
           p_material_id: string
@@ -2191,6 +2590,14 @@ export type Database = {
           p_quantity: number
           p_notes?: string
         }
+        Returns: boolean
+      }
+      set_default_material_supplier: {
+        Args: { p_material_id: string; p_supplier_id: string }
+        Returns: undefined
+      }
+      soft_delete_inventory_item: {
+        Args: { input_inventory_id: string }
         Returns: boolean
       }
       update_component_material: {

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { 
@@ -68,6 +69,7 @@ const CatalogEdit = () => {
   useEffect(() => {
     const fetchProductData = async () => {
       try {
+        console.log("Fetching product data for ID:", id);
         // Fetch product details
         const { data: product, error: productError } = await supabase
           .from("catalog")
@@ -77,6 +79,8 @@ const CatalogEdit = () => {
           
         if (productError) throw productError;
         
+        console.log("Product data loaded:", product);
+        
         // Calculate margin if we have selling rate and total cost
         let calculatedMargin = null;
         if (product.selling_rate && product.total_cost && product.total_cost > 0) {
@@ -84,23 +88,23 @@ const CatalogEdit = () => {
         }
         
         // Format product data for the form
-      setProductData({
-        name: product.name,
-        description: product.description || "",
-        bag_length: product.bag_length.toString(),
-        bag_width: product.bag_width.toString(),
-        border_dimension: product.border_dimension ? product.border_dimension.toString() : "",
-        default_quantity: product.default_quantity ? product.default_quantity.toString() : "",
-        default_rate: product.default_rate ? product.default_rate.toString() : "",
-        selling_rate: product.selling_rate ? product.selling_rate.toString() : "",
+        setProductData({
+          name: product.name,
+          description: product.description || "",
+          bag_length: product.bag_length.toString(),
+          bag_width: product.bag_width.toString(),
+          border_dimension: product.border_dimension ? product.border_dimension.toString() : "",
+          default_quantity: product.default_quantity ? product.default_quantity.toString() : "",
+          default_rate: product.default_rate ? product.default_rate.toString() : "",
+          selling_rate: product.selling_rate ? product.selling_rate.toString() : "",
           margin: calculatedMargin ? calculatedMargin.toFixed(2) : "",
-        cutting_charge: product.cutting_charge ? product.cutting_charge.toString() : "0",
-        printing_charge: product.printing_charge ? product.printing_charge.toString() : "0",
-        stitching_charge: product.stitching_charge ? product.stitching_charge.toString() : "0",
-        transport_charge: product.transport_charge ? product.transport_charge.toString() : "0",
+          cutting_charge: product.cutting_charge ? product.cutting_charge.toString() : "0",
+          printing_charge: product.printing_charge ? product.printing_charge.toString() : "0",
+          stitching_charge: product.stitching_charge ? product.stitching_charge.toString() : "0",
+          transport_charge: product.transport_charge ? product.transport_charge.toString() : "0",
           material_cost: product.material_cost ? product.material_cost.toString() : "0",
-        total_cost: product.total_cost ? product.total_cost.toString() : "0"
-      });
+          total_cost: product.total_cost ? product.total_cost.toString() : "0"
+        });
 
         // Fetch components
         const { data: componentsData, error: componentsError } = await supabase
@@ -110,11 +114,13 @@ const CatalogEdit = () => {
           
         if (componentsError) throw componentsError;
 
+        console.log("Components data loaded:", componentsData);
+
         // Process components
         const standardComponentTypes = ['part', 'border', 'handle', 'chain', 'runner', 'piping'];
-      const standardComps: Record<string, any> = {};
-      const customComps: ComponentType[] = [];
-      
+        const standardComps: Record<string, any> = {};
+        const customComps: ComponentType[] = [];
+        
         // First, clear any existing components
         setComponents({});
         setCustomComponents([]);
@@ -148,6 +154,7 @@ const CatalogEdit = () => {
           processedComponents.add(comp.id);
           
           const componentType = comp.component_type.toLowerCase();
+          console.log(`Processing component: ${comp.component_type} with formula: ${comp.formula}`);
           
           if (standardComponentTypes.includes(componentType)) {
             // For standard components, use the capitalized version as the key
@@ -160,45 +167,51 @@ const CatalogEdit = () => {
               const materialCost = materialRate && consumption ? (consumption * materialRate).toString() : undefined;
               
               standardComps[componentKey] = {
-            id: comp.id,
+                id: comp.id,
                 type: componentKey,
-            color: comp.color || undefined,
-            length: comp.length?.toString() || undefined,
-            width: comp.width?.toString() || undefined,
-            roll_width: comp.roll_width?.toString() || undefined,
-                formula: 'standard',
-            consumption: comp.consumption?.toString() || undefined,
-            material_id: comp.material_id || undefined,
+                color: comp.color || undefined,
+                length: comp.length?.toString() || undefined,
+                width: comp.width?.toString() || undefined,
+                roll_width: comp.roll_width?.toString() || undefined,
+                formula: comp.formula || 'standard', // Fix: Use actual formula from database
+                consumption: comp.consumption?.toString() || undefined,
+                material_id: comp.material_id || undefined,
                 materialRate: materialRate?.toString(),
                 materialCost: materialCost
-          };
+              };
+              
+              console.log(`Standard component ${componentKey} loaded with formula: ${comp.formula || 'standard'}`);
             }
-        } else {
+          } else {
             // For custom components
             const materialRate = comp.material_id ? materialPrices[comp.material_id] : undefined;
             const consumption = comp.consumption ? parseFloat(comp.consumption) : 0;
             const materialCost = materialRate && consumption ? (consumption * materialRate).toString() : undefined;
             
-          customComps.push({
-            id: comp.id,
-            type: 'custom',
-            customName: comp.custom_name || comp.component_type,
-            color: comp.color || undefined,
-            length: comp.length?.toString() || undefined,
-            width: comp.width?.toString() || undefined,
-            roll_width: comp.roll_width?.toString() || undefined,
-              formula: 'standard',
-            consumption: comp.consumption?.toString() || undefined,
-            material_id: comp.material_id || undefined,
+            customComps.push({
+              id: comp.id,
+              type: 'custom',
+              customName: comp.custom_name || comp.component_type,
+              color: comp.color || undefined,
+              length: comp.length?.toString() || undefined,
+              width: comp.width?.toString() || undefined,
+              roll_width: comp.roll_width?.toString() || undefined,
+              formula: comp.formula || 'standard', // Fix: Use actual formula from database
+              consumption: comp.consumption?.toString() || undefined,
+              material_id: comp.material_id || undefined,
               materialRate: materialRate?.toString(),
               materialCost: materialCost
-          });
-        }
-      });
-      
+            });
+            
+            console.log(`Custom component loaded with formula: ${comp.formula || 'standard'}`);
+          }
+        });
+        
         // Set the components after processing all of them
-      setComponents(standardComps);
-      setCustomComponents(customComps);
+        setComponents(standardComps);
+        setCustomComponents(customComps);
+        
+        console.log("Final components state:", { standardComps, customComps });
         setLoading(false);
       } catch (error: any) {
         toast({
@@ -255,6 +268,8 @@ const CatalogEdit = () => {
     setSubmitting(true);
     
     try {
+      console.log("Starting save process...");
+      
       // Format the name to include quantity if default_quantity is provided
       let formattedName = productData.name;
       if (productData.default_quantity) {
@@ -300,6 +315,8 @@ const CatalogEdit = () => {
         updated_at: new Date().toISOString()
       };
       
+      console.log("Updating product with data:", productDbData);
+      
       // Update the product
       const { error: productError } = await supabase
         .from("catalog")
@@ -310,14 +327,59 @@ const CatalogEdit = () => {
         throw productError;
       }
       
-      // Process components
+      console.log("Product updated successfully");
+      
+      // Process components - collect all components
       const allComponents = [
         ...Object.values(components).filter(Boolean),
         ...customComponents.filter(comp => comp.customName || comp.color || comp.length || comp.width || comp.roll_width)
       ];
       
+      console.log("Processing components for save:", allComponents);
+      
       if (allComponents.length > 0) {
-        // First, delete all existing components
+        // Get existing components from database
+        const { data: existingComponents, error: fetchError } = await supabase
+          .from("catalog_components")
+          .select("id")
+          .eq("catalog_id", id);
+        
+        if (fetchError) {
+          throw fetchError;
+        }
+        
+        const existingComponentIds = existingComponents.map(comp => comp.id);
+        console.log("Existing component IDs:", existingComponentIds);
+        
+        // Prepare components for database
+        const componentsToSave = allComponents.map(comp => {
+          const componentData = {
+            catalog_id: id,
+            component_type: comp.type === 'custom' ? (comp.customName || 'custom') : comp.type.toLowerCase(), // Fix: Convert to lowercase
+            size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
+            color: comp.color || null,
+            roll_width: comp.roll_width ? parseFloat(comp.roll_width) : null,
+            length: comp.length ? parseFloat(comp.length) : null,
+            width: comp.width ? parseFloat(comp.width) : null,
+            custom_name: comp.type === 'custom' ? comp.customName : null,
+            material_id: comp.material_id || null,
+            material_linked: comp.material_id ? true : false,
+            consumption: comp.consumption ? parseFloat(comp.consumption) : null,
+            formula: comp.formula || 'standard' // Fix: Ensure formula is saved
+          };
+          
+          console.log(`Preparing component for save:`, {
+            type: comp.type,
+            formula: comp.formula,
+            componentData: componentData
+          });
+          
+          return componentData;
+        });
+        
+        console.log("Components prepared for save:", componentsToSave);
+        
+        // Delete existing components first
         const { error: deleteError } = await supabase
           .from("catalog_components")
           .delete()
@@ -327,29 +389,19 @@ const CatalogEdit = () => {
           throw deleteError;
         }
         
-        // Then insert all components as new
-        const componentsToInsert = allComponents.map(comp => ({
-          catalog_id: id,
-          component_type: comp.type === 'custom' ? comp.customName || 'custom' : comp.type,
-          size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
-          color: comp.color || null,
-          roll_width: comp.roll_width ? parseFloat(comp.roll_width) : null,
-          length: comp.length ? parseFloat(comp.length) : null,
-          width: comp.width ? parseFloat(comp.width) : null,
-          custom_name: comp.type === 'custom' ? comp.customName : null,
-          material_id: comp.material_id || null,
-          material_linked: comp.material_id ? true : false,
-          consumption: comp.consumption ? parseFloat(comp.consumption) : null,
-          formula: comp.formula || 'standard'
-        }));
+        console.log("Existing components deleted");
         
+        // Insert new components
         const { error: componentsError } = await supabase
           .from("catalog_components")
-          .insert(componentsToInsert);
+          .insert(componentsToSave);
         
         if (componentsError) {
+          console.error("Error saving components:", componentsError);
           throw componentsError;
         }
+        
+        console.log("New components inserted successfully");
       }
       
       toast({
@@ -532,7 +584,7 @@ const CatalogEdit = () => {
                   >
                     + Add Custom Component
                   </Button>
-              </div>
+                </div>
                 
                 <CustomComponentSection 
                   customComponents={customComponents}
@@ -557,72 +609,72 @@ const CatalogEdit = () => {
               {/* Material Costs */}
               <div className="space-y-4">
                 <h3 className="text-lg font-medium">Material Costs</h3>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="material_cost">Material Cost</Label>
-                  <Input 
-                    id="material_cost" 
-                    name="material_cost"
-                    type="number"
-                    step="0.01"
-                    value={productData.material_cost}
-                    onChange={handleProductChange}
-                    placeholder="Material cost"
-                    min="0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cutting_charge">Cutting Charge</Label>
-                  <Input 
-                    id="cutting_charge" 
-                    name="cutting_charge"
-                    type="number"
-                    step="0.01"
-                    value={productData.cutting_charge}
-                    onChange={handleProductChange}
-                    placeholder="Cutting charge"
-                    min="0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="printing_charge">Printing Charge</Label>
-                  <Input 
-                    id="printing_charge" 
-                    name="printing_charge"
-                    type="number"
-                    step="0.01"
-                    value={productData.printing_charge}
-                    onChange={handleProductChange}
-                    placeholder="Printing charge"
-                    min="0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="stitching_charge">Stitching Charge</Label>
-                  <Input 
-                    id="stitching_charge" 
-                    name="stitching_charge"
-                    type="number"
-                    step="0.01"
-                    value={productData.stitching_charge}
-                    onChange={handleProductChange}
-                    placeholder="Stitching charge"
-                    min="0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="transport_charge">Transport Charge</Label>
-                  <Input 
-                    id="transport_charge" 
-                    name="transport_charge"
-                    type="number"
-                    step="0.01"
-                    value={productData.transport_charge}
-                    onChange={handleProductChange}
-                    placeholder="Transport charge"
-                    min="0"
-                  />
-                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="material_cost">Material Cost</Label>
+                    <Input 
+                      id="material_cost" 
+                      name="material_cost"
+                      type="number"
+                      step="0.01"
+                      value={productData.material_cost}
+                      onChange={handleProductChange}
+                      placeholder="Material cost"
+                      min="0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cutting_charge">Cutting Charge</Label>
+                    <Input 
+                      id="cutting_charge" 
+                      name="cutting_charge"
+                      type="number"
+                      step="0.01"
+                      value={productData.cutting_charge}
+                      onChange={handleProductChange}
+                      placeholder="Cutting charge"
+                      min="0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="printing_charge">Printing Charge</Label>
+                    <Input 
+                      id="printing_charge" 
+                      name="printing_charge"
+                      type="number"
+                      step="0.01"
+                      value={productData.printing_charge}
+                      onChange={handleProductChange}
+                      placeholder="Printing charge"
+                      min="0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="stitching_charge">Stitching Charge</Label>
+                    <Input 
+                      id="stitching_charge" 
+                      name="stitching_charge"
+                      type="number"
+                      step="0.01"
+                      value={productData.stitching_charge}
+                      onChange={handleProductChange}
+                      placeholder="Stitching charge"
+                      min="0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="transport_charge">Transport Charge</Label>
+                    <Input 
+                      id="transport_charge" 
+                      name="transport_charge"
+                      type="number"
+                      step="0.01"
+                      value={productData.transport_charge}
+                      onChange={handleProductChange}
+                      placeholder="Transport charge"
+                      min="0"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -678,17 +730,17 @@ const CatalogEdit = () => {
           </CardContent>
           <CardFooter>
             <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => window.location.href = `/inventory/catalog/${id}`}
-            >
-              Cancel
-            </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => window.location.href = `/inventory/catalog/${id}`}
+              >
+                Cancel
+              </Button>
               <Button type="submit" disabled={submitting}>
                 {submitting ? "Updating..." : "Update Product"}
-            </Button>
-          </div>
+              </Button>
+            </div>
           </CardFooter>
         </Card>
       </form>
