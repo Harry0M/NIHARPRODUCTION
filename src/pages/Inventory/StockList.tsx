@@ -79,7 +79,9 @@ const StockList = () => {
       // First get the total count for pagination
       const countQuery = supabase
         .from('inventory')
-        .select('id', { count: 'exact', head: true });
+        .select('id', { count: 'exact', head: true })
+        // Only show active (non-deleted) items
+        .eq('is_deleted', false);
       
       if (searchTerm) {
         countQuery.or(
@@ -97,9 +99,12 @@ const StockList = () => {
       setTotalCount(count || 0);
       
       // Then fetch the paginated data
-      let query = supabase
+      // Add explicit type annotation to avoid excessive type depth error
+      let query: any = supabase
         .from('inventory')
-        .select('*, suppliers(name)');
+        .select('*, suppliers(name)')
+        // Only show active (non-deleted) items
+        .eq('is_deleted', false);
       
       if (searchTerm) {
         query = query.or(
@@ -125,7 +130,9 @@ const StockList = () => {
       console.log(`Fetched ${data?.length || 0} inventory items`);
       return data;
     },
-    keepPreviousData: true, // Keep previous data while loading new data
+    // Use staleTime and refetchOnMount settings instead of keepPreviousData/placeholderData
+    staleTime: 5000,
+    refetchOnMount: true
   });
 
   // Also fetch transaction counts for each material
@@ -246,35 +253,24 @@ const StockList = () => {
     
     setIsDeleting(true);
     try {
-      console.log(`Attempting to delete inventory item: ${deletingStockId}`);
+      console.log(`Attempting to soft-delete inventory item: ${deletingStockId}`);
       
-      // With ON DELETE CASCADE, we can directly delete the inventory item 
-      // and all related transaction logs will be automatically deleted
-      const { error } = await supabase
-        .from('inventory')
-        .delete()
-        .eq('id', deletingStockId);
+      // Use the soft delete function instead of directly deleting
+      // This preserves purchase history while marking the item as deleted
+      // Using any type assertion to bypass TypeScript RPC function name checking
+      // since our new function isn't in the predefined list
+      const { data, error } = await supabase
+        .rpc('soft_delete_inventory_item' as any, {
+          input_inventory_id: deletingStockId
+        });
 
       if (error) {
-        console.error("Error deleting inventory item:", error);
-        
-        if (error.code === '23503') {
-          // There's still some other foreign key constraint
-          // Extract details from the error message to identify the problem
-          const tableName = error.details.match(/table "([^"]+)"/)?.[1] || 'unknown table';
-          
-          showToast({
-            title: "Cannot delete this item",
-            description: `This item is still referenced in ${tableName}. Please address those references first.`,
-            type: "error"
-          });
-        } else {
-          showToast({
-            title: "Delete failed",
-            description: error.message,
-            type: "error"
-          });
-        }
+        console.error("Error soft-deleting inventory item:", error);
+        showToast({
+          title: "Delete failed",
+          description: error.message,
+          type: "error"
+        });
         throw error;
       }
 

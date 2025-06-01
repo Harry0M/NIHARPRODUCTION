@@ -176,13 +176,16 @@ const CostCalculationForm: React.FC<CostCalculationFormProps> = ({
                 <Input 
                   id="selling_rate" 
                   name="selling_rate"
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   value={productData.selling_rate}
                   onChange={handleProductChange}
                   placeholder="Selling price per bag"
-                  min="0"
+                  className="independent-input"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Enter any value or leave empty. This field is freely editable like amount.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="margin">Margin (%)</Label>
@@ -195,9 +198,10 @@ const CostCalculationForm: React.FC<CostCalculationFormProps> = ({
                   onChange={handleProductChange}
                   placeholder="Profit margin percentage"
                   min="0"
+                  readOnly
                 />
                 <p className="text-xs text-muted-foreground">
-                  Margin is calculated as ((Selling Rate - Total Cost) / Total Cost) × 100
+                  Auto-calculated from selling rate and total cost.
                 </p>
               </div>
             </div>

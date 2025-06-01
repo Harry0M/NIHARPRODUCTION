@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Printer, AlertTriangle, FileCheck, FileClock, FileX } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -14,7 +15,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Printer, AlertTriangle } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { showToast } from "@/components/ui/enhanced-toast";
 
@@ -49,6 +49,7 @@ interface Purchase {
   updated_at: string;
   status: string;
   notes: string;
+  invoice_number?: string;
   suppliers: {
     id: string;
     name: string;
@@ -63,7 +64,7 @@ const PurchaseDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [purchase, setPurchase] = useState<Purchase | null>(null);
-  
+
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['purchase', id],
     queryFn: async () => {
@@ -102,9 +103,42 @@ const PurchaseDetail = () => {
     enabled: !!id,
   });
   
+  const [purchaseItemsWithTransport, setPurchaseItemsWithTransport] = useState<any[]>([]);
+  const [perKgTransportRate, setPerKgTransportRate] = useState<number>(0);
+
   useEffect(() => {
     if (data) {
       setPurchase(data);
+      
+      // Calculate transport share and true prices
+      const items = data.purchase_items || [];
+      const totalWeight = items.reduce(
+        (sum, item) => sum + (item.quantity * (item.material?.conversion_rate || 1) || 0),
+        0
+      );
+      
+      if (totalWeight > 0 && data.transport_charge > 0) {
+        const perKgRate = data.transport_charge / totalWeight;
+        setPerKgTransportRate(perKgRate);
+        
+        const itemsWithTransport = items.map(item => {
+          const weight = item.quantity * (item.material?.conversion_rate || 1);
+          const transportShare = weight * perKgRate;
+          const trueUnitPrice = item.unit_price + (transportShare / (item.quantity || 1));
+          const trueLineTotal = trueUnitPrice * item.quantity;
+          
+          return {
+            ...item,
+            transport_share: transportShare,
+            true_unit_price: trueUnitPrice,
+            true_line_total: trueLineTotal
+          };
+        });
+        
+        setPurchaseItemsWithTransport(itemsWithTransport);
+      } else {
+        setPurchaseItemsWithTransport(items);
+      }
     }
   }, [data]);
   
@@ -166,14 +200,83 @@ const PurchaseDetail = () => {
         }
       }
       
-      // If status is being changed to completed, the database has a trigger that will
-      // automatically update inventory quantities, so we don't need to do it manually
+      // If status is being changed to completed, only update prices with transport adjustments
+      // IMPORTANT: The inventory quantities will be updated ONLY by the database trigger
       if (newStatus === "completed") {
         console.log("INFO: Purchase being marked as completed", id);
-        console.log("INFO: Inventory quantities will be updated automatically by database trigger");
+        console.log("INFO: Inventory quantities will be updated ONLY by database trigger");
         
-        // We don't need to do anything else here since the database trigger handles the inventory update
-        // This avoids the double counting issue
+        // Only update purchase prices with transport charge adjustments
+        if (purchase.transport_charge > 0) {
+          console.log("INFO: Updating inventory purchase prices with transport charges included");
+          console.log("Purchase items:", purchase.purchase_items);
+          
+          // First get inventory data for conversion rates
+          const inventoryData = {};
+          for (const item of purchase.purchase_items) {
+            const { data: invData } = await supabase
+              .from('inventory')
+              .select('id, conversion_rate, purchase_price')
+              .eq('id', item.material_id)
+              .single();
+            
+            if (invData) {
+              inventoryData[item.material_id] = invData;
+              console.log(`Got inventory data for ${item.material_id}: Conversion rate: ${invData.conversion_rate}, Current price: ${invData.purchase_price}`);
+            }
+          }
+          
+          // Calculate total weight directly using purchase items and inventory data
+          let totalWeight = 0;
+          for (const item of purchase.purchase_items) {
+            const conversionRate = inventoryData[item.material_id]?.conversion_rate || 1;
+            const itemWeight = item.quantity * conversionRate;
+            totalWeight += itemWeight;
+            console.log(`Item ${item.material_id}: Quantity: ${item.quantity}, Conversion: ${conversionRate}, Weight: ${itemWeight}kg`);
+          }
+          
+          console.log(`Total weight: ${totalWeight}kg, Transport charge: ${purchase.transport_charge}`);
+          
+          if (totalWeight > 0) {
+            // Calculate per kg transport rate
+            const perKgTransport = purchase.transport_charge / totalWeight;
+            console.log(`Per kg transport rate: ${perKgTransport}`);
+            
+            // Update each inventory item with transport-adjusted price
+            for (const item of purchase.purchase_items) {
+              const invData = inventoryData[item.material_id];
+              if (!invData) continue;
+              
+              const conversionRate = invData.conversion_rate || 1;
+              const itemWeight = item.quantity * conversionRate;
+              const transportShare = itemWeight * perKgTransport;
+              const trueUnitPrice = item.unit_price + (transportShare / item.quantity);
+              
+              console.log(`Calculating for ${item.material_id}:`);
+              console.log(`- Base unit price: ${item.unit_price}`);
+              console.log(`- Item weight: ${itemWeight}kg`);
+              console.log(`- Transport share: ${transportShare}`);
+              console.log(`- True unit price: ${trueUnitPrice}`);
+              
+              // Update inventory purchase rate (the correct field used by the system)
+              const { error: updateError } = await supabase
+                .from('inventory')
+                .update({ 
+                  purchase_rate: trueUnitPrice,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', item.material_id);
+              
+              if (updateError) {
+                console.error(`Error updating inventory price for ${item.material_id}:`, updateError);
+              } else {
+                console.log(`Successfully updated price for ${item.material_id} to ${trueUnitPrice}`);
+              }
+            }
+          }
+        } else {
+          console.log("INFO: No transport charge, skipping price adjustment");
+        }
       }
       
       // If changing from completed to another status (like pending or cancelled)
@@ -270,7 +373,7 @@ const PurchaseDetail = () => {
               The requested purchase could not be found or an error occurred.
             </p>
             <Button
-              onClick={() => navigate("/purchases")}
+              onClick={() => window.location.href = "/purchases"}
               className="mt-4"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -287,7 +390,7 @@ const PurchaseDetail = () => {
       <div className="flex items-center justify-between">
         <Button
           variant="outline"
-          onClick={() => navigate("/purchases")}
+          onClick={() => window.location.href = "/purchases"}
           className="flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -332,10 +435,13 @@ const PurchaseDetail = () => {
       </div>
       
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-4">
           <div className="flex justify-between items-start">
             <div>
-              <CardTitle className="text-2xl">{purchase.purchase_number}</CardTitle>
+              <CardTitle className="text-2xl font-bold">
+                Purchase {purchase.purchase_number}
+                {purchase.invoice_number && ` (Invoice: ${purchase.invoice_number})`}
+              </CardTitle>
               <CardDescription>
                 Purchase created on{" "}
                 {new Date(purchase.created_at).toLocaleDateString()} at{" "}
@@ -393,23 +499,27 @@ const PurchaseDetail = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Material</TableHead>
-                    <TableHead>Quantity</TableHead>
-                    <TableHead>Main Unit</TableHead>
                     <TableHead>Alt. Quantity</TableHead>
                     <TableHead>Alt. Unit</TableHead>
-                    <TableHead className="text-right">
-                      <div>Unit Price</div>
-                      <div className="text-xs text-muted-foreground">(Main Unit)</div>
-                    </TableHead>
+                    <TableHead>Main Quantity</TableHead>
+                    <TableHead>Main Unit</TableHead>
                     <TableHead className="text-right">
                       <div>Alt. Unit Price</div>
-                      <div className="text-xs text-muted-foreground">(Per unit)</div>
+                      <div className="text-xs text-muted-foreground">(Per alt unit)</div>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <div>Unit Price</div>
+                      <div className="text-xs text-muted-foreground">(Per main unit)</div>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <div>Transport Share</div>
+                      <div className="text-xs text-muted-foreground">(Per item)</div>
                     </TableHead>
                     <TableHead className="text-right">Line Total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {purchase.purchase_items.map((item) => (
+                  {purchaseItemsWithTransport.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">
                         {item.material.material_name}
@@ -417,21 +527,45 @@ const PurchaseDetail = () => {
                           <span className="text-muted-foreground"> - {item.material.color}</span>
                         )}
                       </TableCell>
-                      <TableCell>{item.quantity.toFixed(2)}</TableCell>
-                      <TableCell>{item.material.unit}</TableCell>
                       <TableCell>
                         {(item.quantity * (item.material.conversion_rate || 1)).toFixed(2)}
                       </TableCell>
                       <TableCell>{item.material.alternate_unit}</TableCell>
+                      <TableCell>{item.quantity.toFixed(2)}</TableCell>
+                      <TableCell>{item.material.unit}</TableCell>
                       <TableCell className="text-right">
-                        <div>{formatCurrency(item.unit_price)}</div>
+                        <div>
+                          {formatCurrency((item.true_unit_price || item.unit_price) * (item.material.conversion_rate || 1))}
+                          {item.transport_share > 0 && (
+                            <div className="text-xs text-muted-foreground">
+                              Base: {formatCurrency(item.unit_price * (item.material.conversion_rate || 1))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground">per {item.material.alternate_unit}</div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div>
+                          {formatCurrency(item.true_unit_price || item.unit_price)}
+                          {item.transport_share > 0 && (
+                            <div className="text-xs text-muted-foreground">
+                              Base: {formatCurrency(item.unit_price)}
+                            </div>
+                          )}
+                        </div>
                         <div className="text-xs text-muted-foreground">per {item.material.unit}</div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div>{formatCurrency(item.unit_price / item.material.conversion_rate)}</div>
-                        <div className="text-xs text-muted-foreground">per {item.material.alternate_unit}</div>
+                        {formatCurrency(item.transport_share || 0)}
                       </TableCell>
-                      <TableCell className="text-right">{formatCurrency(item.line_total)}</TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(item.true_line_total || item.line_total)}
+                        {item.transport_share > 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            Base: {formatCurrency(item.line_total)}
+                          </div>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -451,18 +585,30 @@ const PurchaseDetail = () => {
             
             <div>
               <div className="rounded-md border p-4 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Subtotal:</span>
-                  <span>{formatCurrency(purchase.subtotal)}</span>
+                {purchase.invoice_number && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Invoice Number:</span>
+                    <span>{purchase.invoice_number}</span>
+                  </div>
+                )}
+                <div className="flex justify-between py-2">
+                  <span className="font-medium">Subtotal:</span>
+                  <span className="font-medium">{formatCurrency(purchase.subtotal)}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Transport Charge:</span>
-                  <span>{formatCurrency(purchase.transport_charge || 0)}</span>
+                <div className="flex justify-between py-2">
+                  <span className="font-medium">Transport Charge:</span>
+                  <span className="font-medium">
+                    {formatCurrency(purchase.transport_charge)}
+                    {perKgTransportRate > 0 && (
+                      <div className="text-xs text-muted-foreground">
+                        ({formatCurrency(perKgTransportRate)}/kg)
+                      </div>
+                    )}
+                  </span>
                 </div>
-                <Separator />
-                <div className="flex justify-between items-center font-bold">
-                  <span>Total Amount:</span>
-                  <span>{formatCurrency(purchase.total_amount || 0)}</span>
+                <div className="flex justify-between py-2 text-lg">
+                  <span className="font-bold">Total Amount:</span>
+                  <span className="font-bold">{formatCurrency(purchase.total_amount)}</span>
                 </div>
               </div>
             </div>

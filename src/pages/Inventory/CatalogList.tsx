@@ -338,7 +338,8 @@ const CatalogList = () => {
                         {product.description || "—"}
                       </TableCell>
                       <TableCell>
-                        {product.base_price ? `₹${product.base_price.toFixed(2)}` : "—"}
+                        {product.selling_rate ? `₹${product.selling_rate.toFixed(2)}` : 
+                         (product.total_cost ? `₹${product.total_cost.toFixed(2)}` : "—")}
                       </TableCell>
                       <TableCell>
                         {product.bag_length && product.bag_width
@@ -423,8 +424,20 @@ const CatalogList = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure you want to delete this product?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the product from your catalog. This action cannot be undone.
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                This will permanently delete the product from your catalog, including all its components and material associations. This action cannot be undone.
+              </p>
+              <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md">
+                <h3 className="text-sm font-medium flex items-center text-amber-800 dark:text-amber-300">
+                  <Box className="h-4 w-4 mr-2" /> Important Information
+                </h3>
+                <ul className="mt-2 text-sm text-amber-700 dark:text-amber-400 list-disc pl-5 space-y-1">
+                  <li>Products that are associated with existing orders cannot be deleted.</li>
+                  <li>All component materials will also be removed.</li>
+                  <li>This does not affect your inventory stock levels.</li>
+                </ul>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -437,7 +450,14 @@ const CatalogList = () => {
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting ? "Deleting..." : "Delete Product"}
+              {isDeleting ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Deleting...
+                </>
+              ) : (
+                <>Delete Product</>
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

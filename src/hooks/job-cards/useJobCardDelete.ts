@@ -22,6 +22,23 @@ export const useJobCardDelete = (setJobCards: React.Dispatch<React.SetStateActio
     try {
       console.log("Attempting to delete job card with ID:", jobCardToDelete);
       
+      // Delete job wastage records first (this is what's causing the 409 error)
+      try {
+        console.log("Deleting job wastage records for job card ID:", jobCardToDelete);
+        const { error: wastageDeleteError } = await supabase
+          .from('job_wastage')
+          .delete()
+          .eq('job_card_id', jobCardToDelete);
+        
+        if (wastageDeleteError) {
+          console.error("Error deleting job wastage:", wastageDeleteError);
+          // Continue anyway, as some job cards might not have wastage
+        }
+      } catch (error) {
+        console.error("Error processing job wastage deletion:", error);
+        // Continue to try other deletions
+      }
+
       // Delete all related cutting components
       try {
         const { data: cuttingJobs } = await supabase

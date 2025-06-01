@@ -82,6 +82,28 @@ export const ConsumptionCalculator = ({
     }
   };
 
+  // Auto-detect formula based on provided dimensions
+  useEffect(() => {
+    // Auto-select formula based on available dimensions
+    const newFormula: ConsumptionFormulaType = 
+      // If we have length, width and roll_width, use standard formula
+      (length && width && rollWidth) ? "standard" :
+      // If we only have length, use linear formula
+      (length && (!width || !rollWidth)) ? "linear" :
+      // Default to current formula if we can't determine
+      formula;
+    
+    // Update formula if it's different from current
+    if (newFormula !== formula) {
+      setFormula(newFormula);
+      if (onFormulaChange) {
+        onFormulaChange(newFormula);
+      }
+      console.log(`Auto-selected formula: ${newFormula} based on dimensions`, 
+        { length, width, rollWidth });
+    }
+  }, [length, width, rollWidth, formula, onFormulaChange]);
+
   // Calculate consumption and cost when inputs change
   useEffect(() => {
     const newConsumption = calculateConsumption();
