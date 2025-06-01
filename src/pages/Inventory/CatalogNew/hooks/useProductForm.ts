@@ -2,6 +2,22 @@ import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 
+interface ComponentType {
+  id: string;
+  type: string;
+  customName?: string;
+  color?: string;
+  length?: string;
+  width?: string;
+  roll_width?: string;
+  material_id?: string;
+  consumption?: string;
+  baseConsumption?: string;
+  materialRate?: string;
+  materialCost?: string;
+  formula?: 'standard' | 'linear';
+}
+
 export const useProductForm = () => {
   const [productData, setProductData] = useState({
     name: "",
@@ -138,12 +154,7 @@ export const useProductForm = () => {
       
       updatedData.total_cost = totalCost.toString();
       
-      // If selling_rate exists, update margin
-      if (updatedData.selling_rate && parseFloat(updatedData.selling_rate) > 0 && totalCost > 0) {
-        const calculatedMargin = ((parseFloat(updatedData.selling_rate) - totalCost) / totalCost) * 100;
-        updatedData.margin = calculatedMargin.toFixed(2);
-      }
-      
+      // Don't update margin here - it should only change when selling rate changes
       return updatedData;
     });
   }, [components, customComponents, materialPrices]);
@@ -234,7 +245,6 @@ export const useProductForm = () => {
   const handleProductChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     
-    // Unlinked handling for all fields - no automatic calculations between selling_rate and margin
     setProductData(prev => {
       const updatedData = {
         ...prev,
@@ -245,13 +255,16 @@ export const useProductForm = () => {
       if (['cutting_charge', 'printing_charge', 'stitching_charge', 'transport_charge', 'material_cost'].includes(name)) {
         const totalCost = calculateTotalCost(updatedData);
         updatedData.total_cost = totalCost.toString();
-        
-        // No longer automatically updating margin or selling_rate when costs change
-        // This allows the user to set them independently
       }
       
-      // No automatic recalculation between margin and selling_rate
-      // They will be calculated only on form submission
+      // Only update margin if selling_rate changes
+      if (name === 'selling_rate' && value && parseFloat(value) > 0) {
+        const totalCost = calculateTotalCost(updatedData);
+        if (totalCost > 0) {
+          const newMargin = ((parseFloat(value) - totalCost) / totalCost) * 100;
+          updatedData.margin = newMargin.toFixed(2);
+        }
+      }
       
       return updatedData;
     });
@@ -268,147 +281,66 @@ export const useProductForm = () => {
     return cuttingCharge + printingCharge + stitchingCharge + transportCharge + materialCost;
   };
 
-  const handleComponentChange = async (type: string, field: string, value: string) => {
-    setComponents(prev => {
-      const component = prev[type] || { 
-        id: uuidv4(),
-        type 
-      };
+  const handleComponentChange = async (componentType: string, field: string, value: string) => {
+    const updatedComponents = { ...components };
+    const component = updatedComponents[componentType];
+
+    if (!component) return;
+
+    // Update the field
+    component[field] = value;
+
+    // If material_id changed, fetch new material price and update costs
+    if (field === 'material_id') {
+      const materialPrice = await fetchMaterialPrice(value);
+      component.materialRate = materialPrice?.toString();
       
-      const updatedComponent = {
-        ...component,
-        [field]: value
-      };
-      
-      // If material_id changed, fetch the material price
-      if (field === 'material_id' && value) {
-        fetchMaterialPrice(value).then(rate => {
-          if (rate !== null) {
-            setComponents(current => {
-              const componentToUpdate = current[type] || {};
-              return {
-                ...current,
-                [type]: {
-                  ...componentToUpdate,
-                  materialRate: rate
-                }
-              };
-            });
-          }
-        });
+      // Recalculate material cost if we have consumption
+      if (component.consumption) {
+        const consumption = parseFloat(component.consumption);
+        component.materialCost = (consumption * (materialPrice || 0)).toString();
       }
-      
-      // If materialCost is directly set, keep it as number
-      if (field === 'materialCost') {
-        console.log(`Setting material cost for ${type} to ${value}`);
-        updatedComponent.materialCost = parseFloat(value);
-      }
-      
-      // If dimensions or roll width changed, recalculate consumption
-      if (['length', 'width', 'roll_width'].includes(field) && 
-          updatedComponent.length && 
-          updatedComponent.width && 
-          updatedComponent.roll_width) {
-        
-        const baseConsumption = calculateConsumption(
-          updatedComponent.length,
-          updatedComponent.width,
-          updatedComponent.roll_width
-        );
-        
-        if (baseConsumption) {
-          updatedComponent.baseConsumption = baseConsumption;
-          updatedComponent.consumption = productData.default_quantity 
-            ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
-            : baseConsumption;
-            
-          // Also calculate material cost if material_id and rate are present
-          if (updatedComponent.material_id && materialPrices[updatedComponent.material_id]) {
-            const materialRate = materialPrices[updatedComponent.material_id];
-            const consumptionValue = parseFloat(updatedComponent.consumption);
-            const materialCost = consumptionValue * materialRate;
-            updatedComponent.materialCost = materialCost;
-            updatedComponent.materialRate = materialRate;
-          }
-        }
-      }
-      
-      return {
-        ...prev,
-        [type]: updatedComponent
-      };
-    });
+    }
+
+    // If consumption changed and we have material rate, update material cost
+    if (field === 'consumption' && component.materialRate) {
+      const consumption = parseFloat(value);
+      const materialRate = parseFloat(component.materialRate);
+      component.materialCost = (consumption * materialRate).toString();
+    }
+
+    setComponents(updatedComponents);
   };
 
   const handleCustomComponentChange = async (index: number, field: string, value: string) => {
-    setCustomComponents(prev => {
-      const updated = [...prev];
-      const updatedComponent = { ...updated[index], [field]: value };
+    const updatedComponents = [...customComponents];
+    const component = updatedComponents[index];
+
+    if (!component) return;
+
+    // Update the field
+    component[field] = value;
+
+    // If material_id changed, fetch new material price and update costs
+    if (field === 'material_id') {
+      const materialPrice = await fetchMaterialPrice(value);
+      component.materialRate = materialPrice?.toString();
       
-      // If material_id changed, fetch the material price
-      if (field === 'material_id' && value) {
-        fetchMaterialPrice(value).then(rate => {
-          if (rate !== null) {
-            setCustomComponents(current => {
-              const newComponents = [...current];
-              newComponents[index] = {
-                ...newComponents[index],
-                materialRate: rate
-              };
-              
-              // Recalculate material cost if consumption is available
-              if (newComponents[index].consumption) {
-                const consumption = parseFloat(newComponents[index].consumption);
-                if (!isNaN(consumption)) {
-                  const materialCost = consumption * rate;
-                  newComponents[index].materialCost = materialCost;
-                }
-              }
-              
-              return newComponents;
-            });
-          }
-        });
+      // Recalculate material cost if we have consumption
+      if (component.consumption) {
+        const consumption = parseFloat(component.consumption);
+        component.materialCost = (consumption * (materialPrice || 0)).toString();
       }
-      
-      // If materialCost is directly set, keep it as number
-      if (field === 'materialCost') {
-        console.log(`Setting material cost for custom component ${index} to ${value}`);
-        updatedComponent.materialCost = parseFloat(value);
-      }
-      
-      // If dimensions or roll width changed, recalculate consumption
-      if (['length', 'width', 'roll_width'].includes(field) && 
-          updatedComponent.length && 
-          updatedComponent.width && 
-          updatedComponent.roll_width) {
-        
-        const baseConsumption = calculateConsumption(
-          updatedComponent.length,
-          updatedComponent.width,
-          updatedComponent.roll_width
-        );
-        
-        if (baseConsumption) {
-          updatedComponent.baseConsumption = baseConsumption;
-          updatedComponent.consumption = productData.default_quantity 
-            ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
-            : baseConsumption;
-            
-          // Also calculate material cost if material_id and rate are present
-          if (updatedComponent.material_id && materialPrices[updatedComponent.material_id]) {
-            const materialRate = materialPrices[updatedComponent.material_id];
-            const consumptionValue = parseFloat(updatedComponent.consumption);
-            const materialCost = consumptionValue * materialRate;
-            updatedComponent.materialCost = materialCost;
-            updatedComponent.materialRate = materialRate;
-          }
-        }
-      }
-      
-      updated[index] = updatedComponent;
-      return updated;
-    });
+    }
+
+    // If consumption changed and we have material rate, update material cost
+    if (field === 'consumption' && component.materialRate) {
+      const consumption = parseFloat(value);
+      const materialRate = parseFloat(component.materialRate);
+      component.materialCost = (consumption * materialRate).toString();
+    }
+
+    setCustomComponents(updatedComponents);
   };
 
   const addCustomComponent = () => {
@@ -464,6 +396,8 @@ export const useProductForm = () => {
     handleComponentChange,
     handleCustomComponentChange,
     addCustomComponent,
-    removeCustomComponent
+    removeCustomComponent,
+    setComponents,
+    setCustomComponents
   };
 };

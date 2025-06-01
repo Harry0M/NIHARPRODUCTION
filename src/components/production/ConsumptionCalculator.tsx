@@ -55,9 +55,6 @@ export const ConsumptionCalculator = ({
           const areaInSqInches = length * width;
           const lengthPerUnit = areaInSqInches / rollWidth; // length in inches per unit
           calculatedConsumption = (lengthPerUnit / 39.37) * quantity; // convert to meters and multiply by quantity
-        } else {
-          // Don't recalculate if missing required fields
-          return consumption;
         }
       } else if (formula === "linear") {
         // Linear formula: (length * quantity) / 39.37 
@@ -66,13 +63,13 @@ export const ConsumptionCalculator = ({
         calculatedConsumption = totalLengthInInches / 39.37; // convert to meters
       }
       
-      // Round to 2 decimal places for better precision
-      return Math.round(calculatedConsumption * 100) / 100;
+      // Round to 4 decimal places for better precision
+      return Math.round(calculatedConsumption * 10000) / 10000;
     } catch (error) {
       console.error("Error calculating consumption:", error);
       return 0;
     }
-  }, [length, width, rollWidth, quantity, formula, consumption]);
+  }, [length, width, rollWidth, quantity, formula]);
 
   // Handle formula change
   const handleFormulaChange = (value: ConsumptionFormulaType) => {
@@ -104,34 +101,14 @@ export const ConsumptionCalculator = ({
     }
   }, [length, width, rollWidth, formula, onFormulaChange]);
 
-  // Calculate consumption and cost when inputs change
+  // Calculate consumption whenever inputs change
   useEffect(() => {
     const newConsumption = calculateConsumption();
-    
-    // Always recalculate the material cost when consumption changes
-    // or when material rate changes
-    setConsumption(newConsumption);
-    
-    // Calculate material cost if rate is provided
-    let cost: number | undefined = undefined;
-    if (materialRate && materialRate > 0 && newConsumption > 0) {
-      // Use high precision calculation and store full precision
-      cost = newConsumption * materialRate;
-      // Round to 4 decimal places for display purposes
-      const roundedCost = Math.round(cost * 10000) / 10000;
-      setMaterialCost(roundedCost);
-      
-      // Log the calculation for debugging
-      console.log(`%c MATERIAL COST: ${newConsumption} meters × ₹${materialRate}/meter = ₹${roundedCost}`, 
-        'background:#27ae60;color:white;font-weight:bold;padding:3px;');
-    } else {
-      setMaterialCost(undefined);
+    if (newConsumption !== consumption) {
+      setConsumption(newConsumption);
+      onConsumptionCalculated(newConsumption, materialRate ? newConsumption * materialRate : undefined);
     }
-    
-    // Always notify parent component of the new consumption and cost
-    // to ensure component state stays in sync
-    onConsumptionCalculated(newConsumption, cost);
-  }, [length, width, rollWidth, quantity, materialRate, formula, calculateConsumption, consumption, onConsumptionCalculated]);
+  }, [calculateConsumption, materialRate, onConsumptionCalculated]);
 
   return (
     <div className="space-y-2">
