@@ -90,6 +90,22 @@ const CatalogNew = () => {
       // Calculate the final total cost
       const totalCost = calculateTotalCost(productData);
       
+      // Create local variables for selling rate and margin to use in calculations
+      let sellingRate = productData.selling_rate ? parseFloat(productData.selling_rate) : null;
+      let margin = productData.margin ? parseFloat(productData.margin) : null;
+      
+      // Now calculate the missing value if one is provided but the other is not
+      if (totalCost > 0) {
+        // If selling_rate has a value but margin doesn't, calculate margin
+        if (sellingRate !== null && sellingRate > 0 && (margin === null || margin <= 0)) {
+          margin = ((sellingRate - totalCost) / totalCost) * 100;
+        }
+        // If margin has a value but selling_rate doesn't, calculate selling_rate
+        else if (margin !== null && margin > 0 && (sellingRate === null || sellingRate <= 0)) {
+          sellingRate = totalCost * (1 + (margin / 100));
+        }
+      }
+      
       // Prepare product data with formatted name and all cost fields
       const productDbData = {
         name: formattedName,
@@ -99,8 +115,8 @@ const CatalogNew = () => {
         border_dimension: productData.border_dimension ? parseFloat(productData.border_dimension) : 0,
         default_quantity: productData.default_quantity ? parseInt(productData.default_quantity) : null,
         default_rate: productData.default_rate ? parseFloat(productData.default_rate) : null,
-        selling_rate: productData.selling_rate ? parseFloat(productData.selling_rate) : null,
-        margin: productData.margin ? parseFloat(productData.margin) : null,
+        selling_rate: sellingRate,
+        margin: margin,
         // Add all the new cost fields
         cutting_charge: parseFloat(productData.cutting_charge) || 0,
         printing_charge: parseFloat(productData.printing_charge) || 0,

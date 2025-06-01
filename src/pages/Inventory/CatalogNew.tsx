@@ -17,6 +17,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { StandardComponents } from "@/components/orders/StandardComponents";
 import { CustomComponentSection } from "@/components/orders/CustomComponentSection";
+import { useProductForm } from "./CatalogNew/hooks/useProductForm";
 import { v4 as uuidv4 } from "uuid";
 
 const componentOptions = {
@@ -66,6 +67,33 @@ const CatalogNew = () => {
   const [components, setComponents] = useState<Record<string, any>>({});
   const [customComponents, setCustomComponents] = useState<ComponentType[]>([]);
   const [materialPrices, setMaterialPrices] = useState<Record<string, number>>({});
+  
+  // Function to handle product form field changes without linking margin and selling rate
+  const handleProductChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    
+    // Unlinked handling for all fields - no automatic calculations between selling_rate and margin
+    setProductData(prev => {
+      const updatedData = {
+        ...prev,
+        [name]: value
+      };
+      
+      // Calculate total cost whenever cost-related fields change
+      if (['cutting_charge', 'printing_charge', 'stitching_charge', 'transport_charge', 'material_cost'].includes(name)) {
+        const totalCost = calculateTotalCost(updatedData);
+        updatedData.total_cost = totalCost.toString();
+        
+        // No longer automatically updating margin or selling_rate when costs change
+        // This allows the user to set them independently
+      }
+      
+      // No automatic recalculation between margin and selling_rate
+      // They will be calculated only on form submission
+      
+      return updatedData;
+    });
+  };
   
   // Function to fetch material price by ID
   const fetchMaterialPrice = async (materialId: string) => {
@@ -360,60 +388,7 @@ const CatalogNew = () => {
     
     setCustomComponents(updatedCustomComponents);
   };
-  
-  // Effect to recalculate consumption when default quantity changes
-  useEffect(() => {
-    updateConsumptionValues();
-  }, [productData.default_quantity, materialPrices]);
 
-  const handleProductChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setProductData(prev => {
-      const updatedData = {
-        ...prev,
-        [name]: value
-      };
-      
-      // Calculate total cost whenever cost-related fields change
-      if (['cutting_charge', 'printing_charge', 'stitching_charge', 'transport_charge', 'material_cost'].includes(name)) {
-        const totalCost = calculateTotalCost({
-          ...updatedData
-        });
-        
-        updatedData.total_cost = totalCost.toString();
-        
-        // If selling_rate exists, update margin
-        if (updatedData.selling_rate && parseFloat(updatedData.selling_rate) > 0 && totalCost > 0) {
-          const calculatedMargin = ((parseFloat(updatedData.selling_rate) - totalCost) / totalCost) * 100;
-          updatedData.margin = calculatedMargin.toFixed(2);
-        }
-      }
-
-      // Calculate margin when selling_rate changes
-      if (name === "selling_rate") {
-        const totalCost = parseFloat(updatedData.total_cost);
-        const sellingRate = parseFloat(value);
-        
-        if (!isNaN(totalCost) && !isNaN(sellingRate) && totalCost > 0) {
-          const calculatedMargin = ((sellingRate - totalCost) / totalCost) * 100;
-          updatedData.margin = calculatedMargin.toFixed(2);
-        }
-      }
-      
-      // Update selling_rate when margin changes
-      if (name === "margin") {
-        const totalCost = parseFloat(updatedData.total_cost);
-        const marginValue = parseFloat(value);
-        
-        if (!isNaN(totalCost) && !isNaN(marginValue) && totalCost > 0) {
-          const calculatedSellingRate = totalCost * (1 + (marginValue / 100));
-          updatedData.selling_rate = calculatedSellingRate.toFixed(2);
-        }
-      }
-      
-      return updatedData;
-    });
-  };
   
   // Function to calculate total cost
   const calculateTotalCost = (data: typeof productData) => {
@@ -710,6 +685,8 @@ const CatalogNew = () => {
     
     return true;
   };
+  
+  // Using the calculateTotalCost function defined earlier in the component
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -730,6 +707,22 @@ const CatalogNew = () => {
       // Calculate the final total cost
       const totalCost = calculateTotalCost(productData);
       
+      // Create local variables for selling rate and margin to use in calculations
+      let sellingRate = productData.selling_rate ? parseFloat(productData.selling_rate) : null;
+      let margin = productData.margin ? parseFloat(productData.margin) : null;
+      
+      // Now calculate the missing value if one is provided but the other is not
+      if (totalCost > 0) {
+        // If selling_rate has a value but margin doesn't, calculate margin
+        if (sellingRate !== null && sellingRate > 0 && (margin === null || margin <= 0)) {
+          margin = ((sellingRate - totalCost) / totalCost) * 100;
+        }
+        // If margin has a value but selling_rate doesn't, calculate selling_rate
+        else if (margin !== null && margin > 0 && (sellingRate === null || sellingRate <= 0)) {
+          sellingRate = totalCost * (1 + (margin / 100));
+        }
+      }
+      
       // Prepare product data with formatted name and all cost fields
       const productDbData = {
         name: formattedName,
@@ -739,8 +732,8 @@ const CatalogNew = () => {
         border_dimension: productData.border_dimension ? parseFloat(productData.border_dimension) : 0,
         default_quantity: productData.default_quantity ? parseInt(productData.default_quantity) : null,
         default_rate: productData.default_rate ? parseFloat(productData.default_rate) : null,
-        selling_rate: productData.selling_rate ? parseFloat(productData.selling_rate) : null,
-        margin: productData.margin ? parseFloat(productData.margin) : null,
+        selling_rate: sellingRate,
+        margin: margin,
         // Add all the new cost fields
         cutting_charge: parseFloat(productData.cutting_charge) || 0,
         printing_charge: parseFloat(productData.printing_charge) || 0,
@@ -781,11 +774,9 @@ const CatalogNew = () => {
           material_id: comp.material_id || null,
           material_linked: comp.material_id ? true : false,
           consumption: comp.consumption || null,  // Save the calculated consumption
-          formula: comp.formula || 'standard'  // Save the formula type
+          formula: comp.formula || 'standard'  // Save the formula used for consumption calculation
         }));
         
-        console.log('Saving components with formula:', componentsToInsert);
-
         // Insert components
         const { error: componentsError } = await supabase
           .from("catalog_components")
@@ -796,20 +787,25 @@ const CatalogNew = () => {
         }
       }
       
+      // Show success toast
       toast({
         title: "Product created successfully",
-        description: `${formattedName} has been added to the catalog`
+        description: `${formattedName} has been added to the catalog`,
+        variant: "default"
       });
 
-      // Force a page reload while navigating to ensure a complete refresh
-      window.location.href = '/inventory/catalog';
+      // Navigate to inventory/catalog
+      window.location.href = "/inventory/catalog";
       
     } catch (error: any) {
+      // Show error toast
       toast({
         title: "Error creating product",
         description: error.message || "An unexpected error occurred",
         variant: "destructive"
       });
+      
+      console.error("Product creation error:", error);
     } finally {
       setSubmitting(false);
     }

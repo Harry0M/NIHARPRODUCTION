@@ -234,32 +234,7 @@ export const useProductForm = () => {
   const handleProductChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     
-    // Special handling for selling rate - always accept the value with no auto-calculation
-    if (name === "selling_rate") {
-      setProductData(prev => {
-        const updatedData = {
-          ...prev,
-          selling_rate: value // Direct value with no automatic updates
-        };
-        
-        // Only calculate margin if we have valid values
-        const totalCost = parseFloat(updatedData.total_cost || "0");
-        const sellingRate = parseFloat(value || "0");
-        
-        if (!isNaN(totalCost) && !isNaN(sellingRate) && totalCost > 0 && sellingRate > 0) {
-          const calculatedMargin = ((sellingRate - totalCost) / totalCost) * 100;
-          updatedData.margin = calculatedMargin.toFixed(2);
-        } else if (value.trim() === "") {
-          // If selling rate is empty, clear margin as well
-          updatedData.margin = "";
-        }
-        
-        return updatedData;
-      });
-      return;
-    }
-    
-    // For all other fields, use standard handling
+    // Unlinked handling for all fields - no automatic calculations between selling_rate and margin
     setProductData(prev => {
       const updatedData = {
         ...prev,
@@ -271,24 +246,12 @@ export const useProductForm = () => {
         const totalCost = calculateTotalCost(updatedData);
         updatedData.total_cost = totalCost.toString();
         
-        // If selling_rate exists, recalculate margin
-        const sellingRate = parseFloat(updatedData.selling_rate || "0");
-        if (!isNaN(sellingRate) && sellingRate > 0 && totalCost > 0) {
-          const calculatedMargin = ((sellingRate - totalCost) / totalCost) * 100;
-          updatedData.margin = calculatedMargin.toFixed(2);
-        }
+        // No longer automatically updating margin or selling_rate when costs change
+        // This allows the user to set them independently
       }
       
-      // Always update margin when the margin field changes
-      if (name === "margin") {
-        const totalCost = parseFloat(updatedData.total_cost || "0");
-        const marginValue = parseFloat(value || "0");
-        
-        if (!isNaN(totalCost) && !isNaN(marginValue) && totalCost > 0) {
-          const calculatedSellingRate = totalCost * (1 + (marginValue / 100));
-          updatedData.selling_rate = calculatedSellingRate.toFixed(2);
-        }
-      }
+      // No automatic recalculation between margin and selling_rate
+      // They will be calculated only on form submission
       
       return updatedData;
     });
