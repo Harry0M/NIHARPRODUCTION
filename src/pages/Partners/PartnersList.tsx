@@ -38,13 +38,14 @@ const PartnersList = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'suppliers' | 'vendors'>('all');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
     fetchPartners();
-  }, [page, pageSize, searchTerm, activeTab]);
+  }, [page, pageSize, searchTerm, activeTab, statusFilter]);
 
   const fetchPartners = async () => {
     setLoading(true);
@@ -55,6 +56,11 @@ const PartnersList = () => {
         let suppliersCountQuery = supabase
           .from("suppliers")
           .select("id", { count: 'exact', head: true });
+        
+        // Apply status filter
+        if (statusFilter !== 'all') {
+          suppliersCountQuery = suppliersCountQuery.eq('status', statusFilter);
+        }
         
         if (searchTerm) {
           suppliersCountQuery = suppliersCountQuery.or(
@@ -80,6 +86,11 @@ const PartnersList = () => {
           let vendorsCountQuery = supabase
             .from("vendors")
             .select("id", { count: 'exact', head: true });
+          
+          // Apply status filter
+          if (statusFilter !== 'all') {
+            vendorsCountQuery = vendorsCountQuery.eq('status', statusFilter);
+          }
           
           if (searchTerm) {
             vendorsCountQuery = vendorsCountQuery.or(
@@ -127,6 +138,11 @@ const PartnersList = () => {
           .from("suppliers")
           .select("id, name, contact_person, phone, materials_provided, status");
         
+        // Apply status filter
+        if (statusFilter !== 'all') {
+          suppliersQuery = suppliersQuery.eq('status', statusFilter);
+        }
+        
         if (searchTerm) {
           suppliersQuery = suppliersQuery.or(
             `name.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,materials_provided.ilike.%${searchTerm}%`
@@ -158,6 +174,11 @@ const PartnersList = () => {
         let vendorsQuery = supabase
           .from("vendors")
           .select("id, name, contact_person, phone, service_type, status");
+        
+        // Apply status filter
+        if (statusFilter !== 'all') {
+          vendorsQuery = vendorsQuery.eq('status', statusFilter);
+        }
         
         if (searchTerm) {
           vendorsQuery = vendorsQuery.or(
@@ -215,46 +236,51 @@ const PartnersList = () => {
     try {
       const tableName = partnerToDelete.type === 'supplier' ? 'suppliers' : 'vendors';
       
+      // Instead of deleting, update status to inactive (soft delete)
       const { error } = await supabase
         .from(tableName)
-        .delete()
+        .update({ status: 'inactive' })
         .eq("id", partnerToDelete.id);
         
       if (error) {
-        // Check for foreign key constraint violation (409 Conflict)
-        if (error.code === '23503' || error.message?.includes('foreign key constraint') || error.message?.includes('Conflict')) {
-          throw new Error(
-            `Cannot delete this ${partnerToDelete.type} because it's referenced by other records (inventory items, orders, etc). ` +
-            `You need to remove these references before deleting the ${partnerToDelete.type}.`
-          );
-        }
         throw error;
       }
       
-      // Update partners state without causing a full re-fetch
-      setPartners(partners.filter(partner => 
-        !(partner.id === partnerToDelete.id && partner.partnerType === partnerToDelete.type)
-      ));
-      
-      // Update total count
-      setTotalCount(prev => prev - 1);
-      
-      // If we deleted the last item on the page, go to previous page
-      if (partners.length === 1 && page > 1) {
-        setPage(page - 1);
+      // If current filter is not showing inactive items, remove from list
+      if (statusFilter !== 'all' && statusFilter !== 'inactive') {
+        // Update partners state without causing a full re-fetch
+        setPartners(partners.filter(partner => 
+          !(partner.id === partnerToDelete.id && partner.partnerType === partnerToDelete.type)
+        ));
+        
+        // Update total count
+        setTotalCount(prev => prev - 1);
+        
+        // If we removed the last item on the page, go to previous page
+        if (partners.length === 1 && page > 1) {
+          setPage(page - 1);
+        }
+      } else {
+        // Just update the status in the current list
+        setPartners(partners.map(partner => {
+          if (partner.id === partnerToDelete.id && partner.partnerType === partnerToDelete.type) {
+            return { ...partner, status: 'inactive' };
+          }
+          return partner;
+        }));
       }
       
       toast({
-        title: `${partnerToDelete.type === 'supplier' ? 'Supplier' : 'Vendor'} deleted`,
-        description: `The ${partnerToDelete.type} has been successfully removed.`,
+        title: `${partnerToDelete.type === 'supplier' ? 'Supplier' : 'Vendor'} marked as inactive`,
+        description: `The ${partnerToDelete.type} has been marked as inactive and will not appear in active listings.`,
       });
     } catch (error: any) {
       toast({
-        title: `Error deleting ${partnerToDelete.type}`,
+        title: `Error updating ${partnerToDelete.type} status`,
         description: error.message,
         variant: "destructive",
       });
-      console.error("Delete error:", error);
+      console.error("Status update error:", error);
     } finally {
       setDeleteDialogOpen(false);
       setPartnerToDelete(null);
@@ -298,29 +324,56 @@ const PartnersList = () => {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-4 mb-6">
-            <Tabs 
-              defaultValue="all" 
-              className="w-full sm:w-auto" 
-              onValueChange={(value) => {
-                setActiveTab(value as any);
-                setPage(1); // Reset to first page when tab changes
-              }}
-            >
-              <TabsList className="grid grid-cols-3 w-full sm:w-[360px]">
-                <TabsTrigger value="all" className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-primary"></span>
-                  All
-                </TabsTrigger>
-                <TabsTrigger value="suppliers" className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-                  Suppliers
-                </TabsTrigger>
-                <TabsTrigger value="vendors" className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-purple-500"></span>
-                  Vendors
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <div className="flex flex-col sm:flex-row gap-3 w-full">
+              <Tabs 
+                defaultValue="all" 
+                className="w-full sm:w-auto" 
+                onValueChange={(value) => {
+                  setActiveTab(value as any);
+                  setPage(1); // Reset to first page when tab changes
+                }}
+              >
+                <TabsList className="grid grid-cols-3 w-full sm:w-[360px]">
+                  <TabsTrigger value="all" className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-primary"></span>
+                    All
+                  </TabsTrigger>
+                  <TabsTrigger value="suppliers" className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-blue-500"></span>
+                    Suppliers
+                  </TabsTrigger>
+                  <TabsTrigger value="vendors" className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-purple-500"></span>
+                    Vendors
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              {/* Status filter */}
+              <Tabs 
+                defaultValue="active" 
+                className="w-full sm:w-auto" 
+                onValueChange={(value) => {
+                  setStatusFilter(value as any);
+                  setPage(1); // Reset to first page when status changes
+                }}
+              >
+                <TabsList className="grid grid-cols-3 w-full sm:w-[280px]">
+                  <TabsTrigger value="active" className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-green-500"></span>
+                    Active
+                  </TabsTrigger>
+                  <TabsTrigger value="inactive" className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-red-500"></span>
+                    Inactive
+                  </TabsTrigger>
+                  <TabsTrigger value="all" className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-gray-400"></span>
+                    All Status
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
             
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -493,20 +546,24 @@ const PartnersList = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the {partnerToDelete?.type} and cannot be undone.
+              This will mark the {partnerToDelete?.type} as inactive. The {partnerToDelete?.type} will still be accessible via the inactive filter but won't appear in active listings.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
-              onClick={(e) => {
-                e.preventDefault();
-                handleDeletePartner();
-              }}
+              onClick={handleDeletePartner}
+              className="bg-amber-500 hover:bg-amber-600"
               disabled={deleteLoading}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteLoading ? "Deleting..." : "Delete"}
+              {deleteLoading ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-r-transparent"></div>
+                  Processing...
+                </>
+              ) : (
+                'Mark as Inactive'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

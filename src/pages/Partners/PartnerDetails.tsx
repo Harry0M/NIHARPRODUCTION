@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Edit, Trash2, BarChart3 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { SupplierPurchaseHistory } from '@/components/partners/SupplierPurchaseHistory';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -70,37 +71,43 @@ const PartnerDetails = () => {
     }
   }, [id, partnerType]);
 
+  // Partner data is loaded and ready
+
   const handleDelete = async () => {
     if (!id) return;
-    
+    setIsDeleting(true);
     try {
-      setIsDeleting(true);
       const tableName = partnerType === 'supplier' ? 'suppliers' : 'vendors';
       
+      // Instead of deleting, update the status to 'inactive'
       const { error } = await supabase
         .from(tableName)
-        .delete()
+        .update({ status: 'inactive' })
         .eq('id', id);
 
       if (error) throw error;
 
       toast({
         title: 'Success',
-        description: `${partnerType === 'supplier' ? 'Supplier' : 'Vendor'} deleted successfully`,
+        description: `${partnerType === 'supplier' ? 'Supplier' : 'Vendor'} marked as inactive successfully`,
       });
       
-      navigate('/partners');
+      // Refresh the current page to show the updated status
+      setPartner(prev => prev ? { ...prev, status: 'inactive' } : null);
+      
+      // Optional: navigate back to partners list
+      // navigate('/partners');
     } catch (error: any) {
-      console.error(`Error deleting ${partnerType}:`, error);
+      console.error(`Error updating ${partnerType} status:`, error);
       toast({
         title: 'Error',
-        description: error.message || `Failed to delete ${partnerType}`,
+        description: error.message || `Failed to update ${partnerType} status`,
         variant: 'destructive',
       });
     } finally {
       setIsDeleting(false);
       setShowDeleteDialog(false);
-    }
+    };
   };
 
   if (loading) {
@@ -245,6 +252,17 @@ const PartnerDetails = () => {
           </div>
         </div>
       </div>
+
+      {/* Show purchase history only for suppliers */}
+      {!loading && partner && partnerType === 'supplier' && (
+        <>
+          <div className="mt-6 mb-2 px-6">
+            <h2 className="text-2xl font-semibold">Purchase History</h2>
+            <p className="text-muted-foreground">All purchases made from this supplier</p>
+          </div>
+          <SupplierPurchaseHistory supplierId={partner.id} />
+        </>
+      )}
 
       <AlertDialog 
         open={showDeleteDialog} 
