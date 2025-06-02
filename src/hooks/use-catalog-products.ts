@@ -62,29 +62,16 @@ export const useCatalogProducts = () => {
     queryFn: async () => {
       console.log("Fetching catalog products...");
       
-      // Fetch all catalog products
+      // Fetch all catalog products with basic info
       const { data: catalogData, error: catalogError } = await supabase
         .from("catalog")
         .select(`
           id,
           name,
           description,
-          bag_length,
-          bag_width,
-          border_dimension,
-          default_quantity,
-          default_rate,
-          selling_rate, 
-          margin,
-          total_cost,
           created_at,
           updated_at,
-          created_by,
-          cutting_charge,
-          printing_charge,
-          stitching_charge,
-          transport_charge,
-          height
+          created_by
         `)
         .order('name');
 
@@ -100,8 +87,65 @@ export const useCatalogProducts = () => {
         return [] as CatalogProduct[];
       }
       
-      // Get all product IDs for fetching components
-      const productIds = catalogData.map(product => product.id);
+      // Get all product IDs to fetch both details and components
+      const allProductIds = catalogData.map(product => product.id);
+      
+      // Fetch product details from product_details table
+      const { data: productDetailsData, error: detailsError } = await supabase
+        .from("product_details")
+        .select(`
+          catalog_id,
+          bag_length,
+          bag_width,
+          border_dimension,
+          default_quantity,
+          default_rate,
+          selling_rate, 
+          margin,
+          total_cost,
+          cutting_charge,
+          printing_charge,
+          stitching_charge,
+          transport_charge,
+          height
+        `)
+        .in('catalog_id', allProductIds);
+        
+      if (detailsError) {
+        console.error("Error fetching product details:", detailsError);
+        throw detailsError;
+      }
+      
+      console.log("Product details data:", productDetailsData);
+      
+      // Create a map of product details by catalog_id for easy lookup
+      const detailsMap: Record<string, any> = {};
+      productDetailsData?.forEach(detail => {
+        if (detail.catalog_id) {
+          detailsMap[detail.catalog_id] = detail;
+        }
+      });
+      
+      // Merge catalog data with product details
+      const mergedProducts = catalogData.map(product => {
+        const details = detailsMap[product.id] || {};
+        return {
+          ...product,
+          bag_length: details.bag_length,
+          bag_width: details.bag_width,
+          border_dimension: details.border_dimension,
+          default_quantity: details.default_quantity,
+          default_rate: details.default_rate,
+          selling_rate: details.selling_rate,
+          margin: details.margin,
+          total_cost: details.total_cost,
+          cutting_charge: details.cutting_charge,
+          printing_charge: details.printing_charge,
+          stitching_charge: details.stitching_charge,
+          transport_charge: details.transport_charge,
+          height: details.height
+        };
+      });
       
       // Fetch all components for these products in a single query
       // Include material_linked field in the query
@@ -123,7 +167,7 @@ export const useCatalogProducts = () => {
           material_linked,
           formula
         `)
-        .in('catalog_id', productIds);
+        .in('catalog_id', allProductIds);
         
       if (componentsError) {
         console.error("Error fetching catalog components:", componentsError);
@@ -197,20 +241,25 @@ export const useCatalogProducts = () => {
             : null
         } as CatalogComponent;
         
-        console.log(`Component ${component.id} has material_id:`, component.material_id);
-        console.log(`Component ${component.id} material_linked:`, component.material_linked);
-        console.log(`Associated material:`, componentWithMaterial.material);
+        // Only log warnings when expected material_id is not found
+        if (component.material_id && component.material_linked && !materialsMap[component.material_id]) {
+          console.warn(`Component ${component.id} has material_id ${component.material_id} but no material data was found`); 
+        }
         
         componentsByProduct[component.catalog_id].push(componentWithMaterial);
       });
       
-      // Attach components to their respective products
-      typedProducts.forEach(product => {
-        product.catalog_components = componentsByProduct[product.id] || [];
+      // Now add components to our merged products
+      const finalProducts = mergedProducts.map(product => {
+        return {
+          ...product,
+          catalog_components: componentsByProduct[product.id] || []
+        } as CatalogProduct;
       });
       
-      console.log("Final catalog products with components:", typedProducts);
-      return typedProducts;
+      console.log("Final products data with components:", finalProducts.length);
+      console.log("Sample product:", finalProducts[0]);
+      return finalProducts;
     },
     staleTime: 5000, // Reduce stale time to 5 seconds for more frequent updates
   });

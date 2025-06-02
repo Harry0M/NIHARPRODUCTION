@@ -31,24 +31,26 @@ const CatalogDetail = () => {
   const { data: products, isLoading, refetch } = useCatalogProducts();
   const { data: inventoryItems, isLoading: isLoadingInventory } = useInventoryItems();
   
-  // Explicitly cast the product as CatalogProduct
-  const product = products?.find((p) => p.id === id) as CatalogProduct | undefined;
+  // More robust product finding - compare as strings to avoid type mismatches
+  const product = products?.find((p) => String(p.id) === String(id)) as CatalogProduct | undefined;
   const components = product?.catalog_components || [];
 
   // Enhanced debugging information
   console.log("CatalogDetail - Product ID:", id);
+  console.log("CatalogDetail - Products length:", products?.length);
+  console.log("CatalogDetail - All product IDs:", products?.map(p => p.id));
   console.log("CatalogDetail - Found product:", product);
-  console.log("CatalogDetail - Components:", components);
-  console.log("CatalogDetail - Components with materials:", 
-    components.filter(c => c.material || c.material_id)
-      .map(c => ({ 
-        id: c.id, 
-        type: c.component_type, 
-        material_id: c.material_id,
-        material_linked: c.material_linked,
-        material: c.material 
-      }))
-  );
+  
+  if (!product && products?.length) {
+    console.warn("Product not found by ID match! This may indicate a type mismatch or database inconsistency.");
+    // Try to look up by ID in a different way just to debug
+    const looseMatch = products.find(p => p.id.toString().includes(id?.toString() || ""));
+    if (looseMatch) {
+      console.warn("Found product with loose matching:", looseMatch.id, "vs requested ID:", id);
+    }
+  }
+  
+  console.log("CatalogDetail - Components:", components?.length);
   console.log("CatalogDetail - Available inventory items:", inventoryItems?.length);
 
   // Force refresh on initial load and also check for new product notification

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { 
@@ -19,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { StandardComponents } from "@/components/orders/StandardComponents";
 import { CustomComponentSection } from "@/components/orders/CustomComponentSection";
 import { useProductForm } from "./CatalogNew/hooks/useProductForm";
+import { useQueryClient } from "@tanstack/react-query";
 
 const componentOptions = {
   color: ["Red", "Blue", "Green", "Black", "White", "Yellow", "Brown", "Orange", "Purple", "Gray", "Custom"],
@@ -29,12 +29,12 @@ interface ComponentType {
   type: string;
   customName?: string;
   color?: string;
-  length?: string;
-  width?: string;
-  roll_width?: string;
+  length?: number;
+  width?: number;
+  roll_width?: number;
   material_id?: string;
-  consumption?: string;
-  baseConsumption?: string;
+  consumption?: number;
+  baseConsumption?: number;
   materialRate?: number;
   materialCost?: number;
   formula?: 'standard' | 'linear';
@@ -43,6 +43,7 @@ interface ComponentType {
 const CatalogEdit = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -60,6 +61,7 @@ const CatalogEdit = () => {
     handleCustomComponentChange,
     addCustomComponent,
     removeCustomComponent,
+    removeStandardComponent,
     setProductData,
     setComponents,
     setCustomComponents
@@ -84,26 +86,29 @@ const CatalogEdit = () => {
         let calculatedMargin = null;
         if (product.selling_rate && product.total_cost && product.total_cost > 0) {
           calculatedMargin = ((product.selling_rate - product.total_cost) / product.total_cost) * 100;
+          // Use consistent precision for margin calculations
+          calculatedMargin = parseFloat(calculatedMargin.toFixed(2));
+          console.log("Initial calculated margin:", calculatedMargin);
         }
         
         // Format product data for the form
-        setProductData({
-          name: product.name,
-          description: product.description || "",
-          bag_length: product.bag_length.toString(),
-          bag_width: product.bag_width.toString(),
-          border_dimension: product.border_dimension ? product.border_dimension.toString() : "",
-          default_quantity: product.default_quantity ? product.default_quantity.toString() : "",
-          default_rate: product.default_rate ? product.default_rate.toString() : "",
-          selling_rate: product.selling_rate ? product.selling_rate.toString() : "",
+      setProductData({
+        name: product.name,
+        description: product.description || "",
+        bag_length: product.bag_length.toString(),
+        bag_width: product.bag_width.toString(),
+        border_dimension: product.border_dimension ? product.border_dimension.toString() : "",
+        default_quantity: product.default_quantity ? product.default_quantity.toString() : "",
+        default_rate: product.default_rate ? product.default_rate.toString() : "",
+        selling_rate: product.selling_rate ? product.selling_rate.toString() : "",
           margin: calculatedMargin ? calculatedMargin.toFixed(2) : "",
-          cutting_charge: product.cutting_charge ? product.cutting_charge.toString() : "0",
-          printing_charge: product.printing_charge ? product.printing_charge.toString() : "0",
-          stitching_charge: product.stitching_charge ? product.stitching_charge.toString() : "0",
-          transport_charge: product.transport_charge ? product.transport_charge.toString() : "0",
+        cutting_charge: product.cutting_charge ? product.cutting_charge.toString() : "0",
+        printing_charge: product.printing_charge ? product.printing_charge.toString() : "0",
+        stitching_charge: product.stitching_charge ? product.stitching_charge.toString() : "0",
+        transport_charge: product.transport_charge ? product.transport_charge.toString() : "0",
           material_cost: product.material_cost ? product.material_cost.toString() : "0",
-          total_cost: product.total_cost ? product.total_cost.toString() : "0"
-        });
+        total_cost: product.total_cost ? product.total_cost.toString() : "0"
+      });
 
         // Fetch components
         const { data: componentsData, error: componentsError } = await supabase
@@ -117,9 +122,9 @@ const CatalogEdit = () => {
 
         // Process components
         const standardComponentTypes = ['part', 'border', 'handle', 'chain', 'runner', 'piping'];
-        const standardComps: Record<string, any> = {};
-        const customComps: ComponentType[] = [];
-        
+      const standardComps: Record<string, any> = {};
+      const customComps: ComponentType[] = [];
+      
         // First, clear any existing components
         setComponents({});
         setCustomComponents([]);
@@ -162,53 +167,53 @@ const CatalogEdit = () => {
             // Only add if we don't already have this type
             if (!standardComps[componentKey]) {
               const materialRate = comp.material_id ? materialPrices[comp.material_id] : undefined;
-              const consumption = comp.consumption ? parseFloat(comp.consumption.toString()) : 0;
-              const materialCost = materialRate && consumption ? (consumption * materialRate).toString() : undefined;
+              const consumption = comp.consumption ? Number(comp.consumption) : 0;
+              const materialCost = materialRate && consumption ? consumption * materialRate : undefined;
               
               standardComps[componentKey] = {
-                id: comp.id,
+            id: comp.id,
                 type: componentKey,
-                color: comp.color || undefined,
-                length: comp.length?.toString() || undefined,
-                width: comp.width?.toString() || undefined,
-                roll_width: comp.roll_width?.toString() || undefined,
+            color: comp.color || undefined,
+                length: comp.length ? Number(comp.length) : undefined,
+                width: comp.width ? Number(comp.width) : undefined,
+                roll_width: comp.roll_width ? Number(comp.roll_width) : undefined,
                 formula: comp.formula || 'standard',
-                consumption: comp.consumption?.toString() || undefined,
-                material_id: comp.material_id || undefined,
-                materialRate: materialRate?.toString(),
+                consumption: comp.consumption ? Number(comp.consumption) : undefined,
+            material_id: comp.material_id || undefined,
+                materialRate: materialRate,
                 materialCost: materialCost
-              };
+          };
               
               console.log(`Standard component ${componentKey} loaded with formula: ${comp.formula || 'standard'}`);
             }
-          } else {
+        } else {
             // For custom components
             const materialRate = comp.material_id ? materialPrices[comp.material_id] : undefined;
-            const consumption = comp.consumption ? parseFloat(comp.consumption.toString()) : 0;
-            const materialCost = materialRate && consumption ? (consumption * materialRate).toString() : undefined;
+            const consumption = comp.consumption ? Number(comp.consumption) : 0;
+            const materialCost = materialRate && consumption ? consumption * materialRate : undefined;
             
-            customComps.push({
-              id: comp.id,
-              type: 'custom',
-              customName: comp.custom_name || comp.component_type,
-              color: comp.color || undefined,
-              length: comp.length?.toString() || undefined,
-              width: comp.width?.toString() || undefined,
-              roll_width: comp.roll_width?.toString() || undefined,
+          customComps.push({
+            id: comp.id,
+            type: 'custom',
+            customName: comp.custom_name || comp.component_type,
+            color: comp.color || undefined,
+              length: comp.length ? Number(comp.length) : undefined,
+              width: comp.width ? Number(comp.width) : undefined,
+              roll_width: comp.roll_width ? Number(comp.roll_width) : undefined,
               formula: comp.formula as 'standard' | 'linear' || 'standard',
-              consumption: comp.consumption?.toString() || undefined,
-              material_id: comp.material_id || undefined,
-              materialRate: materialRate?.toString(),
+              consumption: comp.consumption ? Number(comp.consumption) : undefined,
+            material_id: comp.material_id || undefined,
+              materialRate: materialRate,
               materialCost: materialCost
-            });
+          });
             
             console.log(`Custom component loaded with formula: ${comp.formula || 'standard'}`);
-          }
-        });
-        
+        }
+      });
+      
         // Set the components after processing all of them
-        setComponents(standardComps);
-        setCustomComponents(customComps);
+      setComponents(standardComps);
+      setCustomComponents(customComps);
         
         console.log("Final components state:", { standardComps, customComps });
         setLoading(false);
@@ -284,23 +289,52 @@ const CatalogEdit = () => {
       
       // Now calculate the missing value if one is provided but the other is not
       if (totalCost > 0) {
-        // If selling_rate has a value but margin doesn't, calculate margin
         if (sellingRate !== null && sellingRate > 0 && (margin === null || margin <= 0)) {
+          // Calculate margin from selling rate with consistent precision
           margin = ((sellingRate - totalCost) / totalCost) * 100;
+          margin = parseFloat(margin.toFixed(2)); // Keep consistent 2 decimal places
+          console.log("Calculated margin from selling rate:", margin);
         }
-        // If margin has a value but selling_rate doesn't, calculate selling_rate
         else if (margin !== null && margin > 0 && (sellingRate === null || sellingRate <= 0)) {
+          // Calculate selling rate from margin with consistent precision
           sellingRate = totalCost * (1 + (margin / 100));
+          sellingRate = parseFloat(sellingRate.toFixed(2)); // Keep consistent 2 decimal places
+          console.log("Calculated selling rate from margin:", sellingRate);
+        }
+        
+        // Always recalculate margin from selling rate for consistency if both exist
+        if (sellingRate !== null && sellingRate > 0) {
+          margin = ((sellingRate - totalCost) / totalCost) * 100;
+          margin = parseFloat(margin.toFixed(2));
+          console.log("Final calculated margin for consistency:", margin);
         }
       }
       
-      // Prepare product data with formatted name and all cost fields
-      const productDbData = {
+      // First, fetch the current catalog record to see all fields
+      const { data: currentCatalog, error: catalogFetchError } = await supabase
+        .from("catalog")
+        .select("*")
+        .eq("id", id)
+        .single();
+        
+      if (catalogFetchError) {
+        console.error("Error fetching current catalog data:", catalogFetchError);
+        throw new Error(`Error fetching catalog data: ${catalogFetchError.message}`);
+      }
+      
+      console.log("Current catalog data:", currentCatalog);
+      
+      // Prepare complete data for catalog table update
+      // Include ALL fields that should be updated in the catalog table
+      // Make sure to handle both height and border_dimension
+      const catalogDbData = {
         name: formattedName,
         description: productData.description || null,
         bag_length: parseFloat(productData.bag_length),
         bag_width: parseFloat(productData.bag_width),
-        border_dimension: productData.border_dimension ? parseFloat(productData.border_dimension) : 0,
+        border_dimension: productData.border_dimension ? parseFloat(productData.border_dimension) : null,
+        // Set height either from border_dimension or keep existing
+        height: productData.border_dimension ? parseFloat(productData.border_dimension) : (currentCatalog.height || 0),
         default_quantity: productData.default_quantity ? parseInt(productData.default_quantity) : null,
         default_rate: productData.default_rate ? parseFloat(productData.default_rate) : null,
         selling_rate: sellingRate,
@@ -309,138 +343,254 @@ const CatalogEdit = () => {
         printing_charge: parseFloat(productData.printing_charge) || 0,
         stitching_charge: parseFloat(productData.stitching_charge) || 0,
         transport_charge: parseFloat(productData.transport_charge) || 0,
-        material_cost: parseFloat(productData.material_cost) || 0,
         total_cost: totalCost,
+        material_cost: parseFloat(productData.material_cost) || 0,
         updated_at: new Date().toISOString()
       };
       
-      console.log("Updating product with data:", productDbData);
+      console.log("Updating catalog with complete data:", catalogDbData);
       
-      // Update the product
-      const { error: productError } = await supabase
-        .from("catalog")
-        .update(productDbData)
-        .eq("id", id);
+      console.log("Checking Supabase authentication status...");
+      const { data: authData } = await supabase.auth.getSession();
+      console.log("Auth session:", authData);
       
-      if (productError) {
-        throw productError;
+      try {
+        // Set more detailed logging for debugging
+        console.log("Attempting to update catalog with the following data:", catalogDbData);
+        console.log("For catalog ID:", id);
+        
+        // Update the catalog table with ALL fields
+        // This will trigger the database trigger 'trigger_sync_catalog_changes'
+        // which will handle synchronization with other tables
+        const { data: updateData, error: catalogError } = await supabase
+          .from("catalog")
+          .update(catalogDbData)
+          .eq("id", id)
+          .select(); // Added .select() to get response data
+          
+        console.log("Raw update response:", updateData);
+          
+        if (catalogError) {
+          console.error("Error updating catalog - DETAILED ERROR:", catalogError);
+          if (catalogError.code === 'PGRST301' || catalogError.message.includes('permission denied')) {
+            toast({
+              title: "Permissions Error",
+              description: "You don't have permission to update this product. This may be due to Row Level Security.",
+              variant: "destructive"
+            });
+          }
+          throw new Error(`Error updating catalog: ${catalogError.message} (code: ${catalogError.code})`);
+        }
+        
+        if (!updateData || updateData.length === 0) {
+          console.warn("Update appears to have succeeded but returned no data. This may indicate an RLS issue.");
+        }
+        
+        // Verify the update was successful by fetching the record again
+        const { data: verifyData, error: verifyError } = await supabase
+          .from("catalog")
+          .select("*")
+          .eq("id", id)
+          .single();
+          
+        if (verifyError) {
+          console.error("Error verifying update:", verifyError);
+        } else {
+          console.log("Verification of updated record:", verifyData);
+          // Check if fields were actually updated
+          let changesMade = false;
+          const fieldsToCheck = ['name', 'bag_length', 'bag_width', 'selling_rate', 'margin'];
+          
+          for (const field of fieldsToCheck) {
+            if (catalogDbData[field] !== undefined && 
+                String(catalogDbData[field]) !== String(currentCatalog[field])) {
+              if (String(catalogDbData[field]) === String(verifyData[field])) {
+                changesMade = true;
+                console.log(`Field ${field} was successfully updated from ${currentCatalog[field]} to ${verifyData[field]}`);
+              } else {
+                console.warn(`Field ${field} was NOT updated. Expected: ${catalogDbData[field]}, Actual: ${verifyData[field]}`);
+              }
+            }
+          }
+          
+          if (!changesMade) {
+            console.warn("UPDATE VERIFICATION FAILED: No fields appear to have been updated in the database.");
+            toast({
+              title: "Update Warning",
+              description: "The update may not have been saved to the database. Please check your permissions.",
+              variant: "destructive"
+            });
+          }
+        }
+      } catch (updateError) {
+        console.error("Caught error during catalog update:", updateError);
+        throw updateError;
       }
       
       console.log("Product updated successfully");
       
-      // Process components using improved strategy
+      // Get all current components from the form data that have valid information
       const allComponents = [
         ...Object.values(components).filter(Boolean),
         ...customComponents.filter(comp => comp.customName || comp.color || comp.length || comp.width || comp.roll_width)
       ];
       
-      console.log("Processing components for save:", allComponents);
+      console.log("Processing components for update:", allComponents);
       
-      // Get existing components from database
+      // First, get the existing component IDs from the database to determine what to keep/delete
       const { data: existingComponents, error: fetchError } = await supabase
         .from("catalog_components")
-        .select("id, component_type, custom_name")
+        .select("id")
         .eq("catalog_id", id);
-      
+        
       if (fetchError) {
+        console.error("Error fetching existing components:", fetchError);
         throw fetchError;
       }
       
-      console.log("Existing components in DB:", existingComponents);
+      // Create a set of existing component IDs from the database
+      const existingComponentIds = new Set(existingComponents.map(comp => comp.id));
       
-      // Create maps for easier lookup
-      const existingComponentsMap = new Map(
-        existingComponents.map(comp => [comp.id, comp])
-      );
+      // Create a set of component IDs from the current form data
+      const currentComponentIds = new Set(allComponents.filter(comp => comp.id).map(comp => comp.id));
       
-      const currentComponentIds = new Set(
-        allComponents
-          .filter(comp => comp.id)
-          .map(comp => comp.id)
-      );
+      // Find components to delete (in database but not in form)
+      const componentsToDelete = [...existingComponentIds].filter(id => !currentComponentIds.has(id));
       
-      // Find components to delete (exist in DB but not in current form)
-      const componentsToDelete = existingComponents.filter(
-        comp => !currentComponentIds.has(comp.id)
-      );
+      // Delete components that are no longer present
+      if (componentsToDelete.length > 0) {
+        console.log("Deleting components:", componentsToDelete);
+        const { data: deleteData, error: deleteError } = await supabase
+          .from("catalog_components")
+          .delete()
+          .in("id", componentsToDelete)
+          .select();
+          
+        if (deleteError) {
+          console.error("Error deleting components - DETAILED ERROR:", deleteError);
+          if (deleteError.code === 'PGRST301' || deleteError.message.includes('permission denied')) {
+            toast({
+              title: "Components Permissions Error",
+              description: "You don't have permission to delete components. This may be due to Row Level Security on the catalog_components table.",
+              variant: "destructive"
+            });
+          }
+          // Log but don't throw, try to continue with other operations
+          console.warn("Continuing despite component delete error");
+        } else {
+          console.log("Successfully deleted components:", deleteData);
+        }
+      }
       
-      // Separate updates from inserts
-      const componentsToUpdate: any[] = [];
-      const componentsToInsert: any[] = [];
-      
-      allComponents.forEach(comp => {
+      // Process each component - update existing ones and add new ones
+      for (const comp of allComponents) {
+        // Calculate consumption if we have the required dimensions
+        let consumption = comp.consumption;
+        if (comp.length && comp.width && comp.roll_width) {
+          const baseConsumption = (Number(comp.length) * Number(comp.width)) / (Number(comp.roll_width) * 39.39);
+          consumption = productData.default_quantity 
+            ? baseConsumption * parseFloat(productData.default_quantity)
+            : baseConsumption;
+        }
+        
         const componentData = {
-          catalog_id: id,
+          catalog_id: id, // Ensure we link the component to the catalog item
           component_type: comp.type === 'custom' ? (comp.customName || 'custom') : comp.type.toLowerCase(),
           size: comp.length && comp.width ? `${comp.length}x${comp.width}` : null,
           color: comp.color || null,
-          roll_width: comp.roll_width ? parseFloat(comp.roll_width) : null,
-          length: comp.length ? parseFloat(comp.length) : null,
-          width: comp.width ? parseFloat(comp.width) : null,
+          roll_width: comp.roll_width ? Number(comp.roll_width) : null,
+          length: comp.length ? Number(comp.length) : null,
+          width: comp.width ? Number(comp.width) : null,
           custom_name: comp.type === 'custom' ? comp.customName : null,
           material_id: comp.material_id || null,
           material_linked: comp.material_id ? true : false,
-          consumption: comp.consumption ? parseFloat(comp.consumption) : null,
-          formula: comp.formula || 'standard'
+          consumption: consumption ? Number(consumption) : null,
+          formula: comp.formula || 'standard',
+          updated_at: new Date().toISOString()
         };
         
-        if (comp.id && existingComponentsMap.has(comp.id)) {
-          // This is an update
-          componentsToUpdate.push({
-            id: comp.id,
-            ...componentData
+        try {
+          if (comp.id) {
+            // Update existing component
+            console.log(`Updating existing component ${comp.id}:`, componentData);
+            const { data: updateData, error: updateError } = await supabase
+              .from("catalog_components")
+              .update(componentData)
+              .eq("id", comp.id)
+              .select();
+              
+            if (updateError) {
+              console.error("Error updating component - DETAILED:", comp.id, updateError);
+              if (updateError.code === 'PGRST301' || updateError.message.includes('permission denied')) {
+                toast({
+                  title: "Component Update Permission Error",
+                  description: "You don't have permission to update components. Check RLS on catalog_components table.",
+                  variant: "destructive"
+                });
+                // Continue with other components
+                continue;
+              } else {
+                throw updateError;
+              }
+            }
+            
+            console.log(`Component ${comp.id} update result:`, updateData);
+            
+            // Verify the update
+            const { data: verifyData } = await supabase
+              .from("catalog_components")
+              .select("*")
+              .eq("id", comp.id)
+              .single();
+              
+            if (verifyData) {
+              console.log(`Component ${comp.id} verification:`, verifyData);
+            }
+          } else {
+            // Insert new component
+            console.log("Adding new component:", componentData);
+            const { data: insertData, error: insertError } = await supabase
+              .from("catalog_components")
+              .insert(componentData)
+              .select();
+              
+            if (insertError) {
+              console.error("Error inserting new component - DETAILED:", insertError);
+              if (insertError.code === 'PGRST301' || insertError.message.includes('permission denied')) {
+                toast({
+                  title: "Component Insert Permission Error",
+                  description: "You don't have permission to add new components. Check RLS on catalog_components table.",
+                  variant: "destructive"
+                });
+                // Continue with other components
+                continue;
+              } else {
+                throw insertError;
+              }
+            }
+            
+            console.log("New component insert result:", insertData);
+          }
+        } catch (componentError) {
+          console.error("Unexpected error handling component:", componentError);
+          toast({
+            title: "Component Error",
+            description: "An error occurred while processing component data.",
+            variant: "destructive"
           });
-        } else {
-          // This is a new component
-          componentsToInsert.push(componentData);
+          // Continue with other components
+          continue;
         }
-      });
-      
-      console.log("Components to delete:", componentsToDelete);
-      console.log("Components to update:", componentsToUpdate);
-      console.log("Components to insert:", componentsToInsert);
-      
-      // Delete components that were removed
-      if (componentsToDelete.length > 0) {
-        const deleteIds = componentsToDelete.map(comp => comp.id);
-        const { error: deleteError } = await supabase
-          .from("catalog_components")
-          .delete()
-          .in("id", deleteIds);
-        
-        if (deleteError) {
-          throw deleteError;
-        }
-        console.log("Deleted components:", deleteIds);
       }
       
-      // Update existing components
-      for (const comp of componentsToUpdate) {
-        const { id: componentId, ...updateData } = comp;
-        const { error: updateError } = await supabase
-          .from("catalog_components")
-          .update(updateData)
-          .eq("id", componentId);
-        
-        if (updateError) {
-          console.error("Error updating component:", componentId, updateError);
-          throw updateError;
-        }
-        console.log("Updated component:", componentId);
-      }
+      // Force cache invalidation
+      await queryClient.invalidateQueries({ queryKey: ['catalog-products'] });
+      await queryClient.invalidateQueries({ queryKey: ['inventory-items'] });
       
-      // Insert new components
-      if (componentsToInsert.length > 0) {
-        const { error: insertError } = await supabase
-          .from("catalog_components")
-          .insert(componentsToInsert);
-        
-        if (insertError) {
-          console.error("Error inserting components:", insertError);
-          throw insertError;
-        }
-        console.log("Inserted new components:", componentsToInsert.length);
-      }
+      // Clear session storage and set new timestamp
+      sessionStorage.removeItem('forceRefresh');
+      sessionStorage.setItem('forceRefresh', 'true');
+      sessionStorage.setItem('lastUpdated', new Date().toISOString());
       
       toast({
         title: "Product updated successfully",
@@ -448,8 +598,8 @@ const CatalogEdit = () => {
         variant: "default"
       });
 
-      // Navigate back to the product view
-      window.location.href = `/inventory/catalog/${id}`;
+      // Navigate back to product detail with cache busting
+      window.location.href = `/inventory/catalog/${id}?t=${Date.now()}`;
       
     } catch (error: any) {
       toast({
@@ -608,6 +758,7 @@ const CatalogEdit = () => {
                 componentOptions={componentOptions}
                 onChange={handleComponentChange}
                 defaultQuantity={productData.default_quantity}
+                onRemoveComponent={removeStandardComponent}
               />
               
               <div className="space-y-4">
@@ -622,7 +773,7 @@ const CatalogEdit = () => {
                   >
                     + Add Custom Component
                   </Button>
-                </div>
+              </div>
                 
                 <CustomComponentSection 
                   customComponents={customComponents}
@@ -647,72 +798,72 @@ const CatalogEdit = () => {
               {/* Material Costs */}
               <div className="space-y-4">
                 <h3 className="text-lg font-medium">Material Costs</h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="material_cost">Material Cost</Label>
-                    <Input 
-                      id="material_cost" 
-                      name="material_cost"
-                      type="number"
-                      step="0.01"
-                      value={productData.material_cost}
-                      onChange={handleProductChange}
-                      placeholder="Material cost"
-                      min="0"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cutting_charge">Cutting Charge</Label>
-                    <Input 
-                      id="cutting_charge" 
-                      name="cutting_charge"
-                      type="number"
-                      step="0.01"
-                      value={productData.cutting_charge}
-                      onChange={handleProductChange}
-                      placeholder="Cutting charge"
-                      min="0"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="printing_charge">Printing Charge</Label>
-                    <Input 
-                      id="printing_charge" 
-                      name="printing_charge"
-                      type="number"
-                      step="0.01"
-                      value={productData.printing_charge}
-                      onChange={handleProductChange}
-                      placeholder="Printing charge"
-                      min="0"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="stitching_charge">Stitching Charge</Label>
-                    <Input 
-                      id="stitching_charge" 
-                      name="stitching_charge"
-                      type="number"
-                      step="0.01"
-                      value={productData.stitching_charge}
-                      onChange={handleProductChange}
-                      placeholder="Stitching charge"
-                      min="0"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="transport_charge">Transport Charge</Label>
-                    <Input 
-                      id="transport_charge" 
-                      name="transport_charge"
-                      type="number"
-                      step="0.01"
-                      value={productData.transport_charge}
-                      onChange={handleProductChange}
-                      placeholder="Transport charge"
-                      min="0"
-                    />
-                  </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="material_cost">Material Cost</Label>
+                  <Input 
+                    id="material_cost" 
+                    name="material_cost"
+                    type="number"
+                    step="0.01"
+                    value={productData.material_cost}
+                    onChange={handleProductChange}
+                    placeholder="Material cost"
+                    min="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cutting_charge">Cutting Charge</Label>
+                  <Input 
+                    id="cutting_charge" 
+                    name="cutting_charge"
+                    type="number"
+                    step="0.01"
+                    value={productData.cutting_charge}
+                    onChange={handleProductChange}
+                    placeholder="Cutting charge"
+                    min="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="printing_charge">Printing Charge</Label>
+                  <Input 
+                    id="printing_charge" 
+                    name="printing_charge"
+                    type="number"
+                    step="0.01"
+                    value={productData.printing_charge}
+                    onChange={handleProductChange}
+                    placeholder="Printing charge"
+                    min="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="stitching_charge">Stitching Charge</Label>
+                  <Input 
+                    id="stitching_charge" 
+                    name="stitching_charge"
+                    type="number"
+                    step="0.01"
+                    value={productData.stitching_charge}
+                    onChange={handleProductChange}
+                    placeholder="Stitching charge"
+                    min="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="transport_charge">Transport Charge</Label>
+                  <Input 
+                    id="transport_charge" 
+                    name="transport_charge"
+                    type="number"
+                    step="0.01"
+                    value={productData.transport_charge}
+                    onChange={handleProductChange}
+                    placeholder="Transport charge"
+                    min="0"
+                  />
+                </div>
                 </div>
               </div>
 
@@ -768,17 +919,17 @@ const CatalogEdit = () => {
           </CardContent>
           <CardFooter>
             <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => window.location.href = `/inventory/catalog/${id}`}
-              >
-                Cancel
-              </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => window.location.href = `/inventory/catalog/${id}`}
+            >
+              Cancel
+            </Button>
               <Button type="submit" disabled={submitting}>
                 {submitting ? "Updating..." : "Update Product"}
-              </Button>
-            </div>
+            </Button>
+          </div>
           </CardFooter>
         </Card>
       </form>

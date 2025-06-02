@@ -7,14 +7,14 @@ interface ComponentType {
   type: string;
   customName?: string;
   color?: string;
-  length?: string;
-  width?: string;
-  roll_width?: string;
+  length?: number;
+  width?: number;
+  roll_width?: number;
   material_id?: string;
-  consumption?: string;
-  baseConsumption?: string;
-  materialRate?: string;
-  materialCost?: string;
+  consumption?: number;
+  baseConsumption?: number;
+  materialRate?: number;
+  materialCost?: number;
   formula?: 'standard' | 'linear';
 }
 
@@ -74,20 +74,19 @@ export const useProductForm = () => {
   };
   
   // Function to calculate consumption based on dimensions
-  const calculateConsumption = (length?: string, width?: string, rollWidth?: string): string | undefined => {
-    if (!length || !width || !rollWidth) return undefined;
+  const calculateConsumption = (length: number, width: number, rollWidth: number): number | null => {
+    if (!length || !width || !rollWidth) return null;
     
-    const lengthVal = parseFloat(length);
-    const widthVal = parseFloat(width);
-    const rollWidthVal = parseFloat(rollWidth);
+    const lengthVal = Number(length);
+    const widthVal = Number(width);
+    const rollWidthVal = Number(rollWidth);
     
     if (isNaN(lengthVal) || isNaN(widthVal) || isNaN(rollWidthVal) || rollWidthVal <= 0) {
-      return undefined;
+      return null;
     }
     
-    // Formula: (length * width) / (roll_width * 39.39)
-    const consumption = (lengthVal * widthVal) / (rollWidthVal * 39.39);
-    return consumption.toFixed(4);
+    // Standard formula: (length * width) / (roll_width * 39.39)
+    return (lengthVal * widthVal) / (rollWidthVal * 39.39);
   };
   
   // Calculate material cost for a component
@@ -154,7 +153,13 @@ export const useProductForm = () => {
       
       updatedData.total_cost = totalCost.toString();
       
-      // Don't update margin here - it should only change when selling rate changes
+      // Update margin if selling rate exists and is greater than 0
+      if (prev.selling_rate && parseFloat(prev.selling_rate) > 0 && totalCost > 0) {
+        const sellingRate = parseFloat(prev.selling_rate);
+        const newMargin = ((sellingRate - totalCost) / totalCost) * 100;
+        updatedData.margin = newMargin.toFixed(2);
+      }
+      
       return updatedData;
     });
   }, [components, customComponents, materialPrices]);
@@ -176,8 +181,8 @@ export const useProductForm = () => {
         
         if (baseConsumption) {
           const consumption = productData.default_quantity 
-            ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
-            : baseConsumption;
+            ? (parseFloat(baseConsumption.toFixed(4)) * parseFloat(productData.default_quantity)).toFixed(4)
+            : baseConsumption.toFixed(4);
             
           updatedComponents[type] = {
             ...component,
@@ -212,8 +217,8 @@ export const useProductForm = () => {
         
         if (baseConsumption) {
           const consumption = productData.default_quantity 
-            ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
-            : baseConsumption;
+            ? (parseFloat(baseConsumption.toFixed(4)) * parseFloat(productData.default_quantity)).toFixed(4)
+            : baseConsumption.toFixed(4);
             
           const updatedComponent = {
             ...component,
@@ -262,7 +267,9 @@ export const useProductForm = () => {
         const totalCost = calculateTotalCost(updatedData);
         if (totalCost > 0) {
           const newMargin = ((parseFloat(value) - totalCost) / totalCost) * 100;
-          updatedData.margin = newMargin.toFixed(2);
+          // Use parseFloat to ensure consistent numeric calculation before storing as string
+          updatedData.margin = parseFloat(newMargin.toFixed(2)).toString();
+          console.log("Updated margin from selling rate change:", updatedData.margin);
         }
       }
       
@@ -288,25 +295,27 @@ export const useProductForm = () => {
     if (!component) return;
 
     // Update the field
-    component[field] = value;
+    if (['length', 'width', 'roll_width', 'consumption'].includes(field)) {
+      component[field] = Number(value);
+    } else {
+      component[field] = value;
+    }
 
     // If material_id changed, fetch new material price and update costs
     if (field === 'material_id') {
       const materialPrice = await fetchMaterialPrice(value);
-      component.materialRate = materialPrice?.toString();
+      component.materialRate = materialPrice;
       
       // Recalculate material cost if we have consumption
       if (component.consumption) {
-        const consumption = parseFloat(component.consumption);
-        component.materialCost = (consumption * (materialPrice || 0)).toString();
+        component.materialCost = component.consumption * (materialPrice || 0);
       }
     }
 
     // If consumption changed and we have material rate, update material cost
     if (field === 'consumption' && component.materialRate) {
-      const consumption = parseFloat(value);
-      const materialRate = parseFloat(component.materialRate);
-      component.materialCost = (consumption * materialRate).toString();
+      const consumption = Number(value);
+      component.materialCost = consumption * component.materialRate;
     }
 
     setComponents(updatedComponents);
@@ -319,25 +328,27 @@ export const useProductForm = () => {
     if (!component) return;
 
     // Update the field
-    component[field] = value;
+    if (['length', 'width', 'roll_width', 'consumption'].includes(field)) {
+      component[field] = Number(value);
+    } else {
+      component[field] = value;
+    }
 
     // If material_id changed, fetch new material price and update costs
     if (field === 'material_id') {
       const materialPrice = await fetchMaterialPrice(value);
-      component.materialRate = materialPrice?.toString();
+      component.materialRate = materialPrice;
       
       // Recalculate material cost if we have consumption
       if (component.consumption) {
-        const consumption = parseFloat(component.consumption);
-        component.materialCost = (consumption * (materialPrice || 0)).toString();
+        component.materialCost = component.consumption * (materialPrice || 0);
       }
     }
 
     // If consumption changed and we have material rate, update material cost
     if (field === 'consumption' && component.materialRate) {
-      const consumption = parseFloat(value);
-      const materialRate = parseFloat(component.materialRate);
-      component.materialCost = (consumption * materialRate).toString();
+      const consumption = Number(value);
+      component.materialCost = consumption * component.materialRate;
     }
 
     setCustomComponents(updatedComponents);
@@ -358,10 +369,33 @@ export const useProductForm = () => {
     setCustomComponents(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Function to clear a standard component (but keep the type)
+  const removeStandardComponent = (componentType: string) => {
+    const updatedComponents = { ...components };
+    // If the component exists, keep only its type and ID
+    if (updatedComponents[componentType]) {
+      const componentId = updatedComponents[componentType].id;
+      // Initialize the component with the default structure but clear all values
+      updatedComponents[componentType] = { 
+        type: componentType,
+        // Keep the ID if it exists (for database records)
+        ...(componentId ? { id: componentId } : {}),
+        // Add empty fields with proper types to ensure the component remains editable
+        color: '',
+        length: '',
+        width: '',
+        roll_width: '',
+        material_id: '',
+        formula: 'standard'
+      };
+      setComponents(updatedComponents);
+    }
+  };
+
   // Calculate total consumption for all components
   const totalConsumption = [...Object.values(components), ...customComponents]
     .reduce((total, comp) => {
-      const consumption = comp.consumption ? parseFloat(comp.consumption) : 0;
+      const consumption = comp.consumption ? parseFloat(comp.consumption.toString()) : 0;
       return isNaN(consumption) ? total : total + consumption;
     }, 0);
 
@@ -369,7 +403,7 @@ export const useProductForm = () => {
   const componentCosts = [...Object.values(components), ...customComponents]
     .filter(comp => comp.materialCost || (comp.material_id && comp.consumption))
     .map(comp => {
-      const consumption = parseFloat(comp.consumption || '0');
+      const consumption = parseFloat(comp.consumption?.toString() || '0');
       const rate = comp.materialRate || materialPrices[comp.material_id || ''] || 0;
       const cost = comp.materialCost ? parseFloat(String(comp.materialCost)) : (consumption * rate);
       
@@ -397,6 +431,7 @@ export const useProductForm = () => {
     handleCustomComponentChange,
     addCustomComponent,
     removeCustomComponent,
+    removeStandardComponent,
     setComponents,
     setCustomComponents
   };

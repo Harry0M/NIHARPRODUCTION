@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MaterialSelector } from "@/components/inventory/material-selector/MaterialSelector";
 import { ConsumptionCalculator, ConsumptionFormulaType } from "@/components/production/ConsumptionCalculator";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Trash2 } from "lucide-react";
 
 interface StandardComponentsProps {
   components: Record<string, any>;
@@ -20,6 +20,7 @@ interface StandardComponentsProps {
     gsm?: string[]; // Make gsm optional
   };
   onChange: (type: string, field: string, value: string) => void;
+  onRemoveComponent?: (componentType: string) => void; // Add function to remove/reset a component
   defaultQuantity?: string;
   showConsumption?: boolean;
 }
@@ -28,6 +29,7 @@ export const StandardComponents = ({
   components, 
   componentOptions, 
   onChange,
+  onRemoveComponent,
   defaultQuantity,
   showConsumption = false
 }: StandardComponentsProps) => {
@@ -67,6 +69,7 @@ export const StandardComponents = ({
               onChange={onChange}
               defaultQuantity={defaultQuantity}
               onMaterialSelect={(materialId) => handleMaterialSelect(component.type, materialId)}
+              onRemoveComponent={onRemoveComponent}
               showConsumption={showConsumption}
             />
           );
@@ -98,6 +101,7 @@ interface ComponentFormProps {
   onChange: (type: string, field: string, value: string) => void;
   defaultQuantity?: string;
   onMaterialSelect: (materialId: string | null) => void;
+  onRemoveComponent?: (componentType: string) => void; // Add function to remove component
   showConsumption?: boolean;
 }
 
@@ -107,6 +111,7 @@ const ComponentForm = ({
   onChange,
   defaultQuantity,
   onMaterialSelect,
+  onRemoveComponent,
   showConsumption = false
 }: ComponentFormProps) => {
   const [customColor, setCustomColor] = useState("");
@@ -243,7 +248,19 @@ const ComponentForm = ({
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex justify-between items-center">
           <span>{component.type}</span>
-          {/* Removed all badges to simplify */}
+          <div className="flex items-center gap-2">
+            {onRemoveComponent && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-7 w-7 p-0 hover:bg-red-50 hover:text-red-600" 
+                onClick={() => onRemoveComponent(component.type)}
+                title="Clear component data"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent>
