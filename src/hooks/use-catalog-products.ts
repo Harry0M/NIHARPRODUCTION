@@ -62,13 +62,26 @@ export const useCatalogProducts = () => {
     queryFn: async () => {
       console.log("Fetching catalog products...");
       
-      // Fetch all catalog products with basic info
+      // Fetch all catalog products with complete info directly from catalog table
       const { data: catalogData, error: catalogError } = await supabase
         .from("catalog")
         .select(`
           id,
           name,
           description,
+          bag_length,
+          bag_width,
+          border_dimension,
+          default_quantity,
+          default_rate,
+          selling_rate, 
+          margin,
+          total_cost,
+          cutting_charge,
+          printing_charge,
+          stitching_charge,
+          transport_charge,
+          height,
           created_at,
           updated_at,
           created_by
@@ -87,65 +100,14 @@ export const useCatalogProducts = () => {
         return [] as CatalogProduct[];
       }
       
-      // Get all product IDs to fetch both details and components
+      // Get all product IDs to fetch components
       const allProductIds = catalogData.map(product => product.id);
       
-      // Fetch product details from product_details table
-      const { data: productDetailsData, error: detailsError } = await supabase
-        .from("product_details")
-        .select(`
-          catalog_id,
-          bag_length,
-          bag_width,
-          border_dimension,
-          default_quantity,
-          default_rate,
-          selling_rate, 
-          margin,
-          total_cost,
-          cutting_charge,
-          printing_charge,
-          stitching_charge,
-          transport_charge,
-          height
-        `)
-        .in('catalog_id', allProductIds);
-        
-      if (detailsError) {
-        console.error("Error fetching product details:", detailsError);
-        throw detailsError;
-      }
+      // Since we now fetch all data directly from catalog table, we can skip the product_details fetch
+      console.log("Direct catalog data with dimensions:", catalogData);
       
-      console.log("Product details data:", productDetailsData);
-      
-      // Create a map of product details by catalog_id for easy lookup
-      const detailsMap: Record<string, any> = {};
-      productDetailsData?.forEach(detail => {
-        if (detail.catalog_id) {
-          detailsMap[detail.catalog_id] = detail;
-        }
-      });
-      
-      // Merge catalog data with product details
-      const mergedProducts = catalogData.map(product => {
-        const details = detailsMap[product.id] || {};
-        return {
-          ...product,
-          bag_length: details.bag_length,
-          bag_width: details.bag_width,
-          border_dimension: details.border_dimension,
-          default_quantity: details.default_quantity,
-          default_rate: details.default_rate,
-          selling_rate: details.selling_rate,
-          margin: details.margin,
-          total_cost: details.total_cost,
-          cutting_charge: details.cutting_charge,
-          printing_charge: details.printing_charge,
-          stitching_charge: details.stitching_charge,
-          transport_charge: details.transport_charge,
-          height: details.height
-        };
-      });
+      // Products are already complete with dimensions from catalog table
+      const mergedProducts = catalogData;
       
       // Fetch all components for these products in a single query
       // Include material_linked field in the query

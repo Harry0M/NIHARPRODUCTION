@@ -96,8 +96,55 @@ export function useOrderSubmission({
       });
       
       // Prepare data for database insert
+      // First, validate that the sales_account_id (company_id) exists if provided
+      let validatedSalesAccountId = null;
+      let companyName = orderDetails.company_name || "";
+      
+      // If sales_account_id is provided, verify it exists in the companies table
+      if (orderDetails.sales_account_id) {
+        try {
+          // Check if the company exists in the database
+          const { data: companyData, error: companyError } = await supabase
+            .from("companies")
+            .select("id, name")
+            .eq("id", orderDetails.sales_account_id)
+            .single();
+          
+          if (companyError) {
+            console.warn("Company validation error:", companyError);
+            // Company ID is invalid, so we'll use null to avoid foreign key errors
+          } else if (companyData) {
+            // Company exists, so we can use the ID
+            validatedSalesAccountId = companyData.id;
+            // If company_name is empty, use the company name from the database
+            if (!companyName || companyName.trim() === "") {
+              companyName = companyData.name;
+              console.log("Using company name from database:", companyName);
+            }
+          }
+        } catch (err) {
+          console.error("Error validating company:", err);
+          // On error, default to null for safety
+        }
+      }
+      
+      // If company_name is still empty but company_id exists, use a default name
+      if ((!companyName || companyName.trim() === "") && orderDetails.company_id) {
+        companyName = "Company ID: " + orderDetails.company_id;
+        console.log("Warning: Using default company name because company_name was empty", {
+          company_id: orderDetails.company_id,
+          defaultName: companyName
+        });
+      }
+      
+      // Always ensure company_name has a value to satisfy the not-null constraint
+      if (!companyName || companyName.trim() === "") {
+        companyName = "Unnamed Company";
+        console.log("Warning: Using 'Unnamed Company' as company_name was empty and no company_id was provided");
+      }
+      
       const orderData = {
-        company_name: orderDetails.company_id ? null : orderDetails.company_name,
+        company_name: companyName, // Always provide a non-null value
         company_id: orderDetails.company_id,
         quantity: parseInt(orderDetails.total_quantity || orderDetails.quantity), // Use total quantity for the order
         bag_length: parseFloat(orderDetails.bag_length),
@@ -105,7 +152,8 @@ export function useOrderSubmission({
         border_dimension: orderDetails.border_dimension ? parseFloat(orderDetails.border_dimension) : null,
         rate: sellingRate,
         order_date: orderDetails.order_date,
-        sales_account_id: orderDetails.sales_account_id || null,
+        // Use the validated sales_account_id to prevent foreign key constraint errors
+        sales_account_id: validatedSalesAccountId,
         special_instructions: orderDetails.special_instructions || null,
         // Cost calculations
         material_cost: materialCost,

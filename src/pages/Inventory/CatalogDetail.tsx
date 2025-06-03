@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useCatalogProducts, useInventoryItems, CatalogProduct } from "@/hooks/use-catalog-products";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Package, Pencil, RefreshCw } from "lucide-react";
@@ -8,119 +8,111 @@ import { ProductInfoCard } from "@/components/inventory/catalog/ProductInfoCard"
 import { ComponentsTable, CatalogComponent } from "@/components/inventory/catalog/ComponentsTable";
 import { ComponentDetailsDialog } from "@/components/inventory/catalog/ComponentDetailsDialog";
 import { showToast } from "@/components/ui/enhanced-toast";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 // Update Material interface to match the changes in ComponentsTable.tsx
 interface Material {
   id: string;
-  material_name: string; // Changed from material_type to material_name
+  material_name: string;
   color?: string | null;
   gsm?: string | null;
   quantity?: number;
   unit?: string;
 }
 
-const CatalogDetail = () => {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const [componentView, setComponentView] = useState<string | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const queryClient = useQueryClient();
+// Define the component type from the database
+interface DBComponent {
+  id: string;
+  catalog_id: string;
+  component_type: string;
+  color: string;
+  consumption: number;
+  created_at: string;
+  custom_name: string;
+  formula: string;
+  gsm: number;
+  length: number;
+  material_id: string;
+  material_linked: boolean;
+  roll_width: number;
+  width: number;
+}
 
-  const { data: products, isLoading, refetch } = useCatalogProducts();
-  const { data: inventoryItems, isLoading: isLoadingInventory } = useInventoryItems();
-  
-  // More robust product finding - compare as strings to avoid type mismatches
-  const product = products?.find((p) => String(p.id) === String(id)) as CatalogProduct | undefined;
-  const components = product?.catalog_components || [];
+const CatalogDetail = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const queryClient = useQueryClient();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
+  const [showComponentDialog, setShowComponentDialog] = useState(false);
+  const [showMaterialDialog, setShowMaterialDialog] = useState(false);
+
+  // Get the force refresh state from navigation
+  const forceRefresh = location.state?.forceRefresh || false;
+
+  // Single source of truth for product data
+  const { data: product, isLoading, refetch } = useQuery({
+    queryKey: ['catalog-product', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('catalog')
+        .select(`
+          *,
+          catalog_components(*)
+        `)
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    staleTime: forceRefresh ? 0 : 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Only fetch inventory items when needed
+  const { data: inventoryItems, isLoading: isLoadingInventoryItems } = useQuery({
+    queryKey: ['inventory-items'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('inventory')
+        .select('*');
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: showComponentDialog, // Only fetch when dialog is open
+  });
+
+  // Force refetch on mount if coming from edit
+  useEffect(() => {
+    if (forceRefresh) {
+      refetch();
+    }
+  }, [forceRefresh, refetch]);
+
+  // Convert DB components to CatalogComponent type
+  const components: CatalogComponent[] = (product?.catalog_components || []).map(comp => ({
+    ...comp,
+    formula: (comp.formula === 'linear' ? 'linear' : 'standard') as 'standard' | 'linear'
+  }));
 
   // Enhanced debugging information
   console.log("CatalogDetail - Product ID:", id);
-  console.log("CatalogDetail - Products length:", products?.length);
-  console.log("CatalogDetail - All product IDs:", products?.map(p => p.id));
-  console.log("CatalogDetail - Found product:", product);
-  
-  if (!product && products?.length) {
-    console.warn("Product not found by ID match! This may indicate a type mismatch or database inconsistency.");
-    // Try to look up by ID in a different way just to debug
-    const looseMatch = products.find(p => p.id.toString().includes(id?.toString() || ""));
-    if (looseMatch) {
-      console.warn("Found product with loose matching:", looseMatch.id, "vs requested ID:", id);
-    }
-  }
-  
+  console.log("CatalogDetail - Product data:", product);
   console.log("CatalogDetail - Components:", components?.length);
-  console.log("CatalogDetail - Available inventory items:", inventoryItems?.length);
 
-  // Force refresh on initial load and also check for new product notification
-  useEffect(() => {
-    if (id) {
-      console.log("Initial data load - forcing refresh");
-      setIsRefreshing(true);
-      
-      // Invalidate queries to ensure fresh data
-      queryClient.invalidateQueries({ queryKey: ["catalog-products"] });
-      
-      refetch()
-        .then((result) => {
-          if (result.isSuccess) {
-            console.log("Data refreshed successfully");
-          } else if (result.isError) {
-            console.error("Error refreshing data:", result.error);
-            showToast({
-              title: "Error loading product data",
-              description: "Please try refreshing the page",
-              type: "error"
-            });
-          }
-        })
-        .catch(error => {
-          console.error("Error during refetch:", error);
-        })
-        .finally(() => {
-          setIsRefreshing(false);
-        });
-      
-      // Check for product created notification
-      const hasRedirected = sessionStorage.getItem('productCreated');
-      if (hasRedirected) {
-        sessionStorage.removeItem('productCreated');
-        showToast({
-          title: "Product viewed successfully",
-          description: "You are now viewing the newly created product",
-          type: "success"
-        });
-      }
-    }
-  }, [id, refetch, queryClient]);
-
-  useEffect(() => {
-    // Detect if we have components with material_id but no materials
-    const hasOrphanedMaterialIds = components.some(c => c.material_id && c.material_linked && !c.material);
-    
-    if (hasOrphanedMaterialIds) {
-      console.warn("Detected components with material_id but no attached material data.");
-    }
-  }, [components]);
-
-  const componentTypes = {
-    part: "Part",
-    border: "Border",
-    handle: "Handle",
-    chain: "Chain",
-    runner: "Runner",
-    custom: "Custom"
-  };
-
-  if (isLoading) {
+  // Loading state
+  if (isLoading || isRefreshing) {
     return (
-      <div className="flex justify-center items-center h-screen">
+      <div className="flex justify-center items-center min-h-[50vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
+  // Error state
   if (!product) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 p-8">
@@ -133,43 +125,28 @@ const CatalogDetail = () => {
   }
 
   const handleViewComponent = (componentId: string) => {
-    setComponentView(componentId);
-    setIsDialogOpen(true);
+    setSelectedComponentId(componentId);
+    setShowComponentDialog(true);
   };
 
   const getSelectedComponent = (): CatalogComponent | null => {
-    return components.find(c => c.id === componentView) || null;
+    const comp = components.find(c => c.id === selectedComponentId);
+    return comp || null;
   };
 
   // Handle successful material link with stronger refresh
   const handleMaterialLinkSuccess = () => {
     console.log("Material link success, refreshing data...");
-    
-    // Force immediate refetch with no delay
     setIsRefreshing(true);
     
     // First invalidate the queries to ensure fresh data
     queryClient.invalidateQueries({ queryKey: ["catalog-products"] });
-    queryClient.invalidateQueries({ queryKey: ["stock-detail", componentView] });
+    queryClient.invalidateQueries({ queryKey: ["stock-detail", selectedComponentId] });
     
-    refetch({ cancelRefetch: true })
-      .then((result) => {
-        console.log("Data refreshed after linking material:", result);
+    refetch()
+      .then(() => {
         setIsRefreshing(false);
-        
-        if (result.isSuccess) {
-          showToast({
-            title: "Material linked successfully",
-            description: "The component has been updated with the selected material",
-            type: "success"
-          });
-        } else if (result.isError) {
-          showToast({
-            title: "Error refreshing data",
-            description: "Unable to reload data. Please try manually refreshing.",
-            type: "error"
-          });
-        }
+        setShowComponentDialog(false);
       })
       .catch(error => {
         console.error("Error refetching data:", error);
@@ -179,14 +156,10 @@ const CatalogDetail = () => {
           description: "Unable to refresh the data. Please try manually refreshing.",
           type: "error"
         });
-      })
-      .finally(() => {
-        // Close the dialog after attempt to refresh
-        setIsDialogOpen(false);
       });
   };
 
-  // Manual refresh function with stronger implementation
+  // Manual refresh function
   const handleManualRefresh = () => {
     setIsRefreshing(true);
     
@@ -195,23 +168,14 @@ const CatalogDetail = () => {
     queryClient.invalidateQueries({ queryKey: ["stock-detail"] });
     queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
     
-    refetch({ cancelRefetch: true, throwOnError: true })
-      .then((result) => {
+    refetch()
+      .then(() => {
         setIsRefreshing(false);
-        
-        if (result.isSuccess) {
-          showToast({
-            title: "Data refreshed",
-            description: "The product details have been refreshed",
-            type: "success"
-          });
-        } else if (result.isError) {
-          showToast({
-            title: "Error refreshing data",
-            description: result.error?.message || "An error occurred while refreshing the data",
-            type: "error"
-          });
-        }
+        showToast({
+          title: "Data refreshed",
+          description: "The product details have been refreshed",
+          type: "success"
+        });
       })
       .catch(error => {
         setIsRefreshing(false);
@@ -226,13 +190,20 @@ const CatalogDetail = () => {
   // Filter materials based on component properties
   const getFilteredMaterials = (component: CatalogComponent) => {
     if (!inventoryItems) return [];
-    
-    // Safely cast the inventory items to the correct type
     return inventoryItems as unknown as Material[];
   };
 
   const selectedComponent = getSelectedComponent();
   const filteredMaterials = selectedComponent ? getFilteredMaterials(selectedComponent) : [];
+
+  const componentTypes = {
+    part: "Part",
+    border: "Border",
+    handle: "Handle",
+    chain: "Chain",
+    runner: "Runner",
+    custom: "Custom"
+  };
 
   return (
     <div className="space-y-6 p-4">
@@ -314,11 +285,11 @@ const CatalogDetail = () => {
 
       {/* Component Details Dialog */}
       <ComponentDetailsDialog
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
+        open={showComponentDialog}
+        onOpenChange={setShowComponentDialog}
         selectedComponent={selectedComponent}
         filteredMaterials={filteredMaterials}
-        isLoadingInventory={isLoadingInventory}
+        isLoadingInventory={isLoadingInventoryItems}
         onMaterialLinkSuccess={handleMaterialLinkSuccess}
         componentTypes={componentTypes}
       />

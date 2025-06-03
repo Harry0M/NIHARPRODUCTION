@@ -360,13 +360,11 @@ const CatalogEdit = () => {
         console.log("For catalog ID:", id);
         
         // Update the catalog table with ALL fields
-        // This will trigger the database trigger 'trigger_sync_catalog_changes'
-        // which will handle synchronization with other tables
         const { data: updateData, error: catalogError } = await supabase
           .from("catalog")
           .update(catalogDbData)
           .eq("id", id)
-          .select(); // Added .select() to get response data
+          .select();
           
         console.log("Raw update response:", updateData);
           
@@ -381,46 +379,58 @@ const CatalogEdit = () => {
           }
           throw new Error(`Error updating catalog: ${catalogError.message} (code: ${catalogError.code})`);
         }
-        
-        if (!updateData || updateData.length === 0) {
-          console.warn("Update appears to have succeeded but returned no data. This may indicate an RLS issue.");
-        }
-        
-        // Verify the update was successful by fetching the record again
-        const { data: verifyData, error: verifyError } = await supabase
-          .from("catalog")
-          .select("*")
-          .eq("id", id)
+
+        // Also update the product_details table to ensure consistency
+        const productDetailsData = {
+          catalog_id: id,
+          name: formattedName,
+          description: productData.description || null,
+          bag_length: parseFloat(productData.bag_length),
+          bag_width: parseFloat(productData.bag_width),
+          border_dimension: productData.border_dimension ? parseFloat(productData.border_dimension) : null,
+          height: productData.border_dimension ? parseFloat(productData.border_dimension) : (currentCatalog.height || 0),
+          default_quantity: productData.default_quantity ? parseInt(productData.default_quantity) : null,
+          default_rate: productData.default_rate ? parseFloat(productData.default_rate) : null,
+          selling_rate: sellingRate,
+          margin: margin,
+          cutting_charge: parseFloat(productData.cutting_charge) || 0,
+          printing_charge: parseFloat(productData.printing_charge) || 0,
+          stitching_charge: parseFloat(productData.stitching_charge) || 0,
+          transport_charge: parseFloat(productData.transport_charge) || 0,
+          total_cost: totalCost,
+          updated_at: new Date().toISOString()
+        };
+
+        // First check if a product_details record exists
+        const { data: existingDetails, error: detailsCheckError } = await supabase
+          .from("product_details")
+          .select("id")
+          .eq("catalog_id", id)
           .single();
-          
-        if (verifyError) {
-          console.error("Error verifying update:", verifyError);
+
+        let detailsUpdateError;
+        if (existingDetails) {
+          // Update existing record
+          const { error } = await supabase
+            .from("product_details")
+            .update(productDetailsData)
+            .eq("catalog_id", id);
+          detailsUpdateError = error;
         } else {
-          console.log("Verification of updated record:", verifyData);
-          // Check if fields were actually updated
-          let changesMade = false;
-          const fieldsToCheck = ['name', 'bag_length', 'bag_width', 'selling_rate', 'margin'];
-          
-          for (const field of fieldsToCheck) {
-            if (catalogDbData[field] !== undefined && 
-                String(catalogDbData[field]) !== String(currentCatalog[field])) {
-              if (String(catalogDbData[field]) === String(verifyData[field])) {
-                changesMade = true;
-                console.log(`Field ${field} was successfully updated from ${currentCatalog[field]} to ${verifyData[field]}`);
-              } else {
-                console.warn(`Field ${field} was NOT updated. Expected: ${catalogDbData[field]}, Actual: ${verifyData[field]}`);
-              }
-            }
-          }
-          
-          if (!changesMade) {
-            console.warn("UPDATE VERIFICATION FAILED: No fields appear to have been updated in the database.");
-            toast({
-              title: "Update Warning",
-              description: "The update may not have been saved to the database. Please check your permissions.",
-              variant: "destructive"
-            });
-          }
+          // Insert new record
+          const { error } = await supabase
+            .from("product_details")
+            .insert(productDetailsData);
+          detailsUpdateError = error;
+        }
+
+        if (detailsUpdateError) {
+          console.error("Error updating product details:", detailsUpdateError);
+          toast({
+            title: "Warning",
+            description: "Product was updated but there was an error syncing the details. Please try refreshing the page.",
+            variant: "destructive"
+          });
         }
       } catch (updateError) {
         console.error("Caught error during catalog update:", updateError);
@@ -446,6 +456,20 @@ const CatalogEdit = () => {
       if (fetchError) {
         console.error("Error fetching existing components:", fetchError);
         throw fetchError;
+      }
+      
+      // Get related orders to ensure component updates are properly propagated
+      // This is just for logging and verification purposes
+      const { data: relatedOrders, error: ordersError } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("catalog_id", id);
+        
+      if (ordersError) {
+        console.warn("Error checking related orders:", ordersError);
+        // Don't throw, just log the warning
+      } else {
+        console.log(`Found ${relatedOrders?.length || 0} related orders that will be updated via database trigger`);
       }
       
       // Create a set of existing component IDs from the database
@@ -583,9 +607,14 @@ const CatalogEdit = () => {
         }
       }
       
-      // Force cache invalidation
+      // Force cache invalidation for affected data
       await queryClient.invalidateQueries({ queryKey: ['catalog-products'] });
       await queryClient.invalidateQueries({ queryKey: ['inventory-items'] });
+      await queryClient.invalidateQueries({ queryKey: ['catalog-product', id] });
+      await queryClient.invalidateQueries({ queryKey: ['product-orders', id] });
+      
+      // Also invalidate orders cache since related orders have been updated
+      await queryClient.invalidateQueries({ queryKey: ['orders'] });
       
       // Clear session storage and set new timestamp
       sessionStorage.removeItem('forceRefresh');
@@ -598,8 +627,38 @@ const CatalogEdit = () => {
         variant: "default"
       });
 
-      // Navigate back to product detail with cache busting
-      window.location.href = `/inventory/catalog/${id}?t=${Date.now()}`;
+      // Set a flag to indicate the product was just edited
+      sessionStorage.setItem('productEdited', 'true');
+      
+      // Wait a moment to ensure all cache invalidations are processed
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Prefetch the product data before navigation
+      await queryClient.prefetchQuery({
+        queryKey: ['catalog-product', id],
+        queryFn: async () => {
+          const { data, error } = await supabase
+            .from('catalog')
+            .select(`
+              *,
+              catalog_components(*)
+            `)
+            .eq('id', id)
+            .single();
+          
+          if (error) throw error;
+          return data;
+        }
+      });
+      
+      // Use navigate with replace to prevent back button issues
+      navigate(`/inventory/catalog/${id}`, { 
+        replace: true,
+        state: { 
+          timestamp: Date.now(),
+          forceRefresh: true 
+        }
+      });
       
     } catch (error: any) {
       toast({
