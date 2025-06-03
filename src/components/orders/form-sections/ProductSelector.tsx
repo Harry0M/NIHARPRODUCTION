@@ -1,6 +1,9 @@
 
+import { useState } from "react";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { ChevronDown } from "lucide-react";
+import { ProductSelectDialog } from "./ProductSelectDialog";
 
 interface Product {
   id: string;
@@ -48,28 +51,60 @@ export const ProductSelector = ({
   onProductSelect,
   selectedProductId
 }: ProductSelectorProps) => {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  
+  // Log products data for debugging
+  console.log("ProductSelector - Products data:", catalogProducts?.length, catalogProducts);
+  
+  // Get the currently selected product
+  const selectedProduct = catalogProducts?.find(product => product.id === selectedProductId);
+  
+  // Open product selection dialog
+  const openProductDialog = () => {
+    console.log("Opening product dialog with", catalogProducts?.length, "products");
+    setDialogOpen(true);
+  };
+
+  // Handle product selection from dialog
+  const handleProductSelect = (product: Product) => {
+    console.log("Product selected from dialog:", product);
+    onProductSelect(product.id);
+  };
+  
   return (
     <div className="space-y-2">
       <Label>Select Product (Optional)</Label>
-      <Select onValueChange={onProductSelect} value={selectedProductId}>
-        <SelectTrigger>
-          <SelectValue placeholder="Choose a product template" />
-        </SelectTrigger>
-        <SelectContent className="max-h-[300px]">
-          {isLoading ? (
-            <SelectItem value="loading" disabled>Loading products...</SelectItem>
+      <Button 
+        variant="outline" 
+        className="w-full justify-between" 
+        onClick={openProductDialog}
+        type="button"
+      >
+        <span>
+          {selectedProduct ? (
+            <>
+              {selectedProduct.name} 
+              {selectedProduct.bag_length && selectedProduct.bag_width && (
+                <>(${selectedProduct.bag_length}" × ${selectedProduct.bag_width}")</>  
+              )}
+              {selectedProduct.default_quantity && selectedProduct.default_quantity > 1 && (
+                <> - {selectedProduct.default_quantity} units</>  
+              )}
+            </>
           ) : (
-            catalogProducts?.map((product) => (
-              <SelectItem key={product.id} value={product.id}>
-                {product.name} ({product.bag_length}" × {product.bag_width}")
-                {product.default_quantity && product.default_quantity > 1 ? 
-                  ` - ${product.default_quantity} units` : 
-                  ''}
-              </SelectItem>
-            ))
+            "Choose a product template"
           )}
-        </SelectContent>
-      </Select>
+        </span>
+        <ChevronDown className="h-4 w-4 opacity-50" />
+      </Button>
+      
+      <ProductSelectDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        products={catalogProducts || []}
+        onSelect={handleProductSelect}
+        isLoading={isLoading}
+      />
     </div>
   );
 };

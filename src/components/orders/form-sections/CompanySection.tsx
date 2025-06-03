@@ -1,9 +1,11 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, ChevronDown } from "lucide-react";
 import { OrderFormData } from "@/types/order";
+import { useState } from "react";
+import { CompanySelectDialog } from "./CompanySelectDialog";
 
 interface CompanySectionProps {
   formData: OrderFormData;
@@ -22,8 +24,16 @@ export const CompanySection = ({
   handleOrderChange,
   formErrors
 }: CompanySectionProps) => {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  
+  // Debug log to check if companies data is being passed correctly
+  console.log("CompanySection - Companies data:", companies?.length, companies);
+  
   // Function to handle sales account selection
   const handleSalesAccountChange = (value: string) => {
+    // Debug log
+    console.log("handleSalesAccountChange - Selected value:", value);
+    
     // First update the sales_account_id field
     handleOrderChange({ 
       target: { 
@@ -36,6 +46,8 @@ export const CompanySection = ({
     if (value !== "none") {
       // Find the selected company
       const selectedCompany = companies.find(company => company.id === value);
+      console.log("Selected company:", selectedCompany);
+      
       if (selectedCompany) {
         // Update the company_name field with the selected company's name
         handleOrderChange({
@@ -45,29 +57,48 @@ export const CompanySection = ({
           }
         });
       }
+    } else {
+      // If "none" is selected, clear the company name
+      handleOrderChange({
+        target: {
+          name: 'company_name',
+          value: ''
+        }
+      });
     }
+  };
+
+  // Open company selection dialog
+  const openCompanyDialog = () => {
+    console.log("Opening company dialog with", companies?.length, "companies");
+    setDialogOpen(true);
+  };
+
+  // Handle company selection from dialog
+  const handleCompanySelect = (company: { id: string; name: string }) => {
+    console.log("Company selected from dialog:", company);
+    handleSalesAccountChange(company.id);
   };
   
   return (
     <div className="space-y-4 border-b pb-4">
       <div className="space-y-2">
         <Label htmlFor="sales_account">Sales Account (Optional)</Label>
-        <Select 
-          onValueChange={handleSalesAccountChange}
-          value={formData.sales_account_id || "none"}
+        <Button 
+          variant="outline" 
+          className="w-full justify-between" 
+          onClick={openCompanyDialog}
+          type="button"
         >
-          <SelectTrigger id="sales_account">
-            <SelectValue placeholder="Select sales account" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">None</SelectItem>
-            {companies.map((company) => (
-              <SelectItem key={company.id} value={company.id}>
-                {company.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <span>{formData.sales_account_id ? companies.find(c => c.id === formData.sales_account_id)?.name : "Select sales account"}</span>
+          <ChevronDown className="h-4 w-4 opacity-50" />
+        </Button>
+        <CompanySelectDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          companies={companies && companies.length > 0 ? [{ id: "none", name: "None" }, ...companies] : [{ id: "none", name: "None" }]}
+          onSelect={handleCompanySelect}
+        />
       </div>
 
       <div className="space-y-2">

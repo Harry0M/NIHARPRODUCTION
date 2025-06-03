@@ -46,6 +46,7 @@ export const OrderDetailsForm = ({
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
+        console.log('Starting companies fetch process...');
         // Try to get companies from localStorage first
         const cachedData = localStorage.getItem('companiesCache');
         let cachedCompanies = null;
@@ -60,6 +61,7 @@ export const OrderDetailsForm = ({
             
             // Set companies from cache immediately for fast UI rendering
             if (Array.isArray(cachedCompanies) && cachedCompanies.length > 0) {
+              console.log('Setting companies from cache:', cachedCompanies.length);
               setCompanies(cachedCompanies);
               
               // Check if cache is still valid (less than 24 hours old)
@@ -78,13 +80,21 @@ export const OrderDetailsForm = ({
                   // The count matches, so we can use the cached data
                   shouldFetch = false;
                   console.log('Using cached companies data - count matches:', count);
+                } else {
+                  console.log('Cache count mismatch. DB count:', count, 'Cache count:', cacheCount);
                 }
+              } else {
+                console.log('Cache is too old, fetching fresh data');
               }
+            } else {
+              console.log('Cached companies invalid or empty');
             }
           } catch (e) {
             console.error('Error parsing cached companies:', e);
             // Cache is invalid, will fetch fresh data
           }
+        } else {
+          console.log('No companies cache found');
         }
         
         if (shouldFetch) {
@@ -95,6 +105,7 @@ export const OrderDetailsForm = ({
             .eq('status', 'active');
 
           if (!error && data) {
+            console.log('Successfully fetched companies from DB:', data.length);
             setCompanies(data);
             
             // Update the cache with fresh data
