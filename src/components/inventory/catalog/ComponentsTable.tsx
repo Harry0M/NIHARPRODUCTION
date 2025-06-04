@@ -13,6 +13,7 @@ export interface Material {
   gsm?: string | null;
   quantity?: number;
   unit?: string;
+  roll_width?: number | null;
 }
 
 export interface CatalogComponent {

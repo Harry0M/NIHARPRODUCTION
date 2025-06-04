@@ -19,6 +19,7 @@ interface Material {
   gsm?: string | null;
   quantity?: number;
   unit?: string;
+  roll_width?: number | null;
 }
 
 // Define the component type from the database
@@ -56,7 +57,8 @@ const CatalogDetail = () => {
   const { data: product, isLoading, refetch } = useQuery({
     queryKey: ['catalog-product', id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First, get the product with its components
+      const { data: productData, error: productError } = await supabase
         .from('catalog')
         .select(`
           *,
@@ -65,8 +67,46 @@ const CatalogDetail = () => {
         .eq('id', id)
         .single();
       
-      if (error) throw error;
-      return data;
+      if (productError) throw productError;
+      
+      // If there are no components, return early
+      if (!productData?.catalog_components?.length) {
+        return productData;
+      }
+      
+      // Get all material IDs from components
+      const materialIds = productData.catalog_components
+        .map((comp: any) => comp.material_id)
+        .filter(Boolean);
+      
+      // If no material IDs, return the product as is
+      if (materialIds.length === 0) {
+        return productData;
+      }
+      
+      // Fetch all materials in one query
+      const { data: materials, error: materialsError } = await supabase
+        .from('inventory')
+        .select('*')
+        .in('id', materialIds);
+      
+      if (materialsError) throw materialsError;
+      
+      // Create a map of material ID to material data
+      const materialsMap = new Map(
+        materials.map((mat: any) => [mat.id, mat])
+      );
+      
+      // Add material data to components
+      const componentsWithMaterials = productData.catalog_components.map((comp: any) => ({
+        ...comp,
+        material: comp.material_id ? materialsMap.get(comp.material_id) || null : null
+      }));
+      
+      return {
+        ...productData,
+        catalog_components: componentsWithMaterials
+      };
     },
     staleTime: forceRefresh ? 0 : 5 * 60 * 1000, // 5 minutes
   });
@@ -93,10 +133,27 @@ const CatalogDetail = () => {
   }, [forceRefresh, refetch]);
 
   // Convert DB components to CatalogComponent type
-  const components: CatalogComponent[] = (product?.catalog_components || []).map(comp => ({
-    ...comp,
-    formula: (comp.formula === 'linear' ? 'linear' : 'standard') as 'standard' | 'linear'
-  }));
+  const components: CatalogComponent[] = (product?.catalog_components || []).map(comp => {
+    const component: CatalogComponent = {
+      ...comp,
+      formula: (comp.formula === 'linear' ? 'linear' : 'standard') as 'standard' | 'linear'
+    };
+    
+    // If material data is available, add it to the component
+    if (comp.material) {
+      component.material = {
+        id: comp.material.id,
+        material_name: comp.material.material_name,
+        color: comp.material.color,
+        gsm: comp.material.gsm,
+        quantity: comp.material.quantity,
+        unit: comp.material.unit,
+        roll_width: comp.material.roll_width
+      };
+    }
+    
+    return component;
+  });
 
   // Enhanced debugging information
   console.log("CatalogDetail - Product ID:", id);

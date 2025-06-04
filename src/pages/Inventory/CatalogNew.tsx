@@ -1116,19 +1116,6 @@ const CatalogNew = () => {
               <div className="border-t pt-4 mt-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="selling_rate">Selling Rate</Label>
-                    <Input 
-                      id="selling_rate" 
-                      name="selling_rate"
-                      type="number"
-                      step="0.01"
-                      value={productData.selling_rate}
-                      onChange={handleProductChange}
-                      placeholder="Selling price per bag"
-                      min="0"
-                    />
-                  </div>
-                  <div className="space-y-2">
                     <Label htmlFor="margin">Margin (%)</Label>
                     <Input 
                       id="margin" 
