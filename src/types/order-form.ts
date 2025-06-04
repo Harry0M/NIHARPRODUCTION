@@ -36,6 +36,7 @@ export interface FormErrors {
   order_date?: string;
   product_quantity?: string;
   total_quantity?: string;
+  product_id?: string;
 }
 
 export interface CostCalculation {
@@ -64,7 +65,7 @@ export interface UseOrderFormReturn {
   addCustomComponent: () => void;
   removeCustomComponent: (index: number) => void;
   handleProductSelect: (components: any[]) => void;
-  handleSubmit: (e: React.FormEvent) => Promise<string | undefined>;
+  handleSubmit: (e: React.FormEvent, orderId?: string) => Promise<string | undefined>;
   validateForm: () => boolean;
   updateConsumptionBasedOnQuantity: (quantity: number) => void;
   costCalculation?: CostCalculation;

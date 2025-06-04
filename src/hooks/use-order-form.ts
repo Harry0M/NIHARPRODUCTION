@@ -1,4 +1,3 @@
-
 import { useOrderComponents } from "./order-form/useOrderComponents";
 import { useOrderDetails } from "./order-form/useOrderDetails";
 import { useOrderFormValidation } from "./order-form/useOrderFormValidation";
@@ -200,7 +199,7 @@ export function useOrderForm(): UseOrderFormReturn {
     addCustomComponent,
     removeCustomComponent,
     handleProductSelect,
-    handleSubmit,
+    handleSubmit: (e: React.FormEvent, orderId?: string) => handleSubmit(e, orderId),
     validateForm,
     updateConsumptionBasedOnQuantity,
     costCalculation, // Add cost calculation to return

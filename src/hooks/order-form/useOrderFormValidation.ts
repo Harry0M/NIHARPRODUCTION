@@ -10,6 +10,12 @@ export function useOrderFormValidation() {
     const errors: FormErrors = {};
     let isValid = true;
 
+    // Validate product selection
+    if (!orderDetails.catalog_id) {
+      errors.product_id = "Please select a product";
+      isValid = false;
+    }
+
     // Validate company information
     if (!orderDetails.company_name) {
       errors.company = "Company name is required";

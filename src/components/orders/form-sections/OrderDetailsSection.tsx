@@ -30,7 +30,7 @@ export const OrderDetailsSection = ({
     // First handle the basic order change to update the form data
     handleOrderChange(e);
     
-    // Calculate total quantity when order quantity changes
+    // Set order_quantity to the same value as quantity when quantity changes
     if (e.target.name === "quantity") {
       const orderQty = parseFloat(e.target.value);
       const productQty = parseFloat(formData.product_quantity || "1");
@@ -47,6 +47,16 @@ export const OrderDetailsSection = ({
         } as React.ChangeEvent<HTMLInputElement>;
         
         handleOrderChange(totalQtyEvent);
+        
+        // Also set order_quantity to the same value as quantity
+        const orderQtyEvent = {
+          target: {
+            name: "order_quantity",
+            value: e.target.value
+          }
+        } as React.ChangeEvent<HTMLInputElement>;
+        
+        handleOrderChange(orderQtyEvent);
         
         // For updating consumption, use a more substantial delay
         // This ensures all component data is properly loaded before calculation
@@ -121,6 +131,18 @@ export const OrderDetailsSection = ({
               <AlertCircle className="h-3 w-3" /> {formErrors.total_quantity}
             </p>
           )}
+        </div>
+
+        {/* Order Quantity (Database) - Hidden but included in form data */}
+        <div className="hidden">
+          <Input 
+            id="order_quantity" 
+            name="order_quantity"
+            type="number"
+            value={formData.order_quantity || formData.quantity || "1"}
+            onChange={handleOrderChange}
+            min="1"
+          />
         </div>
 
         {/* Order Date Field */}

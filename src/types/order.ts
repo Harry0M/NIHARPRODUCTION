@@ -1,4 +1,3 @@
-
 import { Database } from "@/integrations/supabase/types";
 
 export type OrderStatus = Database["public"]["Enums"]["order_status"];
@@ -9,6 +8,9 @@ export interface Order {
   company_name: string;
   company_id: string | null;
   quantity: number;
+  order_quantity?: number | null;
+  product_quantity?: number | null;
+  total_quantity?: number | null;
   bag_length: number;
   bag_width: number;
   border_dimension?: number | null;
@@ -33,6 +35,7 @@ export interface OrderFormData {
   company_name: string;
   company_id: string | null;
   quantity: string;
+  order_quantity?: string;
   product_quantity: string;
   total_quantity: string;
   bag_length: string;
@@ -42,6 +45,7 @@ export interface OrderFormData {
   special_instructions: string;
   order_date: string;
   sales_account_id?: string | null;
+  catalog_id?: string | null;
   // Cost-related fields
   cutting_charge?: string;
   printing_charge?: string;

@@ -43,15 +43,18 @@ interface ProductSelectorProps {
   isLoading: boolean;
   onProductSelect: (productId: string) => void;
   selectedProductId?: string;
+  formError?: string;
 }
 
 export const ProductSelector = ({
   catalogProducts,
   isLoading,
   onProductSelect,
-  selectedProductId
+  selectedProductId,
+  formError
 }: ProductSelectorProps) => {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [touched, setTouched] = useState(false);
   
   // Log products data for debugging
   console.log("ProductSelector - Products data:", catalogProducts?.length, catalogProducts);
@@ -62,6 +65,7 @@ export const ProductSelector = ({
   // Open product selection dialog
   const openProductDialog = () => {
     console.log("Opening product dialog with", catalogProducts?.length, "products");
+    setTouched(true);
     setDialogOpen(true);
   };
 
@@ -71,12 +75,22 @@ export const ProductSelector = ({
     onProductSelect(product.id);
   };
   
+  const isInvalid = (touched && !selectedProductId) || Boolean(formError);
+  const errorMessage = formError || 'Please select a product';
+  
   return (
     <div className="space-y-2">
-      <Label>Select Product (Optional)</Label>
+      <div className="flex items-center justify-between">
+        <Label>Select Product <span className="text-destructive">*</span></Label>
+        {isInvalid && (
+          <span className="text-xs text-destructive">
+            {errorMessage}
+          </span>
+        )}
+      </div>
       <Button 
-        variant="outline" 
-        className="w-full justify-between" 
+        variant={isInvalid ? "destructive" : "outline"}
+        className={`w-full justify-between ${isInvalid ? 'border-destructive' : ''}`}
         onClick={openProductDialog}
         type="button"
       >

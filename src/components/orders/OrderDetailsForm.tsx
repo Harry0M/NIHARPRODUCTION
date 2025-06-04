@@ -25,6 +25,7 @@ interface OrderDetailsFormProps {
     bag_length?: string;
     bag_width?: string;
     order_date?: string;
+    product_id?: string;
   };
   updateConsumptionBasedOnQuantity?: (quantity: number) => void;
   productPopulatedFields?: boolean;
@@ -40,7 +41,14 @@ export const OrderDetailsForm = ({
 }: OrderDetailsFormProps) => {
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
   const { data: catalogProducts, isLoading } = useCatalogProducts();
-  const [selectedProductId, setSelectedProductId] = useState<string | undefined>();
+  const [selectedProductId, setSelectedProductId] = useState<string | undefined>(formData.catalog_id || undefined);
+
+  // Set initial product ID from form data if it exists
+  useEffect(() => {
+    if (formData.catalog_id && !selectedProductId) {
+      setSelectedProductId(formData.catalog_id);
+    }
+  }, [formData.catalog_id, selectedProductId]);
 
   // Fetch companies with caching to improve performance
   useEffect(() => {
@@ -128,8 +136,16 @@ export const OrderDetailsForm = ({
     fetchCompanies();
   }, []);
 
-  const handleProductSelect = async (productId: string) => {
+  const handleProductSelect = (productId: string) => {
     setSelectedProductId(productId);
+    // Update the catalog_id in the form data when a product is selected
+    handleOrderChange({ target: { name: 'catalog_id', value: productId } });
+    
+    // Clear any existing product_id error when a product is selected
+    if (formErrors.product_id) {
+      handleOrderChange({ target: { name: 'product_id', value: '' } });
+    }
+    
     const selectedProduct = catalogProducts?.find(p => p.id === productId);
     
     if (selectedProduct) {
@@ -230,6 +246,7 @@ export const OrderDetailsForm = ({
           isLoading={isLoading}
           onProductSelect={handleProductSelect}
           selectedProductId={selectedProductId}
+          formError={formErrors.product_id}
         />
 
         {/* Order Details Section Component */}

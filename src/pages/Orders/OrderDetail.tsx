@@ -49,6 +49,7 @@ interface Order {
   order_number: string;
   company_name: string;
   quantity: string | number;
+  order_quantity: string | number;
   product_quantity: string | number;
   total_quantity: string | number;
   bag_length: number;
@@ -425,7 +426,7 @@ const OrderDetail = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Order Quantity</h3>
-                  <p className="text-lg">{Number(order.quantity).toLocaleString()} products</p>
+                  <p className="text-lg">{Number(order.order_quantity || order.quantity).toLocaleString()} products</p>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Total Quantity</h3>
