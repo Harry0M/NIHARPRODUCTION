@@ -54,7 +54,7 @@ const CatalogEdit = () => {
     materialPrices,
     componentCosts,
     totalConsumption,
-    handleProductChange,
+    handleProductChange: originalHandleProductChange,
     calculateTotalCost,
     fetchMaterialPrice,
     handleComponentChange,
@@ -66,6 +66,30 @@ const CatalogEdit = () => {
     setComponents,
     setCustomComponents
   } = useProductForm();
+
+  // Override handleProductChange to add margin calculation
+  const handleProductChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    
+    // Create a new product data object with the updated value
+    const updatedProductData = {
+      ...productData,
+      [name]: value
+    };
+    
+    // If margin is being changed, calculate selling rate
+    if (name === 'margin' && value) {
+      const margin = parseFloat(value);
+      const totalCost = calculateTotalCost(updatedProductData);
+      
+      if (!isNaN(margin) && totalCost > 0) {
+        const sellingRate = totalCost * (1 + (margin / 100));
+        updatedProductData.selling_rate = sellingRate.toFixed(2);
+      }
+    }
+    
+    setProductData(updatedProductData);
+  };
 
   useEffect(() => {
     const fetchProductData = async () => {
@@ -940,19 +964,6 @@ const CatalogEdit = () => {
                       value={productData.default_rate}
                       onChange={handleProductChange}
                       placeholder="Cost price per bag"
-                      min="0"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="selling_rate">Selling Rate</Label>
-                    <Input 
-                      id="selling_rate" 
-                      name="selling_rate"
-                      type="number"
-                      step="0.01"
-                      value={productData.selling_rate}
-                      onChange={handleProductChange}
-                      placeholder="Selling price per bag"
                       min="0"
                     />
                   </div>

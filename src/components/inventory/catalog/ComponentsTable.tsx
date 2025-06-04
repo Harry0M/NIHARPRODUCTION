@@ -1,9 +1,6 @@
-
 import React from "react";
-import { Button } from "@/components/ui/button";
-import { TableCell, TableRow, Table, TableHead, TableHeader, TableBody } from "@/components/ui/table";
-import { LinkIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
 export interface Material {
@@ -35,15 +32,11 @@ export interface CatalogComponent {
 
 interface ComponentsTableProps {
   components: CatalogComponent[];
-  onViewComponent: (id: string) => void;
-  onLinkMaterial: (id: string) => void;
   defaultQuantity?: number | null;
 }
 
 export const ComponentsTable = ({ 
   components, 
-  onViewComponent, 
-  onLinkMaterial,
   defaultQuantity = 1
 }: ComponentsTableProps) => {
   if (!components || components.length === 0) {
@@ -120,7 +113,6 @@ export const ComponentsTable = ({
             <TableHead className="font-medium text-slate-600">Type</TableHead>
             <TableHead className="font-medium text-slate-600">Details</TableHead>
             <TableHead className="font-medium text-slate-600">Material</TableHead>
-            <TableHead className="text-right font-medium text-slate-600">Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -223,27 +215,6 @@ export const ComponentsTable = ({
                       {component.material_id ? "Material reference exists but details missing" : "No material linked"}
                     </div>
                   )}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 px-2 text-xs"
-                      onClick={() => onViewComponent(component.id)}
-                    >
-                      View Details
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 px-2 text-xs"
-                      onClick={() => onLinkMaterial(component.id)}
-                    >
-                      <LinkIcon className="h-3 w-3 mr-1" />
-                      {component.material ? "Change" : "Link"} Material
-                    </Button>
-                  </div>
                 </TableCell>
               </TableRow>
             );
