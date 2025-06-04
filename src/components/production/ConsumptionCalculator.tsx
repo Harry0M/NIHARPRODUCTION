@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 
 // Define formula types
 export type ConsumptionFormulaType = "standard" | "linear";
@@ -30,6 +31,8 @@ export const ConsumptionCalculator = ({
   const [consumption, setConsumption] = useState<number>(0);
   const [materialCost, setMaterialCost] = useState<number | undefined>(undefined);
   const [formula, setFormula] = useState<ConsumptionFormulaType>(selectedFormula);
+  const [isManualMode, setIsManualMode] = useState<boolean>(false);
+  const [manualConsumption, setManualConsumption] = useState<string>("");
 
   // Memoize the calculation function to prevent unnecessary recalculations
   const calculateConsumption = useCallback(() => {
@@ -106,9 +109,34 @@ export const ConsumptionCalculator = ({
     const newConsumption = calculateConsumption();
     if (newConsumption !== consumption) {
       setConsumption(newConsumption);
-      onConsumptionCalculated(newConsumption, materialRate ? newConsumption * materialRate : undefined);
+      if (!isManualMode) {
+        onConsumptionCalculated(newConsumption, materialRate ? newConsumption * materialRate : undefined);
+      }
     }
-  }, [calculateConsumption, materialRate, onConsumptionCalculated]);
+  }, [calculateConsumption, materialRate, onConsumptionCalculated, isManualMode]);
+
+  // Update manual consumption when calculated consumption changes
+  useEffect(() => {
+    if (!isManualMode) {
+      setManualConsumption(consumption ? consumption.toString() : '');
+    }
+  }, [consumption, isManualMode]);
+
+  // Handle manual consumption change
+  const handleManualConsumptionChange = (value: string) => {
+    setManualConsumption(value);
+    const numValue = parseFloat(value) || 0;
+    onConsumptionCalculated(numValue, materialRate ? numValue * materialRate : undefined);
+  }; 
+
+  // Toggle between manual and calculated mode
+  const toggleManualMode = (checked: boolean) => {
+    setIsManualMode(checked);
+    if (!checked) {
+      // When switching back to calculated mode, update with the calculated value
+      onConsumptionCalculated(consumption, materialRate ? consumption * materialRate : undefined);
+    }
+  };
 
   return (
     <div className="space-y-2">
@@ -125,16 +153,37 @@ export const ConsumptionCalculator = ({
         </Select>
       </div>
 
-      <Label htmlFor="consumption">Consumption (meters)</Label>
+      <div className="flex items-center justify-between">
+        <Label htmlFor="consumption">Consumption (meters)</Label>
+        <div className="flex items-center space-x-2">
+          <Label htmlFor="manual-mode" className="text-xs text-muted-foreground">
+            Manual
+          </Label>
+          <Switch
+            id="manual-mode"
+            checked={isManualMode}
+            onCheckedChange={toggleManualMode}
+          />
+        </div>
+      </div>
       <Input 
         id="consumption" 
-        type="text"
-        value={consumption ? consumption.toString() : ''}
-        readOnly
-        className="bg-gray-50 border-blue-300 text-blue-800 font-medium"
-        // Add data attribute to easily identify the correct value during submission
+        type="number"
+        step="0.0001"
+        min="0"
+        value={isManualMode ? manualConsumption : (consumption ? consumption.toString() : '')}
+        onChange={(e) => isManualMode && handleManualConsumptionChange(e.target.value)}
+        readOnly={!isManualMode}
+        className={`${isManualMode ? 'bg-white border-amber-300' : 'bg-gray-50 border-blue-300 text-blue-800 font-medium'}`}
         data-final-consumption={consumption ? consumption.toString() : ''}
       />
+      {isManualMode && (
+        <p className="text-xs text-muted-foreground">
+          {formula === "standard" 
+            ? `Calculated: ${consumption.toFixed(4)}m (${formula} formula)`
+            : `Calculated: ${consumption.toFixed(4)}m (${formula} formula)`}
+        </p>
+      )}
       {formula === "standard" && (!width || !rollWidth) && (
         <p className="text-xs text-amber-500">
           {!width && !rollWidth ? "Width and roll width required" : 
