@@ -167,8 +167,8 @@ export const MaterialSelector = ({
                 setSearchQuery={setSearchQuery}
                 placeholder="Search for a material..." 
               />
-            </div>
-            <Button
+            </div>            <Button
+              type="button"
               variant="outline"
               size="sm"
               onClick={handleCreateStockButtonClick}

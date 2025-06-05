@@ -13,8 +13,24 @@ import { ConsumptionCalculator, ConsumptionFormulaType } from "@/components/prod
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Trash2 } from "lucide-react";
 
+interface ComponentType {
+  type: string;
+  color?: string;
+  gsm?: string;
+  length?: string;
+  width?: string;
+  roll_width?: string;
+  material_id?: string;
+  consumption?: string;
+  baseConsumption?: string;
+  materialRate?: number;
+  materialCost?: number;
+  formula?: ConsumptionFormulaType;
+  is_manual_consumption?: boolean;
+}
+
 interface StandardComponentsProps {
-  components: Record<string, any>;
+  components: Record<string, ComponentType>;
   componentOptions: {
     color: string[];
     gsm?: string[]; // Make gsm optional
@@ -23,6 +39,8 @@ interface StandardComponentsProps {
   onRemoveComponent?: (componentType: string) => void; // Add function to remove/reset a component
   defaultQuantity?: string;
   showConsumption?: boolean;
+  onFormulaChange?: (componentType: string, formula: 'standard' | 'linear' | 'manual') => void;
+  onConsumptionCalculated?: (componentType: string, consumption: number, cost?: number, isManual?: boolean) => void;
 }
 
 export const StandardComponents = ({ 
@@ -31,7 +49,9 @@ export const StandardComponents = ({
   onChange,
   onRemoveComponent,
   defaultQuantity,
-  showConsumption = false
+  showConsumption = false,
+  onFormulaChange,
+  onConsumptionCalculated
 }: StandardComponentsProps) => {
   // Define standard component types with proper capitalization as they appear in UI
   const standardComponents = [
@@ -71,6 +91,8 @@ export const StandardComponents = ({
               onMaterialSelect={(materialId) => handleMaterialSelect(component.type, materialId)}
               onRemoveComponent={onRemoveComponent}
               showConsumption={showConsumption}
+              onFormulaChange={onFormulaChange}
+              onConsumptionCalculated={onConsumptionCalculated}
             />
           );
         })}
@@ -93,6 +115,8 @@ interface ComponentFormProps {
     materialRate?: number;
     materialCost?: number;
     formula?: ConsumptionFormulaType;
+    is_manual_consumption?: boolean;
+    baseFormula?: ConsumptionFormulaType;
   };
   componentOptions: {
     color: string[];
@@ -103,6 +127,8 @@ interface ComponentFormProps {
   onMaterialSelect: (materialId: string | null) => void;
   onRemoveComponent?: (componentType: string) => void; // Add function to remove component
   showConsumption?: boolean;
+  onFormulaChange?: (componentType: string, formula: 'standard' | 'linear' | 'manual') => void;
+  onConsumptionCalculated?: (componentType: string, consumption: number, cost?: number, isManual?: boolean) => void;
 }
 
 const ComponentForm = ({ 
@@ -112,7 +138,9 @@ const ComponentForm = ({
   defaultQuantity,
   onMaterialSelect,
   onRemoveComponent,
-  showConsumption = false
+  showConsumption = false,
+  onFormulaChange,
+  onConsumptionCalculated
 }: ComponentFormProps) => {
   const [customColor, setCustomColor] = useState("");
   const [customGSM, setCustomGSM] = useState("");
@@ -155,10 +183,17 @@ const ComponentForm = ({
     if (component.consumption !== displayConsumption && component.consumption) {
       setDisplayConsumption(component.consumption);
     }
-  }, [component.consumption]);
+  }, [component.consumption, displayConsumption]);
 
   // Synchronize consumption calculation with component state
   const handleConsumptionCalculated = (consumption: number, cost?: number) => {
+    // Use context handler if available, otherwise fall back to local handling
+    if (onConsumptionCalculated) {
+      onConsumptionCalculated(component.type, consumption, cost);
+      return;
+    }
+
+    // Fallback local handling (for backwards compatibility)
     // CRITICAL FIX: Ensure consumption is properly formatted with high precision
     // This is the value that will be saved to the database
     const preciseConsumption = consumption.toFixed(4);
@@ -219,7 +254,13 @@ const ComponentForm = ({
   };
   
   const handleFormulaChange = (formula: ConsumptionFormulaType) => {
-    onChange(component.type, 'formula', formula);
+    // Use context handler if available, otherwise fall back to local handling
+    if (onFormulaChange) {
+      onFormulaChange(component.type, formula);
+    } else {
+      // Fallback local handling (for backwards compatibility)
+      onChange(component.type, 'formula', formula);
+    }
   };
   
   // Make sure formula is always set - run only once when component is mounted
@@ -242,6 +283,18 @@ const ComponentForm = ({
   
   // Get selected formula or default to standard
   const selectedFormula = component.formula || 'standard';
+  const isManual = component.formula === 'manual' || !!component.is_manual_consumption;
+  
+  // Debug log for manual consumption troubleshooting
+  useEffect(() => {
+    console.log(`Component ${component.type} loaded with:`, {
+      formula: component.formula,
+      is_manual_consumption: component.is_manual_consumption,
+      selectedFormula,
+      isManual,
+      consumption: component.consumption
+    });
+  }, [component.type, component.formula, component.is_manual_consumption, selectedFormula, isManual, component.consumption]);
   
   return (
     <Card className={component.consumption ? "border-blue-200" : ""}>
@@ -251,6 +304,7 @@ const ComponentForm = ({
           <div className="flex items-center gap-2">
             {onRemoveComponent && (
               <Button 
+                type="button"
                 variant="ghost" 
                 size="sm" 
                 className="h-7 w-7 p-0 hover:bg-red-50 hover:text-red-600" 
@@ -376,6 +430,8 @@ const ComponentForm = ({
               quantity={parseFloat(defaultQuantity)}
               materialRate={materialRate}
               selectedFormula={selectedFormula}
+              initialIsManual={component.formula === 'manual' || !!component.is_manual_consumption}
+              initialConsumption={component.consumption ? parseFloat(component.consumption) : undefined}
               onConsumptionCalculated={handleConsumptionCalculated}
               onFormulaChange={handleFormulaChange}
             />

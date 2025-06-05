@@ -12,7 +12,9 @@ export const CustomComponentsSection: React.FC = () => {
     customComponents, 
     handleCustomComponentChange, 
     removeCustomComponent, 
-    defaultQuantity 
+    defaultQuantity,
+    handleCustomFormulaChange,
+    handleCustomConsumptionCalculated
   } = useComponentContext();
 
   return (
@@ -23,6 +25,8 @@ export const CustomComponentsSection: React.FC = () => {
       removeCustomComponent={removeCustomComponent}
       defaultQuantity={defaultQuantity}
       showConsumption={true}
+      onFormulaChange={handleCustomFormulaChange}
+      onConsumptionCalculated={handleCustomConsumptionCalculated}
     />
   );
 };

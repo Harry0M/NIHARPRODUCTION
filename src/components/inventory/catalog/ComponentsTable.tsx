@@ -27,17 +27,22 @@ export interface CatalogComponent {
   material_id?: string | null;
   material_linked?: boolean | null;
   material?: Material | null;
-  formula?: 'standard' | 'linear';
+  formula?: 'standard' | 'linear' | 'manual';
+  is_manual_consumption?: boolean;
 }
 
 interface ComponentsTableProps {
   components: CatalogComponent[];
-  defaultQuantity?: number | null;
+  defaultQuantity?: number;
+  onViewComponent?: (componentId: string) => void;
+  onLinkMaterial?: (componentId: string) => void;
 }
 
 export const ComponentsTable = ({ 
   components, 
-  defaultQuantity = 1
+  defaultQuantity = 1,
+  onViewComponent,
+  onLinkMaterial
 }: ComponentsTableProps) => {
   if (!components || components.length === 0) {
     return <p className="text-muted-foreground text-sm my-4">No components have been added to this product.</p>;
@@ -68,41 +73,23 @@ export const ComponentsTable = ({
 
   // Function to calculate consumption based on formula and quantity
   const calculateDisplayConsumption = (component: CatalogComponent) => {
-    const quantity = defaultQuantity || 1;
-    
     console.log(`Calculating consumption for component:`, {
       type: component.component_type,
       formula: component.formula,
       storedConsumption: component.consumption,
       length: component.length,
-      quantity: quantity
+      is_manual_consumption: component.is_manual_consumption
     });
     
     if (!component.consumption) {
       return 0;
     }
     
-    let calculatedConsumption = 0;
     const baseConsumption = Number(component.consumption);
     
-    if (component.formula === 'linear') {
-      // Linear formula: (length * quantity) / 39.37
-      if (component.length && quantity > 0) {
-        const totalLengthInInches = Number(component.length) * quantity;
-        calculatedConsumption = totalLengthInInches / 39.37;
-        console.log(`Linear calculation: ${component.length} × ${quantity} ÷ 39.37 = ${calculatedConsumption}`);
-      } else {
-        // Fallback: use stored consumption * quantity for linear
-        calculatedConsumption = baseConsumption * quantity;
-        console.log(`Linear fallback: ${baseConsumption} × ${quantity} = ${calculatedConsumption}`);
-      }
-    } else {
-      // Standard formula: stored consumption * quantity
-      calculatedConsumption = baseConsumption * quantity;
-      console.log(`Standard calculation: ${baseConsumption} × ${quantity} = ${calculatedConsumption}`);
-    }
-    
-    return calculatedConsumption;
+    // For product detail page, always show the base consumption per unit
+    // The multiplication by quantity should only happen during order creation
+    return baseConsumption;
   };
 
   return (
@@ -148,23 +135,15 @@ export const ComponentsTable = ({
                     )}
                     {component.consumption !== null && component.consumption !== undefined && (
                       <span className="text-xs flex items-center gap-1">
-                        <span className="font-medium">Total Consumption:</span> 
-                        <span>{displayConsumption.toFixed(4)} meters</span>
-                        {defaultQuantity && defaultQuantity > 1 && (
-                          <span className="text-xs text-muted-foreground ml-1">
-                            {component.formula === 'linear' 
-                              ? `(${component.length} × ${defaultQuantity} ÷ 39.37)` 
-                              : `(${Number(component.consumption).toFixed(4)} × ${defaultQuantity})`
-                            }
-                          </span>
-                        )}
+                        <span className="font-medium">Consumption:</span> 
+                        <span>{displayConsumption.toFixed(4)} meters/unit</span>
                       </span>
                     )}
                     {component.formula && (
                       <span className="text-xs flex items-center gap-1">
                         <span className="font-medium">Formula:</span> 
-                        <Badge variant={component.formula === 'linear' ? 'secondary' : 'outline'} className="text-xs">
-                          {component.formula === 'standard' ? 'Standard' : 'Linear'}
+                        <Badge variant={component.formula === 'linear' ? 'secondary' : component.formula === 'manual' ? 'destructive' : 'outline'} className="text-xs">
+                          {component.formula === 'standard' ? 'Standard' : component.formula === 'manual' ? 'Manual' : 'Linear'}
                         </Badge>
                       </span>
                     )}

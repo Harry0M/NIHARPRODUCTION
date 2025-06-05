@@ -14,6 +14,8 @@ interface ComponentType {
   baseConsumption?: string;
   materialRate?: number;
   materialCost?: number;
+  formula?: 'standard' | 'linear' | 'manual';
+  is_manual_consumption?: boolean;
 }
 
 interface ComponentContextType {
@@ -26,6 +28,10 @@ interface ComponentContextType {
   addCustomComponent: () => void;
   removeCustomComponent: (index: number) => void;
   defaultQuantity?: string;
+  handleFormulaChange: (componentType: string, formula: 'standard' | 'linear' | 'manual') => void;
+  handleCustomFormulaChange: (index: number, formula: 'standard' | 'linear' | 'manual') => void;
+  handleConsumptionCalculated: (componentType: string, consumption: number, cost?: number, isManual?: boolean) => void;
+  handleCustomConsumptionCalculated: (index: number, consumption: number, cost?: number, isManual?: boolean) => void;
 }
 
 const ComponentContext = createContext<ComponentContextType | undefined>(undefined);

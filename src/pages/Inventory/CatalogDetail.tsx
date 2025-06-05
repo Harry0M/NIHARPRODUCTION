@@ -38,6 +38,7 @@ interface DBComponent {
   material_linked: boolean;
   roll_width: number;
   width: number;
+  is_manual_consumption: boolean;
 }
 
 const CatalogDetail = () => {
@@ -136,7 +137,8 @@ const CatalogDetail = () => {
   const components: CatalogComponent[] = (product?.catalog_components || []).map(comp => {
     const component: CatalogComponent = {
       ...comp,
-      formula: (comp.formula === 'linear' ? 'linear' : 'standard') as 'standard' | 'linear'
+      formula: comp.is_manual_consumption ? 'manual' : (comp.formula || 'standard') as 'standard' | 'linear' | 'manual',
+      is_manual_consumption: comp.is_manual_consumption || false
     };
     
     // If material data is available, add it to the component

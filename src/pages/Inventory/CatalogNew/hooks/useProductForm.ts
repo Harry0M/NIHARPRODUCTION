@@ -15,7 +15,8 @@ interface ComponentType {
   baseConsumption?: number;
   materialRate?: number;
   materialCost?: number;
-  formula?: 'standard' | 'linear';
+  formula?: 'standard' | 'linear' | 'manual';
+  is_manual_consumption?: boolean;
 }
 
 export const useProductForm = () => {
@@ -41,6 +42,7 @@ export const useProductForm = () => {
   const [components, setComponents] = useState<Record<string, any>>({});
   const [customComponents, setCustomComponents] = useState<any[]>([]);
   const [materialPrices, setMaterialPrices] = useState<Record<string, number>>({});
+  const [isMarginManuallySet, setIsMarginManuallySet] = useState(false);
 
   // Function to fetch material price by ID
   const fetchMaterialPrice = async (materialId: string) => {
@@ -146,23 +148,33 @@ export const useProductForm = () => {
         material_cost: totalMaterialCost.toFixed(2)
       };
       
-      // Also update total cost
-      const totalCost = calculateTotalCost({
-        ...updatedData
-      });
+      // Calculate total cost
+      const cuttingCharge = parseFloat(updatedData.cutting_charge) || 0;
+      const printingCharge = parseFloat(updatedData.printing_charge) || 0;
+      const stitchingCharge = parseFloat(updatedData.stitching_charge) || 0;
+      const transportCharge = parseFloat(updatedData.transport_charge) || 0;
+      const materialCost = parseFloat(updatedData.material_cost) || 0;
       
+      const totalCost = cuttingCharge + printingCharge + stitchingCharge + transportCharge + materialCost;
       updatedData.total_cost = totalCost.toString();
       
-      // Update margin if selling rate exists and is greater than 0
+      // Only auto-calculate margin if it's empty/zero and selling rate exists
+      // This preserves manually entered margins
       if (prev.selling_rate && parseFloat(prev.selling_rate) > 0 && totalCost > 0) {
-        const sellingRate = parseFloat(prev.selling_rate);
-        const newMargin = ((sellingRate - totalCost) / totalCost) * 100;
-        updatedData.margin = newMargin.toFixed(2);
+        const currentMargin = parseFloat(prev.margin) || 0;
+        
+        // Only recalculate margin if it's not manually set and currently empty/zero
+        if (!isMarginManuallySet && currentMargin === 0) {
+          const sellingRate = parseFloat(prev.selling_rate);
+          const newMargin = ((sellingRate - totalCost) / totalCost) * 100;
+          updatedData.margin = parseFloat(newMargin.toFixed(2)).toString();
+          console.log("Auto-calculated margin (was empty, not manual):", updatedData.margin);
+        }
       }
       
       return updatedData;
     });
-  }, [components, customComponents, materialPrices]);
+  }, [components, customComponents, materialPrices, isMarginManuallySet, calculateTotalMaterialCost]);
   
   // Function to update consumption values based on dimensions and default quantity
   const updateConsumptionValues = () => {
@@ -245,7 +257,7 @@ export const useProductForm = () => {
   // Effect to recalculate consumption when default quantity changes
   useEffect(() => {
     updateConsumptionValues();
-  }, [productData.default_quantity, materialPrices]);
+  }, [productData.default_quantity, materialPrices, updateConsumptionValues]);
 
   const handleProductChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -262,14 +274,26 @@ export const useProductForm = () => {
         updatedData.total_cost = totalCost.toString();
       }
       
-      // Only update margin if selling_rate changes
+      // Only update margin if selling_rate changes and preserve manual entries
       if (name === 'selling_rate' && value && parseFloat(value) > 0) {
         const totalCost = calculateTotalCost(updatedData);
         if (totalCost > 0) {
           const newMargin = ((parseFloat(value) - totalCost) / totalCost) * 100;
-          // Use parseFloat to ensure consistent numeric calculation before storing as string
+          // Use consistent precision handling
           updatedData.margin = parseFloat(newMargin.toFixed(2)).toString();
           console.log("Updated margin from selling rate change:", updatedData.margin);
+        }
+      }
+      
+      // Handle manual margin changes - calculate selling rate
+      if (name === 'margin' && value && parseFloat(value) > 0) {
+        setIsMarginManuallySet(true); // Track manual margin entry
+        const totalCost = calculateTotalCost(updatedData);
+        if (totalCost > 0) {
+          const margin = parseFloat(value);
+          const newSellingRate = totalCost * (1 + (margin / 100));
+          updatedData.selling_rate = parseFloat(newSellingRate.toFixed(2)).toString();
+          console.log("Updated selling rate from manual margin change:", updatedData.selling_rate);
         }
       }
       
@@ -312,10 +336,32 @@ export const useProductForm = () => {
       }
     }
 
-    // If consumption changed and we have material rate, update material cost
-    if (field === 'consumption' && component.materialRate) {
-      const consumption = Number(value);
-      component.materialCost = consumption * component.materialRate;
+    // If consumption changed, update material cost but don't assume it's manual
+    // Only set manual flag if the component is already in manual mode or if explicitly set
+    if (field === 'consumption') {
+      if (component.materialRate) {
+        const consumption = Number(value);
+        component.materialCost = consumption * component.materialRate;
+      }
+      // Don't automatically set formula to manual - preserve existing formula unless it's a manual entry
+    }
+
+    // If dimensions changed, reset manual flag and recalculate consumption
+    if (['length', 'width', 'roll_width'].includes(field)) {
+      component.is_manual_consumption = false;
+      // Preserve the original formula - don't default to 'standard'
+      if (component.formula === 'manual') {
+        component.formula = 'standard'; // Only reset if it was manual
+      }
+      if (component.length && component.width && component.roll_width) {
+        const baseConsumption = (Number(component.length) * Number(component.width)) / (Number(component.roll_width) * 39.39);
+        component.consumption = productData.default_quantity 
+          ? baseConsumption * parseFloat(productData.default_quantity)
+          : baseConsumption;
+        if (component.materialRate) {
+          component.materialCost = component.consumption * component.materialRate;
+        }
+      }
     }
 
     setComponents(updatedComponents);
@@ -345,10 +391,32 @@ export const useProductForm = () => {
       }
     }
 
-    // If consumption changed and we have material rate, update material cost
-    if (field === 'consumption' && component.materialRate) {
-      const consumption = Number(value);
-      component.materialCost = consumption * component.materialRate;
+    // If consumption changed, update material cost but don't assume it's manual
+    // Only set manual flag if the component is already in manual mode or if explicitly set
+    if (field === 'consumption') {
+      if (component.materialRate) {
+        const consumption = Number(value);
+        component.materialCost = consumption * component.materialRate;
+      }
+      // Don't automatically set formula to manual - preserve existing formula unless it's a manual entry
+    }
+
+    // If dimensions changed, reset manual flag and recalculate consumption
+    if (['length', 'width', 'roll_width'].includes(field)) {
+      component.is_manual_consumption = false;
+      // Preserve the original formula - don't default to 'standard'
+      if (component.formula === 'manual') {
+        component.formula = 'standard'; // Only reset if it was manual
+      }
+      if (component.length && component.width && component.roll_width) {
+        const baseConsumption = (Number(component.length) * Number(component.width)) / (Number(component.roll_width) * 39.39);
+        component.consumption = productData.default_quantity 
+          ? baseConsumption * parseFloat(productData.default_quantity)
+          : baseConsumption;
+        if (component.materialRate) {
+          component.materialCost = component.consumption * component.materialRate;
+        }
+      }
     }
 
     setCustomComponents(updatedComponents);
@@ -416,6 +484,98 @@ export const useProductForm = () => {
       };
     });
 
+  // Handle formula change for standard components
+  const handleFormulaChange = (componentType: string, formula: 'standard' | 'linear' | 'manual') => {
+    const updatedComponents = { ...components };
+    const component = updatedComponents[componentType];
+
+    if (!component) return;
+
+    component.formula = formula;
+    component.is_manual_consumption = formula === 'manual';
+    
+    // Track base formula for when switching back from manual mode
+    if (formula !== 'manual') {
+      component.baseFormula = formula;
+    }
+
+    setComponents(updatedComponents);
+  };
+
+  // Handle formula change for custom components
+  const handleCustomFormulaChange = (index: number, formula: 'standard' | 'linear' | 'manual') => {
+    const updatedComponents = [...customComponents];
+    const component = updatedComponents[index];
+
+    if (!component) return;
+
+    component.formula = formula;
+    component.is_manual_consumption = formula === 'manual';
+    
+    // Track base formula for when switching back from manual mode
+    if (formula !== 'manual') {
+      component.baseFormula = formula;
+    }
+
+    setCustomComponents(updatedComponents);
+  };
+
+  // Handle consumption calculation result
+  const handleConsumptionCalculated = (componentType: string, consumption: number, cost?: number, isManual?: boolean) => {
+    const updatedComponents = { ...components };
+    const component = updatedComponents[componentType];
+
+    if (!component) return;
+
+    component.consumption = consumption;
+    if (cost !== undefined) {
+      component.materialCost = cost;
+    }
+    if (isManual !== undefined) {
+      component.is_manual_consumption = isManual;
+      if (isManual) {
+        component.formula = 'manual';
+      } else {
+        // When switching back from manual, restore the base formula if it exists
+        if (component.baseFormula) {
+          component.formula = component.baseFormula;
+        } else if (component.formula === 'manual') {
+          component.formula = 'standard'; // fallback to standard
+        }
+      }
+    }
+
+    setComponents(updatedComponents);
+  };
+
+  // Handle consumption calculation result for custom components
+  const handleCustomConsumptionCalculated = (index: number, consumption: number, cost?: number, isManual?: boolean) => {
+    const updatedComponents = [...customComponents];
+    const component = updatedComponents[index];
+
+    if (!component) return;
+
+    component.consumption = consumption;
+    if (cost !== undefined) {
+      component.materialCost = cost;
+    }
+    if (isManual !== undefined) {
+      component.is_manual_consumption = isManual;
+      if (isManual) {
+        component.formula = 'manual';
+      } else {
+        // When switching back from manual, restore the base formula if it exists
+        if (component.baseFormula) {
+          component.formula = component.baseFormula;
+        } else if (component.formula === 'manual') {
+          component.formula = 'standard'; // fallback to standard
+        }
+      }
+    }
+
+    setCustomComponents(updatedComponents);
+  };
+
   return {
     productData,
     setProductData,
@@ -424,6 +584,8 @@ export const useProductForm = () => {
     materialPrices,
     componentCosts,
     totalConsumption,
+    isMarginManuallySet,
+    setIsMarginManuallySet,
     handleProductChange,
     calculateTotalCost,
     fetchMaterialPrice,
@@ -433,6 +595,10 @@ export const useProductForm = () => {
     removeCustomComponent,
     removeStandardComponent,
     setComponents,
-    setCustomComponents
+    setCustomComponents,
+    handleFormulaChange,
+    handleCustomFormulaChange,
+    handleConsumptionCalculated,
+    handleCustomConsumptionCalculated
   };
 };

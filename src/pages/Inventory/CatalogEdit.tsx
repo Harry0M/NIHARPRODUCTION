@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { 
   Card, 
   CardContent, 
@@ -18,7 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { StandardComponents } from "@/components/orders/StandardComponents";
 import { CustomComponentSection } from "@/components/orders/CustomComponentSection";
 import { useProductForm } from "./CatalogNew/hooks/useProductForm";
-import { useQueryClient } from "@tanstack/react-query";
+import { createManualFormulaTest } from "@/utils/debug-formula-state";
 
 const componentOptions = {
   color: ["Red", "Blue", "Green", "Black", "White", "Yellow", "Brown", "Orange", "Purple", "Gray", "Custom"],
@@ -37,15 +37,34 @@ interface ComponentType {
   baseConsumption?: number;
   materialRate?: number;
   materialCost?: number;
-  formula?: 'standard' | 'linear';
+  formula?: 'standard' | 'linear' | 'manual';
+  is_manual_consumption?: boolean;
+  baseFormula?: 'standard' | 'linear';
+}
+
+interface DatabaseComponent {
+  id: string;
+  catalog_id: string;
+  component_type: string;
+  custom_name: string;
+  color: string;
+  length: number;
+  width: number;
+  roll_width: number;
+  material_id: string;
+  consumption: number;
+  formula: string;
+  gsm: number;
+  created_at: string;
+  updated_at: string;
+  is_manual_consumption?: boolean;
 }
 
 const CatalogEdit = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const testManualFormulas = createManualFormulaTest();
 
   const { 
     productData, 
@@ -67,7 +86,7 @@ const CatalogEdit = () => {
     setCustomComponents
   } = useProductForm();
 
-  // Override handleProductChange to add margin calculation
+  // Override handleProductChange to delay selling price calculation until Update button
   const handleProductChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     
@@ -77,17 +96,14 @@ const CatalogEdit = () => {
       [name]: value
     };
     
-    // If margin is being changed, calculate selling rate
-    if (name === 'margin' && value) {
-      const margin = parseFloat(value);
+    // Calculate total cost when cost-related fields change
+    if (['cutting_charge', 'printing_charge', 'stitching_charge', 'transport_charge', 'material_cost'].includes(name)) {
       const totalCost = calculateTotalCost(updatedProductData);
-      
-      if (!isNaN(margin) && totalCost > 0) {
-        const sellingRate = totalCost * (1 + (margin / 100));
-        updatedProductData.selling_rate = sellingRate.toFixed(2);
-      }
+      updatedProductData.total_cost = totalCost.toString();
     }
     
+    // No automatic calculation between margin and selling_rate
+    // These will only be calculated when the Update button is pressed
     setProductData(updatedProductData);
   };
 
@@ -146,7 +162,7 @@ const CatalogEdit = () => {
 
         // Process components
         const standardComponentTypes = ['part', 'border', 'handle', 'chain', 'runner', 'piping'];
-      const standardComps: Record<string, any> = {};
+      const standardComps: Record<string, ComponentType> = {};
       const customComps: ComponentType[] = [];
       
         // First, clear any existing components
@@ -176,13 +192,8 @@ const CatalogEdit = () => {
           }), {});
         }
         
-        componentsData.forEach(comp => {
-          // Skip if we've already processed this component
-          if (processedComponents.has(comp.id)) return;
-          processedComponents.add(comp.id);
-          
-          const componentType = comp.component_type.toLowerCase();
-          console.log(`Processing component: ${comp.component_type} with formula: ${comp.formula}`);
+        componentsData.forEach((comp: DatabaseComponent) => {
+          const componentType = comp.component_type?.toLowerCase() || '';
           
           if (standardComponentTypes.includes(componentType)) {
             // For standard components, use the capitalized version as the key
@@ -195,56 +206,82 @@ const CatalogEdit = () => {
               const materialCost = materialRate && consumption ? consumption * materialRate : undefined;
               
               standardComps[componentKey] = {
-            id: comp.id,
+                id: comp.id,
                 type: componentKey,
-            color: comp.color || undefined,
+                color: comp.color || undefined,
                 length: comp.length ? Number(comp.length) : undefined,
                 width: comp.width ? Number(comp.width) : undefined,
                 roll_width: comp.roll_width ? Number(comp.roll_width) : undefined,
-                formula: comp.formula || 'standard',
+                formula: (comp.formula as 'standard' | 'linear' | 'manual') || 'standard',
                 consumption: comp.consumption ? Number(comp.consumption) : undefined,
-            material_id: comp.material_id || undefined,
+                material_id: comp.material_id || undefined,
                 materialRate: materialRate,
-                materialCost: materialCost
-          };
+                materialCost: materialCost,
+                is_manual_consumption: comp.is_manual_consumption || false,
+                baseFormula: (comp.formula !== 'manual' ? comp.formula as 'standard' | 'linear' : 'standard')
+              };
               
-              console.log(`Standard component ${componentKey} loaded with formula: ${comp.formula || 'standard'}`);
+              console.log(`%c Standard component ${componentKey} loaded from DB:`, 'background:#8e44ad;color:white;font-weight:bold;padding:3px;', {
+                formula: comp.formula,
+                is_manual_consumption: comp.is_manual_consumption,
+                consumption: comp.consumption
+              });
             }
-        } else {
+          } else {
             // For custom components
             const materialRate = comp.material_id ? materialPrices[comp.material_id] : undefined;
             const consumption = comp.consumption ? Number(comp.consumption) : 0;
             const materialCost = materialRate && consumption ? consumption * materialRate : undefined;
             
-          customComps.push({
-            id: comp.id,
-            type: 'custom',
-            customName: comp.custom_name || comp.component_type,
-            color: comp.color || undefined,
+            customComps.push({
+              id: comp.id,
+              type: 'custom',
+              customName: comp.custom_name || comp.component_type,
+              color: comp.color || undefined,
               length: comp.length ? Number(comp.length) : undefined,
               width: comp.width ? Number(comp.width) : undefined,
               roll_width: comp.roll_width ? Number(comp.roll_width) : undefined,
-              formula: comp.formula as 'standard' | 'linear' || 'standard',
+              formula: comp.formula as 'standard' | 'linear' | 'manual' || 'standard',
               consumption: comp.consumption ? Number(comp.consumption) : undefined,
-            material_id: comp.material_id || undefined,
+              material_id: comp.material_id || undefined,
               materialRate: materialRate,
-              materialCost: materialCost
-          });
+              materialCost: materialCost,
+              is_manual_consumption: comp.is_manual_consumption || false,
+              baseFormula: (comp.formula !== 'manual' ? comp.formula : 'standard') as 'standard' | 'linear'
+            });
             
-            console.log(`Custom component loaded with formula: ${comp.formula || 'standard'}`);
-        }
-      });
-      
+            console.log(`%c Custom component ${comp.custom_name || comp.component_type} loaded from DB:`, 'background:#e67e22;color:white;font-weight:bold;padding:3px;', {
+              formula: comp.formula,
+              is_manual_consumption: comp.is_manual_consumption,
+              consumption: comp.consumption
+            });
+          }
+        });
+        
         // Set the components after processing all of them
       setComponents(standardComps);
       setCustomComponents(customComps);
         
-        console.log("Final components state:", { standardComps, customComps });
+      // Debug log focusing specifically on formula and manual consumption values
+      console.log("%c PRODUCT EDIT FORM - COMPONENT FORMULA DEBUG", "background:#2c3e50;color:white;font-size:14px;padding:5px;");
+      
+      // Log standard components formulas
+      Object.entries(standardComps).forEach(([key, comp]) => {
+        console.log(`%c Standard ${key}: formula=${comp.formula}, is_manual=${comp.is_manual_consumption}`, 
+          `background:${comp.formula === 'manual' ? '#e74c3c' : '#3498db'};color:white;padding:3px;`);
+      });
+      
+      // Log custom components formulas
+      customComps.forEach((comp, i) => {
+        console.log(`%c Custom ${i}: ${comp.customName}, formula=${comp.formula}, is_manual=${comp.is_manual_consumption}`, 
+          `background:${comp.formula === 'manual' ? '#e74c3c' : '#3498db'};color:white;padding:3px;`);
+      });
         setLoading(false);
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
         toast({
           title: "Error loading product",
-          description: error.message || "An unexpected error occurred",
+          description: errorMessage,
           variant: "destructive"
         });
         console.error("Error loading product:", error);
@@ -253,7 +290,7 @@ const CatalogEdit = () => {
     };
 
     fetchProductData();
-  }, [id]);
+  }, [id, setComponents, setCustomComponents, setProductData]);
 
   const validateForm = () => {
     if (!productData.name) {
@@ -307,30 +344,30 @@ const CatalogEdit = () => {
       // Calculate the final total cost
       const totalCost = calculateTotalCost(productData);
       
-      // Create local variables for selling rate and margin to use in calculations
+      // NOW perform the selling price and margin calculations on form submission
       let sellingRate = productData.selling_rate ? parseFloat(productData.selling_rate) : null;
       let margin = productData.margin ? parseFloat(productData.margin) : null;
       
-      // Now calculate the missing value if one is provided but the other is not
+      // Calculate the missing value if one is provided but the other is not
       if (totalCost > 0) {
         if (sellingRate !== null && sellingRate > 0 && (margin === null || margin <= 0)) {
           // Calculate margin from selling rate with consistent precision
           margin = ((sellingRate - totalCost) / totalCost) * 100;
-          margin = parseFloat(margin.toFixed(2)); // Keep consistent 2 decimal places
-          console.log("Calculated margin from selling rate:", margin);
+          margin = parseFloat(margin.toFixed(2));
+          console.log("Calculated margin from selling rate on submit:", margin);
         }
         else if (margin !== null && margin > 0 && (sellingRate === null || sellingRate <= 0)) {
           // Calculate selling rate from margin with consistent precision
           sellingRate = totalCost * (1 + (margin / 100));
-          sellingRate = parseFloat(sellingRate.toFixed(2)); // Keep consistent 2 decimal places
-          console.log("Calculated selling rate from margin:", sellingRate);
+          sellingRate = parseFloat(sellingRate.toFixed(2));
+          console.log("Calculated selling rate from margin on submit:", sellingRate);
         }
         
         // Always recalculate margin from selling rate for consistency if both exist
         if (sellingRate !== null && sellingRate > 0) {
           margin = ((sellingRate - totalCost) / totalCost) * 100;
           margin = parseFloat(margin.toFixed(2));
-          console.log("Final calculated margin for consistency:", margin);
+          console.log("Final calculated margin for consistency on submit:", margin);
         }
       }
       
@@ -463,10 +500,19 @@ const CatalogEdit = () => {
       
       console.log("Product updated successfully");
       
+      // Debug: Log raw custom components before filtering
+      console.log("Raw custom components before filtering:", customComponents);
+      
       // Get all current components from the form data that have valid information
+      // For custom components, include all components that exist (they might have data in fields we're not checking)
       const allComponents = [
         ...Object.values(components).filter(Boolean),
-        ...customComponents.filter(comp => comp.customName || comp.color || comp.length || comp.width || comp.roll_width)
+        ...customComponents.filter(comp => {
+          // Include any custom component that exists (has id) or has any meaningful data
+          const hasData = comp.customName || comp.color || comp.length || comp.width || comp.roll_width || comp.material_id;
+          console.log(`Custom component ${comp.customName || 'unnamed'} - hasData: ${hasData}`, comp);
+          return hasData;
+        })
       ];
       
       console.log("Processing components for update:", allComponents);
@@ -495,12 +541,15 @@ const CatalogEdit = () => {
       } else {
         console.log(`Found ${relatedOrders?.length || 0} related orders that will be updated via database trigger`);
       }
-      
-      // Create a set of existing component IDs from the database
+        // Create a set of existing component IDs from the database
       const existingComponentIds = new Set(existingComponents.map(comp => comp.id));
       
-      // Create a set of component IDs from the current form data
-      const currentComponentIds = new Set(allComponents.filter(comp => comp.id).map(comp => comp.id));
+      // Create a set of component IDs from the current form data (only numeric/database IDs)
+      const currentComponentIds = new Set(
+        allComponents
+          .filter(comp => comp.id && !isNaN(Number(comp.id)))
+          .map(comp => comp.id)
+      );
       
       // Find components to delete (in database but not in form)
       const componentsToDelete = [...existingComponentIds].filter(id => !currentComponentIds.has(id));
@@ -532,9 +581,9 @@ const CatalogEdit = () => {
       
       // Process each component - update existing ones and add new ones
       for (const comp of allComponents) {
-        // Calculate consumption if we have the required dimensions
+        // Calculate consumption if we have the required dimensions and it's not manual
         let consumption = comp.consumption;
-        if (comp.length && comp.width && comp.roll_width) {
+        if (!comp.is_manual_consumption && comp.length && comp.width && comp.roll_width) {
           const baseConsumption = (Number(comp.length) * Number(comp.width)) / (Number(comp.roll_width) * 39.39);
           consumption = productData.default_quantity 
             ? baseConsumption * parseFloat(productData.default_quantity)
@@ -554,11 +603,14 @@ const CatalogEdit = () => {
           material_linked: comp.material_id ? true : false,
           consumption: consumption ? Number(consumption) : null,
           formula: comp.formula || 'standard',
+          is_manual_consumption: comp.is_manual_consumption || false,
           updated_at: new Date().toISOString()
         };
-        
-        try {
-          if (comp.id) {
+          try {
+          // Check if this is a database ID (numeric) or a temporary UUID
+          const isExistingComponent = comp.id && !isNaN(Number(comp.id));
+          
+          if (isExistingComponent) {
             // Update existing component
             console.log(`Updating existing component ${comp.id}:`, componentData);
             const { data: updateData, error: updateError } = await supabase
@@ -631,63 +683,20 @@ const CatalogEdit = () => {
         }
       }
       
-      // Force cache invalidation for affected data
-      await queryClient.invalidateQueries({ queryKey: ['catalog-products'] });
-      await queryClient.invalidateQueries({ queryKey: ['inventory-items'] });
-      await queryClient.invalidateQueries({ queryKey: ['catalog-product', id] });
-      await queryClient.invalidateQueries({ queryKey: ['product-orders', id] });
-      
-      // Also invalidate orders cache since related orders have been updated
-      await queryClient.invalidateQueries({ queryKey: ['orders'] });
-      
-      // Clear session storage and set new timestamp
-      sessionStorage.removeItem('forceRefresh');
-      sessionStorage.setItem('forceRefresh', 'true');
-      sessionStorage.setItem('lastUpdated', new Date().toISOString());
-      
       toast({
         title: "Product updated successfully",
         description: `${formattedName} has been updated in the catalog`,
         variant: "default"
       });
 
-      // Set a flag to indicate the product was just edited
-      sessionStorage.setItem('productEdited', 'true');
+      // Navigate using window.location.href for reliable redirection
+      window.location.href = `/inventory/catalog/${id}`;
       
-      // Wait a moment to ensure all cache invalidations are processed
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Prefetch the product data before navigation
-      await queryClient.prefetchQuery({
-        queryKey: ['catalog-product', id],
-        queryFn: async () => {
-          const { data, error } = await supabase
-            .from('catalog')
-            .select(`
-              *,
-              catalog_components(*)
-            `)
-            .eq('id', id)
-            .single();
-          
-          if (error) throw error;
-          return data;
-        }
-      });
-      
-      // Use navigate with replace to prevent back button issues
-      navigate(`/inventory/catalog/${id}`, { 
-        replace: true,
-        state: { 
-          timestamp: Date.now(),
-          forceRefresh: true 
-        }
-      });
-      
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
       toast({
         title: "Error updating product",
-        description: error.message || "An unexpected error occurred",
+        description: errorMessage,
         variant: "destructive"
       });
       console.error("Error updating product:", error);
@@ -709,6 +718,7 @@ const CatalogEdit = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Button 
+            type="button"
             variant="ghost" 
             size="sm"
             onClick={() => window.location.href = `/inventory/catalog/${id}`}
@@ -878,23 +888,34 @@ const CatalogEdit = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              {/* Material Costs */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Material Costs</h3>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="material_cost">Material Cost</Label>
-                  <Input 
-                    id="material_cost" 
-                    name="material_cost"
-                    type="number"
-                    step="0.01"
-                    value={productData.material_cost}
-                    onChange={handleProductChange}
-                    placeholder="Material cost"
-                    min="0"
-                  />
+              {/* Material cost breakdown section */}
+              {componentCosts.length > 0 && (
+                <div className="bg-slate-50 p-4 rounded-md border mb-4">
+                  <h3 className="text-sm font-medium mb-2">Material Cost Breakdown</h3>
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-4 gap-2 text-xs font-medium text-muted-foreground">
+                      <div>Component</div>
+                      <div>Consumption (m)</div>
+                      <div>Rate (₹/m)</div>
+                      <div>Cost (₹)</div>
+                    </div>
+                    {componentCosts.map((item, i) => (
+                      <div key={i} className="grid grid-cols-4 gap-2 text-sm">
+                        <div>{item.name}</div>
+                        <div>{item.consumption.toFixed(2)}</div>
+                        <div>₹{item.rate.toFixed(2)}</div>
+                        <div className="font-medium">₹{item.cost.toFixed(2)}</div>
+                      </div>
+                    ))}
+                    <div className="border-t pt-2 grid grid-cols-4 gap-2 text-sm">
+                      <div className="col-span-3 text-right font-medium">Total Material Cost:</div>
+                      <div className="font-bold">₹{parseFloat(productData.material_cost).toFixed(2)}</div>
+                    </div>
+                  </div>
                 </div>
+              )}
+
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="cutting_charge">Cutting Charge</Label>
                   <Input 
@@ -947,25 +968,60 @@ const CatalogEdit = () => {
                     min="0"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="material_cost">Material Cost</Label>
+                  <Input 
+                    id="material_cost" 
+                    name="material_cost"
+                    type="number"
+                    step="0.01"
+                    value={productData.material_cost}
+                    onChange={handleProductChange}
+                    placeholder="Material cost"
+                    min="0"
+                    className={componentCosts.length > 0 ? "bg-slate-50 font-medium" : ""}
+                    readOnly={componentCosts.length > 0}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {componentCosts.length > 0 
+                      ? "Auto-calculated from component materials and consumption"
+                      : "Edit this value directly or link materials to components"}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="total_cost">Total Cost</Label>
+                  <Input 
+                    id="total_cost" 
+                    name="total_cost"
+                    type="number"
+                    step="0.01"
+                    value={productData.total_cost}
+                    readOnly
+                    className="bg-muted font-medium"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Auto-calculated from all cost components
+                  </p>
                 </div>
               </div>
-
-              {/* Pricing */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Pricing</h3>
+              
+              <div className="border-t pt-4 mt-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="default_rate">Cost Rate</Label>
+                    <Label htmlFor="selling_rate">Selling Rate</Label>
                     <Input 
-                      id="default_rate" 
-                      name="default_rate"
-                      type="number"
-                      step="0.01"
-                      value={productData.default_rate}
+                      id="selling_rate" 
+                      name="selling_rate"
+                      type="text"
+                      inputMode="decimal"
+                      value={productData.selling_rate}
                       onChange={handleProductChange}
-                      placeholder="Cost price per bag"
-                      min="0"
+                      placeholder="Selling price per bag"
+                      className="independent-input"
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Enter any value or leave empty. This field is freely editable.
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="margin">Margin (%)</Label>
@@ -980,7 +1036,7 @@ const CatalogEdit = () => {
                       min="0"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Margin is calculated as ((Selling Rate - Total Cost) / Total Cost) × 100
+                      Enter margin percentage. Final calculations will be done when you update the product.
                     </p>
                   </div>
                 </div>
@@ -996,8 +1052,17 @@ const CatalogEdit = () => {
             >
               Cancel
             </Button>
-              <Button type="submit" disabled={submitting}>
-                {submitting ? "Updating..." : "Update Product"}
+            {/* Debug button for testing formula state */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => testManualFormulas(components, customComponents)}
+              className="bg-blue-100 hover:bg-blue-200 text-blue-800"
+            >
+              Test Formula State
+            </Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? "Updating..." : "Update Product"}
             </Button>
           </div>
           </CardFooter>

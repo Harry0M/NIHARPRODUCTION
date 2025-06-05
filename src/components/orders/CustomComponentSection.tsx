@@ -41,6 +41,8 @@ interface CustomComponentSectionProps {
   removeCustomComponent: (index: number) => void;
   defaultQuantity?: string;
   showConsumption?: boolean;
+  onFormulaChange?: (index: number, formula: 'standard' | 'linear' | 'manual') => void;
+  onConsumptionCalculated?: (index: number, consumption: number, cost?: number, isManual?: boolean) => void;
 }
 
 export const CustomComponentSection = ({
@@ -49,7 +51,9 @@ export const CustomComponentSection = ({
   handleCustomComponentChange,
   removeCustomComponent,
   defaultQuantity,
-  showConsumption = false
+  showConsumption = false,
+  onFormulaChange,
+  onConsumptionCalculated
 }: CustomComponentSectionProps) => {
   return (
     <div className="space-y-4">
@@ -69,6 +73,8 @@ export const CustomComponentSection = ({
               removeCustomComponent={removeCustomComponent}
               defaultQuantity={defaultQuantity}
               showConsumption={showConsumption}
+              onFormulaChange={onFormulaChange}
+              onConsumptionCalculated={onConsumptionCalculated}
             />
           ))}
         </div>
@@ -92,6 +98,8 @@ interface CustomComponentFormProps {
     materialRate?: number;
     materialCost?: number;
     formula?: ConsumptionFormulaType;
+    is_manual_consumption?: boolean;
+    baseFormula?: ConsumptionFormulaType;
   };
   index: number;
   componentOptions: {
@@ -102,6 +110,8 @@ interface CustomComponentFormProps {
   removeCustomComponent: (index: number) => void;
   defaultQuantity?: string;
   showConsumption?: boolean;
+  onFormulaChange?: (index: number, formula: 'standard' | 'linear' | 'manual') => void;
+  onConsumptionCalculated?: (index: number, consumption: number, cost?: number, isManual?: boolean) => void;
 }
 
 const CustomComponentForm = ({
@@ -111,7 +121,9 @@ const CustomComponentForm = ({
   handleCustomComponentChange,
   removeCustomComponent,
   defaultQuantity,
-  showConsumption = false
+  showConsumption = false,
+  onFormulaChange,
+  onConsumptionCalculated
 }: CustomComponentFormProps) => {
   const [customColor, setCustomColor] = useState(component.color === "Custom" ? "" : "");
   const [customGSM, setCustomGSM] = useState(component.gsm === "Custom" ? "" : "");
@@ -121,7 +133,7 @@ const CustomComponentForm = ({
     if (component.materialRate !== materialRate) {
       setMaterialRate(component.materialRate);
     }
-  }, [component.materialRate]);
+  }, [component.materialRate, materialRate]);
   
   const handleColorChange = (value: string) => {
     handleCustomComponentChange(index, 'color', value);
@@ -152,6 +164,13 @@ const CustomComponentForm = ({
   };
 
   const handleConsumptionCalculated = (consumption: number, cost?: number) => {
+    // Use context handler if available, otherwise fall back to local handling
+    if (onConsumptionCalculated) {
+      onConsumptionCalculated(index, consumption, cost);
+      return;
+    }
+
+    // Fallback local handling (for backwards compatibility)
     handleCustomComponentChange(index, 'consumption', consumption.toString());
     if (cost !== undefined) {
       handleCustomComponentChange(index, 'materialCost', cost.toString());
@@ -159,11 +178,32 @@ const CustomComponentForm = ({
   };
   
   const handleFormulaChange = (formula: ConsumptionFormulaType) => {
-    handleCustomComponentChange(index, 'formula', formula);
+    // Use context handler if available, otherwise fall back to local handling
+    if (onFormulaChange) {
+      onFormulaChange(index, formula);
+    } else {
+      // Fallback local handling (for backwards compatibility)
+      handleCustomComponentChange(index, 'formula', formula);
+    }
   };
   
   const consumption = component.consumption || '';
   const baseConsumption = component.baseConsumption || '';
+  
+  // Get formula for the consumption calculator
+  const selectedFormula = component.formula || 'standard';
+  const isManual = component.formula === 'manual' || !!component.is_manual_consumption;
+  
+  // Debug log for manual formula troubleshooting
+  useEffect(() => {
+    console.log(`Custom component ${index} (${component.customName || 'unnamed'}) loaded with:`, {
+      formula: component.formula,
+      is_manual_consumption: component.is_manual_consumption,
+      selectedFormula,
+      isManual,
+      consumption: component.consumption
+    });
+  }, [index, component.customName, component.formula, component.is_manual_consumption, selectedFormula, isManual, component.consumption]);
   
   // Check if any dimensions are filled
   const hasDimensions = component.length || component.width || component.roll_width;
@@ -171,9 +211,6 @@ const CustomComponentForm = ({
   
   // Get material cost if available
   const materialCost = component.materialCost;
-  
-  // Get selected formula or default to standard
-  const selectedFormula = component.formula || 'standard';
   
   // Make sure formula is always set
   useEffect(() => {
@@ -334,6 +371,8 @@ const CustomComponentForm = ({
               quantity={parseFloat(defaultQuantity)}
               materialRate={materialRate}
               selectedFormula={selectedFormula}
+              initialIsManual={component.formula === 'manual' || !!component.is_manual_consumption}
+              initialConsumption={component.consumption ? parseFloat(component.consumption) : undefined}
               onConsumptionCalculated={handleConsumptionCalculated}
               onFormulaChange={handleFormulaChange}
             />

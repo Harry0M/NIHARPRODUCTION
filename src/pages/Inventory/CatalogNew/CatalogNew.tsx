@@ -15,8 +15,7 @@ import { ComponentProvider } from "./context/ComponentContext";
 const CatalogNew = () => {
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
-  
-  const { 
+    const { 
     productData, 
     components, 
     customComponents,
@@ -29,7 +28,11 @@ const CatalogNew = () => {
     handleComponentChange,
     handleCustomComponentChange,
     addCustomComponent,
-    removeCustomComponent
+    removeCustomComponent,
+    handleFormulaChange,
+    handleCustomFormulaChange,
+    handleConsumptionCalculated,
+    handleCustomConsumptionCalculated
   } = useProductForm();
 
   const validateForm = () => {
@@ -214,8 +217,7 @@ const CatalogNew = () => {
     };
   }, [submitting]);
 
-  return (
-    <ComponentProvider 
+  return (    <ComponentProvider 
       value={{
         components,
         customComponents,
@@ -225,7 +227,11 @@ const CatalogNew = () => {
         handleCustomComponentChange,
         addCustomComponent,
         removeCustomComponent,
-        defaultQuantity: productData.default_quantity
+        defaultQuantity: productData.default_quantity,
+        handleFormulaChange,
+        handleCustomFormulaChange,
+        handleConsumptionCalculated,
+        handleCustomConsumptionCalculated
       }}
     >
       <div className="space-y-6">

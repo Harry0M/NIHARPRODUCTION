@@ -38,7 +38,8 @@ interface ComponentType {
   baseConsumption?: string;
   materialRate?: number;
   materialCost?: number;
-  formula?: 'standard' | 'linear';
+  formula?: 'standard' | 'linear' | 'manual';
+  is_manual_consumption?: boolean;
 }
 
 const CatalogNew = () => {
@@ -419,58 +420,42 @@ const CatalogNew = () => {
           if (rate !== null) {
             setComponents(current => {
               const componentToUpdate = current[type] || {};
+              const updatedComponent = {
+                ...componentToUpdate,
+                materialRate: rate
+              };
+              
+              // Only calculate material cost if we have consumption and it's not manual
+              if (updatedComponent.consumption && updatedComponent.formula !== 'manual') {
+                const consumption = parseFloat(updatedComponent.consumption);
+                if (!isNaN(consumption)) {
+                  updatedComponent.materialCost = consumption * rate;
+                }
+              }
+              
               return {
                 ...current,
-                [type]: {
-                  ...componentToUpdate,
-                  materialRate: rate
-                }
+                [type]: updatedComponent
               };
             });
           }
         });
       }
       
-      // If materialCost is directly set, keep it as number
-      if (field === 'materialCost') {
-        console.log(`Setting material cost for ${type} to ${value}`);
-        updatedComponent.materialCost = parseFloat(value);
+      // If consumption is changed manually, only set the manual flag if explicitly intended
+      // Don't automatically change formula to 'manual' - preserve the original formula
+      if (field === 'consumption') {
+        // Only set manual consumption flag if this is an explicit manual entry
+        // The formula should be preserved and only changed via the toggle/formula selector
       }
       
-      // If formula is changed, immediately recalculate consumption
-      if (field === 'formula') {
-        const formula = value as 'standard' | 'linear';
-        const shouldRecalculate = 
-          (formula === 'standard' && updatedComponent.length && updatedComponent.width && updatedComponent.roll_width) ||
-          (formula === 'linear' && updatedComponent.length);
-        
-        if (shouldRecalculate) {
-          const baseConsumption = calculateConsumption(
-            updatedComponent.length,
-            updatedComponent.width,
-            updatedComponent.roll_width,
-            formula
-          );
-          
-          if (baseConsumption) {
-            updatedComponent.baseConsumption = baseConsumption;
-            updatedComponent.consumption = productData.default_quantity 
-              ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
-              : baseConsumption;
-            
-            // Also calculate material cost if material_id and rate are present
-            if (updatedComponent.material_id && materialPrices[updatedComponent.material_id]) {
-              const materialRate = materialPrices[updatedComponent.material_id];
-              const consumptionValue = parseFloat(updatedComponent.consumption);
-              const materialCost = consumptionValue * materialRate;
-              updatedComponent.materialCost = materialCost;
-              updatedComponent.materialRate = materialRate;
-            }
-          }
+      // If dimensions are changed, reset manual flag and recalculate
+      if (['length', 'width', 'roll_width'].includes(field)) {
+        updatedComponent.is_manual_consumption = false;
+        // Preserve the original formula - only reset if it was manual
+        if (updatedComponent.formula === 'manual') {
+          updatedComponent.formula = 'standard';
         }
-      }
-      // If dimensions changed, check if we can calculate consumption based on formula
-      else if (['length', 'width', 'roll_width'].includes(field)) {
         const formula = updatedComponent.formula || 'standard';
         const shouldRecalculate = 
           (formula === 'standard' && updatedComponent.length && updatedComponent.width && updatedComponent.roll_width) ||
@@ -520,17 +505,14 @@ const CatalogNew = () => {
           if (rate !== null) {
             setCustomComponents(current => {
               const newComponents = [...current];
-              newComponents[index] = {
-                ...newComponents[index],
-                materialRate: rate
-              };
+              const componentToUpdate = newComponents[index];
+              componentToUpdate.materialRate = rate;
               
-              // Recalculate material cost if consumption is available
-              if (newComponents[index].consumption) {
-                const consumption = parseFloat(newComponents[index].consumption);
+              // Only calculate material cost if we have consumption and it's not manual
+              if (componentToUpdate.consumption && componentToUpdate.formula !== 'manual') {
+                const consumption = parseFloat(componentToUpdate.consumption);
                 if (!isNaN(consumption)) {
-                  const materialCost = consumption * rate;
-                  newComponents[index].materialCost = materialCost;
+                  componentToUpdate.materialCost = consumption * rate;
                 }
               }
               
@@ -540,46 +522,20 @@ const CatalogNew = () => {
         });
       }
       
-      // If materialCost is directly set, keep it as number
-      if (field === 'materialCost') {
-        console.log(`Setting material cost for custom component ${index} to ${value}`);
-        updatedComponent.materialCost = parseFloat(value);
+      // If consumption is changed manually, only set the manual flag if explicitly intended
+      // Don't automatically change formula to 'manual' - preserve the original formula
+      if (field === 'consumption') {
+        // Only set manual consumption flag if this is an explicit manual entry
+        // The formula should be preserved and only changed via the toggle/formula selector
       }
       
-      // If formula is changed, immediately recalculate consumption
-      if (field === 'formula') {
-        const formula = value as 'standard' | 'linear';
-        const shouldRecalculate = 
-          (formula === 'standard' && updatedComponent.length && updatedComponent.width && updatedComponent.roll_width) ||
-          (formula === 'linear' && updatedComponent.length);
-        
-        if (shouldRecalculate) {
-          const baseConsumption = calculateConsumption(
-            updatedComponent.length,
-            updatedComponent.width,
-            updatedComponent.roll_width,
-            formula
-          );
-          
-          if (baseConsumption) {
-            updatedComponent.baseConsumption = baseConsumption;
-            updatedComponent.consumption = productData.default_quantity 
-              ? (parseFloat(baseConsumption) * parseFloat(productData.default_quantity)).toFixed(4)
-              : baseConsumption;
-            
-            // Also calculate material cost if material_id and rate are present
-            if (updatedComponent.material_id && materialPrices[updatedComponent.material_id]) {
-              const materialRate = materialPrices[updatedComponent.material_id];
-              const consumptionValue = parseFloat(updatedComponent.consumption);
-              const materialCost = consumptionValue * materialRate;
-              updatedComponent.materialCost = materialCost;
-              updatedComponent.materialRate = materialRate;
-            }
-          }
+      // If dimensions are changed, reset manual flag and recalculate
+      if (['length', 'width', 'roll_width'].includes(field)) {
+        updatedComponent.is_manual_consumption = false;
+        // Preserve the original formula - only reset if it was manual
+        if (updatedComponent.formula === 'manual') {
+          updatedComponent.formula = 'standard';
         }
-      }
-      // If dimensions changed, check if we can calculate consumption based on formula
-      else if (['length', 'width', 'roll_width'].includes(field)) {
         const formula = updatedComponent.formula || 'standard';
         const shouldRecalculate = 
           (formula === 'standard' && updatedComponent.length && updatedComponent.width && updatedComponent.roll_width) ||
@@ -755,9 +711,32 @@ const CatalogNew = () => {
       }
       
       // Process components
+      console.log('Raw custom components before filtering:', customComponents);
+      
+      const filteredCustomComponents = customComponents.filter(comp => {
+        const hasData = comp.id || comp.customName || comp.color || comp.length || comp.width || comp.roll_width || comp.material_id || comp.consumption;
+        console.log('Component validation:', {
+          component: comp,
+          hasData,
+          reasons: {
+            hasId: !!comp.id,
+            hasCustomName: !!comp.customName,
+            hasColor: !!comp.color,
+            hasLength: !!comp.length,
+            hasWidth: !!comp.width,
+            hasRollWidth: !!comp.roll_width,
+            hasMaterialId: !!comp.material_id,
+            hasConsumption: !!comp.consumption
+          }
+        });
+        return hasData;
+      });
+      
+      console.log('Filtered custom components:', filteredCustomComponents);
+      
       const allComponents = [
         ...Object.values(components).filter(Boolean),
-        ...customComponents.filter(comp => comp.customName || comp.color || comp.length || comp.width || comp.roll_width)
+        ...filteredCustomComponents
       ];
       
       if (allComponents.length > 0) {
@@ -774,7 +753,9 @@ const CatalogNew = () => {
           material_id: comp.material_id || null,
           material_linked: comp.material_id ? true : false,
           consumption: comp.consumption || null,  // Save the calculated consumption
-          formula: comp.formula || 'standard'  // Save the formula used for consumption calculation
+          formula: comp.formula || 'standard',  // Save the formula used for consumption calculation
+          is_manual_consumption: comp.is_manual_consumption || false,
+          updated_at: new Date().toISOString()
         }));
         
         // Insert components

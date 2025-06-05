@@ -11,7 +11,9 @@ export const StandardComponentsSection: React.FC = () => {
   const { 
     components, 
     handleComponentChange, 
-    defaultQuantity 
+    defaultQuantity,
+    handleFormulaChange,
+    handleConsumptionCalculated
   } = useComponentContext();
 
   return (
@@ -21,6 +23,8 @@ export const StandardComponentsSection: React.FC = () => {
       onChange={handleComponentChange}
       defaultQuantity={defaultQuantity}
       showConsumption={true}
+      onFormulaChange={handleFormulaChange}
+      onConsumptionCalculated={handleConsumptionCalculated}
     />
   );
 };
