@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OrderDetailsForm } from "@/components/orders/OrderDetailsForm";
 import { StandardComponents } from "@/components/orders/StandardComponents";
@@ -15,7 +15,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { OrderFormOptimizer, setupCacheInterceptor, optimizeComponentRendering } from "@/components/optimization/OrderFormOptimizer";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const componentOptions = {
   color: ["Red", "Blue", "Green", "Black", "White", "Yellow", "Brown", "Orange", "Purple", "Gray", "Custom"],
@@ -24,6 +24,8 @@ const componentOptions = {
 
 const OrderNew = () => {
   const navigate = useNavigate();
+  const [showAdvancedSections, setShowAdvancedSections] = useState(false);
+  
   const {
     orderDetails,
     components,
@@ -102,9 +104,7 @@ const OrderNew = () => {
         </div>
       </div>
       
-      {/* Debug information card removed */}
-      
-      <form onSubmit={onSubmit} className="space-y-6">
+      {/* Debug information card removed */}      <form onSubmit={onSubmit} className="space-y-6">
         <OrderDetailsForm 
           formData={orderDetails}
           handleOrderChange={handleOrderChange}
@@ -113,63 +113,97 @@ const OrderNew = () => {
           updateConsumptionBasedOnQuantity={updateConsumptionBasedOnQuantity}
         />
         
-        <Card>
-          <CardHeader>
-            <CardTitle>Bag Components</CardTitle>
-            <CardDescription className="flex justify-between items-center">
-              <span>Specify the details for each component of the bag</span>
-              {totalConsumption > 0 && (
-                <span className="font-medium text-sm bg-blue-50 text-blue-800 px-3 py-1 rounded-full">
-                  Total Consumption: {totalConsumption.toFixed(2)} meters
-                </span>
-              )}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-8">
-              <StandardComponents 
-                components={components}
-                componentOptions={componentOptions}
-                onChange={handleComponentChange}
-                defaultQuantity={orderDetails.total_quantity || orderDetails.quantity}
-                showConsumption={true}
-              />
-              
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-medium">Custom Components</h2>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-1"
-                    onClick={addCustomComponent}
-                  >
-                    + Add Custom Component
-                  </Button>
+        {/* See More Button */}
+        {!showAdvancedSections && (
+          <div className="flex justify-center">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowAdvancedSections(true)}
+              className="flex items-center gap-2"
+            >
+              <span>See More</span>
+              <ChevronDown size={16} />
+            </Button>
+          </div>
+        )}
+          {/* Collapsible Advanced Sections */}
+        {showAdvancedSections && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Bag Components</CardTitle>
+                  <CardDescription className="flex justify-between items-center">
+                    <span>Specify the details for each component of the bag</span>
+                    {totalConsumption > 0 && (
+                      <span className="font-medium text-sm bg-blue-50 text-blue-800 px-3 py-1 rounded-full">
+                        Total Consumption: {totalConsumption.toFixed(2)} meters
+                      </span>
+                    )}
+                  </CardDescription>
                 </div>
-                
-                <CustomComponentSection
-                  customComponents={customComponents}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAdvancedSections(false)}
+                  className="flex items-center gap-1"
+                >
+                  <span>Show Less</span>
+                  <ChevronUp size={16} />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-8">
+                <StandardComponents 
+                  components={components}
                   componentOptions={componentOptions}
-                  handleCustomComponentChange={handleCustomComponentChange}
-                  removeCustomComponent={removeCustomComponent}
+                  onChange={handleComponentChange}
                   defaultQuantity={orderDetails.total_quantity || orderDetails.quantity}
                   showConsumption={true}
                 />
+                
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-medium">Custom Components</h2>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-1"
+                      onClick={addCustomComponent}
+                    >
+                      + Add Custom Component
+                    </Button>
+                  </div>
+                    <CustomComponentSection
+                    customComponents={customComponents}
+                    componentOptions={componentOptions}
+                    handleCustomComponentChange={handleCustomComponentChange}
+                    removeCustomComponent={removeCustomComponent}
+                    defaultQuantity={orderDetails.total_quantity || orderDetails.quantity}
+                    showConsumption={true}
+                  />
+                </div>
+                
+                {/* Add Cost Calculation Display */}
+                {costCalculation && (
+                  <CostCalculationDisplay 
+                    costCalculation={costCalculation}
+                    onMarginChange={updateMargin}
+                  />
+                )}
               </div>
-              
-              {/* Add Cost Calculation Display */}
-              {costCalculation && (
-                <CostCalculationDisplay 
-                  costCalculation={costCalculation}
-                  onMarginChange={updateMargin}
-                />
-              )}
-            </div>
-          </CardContent>
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* Form Actions - Always visible, moved outside of collapsible section */}
+        <Card>
           <CardFooter>
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 w-full">
               <Button
                 type="button"
                 variant="outline"

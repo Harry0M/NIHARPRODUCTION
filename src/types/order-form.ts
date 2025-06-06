@@ -1,5 +1,6 @@
 
 import { OrderFormData } from "@/types/order";
+import { ConsumptionFormulaType } from "@/components/production/ConsumptionCalculator";
 
 export interface Component {
   id: string;
@@ -17,9 +18,8 @@ export interface Component {
   material_id?: string;
   // New fields for tracking final consumption values
   finalConsumptionValue?: string;
-  exactConsumption?: string;
-  // Additional fields for cost calculation
-  formula?: string;
+  exactConsumption?: string;  // Additional fields for cost calculation
+  formula?: ConsumptionFormulaType;
   component_cost?: number;
   component_cost_breakdown?: {
     material_cost: number;

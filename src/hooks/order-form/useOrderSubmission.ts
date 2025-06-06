@@ -244,9 +244,20 @@ export function useOrderSubmission({
       console.log("Raw components to be saved:", allComponents);
       console.log("Number of components before validation:", allComponents.length);
       
-      if (allComponents.length > 0) {
+      // MANUAL FORMULA PROCESSING: Skip additional processing as manual formulas 
+      // are already handled in useOrderComponents.ts during real-time updates
+      const orderQuantity = parseInt(orderDetails.order_quantity || orderDetails.quantity || '1');
+      console.log("Order quantity for reference:", orderQuantity);
+      
+      // Use components as-is since manual formulas have already been processed in useOrderComponents
+      const processedComponents = allComponents;
+      
+      console.log("Using components without additional manual formula processing to prevent double multiplication");
+      console.log("Manual formulas are already processed in useOrderComponents.ts");
+      
+      if (processedComponents.length > 0) {
         // Create a properly formatted array of components with correct data types
-        const componentsToInsert = allComponents
+        const componentsToInsert = processedComponents
           .filter(comp => {
             const isValid = validateComponentData(comp);
             if (!isValid) {
@@ -306,8 +317,12 @@ export function useOrderSubmission({
             // Convert string values to numbers where appropriate
             const gsmValue = convertStringToNumeric(comp.gsm);
             const rollWidthValue = convertStringToNumeric(comp.roll_width);
-            const consumptionValue = convertStringToNumeric(comp.consumption);
-            const materialCost = convertStringToNumeric(comp.materialCost);
+            const consumptionValue = convertStringToNumeric(
+              typeof comp.consumption === 'string' ? comp.consumption : String(comp.consumption || 0)
+            );
+            const materialCost = convertStringToNumeric(
+              typeof comp.materialCost === 'string' ? comp.materialCost : String(comp.materialCost || 0)
+            );
             
             // Get component cost breakdown
             const componentCostBreakdown = comp.componentCostBreakdown || null;

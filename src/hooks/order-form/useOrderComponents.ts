@@ -2,9 +2,22 @@
 import { useState, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Component, CostCalculation } from "@/types/order-form";
+import { isManualFormula, ProcessedComponent } from "@/utils/manualFormulaProcessor";
+
+// Extended component interface to track original consumption for manual formulas
+interface ExtendedComponent extends Component {
+  originalConsumption?: number;
+  is_manual_consumption?: boolean;
+  [key: string]: unknown;
+}
+
+// Extended custom component interface
+interface ExtendedCustomComponent extends Component {
+  originalConsumption?: number;
+}
 
 export function useOrderComponents() {
-  const [components, setComponents] = useState<Record<string, any>>({});
+  const [components, setComponents] = useState<Record<string, ExtendedComponent>>({});
   const [customComponents, setCustomComponents] = useState<Component[]>([]);
   const [baseConsumptions, setBaseConsumptions] = useState<Record<string, number>>({});
   const [costCalculation, setCostCalculation] = useState<CostCalculation>({
@@ -104,8 +117,7 @@ export function useOrderComponents() {
     // Update consumption for standard components
     const updatedComponents = { ...components };
     let anyUpdated = false;
-    
-    Object.keys(updatedComponents).forEach(type => {
+      Object.keys(updatedComponents).forEach(type => {
       const component = updatedComponents[type];
       const baseConsumption = baseConsumptions[type];
       
@@ -120,16 +132,30 @@ export function useOrderComponents() {
         const safeBaseConsumption = Math.max(baseConsumption, 0.001);
         
         // Calculate new consumption based on quantity
-        const newConsumption = safeBaseConsumption * quantity;
+        let newConsumption = safeBaseConsumption * quantity;
         
-        console.log(`%c Component ${type}: Base = ${safeBaseConsumption}, Qty = ${quantity}, New = ${newConsumption}`, 
-          'background: #2196F3; color: white; padding: 2px 5px;');
+        // Handle manual formulas - multiply consumption by quantity for real-time updates
+        if (isManualFormula(component)) {
+          // For manual formulas, store original consumption if not already stored
+          if (!component.originalConsumption) {
+            component.originalConsumption = safeBaseConsumption;
+          }
+          // For manual formulas, multiply the original consumption by quantity
+          newConsumption = component.originalConsumption * quantity;
+          console.log(`%c Manual Formula Component ${type}: Original = ${component.originalConsumption}, Qty = ${quantity}, New = ${newConsumption}`, 
+            'background: #FF5722; color: white; padding: 2px 5px; font-weight: bold;');
+        } else {
+          console.log(`%c Component ${type}: Base = ${safeBaseConsumption}, Qty = ${quantity}, New = ${newConsumption}`, 
+            'background: #2196F3; color: white; padding: 2px 5px;');
+        }
         
         updatedComponents[type] = {
           ...component,
           baseConsumption: safeBaseConsumption.toFixed(6), // Increased precision
           consumption: newConsumption.toFixed(4),
-          materialCost: newConsumption * (component.materialRate || 0)
+          materialCost: newConsumption * (component.materialRate || 0),
+          // Preserve originalConsumption for manual formulas
+          ...(isManualFormula(component) && { originalConsumption: component.originalConsumption || safeBaseConsumption })
         };
         anyUpdated = true;
       }
@@ -138,9 +164,7 @@ export function useOrderComponents() {
     // Only update components if changes were made
     if (anyUpdated) {
       setComponents(updatedComponents);
-    }
-
-    // Update consumption for custom components
+    }    // Update consumption for custom components
     const updatedCustomComponents = customComponents.map((component, idx) => {
       // Skip if this component already has a final consumption value
       if (component.finalConsumptionValue || component.exactConsumption) {
@@ -154,17 +178,34 @@ export function useOrderComponents() {
         const safeBaseConsumption = Math.max(baseConsumption, 0.001);
         
         // Calculate new consumption based on quantity
-        const newConsumption = safeBaseConsumption * quantity;
-        
-        console.log(`%c Custom component ${idx}: Base = ${safeBaseConsumption}, Qty = ${quantity}, New = ${newConsumption}`,
-          'background: #9C27B0; color: white; padding: 2px 5px;');
-        
-        return {
-          ...component,
-          baseConsumption: safeBaseConsumption.toFixed(6), // Increased precision
-          consumption: newConsumption.toFixed(4),
-          materialCost: newConsumption * (component.materialRate || 0)
-        };
+        let newConsumption = safeBaseConsumption * quantity;
+          // Handle manual formulas for custom components
+        if (isManualFormula(component as ProcessedComponent)) {
+          // For manual formulas, store original consumption if not already stored
+          const originalConsumption = (component as any).originalConsumption || safeBaseConsumption;
+          // For manual formulas, multiply the original consumption by quantity
+          newConsumption = originalConsumption * quantity;
+          console.log(`%c Manual Formula Custom Component ${idx}: Original = ${originalConsumption}, Qty = ${quantity}, New = ${newConsumption}`,
+            'background: #FF5722; color: white; padding: 2px 5px; font-weight: bold;');
+          
+          return {
+            ...component,
+            baseConsumption: safeBaseConsumption.toFixed(6), // Increased precision
+            consumption: newConsumption.toFixed(4),
+            materialCost: newConsumption * (component.materialRate || 0),
+            originalConsumption: originalConsumption
+          };
+        } else {
+          console.log(`%c Custom component ${idx}: Base = ${safeBaseConsumption}, Qty = ${quantity}, New = ${newConsumption}`,
+            'background: #9C27B0; color: white; padding: 2px 5px;');
+          
+          return {
+            ...component,
+            baseConsumption: safeBaseConsumption.toFixed(6), // Increased precision
+            consumption: newConsumption.toFixed(4),
+            materialCost: newConsumption * (component.materialRate || 0)
+          };
+        }
       }
       return component;
     });

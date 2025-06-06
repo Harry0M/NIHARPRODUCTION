@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Formula Processing - Browser Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background-color: #fafafa;
+        }
+        
+        .test-section h3 {
+            margin-top: 0;
+            color: #555;
+        }
+        
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        
+        .pass {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .fail {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .component-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        
+        .component-card {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+        
+        .component-card h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        
+        .component-details {
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        .summary {
+            background-color: #e9ecef;
+            padding: 20px;
+            border-radius: 6px;
+            margin-top: 20px;
+        }
+        
+        .summary h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Manual Formula Processing - Browser Test</h1>
+        
+        <div class="test-section">
+            <h3>Test Components</h3>
+            <div class="info">
+                <strong>Order Quantity:</strong> <span id="orderQuantity">5</span><br>
+                <strong>Test Components:</strong> 4 (3 manual, 1 standard)
+            </div>
+            
+            <div class="component-grid" id="componentGrid">
+                <!-- Components will be rendered here -->
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test Controls</h3>
+            <button onclick="runAllTests()">🧪 Run All Tests</button>
+            <button onclick="processComponents()">⚡ Process Components</button>
+            <button onclick="showComponentDetails()">📋 Show Component Details</button>
+            <button onclick="clearResults()">🧹 Clear Results</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test Results</h3>
+            <div id="testResults">
+                Click "Run All Tests" to start testing...
+            </div>
+        </div>
+        
+        <div class="summary">
+            <h3>📊 Summary</h3>
+            <div id="summaryResults">
+                No tests run yet.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Manual Formula Processing Functions (inline for browser testing)
+        
+        function isManualFormula(component) {
+            if (!component) return false;
+            
+            const hasManualFormula = component.formula === 'manual';
+            const hasManualConsumption = component.is_manual_consumption === true;
+            
+            return hasManualFormula || hasManualConsumption;
+        }
+        
+        function processManualFormulaConsumption(component, orderQuantity) {
+            if (!component || !isManualFormula(component)) {
+                return component;
+            }
+            
+            const currentConsumption = parseFloat(String(component.consumption || 0));
+            
+            if (!component.originalConsumption) {
+                component.originalConsumption = currentConsumption;
+            }
+            
+            const processedConsumption = currentConsumption * orderQuantity;
+            
+            return {
+                ...component,
+                consumption: processedConsumption,
+                originalConsumption: currentConsumption
+            };
+        }
+        
+        function processOrderComponents(components, orderQuantity) {
+            if (!components || components.length === 0) {
+                return components;
+            }
+            
+            if (!orderQuantity || orderQuantity <= 0) {
+                console.warn("Invalid order quantity:", orderQuantity);
+                return components;
+            }
+            
+            return components.map(component => {
+                if (isManualFormula(component)) {
+                    return processManualFormulaConsumption(component, orderQuantity);
+                }
+                return component;
+            });
+        }
+        
+        // Test Data
+        const testComponents = [
+            {
+                id: '1',
+                type: 'part',
+                formula: 'manual',
+                is_manual_consumption: true,
+                consumption: '2.5',
+                material_id: 'mat1',
+                color: 'Blue'
+            },
+            {
+                id: '2', 
+                type: 'border',
+                formula: 'standard',
+                is_manual_consumption: false,
+                consumption: '1.2',
+                material_id: 'mat2',
+                color: 'Red'
+            },
+            {
+                id: '3',
+                type: 'handle',
+                formula: 'linear',
+                is_manual_consumption: true,
+                consumption: '0.8',
+                material_id: 'mat3',
+                color: 'Green'
+            },
+            {
+                id: '4',
+                type: 'custom',
+                formula: 'manual',
+                is_manual_consumption: true,
+                consumption: 3.0,
+                material_id: 'mat4',
+                color: 'Yellow'
+            }
+        ];
+        
+        const orderQuantity = 5;
+        let processedComponents = [];
+        
+        // UI Functions
+        
+        function renderComponents() {
+            const grid = document.getElementById('componentGrid');
+            grid.innerHTML = '';
+            
+            testComponents.forEach((comp, index) => {
+                const isManual = isManualFormula(comp);
+                const card = document.createElement('div');
+                card.className = 'component-card';
+                card.style.borderLeft = isManual ? '4px solid #28a745' : '4px solid #6c757d';
+                
+                card.innerHTML = `
+                    <h4>${comp.type.toUpperCase()} (${comp.color})</h4>
+                    <div class="component-details">
+                        <strong>Formula:</strong> ${comp.formula}<br>
+                        <strong>Manual:</strong> ${comp.is_manual_consumption ? 'Yes' : 'No'}<br>
+                        <strong>Consumption:</strong> ${comp.consumption}<br>
+                        <strong>Material ID:</strong> ${comp.material_id}<br>
+                        <strong>Is Manual Formula:</strong> ${isManual ? '✅ Yes' : '❌ No'}
+                    </div>
+                `;
+                
+                grid.appendChild(card);
+            });
+        }
+        
+        function addResult(message, type = 'info') {
+            const results = document.getElementById('testResults');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.innerHTML = message;
+            results.appendChild(resultDiv);
+        }
+        
+        function clearResults() {
+            document.getElementById('testResults').innerHTML = 'Results cleared.';
+            document.getElementById('summaryResults').innerHTML = 'No tests run yet.';
+        }
+        
+        function runAllTests() {
+            clearResults();
+            addResult('🧪 Starting Manual Formula Processing Tests...', 'info');
+            
+            // Test 1: Manual Formula Identification
+            addResult('<strong>Test 1: Manual Formula Identification</strong>', 'info');
+            
+            let identificationPassed = true;
+            testComponents.forEach((comp, index) => {
+                const isManual = isManualFormula(comp);
+                const expected = comp.formula === 'manual' || comp.is_manual_consumption === true;
+                const passed = isManual === expected;
+                
+                if (!passed) identificationPassed = false;
+                
+                addResult(
+                    `Component ${index + 1} (${comp.type}): ${passed ? '✅ PASS' : '❌ FAIL'} - Expected: ${expected}, Got: ${isManual}`,
+                    passed ? 'pass' : 'fail'
+                );
+            });
+            
+            // Test 2: Process Components
+            addResult('<strong>Test 2: Manual Formula Processing</strong>', 'info');
+            
+            processedComponents = processOrderComponents([...testComponents], orderQuantity);
+            
+            let processingPassed = true;
+            processedComponents.forEach((comp, index) => {
+                if (isManualFormula(comp)) {
+                    const originalConsumption = parseFloat(String(testComponents[index].consumption));
+                    const expectedConsumption = originalConsumption * orderQuantity;
+                    const actualConsumption = parseFloat(String(comp.consumption));
+                    const passed = Math.abs(expectedConsumption - actualConsumption) < 0.001;
+                    
+                    if (!passed) processingPassed = false;
+                    
+                    addResult(
+                        `Component ${index + 1} (${comp.type}): ${passed ? '✅ PASS' : '❌ FAIL'} - Original: ${originalConsumption}, Expected: ${expectedConsumption}, Actual: ${actualConsumption}`,
+                        passed ? 'pass' : 'fail'
+                    );
+                }
+            });
+            
+            // Test 3: Summary
+            addResult('<strong>Test 3: Summary</strong>', 'info');
+            
+            const manualComponents = processedComponents.filter(comp => isManualFormula(comp));
+            const totalOriginal = manualComponents.reduce((total, comp) => 
+                total + parseFloat(String(comp.originalConsumption || 0)), 0);
+            const totalProcessed = manualComponents.reduce((total, comp) => 
+                total + parseFloat(String(comp.consumption || 0)), 0);
+            const expectedTotal = totalOriginal * orderQuantity;
+            const calculationCorrect = Math.abs(totalProcessed - expectedTotal) < 0.001;
+            
+            addResult(
+                `Manual components: ${manualComponents.length}, Total original: ${totalOriginal}, Total processed: ${totalProcessed}, Expected: ${expectedTotal}`,
+                'info'
+            );
+            
+            addResult(
+                `Overall calculation: ${calculationCorrect ? '✅ PASS' : '❌ FAIL'}`,
+                calculationCorrect ? 'pass' : 'fail'
+            );
+            
+            // Update summary
+            const allPassed = identificationPassed && processingPassed && calculationCorrect;
+            document.getElementById('summaryResults').innerHTML = `
+                <strong>Overall Result:</strong> ${allPassed ? '✅ ALL TESTS PASSED' : '❌ SOME TESTS FAILED'}<br>
+                <strong>Identification Test:</strong> ${identificationPassed ? '✅ PASS' : '❌ FAIL'}<br>
+                <strong>Processing Test:</strong> ${processingPassed ? '✅ PASS' : '❌ FAIL'}<br>
+                <strong>Calculation Test:</strong> ${calculationCorrect ? '✅ PASS' : '❌ FAIL'}<br>
+                <strong>Manual Components:</strong> ${manualComponents.length}/${testComponents.length}<br>
+                <strong>Total Consumption:</strong> ${totalOriginal} → ${totalProcessed} (${orderQuantity}x)
+            `;
+        }
+        
+        function processComponents() {
+            processedComponents = processOrderComponents([...testComponents], orderQuantity);
+            addResult(`✅ Processed ${processedComponents.length} components with order quantity ${orderQuantity}`, 'pass');
+            
+            const manualCount = processedComponents.filter(comp => isManualFormula(comp)).length;
+            addResult(`📊 Found ${manualCount} manual formula components`, 'info');
+        }
+        
+        function showComponentDetails() {
+            addResult('<strong>Component Processing Details:</strong>', 'info');
+            
+            (processedComponents.length > 0 ? processedComponents : testComponents).forEach((comp, index) => {
+                const isManual = isManualFormula(comp);
+                const details = `
+                    Component ${index + 1}: ${comp.type} (${comp.color})<br>
+                    - Formula: ${comp.formula}<br>
+                    - Manual: ${isManual ? 'Yes' : 'No'}<br>
+                    - Consumption: ${comp.consumption}<br>
+                    ${comp.originalConsumption ? `- Original: ${comp.originalConsumption}<br>` : ''}
+                    - Material: ${comp.material_id}
+                `;
+                addResult(details, isManual ? 'pass' : 'info');
+            });
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            renderComponents();
+            document.getElementById('orderQuantity').textContent = orderQuantity;
+        });
+    </script>
+</body>
+</html>
