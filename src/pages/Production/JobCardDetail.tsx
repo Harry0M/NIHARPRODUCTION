@@ -213,7 +213,16 @@ const JobCardDetail = () => {
             </div>
           )}
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/orders/${jobCard?.order.id}/edit`)}
+            disabled={loading || !jobCard}
+          >
+            <File size={16} className="mr-1" />
+            Edit Order
+          </Button>
           <DownloadButton 
             label="Download Details" 
             onCsvClick={handleDownloadCSV}

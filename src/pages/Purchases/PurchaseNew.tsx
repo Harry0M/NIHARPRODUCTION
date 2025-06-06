@@ -31,7 +31,7 @@ import {
 interface Supplier {
   id: string;
   name: string;
-  gst: string | null;
+  gst?: string | null;
   [key: string]: any;
 }
 
@@ -55,6 +55,8 @@ interface PurchaseItem {
   line_total: number;
   alt_quantity?: number;
   alt_unit_price?: number;
+  gst?: number; // GST percentage
+  gst_amount?: number; // Calculated GST amount
   // For transport charge calculations
   transport_share?: number;
   true_unit_price?: number;
@@ -87,7 +89,7 @@ const PurchaseNew = () => {
     const fetchSuppliers = async () => {
       const { data, error } = await supabase
         .from("suppliers")
-        .select("id, name, gst")
+        .select("id, name")
         .eq('status', 'active')
         .order("name");
       
@@ -156,37 +158,64 @@ const PurchaseNew = () => {
   
   // Calculate subtotal, total, and transport charge allocation
   useEffect(() => {
-    const newSubtotal = purchaseItems.reduce(
-      (sum, item) => sum + (item.line_total || 0),
+    // First calculate base amounts and GST for each item
+    const itemsWithGST = purchaseItems.map(item => {
+      const baseAmount = item.line_total || 0;
+      const gstAmount = (baseAmount * (item.gst || 0)) / 100;
+      const totalWithGST = baseAmount + gstAmount;
+      
+      return {
+        ...item,
+        gst_amount: gstAmount,
+        total_with_gst: totalWithGST,
+        transport_share: 0, // Reset transport share
+        true_unit_price: item.unit_price, // Reset true unit price
+        true_line_total: totalWithGST // Reset true line total
+      };
+    });
+
+    // Calculate subtotal (sum of all items with GST)
+    const newSubtotal = itemsWithGST.reduce(
+      (sum, item) => sum + item.total_with_gst,
       0
     );
     setSubtotal(newSubtotal);
-    setTotalAmount(newSubtotal + (transportCharge || 0));
-    
-    // Calculate transport charge allocation based on weight (kg)
-    const totalWeight = purchaseItems.reduce(
-      (sum, item) => sum + (item.alt_quantity || 0),
-      0
-    );
-    
-    if (totalWeight > 0 && transportCharge > 0) {
-      const perKgTransportCharge = transportCharge / totalWeight;
+
+    // Only calculate transport charges if there is a transport charge
+    if (transportCharge > 0) {
+      // Calculate transport charge allocation based on weight (kg)
+      const totalWeight = itemsWithGST.reduce(
+        (sum, item) => sum + (item.alt_quantity || 0),
+        0
+      );
       
-      // Update each item with its transport share and true cost
-      setPurchaseItems(purchaseItems.map(item => {
-        const weight = item.alt_quantity || 0;
-        const transportShare = weight * perKgTransportCharge;
-        const trueUnitPrice = item.unit_price + (transportShare / (item.quantity || 1));
-        const trueLineTotal = trueUnitPrice * (item.quantity || 0);
+      if (totalWeight > 0) {
+        const perKgTransportCharge = transportCharge / totalWeight;
         
-        return {
-          ...item,
-          transport_share: transportShare,
-          true_unit_price: trueUnitPrice,
-          true_line_total: trueLineTotal
-        };
-      }));
+        // Update each item with its transport share and true cost
+        setPurchaseItems(itemsWithGST.map(item => {
+          const weight = item.alt_quantity || 0;
+          const transportShare = weight * perKgTransportCharge;
+          const totalWithGSTAndTransport = item.total_with_gst + transportShare;
+          const trueUnitPrice = totalWithGSTAndTransport / (item.quantity || 1);
+          
+          return {
+            ...item,
+            transport_share: transportShare,
+            true_unit_price: trueUnitPrice,
+            true_line_total: totalWithGSTAndTransport
+          };
+        }));
+      } else {
+        setPurchaseItems(itemsWithGST);
+      }
+    } else {
+      // If no transport charge, just set the items without transport calculations
+      setPurchaseItems(itemsWithGST);
     }
+
+    // Set total amount (subtotal + transport charge)
+    setTotalAmount(newSubtotal + (transportCharge || 0));
   }, [purchaseItems, transportCharge]);
   
   const addPurchaseItem = () => {
@@ -200,7 +229,8 @@ const PurchaseNew = () => {
         unit_price: 0, 
         line_total: 0,
         alt_quantity: 0,
-        alt_unit_price: 0
+        alt_unit_price: 0,
+        gst: 0 // Initialize GST to 0
       }
     ]);
   };
@@ -372,6 +402,9 @@ const PurchaseNew = () => {
       
       // 2. Create purchase items
       for (const item of purchaseItems) {
+        const baseAmount = item.quantity * item.unit_price;
+        const gstAmount = (baseAmount * (item.gst || 0)) / 100;
+        
         const { error: itemError } = await supabase
           .from('purchase_items')
           .insert([
@@ -380,7 +413,9 @@ const PurchaseNew = () => {
               material_id: item.material_id,
               quantity: item.quantity,
               unit_price: item.unit_price,
-              line_total: item.line_total
+              line_total: item.line_total,
+              gst_percentage: item.gst || 0,
+              gst_amount: item.gst_amount || gstAmount
             }
           ]);
         
@@ -413,6 +448,53 @@ const PurchaseNew = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+  
+  const renderTotalCell = (item: PurchaseItem) => {
+    const baseAmount = item.line_total || 0;
+    const gstAmount = item.gst_amount || 0;
+    const transportShare = transportCharge > 0 ? (item.transport_share || 0) : 0;
+    const total = baseAmount + gstAmount + transportShare;
+
+    return (
+      <TableCell>
+        {formatCurrency(total)}
+        <div className="text-xs text-muted-foreground">
+          Base: {formatCurrency(baseAmount)}
+          {gstAmount > 0 && (
+            <>
+              <br />
+              GST: {formatCurrency(gstAmount)}
+            </>
+          )}
+          {transportShare > 0 && (
+            <>
+              <br />
+              Transport: {formatCurrency(transportShare)}
+            </>
+          )}
+        </div>
+      </TableCell>
+    );
+  };
+  
+  const renderTruePriceCell = (item: PurchaseItem) => {
+    const baseAmount = item.line_total || 0;
+    const gstAmount = item.gst_amount || 0;
+    const transportShare = transportCharge > 0 ? (item.transport_share || 0) : 0;
+    const total = baseAmount + gstAmount + transportShare;
+    const trueUnitPrice = item.quantity ? total / item.quantity : 0;
+
+    return (
+      <TableCell>
+        {formatCurrency(trueUnitPrice)}
+        <div className="text-xs text-muted-foreground">
+          per {item.material?.unit || 'unit'}
+          <br />
+          Total: {formatCurrency(total)}
+        </div>
+      </TableCell>
+    );
   };
   
   return (
@@ -511,6 +593,10 @@ const PurchaseNew = () => {
                         <div>True Price</div>
                         <div className="text-xs text-muted-foreground">(With transport)</div>
                       </TableHead>
+                      <TableHead>
+                        <div>GST</div>
+                        <div className="text-xs text-muted-foreground">(%)</div>
+                      </TableHead>
                       <TableHead>Total</TableHead>
                       <TableHead></TableHead>
                     </TableRow>
@@ -606,20 +692,25 @@ const PurchaseNew = () => {
                         <TableCell>
                           {formatCurrency(item.transport_share || 0)}
                         </TableCell>
+                        {renderTruePriceCell(item)}
                         <TableCell>
-                          {item.true_unit_price ? formatCurrency(item.true_unit_price) : 'N/A'}
-                          <div className="text-xs text-muted-foreground">
-                            per {item.material?.unit || 'unit'}
-                          </div>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            value={item.gst || ""}
+                            onChange={(e) =>
+                              updatePurchaseItem(
+                                item.id,
+                                "gst",
+                                parseFloat(e.target.value) || 0
+                              )
+                            }
+                            className="w-20"
+                          />
                         </TableCell>
-                        <TableCell>
-                          {formatCurrency(item.true_line_total || item.line_total || 0)}
-                          {item.true_line_total !== item.line_total && (
-                            <div className="text-xs text-muted-foreground">
-                              Base: {formatCurrency(item.line_total || 0)}
-                            </div>
-                          )}
-                        </TableCell>
+                        {renderTotalCell(item)}
                         <TableCell>
                           <Button
                             variant="ghost"
@@ -697,25 +788,30 @@ const PurchaseNew = () => {
                     type="number"
                     min="0"
                     step="0.01"
-                    value={transportCharge || ""}
-                    onChange={(e) =>
-                      setTransportCharge(parseFloat(e.target.value) || 0)
-                    }
+                    value={transportCharge === 0 ? "0" : transportCharge || ""}
+                    onChange={(e) => {
+                      const value = e.target.value === "" ? 0 : parseFloat(e.target.value);
+                      setTransportCharge(value);
+                    }}
                     className="w-full"
                   />
-                  {transportCharge > 0 && purchaseItems.length > 0 && (
-                    <div className="text-xs text-muted-foreground">
-                      Total weight: {purchaseItems.reduce((sum, item) => sum + (item.alt_quantity || 0), 0).toFixed(2)} kg
-                      <br />
-                      Per kg rate: {formatCurrency(transportCharge / purchaseItems.reduce((sum, item) => sum + (item.alt_quantity || 0), 0))}
-                    </div>
-                  )}
                 </div>
               </div>
               
-              <div className="rounded-md border p-4 space-y-2">
+              <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Subtotal:</span>
+                  <span className="text-muted-foreground">Subtotal (Before GST):</span>
+                  <span>{formatCurrency(purchaseItems.reduce((sum, item) => sum + (item.line_total || 0), 0))}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Total GST:</span>
+                  <span>{formatCurrency(purchaseItems.reduce((sum, item) => {
+                    const baseAmount = item.line_total || 0;
+                    return sum + (baseAmount * (item.gst || 0)) / 100;
+                  }, 0))}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Subtotal (After GST):</span>
                   <span>{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="flex justify-between items-center">

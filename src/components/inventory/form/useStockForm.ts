@@ -22,8 +22,19 @@ export function useStockForm({ stockId, onSuccess }: UseStockFormProps = {}) {
   const { data: suppliers } = useQuery({
     queryKey: ["suppliers"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("suppliers").select("id, name");
-      if (error) throw error;
+      console.log("Fetching suppliers...");
+      const { data, error } = await supabase
+        .from("suppliers")
+        .select("id, name, status")
+        .eq('status', 'active')
+        .order("name");
+      
+      if (error) {
+        console.error("Error fetching suppliers:", error);
+        throw error;
+      }
+      
+      console.log("Fetched suppliers:", data);
       return data || [];
     },
   });
@@ -73,51 +84,59 @@ export function useStockForm({ stockId, onSuccess }: UseStockFormProps = {}) {
 
   const createStockMutation = useMutation({
     mutationFn: async (values: StockFormValues) => {
-      // Make sure all required fields are present and valid
-      if (!values.material_name || values.material_name.trim() === '') {
-        throw new Error("Material name is required");
-      }
+      try {
+        // Make sure all required fields are present and valid
+        if (!values.material_name || values.material_name.trim() === '') {
+          throw new Error("Material name is required");
+        }
 
-      if (!values.unit || values.unit.trim() === '') {
-        throw new Error("Unit is required");
-      }
+        if (!values.unit || values.unit.trim() === '') {
+          throw new Error("Unit is required");
+        }
 
-      // Create a properly typed object for insertion
-      const stockData = {
-        material_name: values.material_name.trim(),
-        color: values.color || null,
-        gsm: values.gsm || null,
-        quantity: values.quantity,
-        unit: values.unit,
-        alternate_unit: hasAlternateUnit ? values.alternate_unit || null : null,
-        conversion_rate: hasAlternateUnit ? values.conversion_rate || 0 : 0,
-        track_cost: false, // Always set to false since we're removing this option
-        purchase_price: null, // Set to null since we're not tracking cost
-        selling_price: null, // Set to null since we're not tracking cost
-        supplier_id: values.supplier_id && values.supplier_id !== "" && values.supplier_id !== "none" ? values.supplier_id : null,
-        reorder_level: values.reorder_level || null,
-        purchase_rate: values.purchase_rate || null, // Keep purchase rate
-      };
-      
-      console.log("Submitting stock data:", stockData);
-      const { data, error } = await supabase.from("inventory").insert(stockData).select();
-      if (error) throw error;
-      return data;
+        // Create a properly typed object for insertion
+        const stockData = {
+          material_name: values.material_name.trim(),
+          color: values.color || null,
+          gsm: values.gsm || null,
+          quantity: values.quantity,
+          unit: values.unit,
+          alternate_unit: hasAlternateUnit ? values.alternate_unit || null : null,
+          conversion_rate: hasAlternateUnit ? values.conversion_rate || 0 : 0,
+          track_cost: false, // Always set to false since we're removing this option
+          purchase_price: null, // Set to null since we're not tracking cost
+          selling_price: null, // Set to null since we're not tracking cost
+          supplier_id: values.supplier_id && values.supplier_id !== "" && values.supplier_id !== "none" ? values.supplier_id : null,
+          reorder_level: values.reorder_level || null,
+          purchase_rate: values.purchase_rate || null, // Keep purchase rate
+        };
+        
+        const { data, error } = await supabase
+          .from("inventory")
+          .insert(stockData)
+          .select();
+          
+        if (error) throw error;
+        return data;
+      } catch (error) {
+        console.error("Error creating stock:", error);
+        throw error;
+      }
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       toast({
         title: "Stock created successfully",
-        description: "New stock item has been added to inventory",
+        description: "The stock item has been created",
       });
       
       // Call the onSuccess callback if provided
       if (onSuccess && data && data[0]) {
         onSuccess(data[0].id);
-      } else {
-        // Use window.location.href instead of navigate for reliable page refresh
-        window.location.href = "/inventory/stock";
       }
+
+      // Navigate to stock home page
+      window.location.href = "/inventory/stock";
     },
     onError: (error) => {
       console.error("Error creating stock:", error);

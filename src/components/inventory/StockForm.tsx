@@ -28,10 +28,22 @@ export const StockForm = ({ stockId, onSuccess }: StockFormProps) => {
     onSuccess 
   });
 
+  // Add console logging to debug suppliers
+  console.log("Suppliers in StockForm:", suppliers);
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Add error state handling
+  if (!suppliers) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <p className="text-destructive">Error loading suppliers. Please try again.</p>
       </div>
     );
   }

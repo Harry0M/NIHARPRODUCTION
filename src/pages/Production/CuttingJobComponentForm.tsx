@@ -1,4 +1,3 @@
-
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Component } from "@/types/order";
@@ -65,41 +64,48 @@ export function CuttingJobComponentForm({
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          {components.map((component, index) => (
-            <div key={component.id} className="p-4 border rounded-md space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium capitalize">{component.component_type}</h3>
-                <div className="flex items-center gap-2 text-sm">
-                  {component.size && <span className="bg-slate-100 px-2 py-1 rounded">Size: {component.size}</span>}
-                  {component.color && <span className="bg-slate-100 px-2 py-1 rounded">Color: {component.color}</span>}
-                  {component.gsm && <span className="bg-slate-100 px-2 py-1 rounded">GSM: {component.gsm}</span>}
+          {components
+            .map((component, index) => ({
+              component,
+              index,
+              consumption: parseFloat(componentData[index]?.consumption || "0") || 0
+            }))
+            .sort((a, b) => b.consumption - a.consumption)
+            .map(({ component, index }) => (
+              <div key={component.id} className="p-4 border rounded-md space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium capitalize">{component.component_type}</h3>
+                  <div className="flex items-center gap-2 text-sm">
+                    {component.size && <span className="bg-slate-100 px-2 py-1 rounded">Size: {component.size}</span>}
+                    {component.color && <span className="bg-slate-100 px-2 py-1 rounded">Color: {component.color}</span>}
+                    {component.gsm && <span className="bg-slate-100 px-2 py-1 rounded">GSM: {component.gsm}</span>}
+                  </div>
                 </div>
-              </div>
 
-              <ComponentMeasurements
-                width={componentData[index]?.width || ""}
-                height={componentData[index]?.height || ""}
-                counter={componentData[index]?.counter || ""}
-                rewinding={componentData[index]?.rewinding || ""}
-                roll_width={componentData[index]?.roll_width || ""}
-                consumption={componentData[index]?.consumption || ""}
-                materialName={component.inventory?.material_name || ""}
-                onMeasurementChange={handleMeasurementChange(index)}
-              />
+                <ComponentMeasurements
+                  width={componentData[index]?.width || ""}
+                  height={componentData[index]?.height || ""}
+                  counter={componentData[index]?.counter || ""}
+                  rewinding={componentData[index]?.rewinding || ""}
+                  roll_width={componentData[index]?.roll_width || ""}
+                  consumption={componentData[index]?.consumption || ""}
+                  materialName={component.inventory?.material_name || ""}
+                  onMeasurementChange={handleMeasurementChange(index)}
+                />
 
-              <div className="space-y-2">
-                <ComponentStatusSelect
-                  status={componentData[index]?.status || "pending"}
-                  onChange={(value) => handleComponentChange(index, "status", value)}
+                <div className="space-y-2">
+                  <ComponentStatusSelect
+                    status={componentData[index]?.status || "pending"}
+                    onChange={(value) => handleComponentChange(index, "status", value)}
+                  />
+                </div>
+
+                <ComponentNotes
+                  notes={componentData[index]?.notes || ""}
+                  onChange={(value) => handleComponentChange(index, "notes", value)}
                 />
               </div>
-
-              <ComponentNotes
-                notes={componentData[index]?.notes || ""}
-                onChange={(value) => handleComponentChange(index, "notes", value)}
-              />
-            </div>
-          ))}
+            ))}
         </div>
       </CardContent>
       <CardFooter className="flex justify-end gap-3 pt-4">

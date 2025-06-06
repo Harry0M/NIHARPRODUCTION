@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { File } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
@@ -70,26 +69,34 @@ export const OrderInfoCard = ({
       <div>
         <h3 className="text-md font-medium mb-2">Components</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {order.components?.length > 0 ? (
-            order.components.map((component) => (
+          {order.components
+            .filter(component => {
+              // Only show components that have at least one meaningful property
+              return (
+                component.size ||
+                component.color ||
+                component.gsm ||
+                component.width ||
+                component.length ||
+                component.consumption ||
+                component.roll_width
+              );
+            })
+            .map((component) => (
               <div key={component.id} className="border rounded-md p-3">
-                <p className="text-sm font-medium capitalize">
-                  {component.component_type === 'custom' && component.custom_name 
-                    ? component.custom_name 
-                    : component.component_type}
-                </p>
+                <p className="text-sm font-medium capitalize">{component.component_type}</p>
                 <div className="text-xs text-muted-foreground space-y-1 mt-1">
                   {component.size && <p>Size: {component.size}</p>}
                   {component.color && <p>Color: {component.color}</p>}
                   {component.gsm && <p>GSM: {component.gsm}</p>}
-                  {component.consumption && <p>Consumption: {component.consumption} meters</p>}
-                  {component.roll_width && <p>Roll Width: {component.roll_width} inches</p>}
+                  {component.width && component.length && (
+                    <p>Dimensions: {component.width}×{component.length}</p>
+                  )}
+                  {component.consumption && <p>Consumption: {component.consumption}</p>}
+                  {component.roll_width && <p>Roll Width: {component.roll_width}</p>}
                 </div>
               </div>
-            ))
-          ) : (
-            <p className="text-muted-foreground text-sm">No components specified</p>
-          )}
+            ))}
         </div>
       </div>
     </CardContent>

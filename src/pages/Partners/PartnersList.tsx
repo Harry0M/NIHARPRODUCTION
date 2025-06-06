@@ -37,7 +37,6 @@ const PartnersList = () => {
   const [partnerToDelete, setPartnerToDelete] = useState<{id: string, type: 'supplier' | 'vendor'} | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'all' | 'suppliers' | 'vendors'>('all');
   const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | 'all'>('active');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -45,179 +44,122 @@ const PartnersList = () => {
 
   useEffect(() => {
     fetchPartners();
-  }, [page, pageSize, searchTerm, activeTab, statusFilter]);
+  }, [page, pageSize, searchTerm, statusFilter]);
 
   const fetchPartners = async () => {
     setLoading(true);
     try {
-      // For pagination, we need to handle suppliers and vendors separately
-      if (activeTab === 'all' || activeTab === 'suppliers') {
-        // Fetch suppliers count
-        let suppliersCountQuery = supabase
-          .from("suppliers")
-          .select("id", { count: 'exact', head: true });
-        
-        // Apply status filter
-        if (statusFilter !== 'all') {
-          suppliersCountQuery = suppliersCountQuery.eq('status', statusFilter);
-        }
-        
-        if (searchTerm) {
-          suppliersCountQuery = suppliersCountQuery.or(
-            `name.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,materials_provided.ilike.%${searchTerm}%`
-          );
-        }
-        
-        const { count: suppliersCount, error: suppliersCountError } = await suppliersCountQuery;
-        
-        if (suppliersCountError) throw suppliersCountError;
-        
-        // Store suppliers count
-        const suppliersTotal = suppliersCount || 0;
-        
-        // If only showing suppliers, set total count now
-        if (activeTab === 'suppliers') {
-          setTotalCount(suppliersTotal);
-        }
-        
-        // If we're showing all, also fetch vendors count
-        if (activeTab === 'all') {
-          // Fetch vendors count
-          let vendorsCountQuery = supabase
-            .from("vendors")
-            .select("id", { count: 'exact', head: true });
-          
-          // Apply status filter
-          if (statusFilter !== 'all') {
-            vendorsCountQuery = vendorsCountQuery.eq('status', statusFilter);
-          }
-          
-          if (searchTerm) {
-            vendorsCountQuery = vendorsCountQuery.or(
-              `name.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,service_type.ilike.%${searchTerm}%`
-            );
-          }
-          
-          const { count: vendorsCount, error: vendorsCountError } = await vendorsCountQuery;
-          
-          if (vendorsCountError) throw vendorsCountError;
-          
-          // Set total count for both suppliers and vendors
-          setTotalCount((suppliersTotal || 0) + (vendorsCount || 0));
-        }
-      } else if (activeTab === 'vendors') {
-        // Fetch vendors count
-        let vendorsCountQuery = supabase
-          .from("vendors")
-          .select("id", { count: 'exact', head: true });
-        
-        if (searchTerm) {
-          vendorsCountQuery = vendorsCountQuery.or(
-            `name.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,service_type.ilike.%${searchTerm}%`
-          );
-        }
-        
-        const { count: vendorsCount, error: vendorsCountError } = await vendorsCountQuery;
-        
-        if (vendorsCountError) throw vendorsCountError;
-        
-        // Set total count for vendors only
-        setTotalCount(vendorsCount || 0);
+      // Fetch suppliers count
+      let suppliersCountQuery = supabase
+        .from("suppliers")
+        .select("id", { count: 'exact', head: true });
+      
+      // Apply status filter
+      if (statusFilter !== 'all') {
+        suppliersCountQuery = suppliersCountQuery.eq('status', statusFilter);
       }
       
-      // Determine pagination for each type
+      if (searchTerm) {
+        suppliersCountQuery = suppliersCountQuery.or(
+          `name.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,materials_provided.ilike.%${searchTerm}%`
+        );
+      }
+      
+      const { count: suppliersCount, error: suppliersCountError } = await suppliersCountQuery;
+      
+      if (suppliersCountError) throw suppliersCountError;
+      
+      // Fetch vendors count
+      let vendorsCountQuery = supabase
+        .from("vendors")
+        .select("id", { count: 'exact', head: true });
+      
+      // Apply status filter
+      if (statusFilter !== 'all') {
+        vendorsCountQuery = vendorsCountQuery.eq('status', statusFilter);
+      }
+      
+      if (searchTerm) {
+        vendorsCountQuery = vendorsCountQuery.or(
+          `name.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,service_type.ilike.%${searchTerm}%`
+        );
+      }
+      
+      const { count: vendorsCount, error: vendorsCountError } = await vendorsCountQuery;
+      
+      if (vendorsCountError) throw vendorsCountError;
+      
+      // Set total count for both suppliers and vendors
+      setTotalCount((suppliersCount || 0) + (vendorsCount || 0));
+      
+      // Determine pagination
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
       
-      // Fetch the actual data based on active tab
-      const partnersData: Partner[] = [];
+      // Fetch suppliers
+      let suppliersQuery = supabase
+        .from("suppliers")
+        .select("id, name, contact_person, phone, materials_provided, status");
       
-      if (activeTab === 'all' || activeTab === 'suppliers') {
-        // Fetch suppliers
-        let suppliersQuery = supabase
-          .from("suppliers")
-          .select("id, name, contact_person, phone, materials_provided, status");
-        
-        // Apply status filter
-        if (statusFilter !== 'all') {
-          suppliersQuery = suppliersQuery.eq('status', statusFilter);
-        }
-        
-        if (searchTerm) {
-          suppliersQuery = suppliersQuery.or(
-            `name.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,materials_provided.ilike.%${searchTerm}%`
-          );
-        }
-        
-        // If only showing suppliers, apply pagination directly
-        if (activeTab === 'suppliers') {
-          suppliersQuery = suppliersQuery.range(from, to);
-        }
-        
-        suppliersQuery = suppliersQuery.order("name");
-        
-        const { data: suppliersData, error: suppliersError } = await suppliersQuery;
-        
-        if (suppliersError) throw suppliersError;
-        
-        // Format suppliers data
-        const formattedSuppliers = (suppliersData || []).map(supplier => ({
-          ...supplier,
-          partnerType: 'supplier' as const
-        }));
-        
-        partnersData.push(...formattedSuppliers);
+      // Apply status filter
+      if (statusFilter !== 'all') {
+        suppliersQuery = suppliersQuery.eq('status', statusFilter);
       }
       
-      if (activeTab === 'all' || activeTab === 'vendors') {
-        // Fetch vendors
-        let vendorsQuery = supabase
-          .from("vendors")
-          .select("id, name, contact_person, phone, service_type, status");
-        
-        // Apply status filter
-        if (statusFilter !== 'all') {
-          vendorsQuery = vendorsQuery.eq('status', statusFilter);
-        }
-        
-        if (searchTerm) {
-          vendorsQuery = vendorsQuery.or(
-            `name.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,service_type.ilike.%${searchTerm}%`
-          );
-        }
-        
-        // If only showing vendors, apply pagination directly
-        if (activeTab === 'vendors') {
-          vendorsQuery = vendorsQuery.range(from, to);
-        }
-        
-        vendorsQuery = vendorsQuery.order("name");
-        
-        const { data: vendorsData, error: vendorsError } = await vendorsQuery;
-        
-        if (vendorsError) throw vendorsError;
-        
-        // Format vendors data
-        const formattedVendors = (vendorsData || []).map(vendor => ({
-          ...vendor, 
-          partnerType: 'vendor' as const
-        }));
-        
-        partnersData.push(...formattedVendors);
+      if (searchTerm) {
+        suppliersQuery = suppliersQuery.or(
+          `name.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,materials_provided.ilike.%${searchTerm}%`
+        );
       }
       
-      // If we're showing all partners, apply pagination manually after combining the data
-      if (activeTab === 'all') {
-        // Sort combined data by name
-        partnersData.sort((a, b) => a.name.localeCompare(b.name));
-        
-        // Apply pagination manually
-        const paginatedData = partnersData.slice(from, to + 1);
-        setPartners(paginatedData);
-      } else {
-        // For single partner type, pagination is already applied in the query
-        setPartners(partnersData);
+      suppliersQuery = suppliersQuery.order("name");
+      
+      const { data: suppliersData, error: suppliersError } = await suppliersQuery;
+      
+      if (suppliersError) throw suppliersError;
+      
+      // Fetch vendors
+      let vendorsQuery = supabase
+        .from("vendors")
+        .select("id, name, contact_person, phone, service_type, status");
+      
+      // Apply status filter
+      if (statusFilter !== 'all') {
+        vendorsQuery = vendorsQuery.eq('status', statusFilter);
       }
+      
+      if (searchTerm) {
+        vendorsQuery = vendorsQuery.or(
+          `name.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,service_type.ilike.%${searchTerm}%`
+        );
+      }
+      
+      vendorsQuery = vendorsQuery.order("name");
+      
+      const { data: vendorsData, error: vendorsError } = await vendorsQuery;
+      
+      if (vendorsError) throw vendorsError;
+      
+      // Format and combine data
+      const formattedSuppliers = (suppliersData || []).map(supplier => ({
+        ...supplier,
+        partnerType: 'supplier' as const
+      }));
+      
+      const formattedVendors = (vendorsData || []).map(vendor => ({
+        ...vendor,
+        partnerType: 'vendor' as const
+      }));
+      
+      // Combine and sort all partners
+      const allPartners = [...formattedSuppliers, ...formattedVendors].sort((a, b) => 
+        a.name.localeCompare(b.name)
+      );
+      
+      // Apply pagination manually
+      const paginatedData = allPartners.slice(from, to + 1);
+      setPartners(paginatedData);
+      
     } catch (error: any) {
       toast({
         title: "Error fetching partners",
@@ -325,30 +267,6 @@ const PartnersList = () => {
         <CardContent>
           <div className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-4 mb-6">
             <div className="flex flex-col sm:flex-row gap-3 w-full">
-              <Tabs 
-                defaultValue="all" 
-                className="w-full sm:w-auto" 
-                onValueChange={(value) => {
-                  setActiveTab(value as any);
-                  setPage(1); // Reset to first page when tab changes
-                }}
-              >
-                <TabsList className="grid grid-cols-3 w-full sm:w-[360px]">
-                  <TabsTrigger value="all" className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-primary"></span>
-                    All
-                  </TabsTrigger>
-                  <TabsTrigger value="suppliers" className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-                    Suppliers
-                  </TabsTrigger>
-                  <TabsTrigger value="vendors" className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-purple-500"></span>
-                    Vendors
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-
               {/* Status filter */}
               <Tabs 
                 defaultValue="active" 
@@ -443,7 +361,7 @@ const PartnersList = () => {
                         <TableHead>Type</TableHead>
                         <TableHead>Contact Person</TableHead>
                         <TableHead>Phone</TableHead>
-                        <TableHead>{activeTab === 'vendors' ? 'Service Type' : 'Materials'}</TableHead>
+                        <TableHead>{searchTerm ? 'Service Type' : 'Materials'}</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>

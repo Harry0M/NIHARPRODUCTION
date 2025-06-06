@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -46,6 +45,8 @@ interface PrintingJobFormProps {
   isSubmitting: boolean;
   totalCuttingQuantity: number;
   remainingQuantity: number;
+  printingCharge?: number | null;
+  orderQuantity?: number;
 }
 
 export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
@@ -56,27 +57,35 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
   onCancel,
   isSubmitting,
   totalCuttingQuantity = 0,
-  remainingQuantity = 0
+  remainingQuantity = 0,
+  printingCharge,
+  orderQuantity
 }) => {
   const { uploadImage, uploading } = usePrintImage();
-  const [formData, setFormData] = useState<PrintingFormData>(() => ({
-    pulling: initialData?.pulling || "",
-    gsm: initialData?.gsm || "",
-    // Prioritize initialData, then part dimensions, then fall back to bag dimensions
-    sheet_length: initialData?.sheet_length || 
-                 (partDimensions?.length ? partDimensions.length : String(bagDimensions.length || "")),
-    sheet_width: initialData?.sheet_width || 
-                (partDimensions?.width ? partDimensions.width : String(bagDimensions.width || "")),
-    worker_name: initialData?.worker_name || "",
-    is_internal: initialData?.is_internal ?? true,
-    rate: initialData?.rate || "",
-    status: initialData?.status || "pending",
-    expected_completion_date: initialData?.expected_completion_date || "",
-    print_image: initialData?.print_image || "",
-    received_quantity: initialData?.received_quantity || "",
-    id: initialData?.id,
-    job_card_id: initialData?.job_card_id
-  }));
+  const [formData, setFormData] = useState<PrintingFormData>(() => {
+    // Calculate per-unit rate using order quantity
+    const perUnitRate = printingCharge ? 
+      String(printingCharge) : 
+      "";
+
+    return {
+      pulling: initialData?.pulling || "",
+      gsm: initialData?.gsm || "",
+      sheet_length: initialData?.sheet_length || 
+                   (partDimensions?.length ? partDimensions.length : String(bagDimensions.length || "")),
+      sheet_width: initialData?.sheet_width || 
+                  (partDimensions?.width ? partDimensions.width : String(bagDimensions.width || "")),
+      worker_name: initialData?.worker_name || "",
+      is_internal: initialData?.is_internal ?? true,
+      rate: initialData?.rate || perUnitRate,
+      status: initialData?.status || "pending",
+      expected_completion_date: initialData?.expected_completion_date || "",
+      print_image: initialData?.print_image || "",
+      received_quantity: initialData?.received_quantity || "",
+      id: initialData?.id,
+      job_card_id: initialData?.job_card_id
+    };
+  });
   const [imagePreview, setImagePreview] = useState<string | null>(initialData?.print_image || null);
 
   // Calculate the current pulling quantity for this job (for edit mode)

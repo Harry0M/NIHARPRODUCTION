@@ -23,8 +23,8 @@ interface AdditionalInfoFieldsProps {
 export const AdditionalInfoFields = ({ suppliers }: AdditionalInfoFieldsProps) => {
   const { control } = useFormContext();
 
-  // Filter out inactive suppliers
-  const activeSuppliers = suppliers?.filter(supplier => supplier.status === 'active') || [];
+  // Add console logging to debug suppliers
+  console.log("Suppliers in AdditionalInfoFields:", suppliers);
 
   return (
     <div className="space-y-4">
@@ -48,7 +48,7 @@ export const AdditionalInfoFields = ({ suppliers }: AdditionalInfoFieldsProps) =
               </FormControl>
               <SelectContent>
                 <SelectItem value="none">None</SelectItem>
-                {activeSuppliers.map((supplier) => (
+                {suppliers?.map((supplier) => (
                   <SelectItem key={supplier.id} value={supplier.id}>
                     {supplier.name}
                   </SelectItem>

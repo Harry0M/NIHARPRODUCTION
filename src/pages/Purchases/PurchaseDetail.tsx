@@ -33,6 +33,8 @@ interface PurchaseItem {
   quantity: number;
   unit_price: number;
   line_total: number;
+  gst_percentage: number;
+  gst_amount: number;
   material: InventoryItem;
 }
 
@@ -58,7 +60,16 @@ interface Purchase {
     address: string;
     gst: string | null;
   };
-  purchase_items: PurchaseItem[];
+  purchase_items: {
+    id: string;
+    material_id: string;
+    quantity: number;
+    unit_price: number;
+    line_total: number;
+    gst_percentage: number;
+    gst_amount: number;
+    material: InventoryItem;
+  }[];
 }
 
 const PurchaseDetail = () => {
@@ -82,6 +93,8 @@ const PurchaseDetail = () => {
             quantity,
             unit_price,
             line_total,
+            gst_percentage,
+            gst_amount,
             material:inventory (
               id,
               material_name,
@@ -99,7 +112,7 @@ const PurchaseDetail = () => {
         throw error;
       }
       
-      return data as Purchase;
+      return data as unknown as Purchase;
     },
     enabled: !!id,
   });
@@ -516,6 +529,14 @@ const PurchaseDetail = () => {
                       <div className="text-xs text-muted-foreground">(Per main unit)</div>
                     </TableHead>
                     <TableHead className="text-right">
+                      <div>GST</div>
+                      <div className="text-xs text-muted-foreground">(%)</div>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <div>GST Amount</div>
+                      <div className="text-xs text-muted-foreground">(Calculated)</div>
+                    </TableHead>
+                    <TableHead className="text-right">
                       <div>Transport Share</div>
                       <div className="text-xs text-muted-foreground">(Per item)</div>
                     </TableHead>
@@ -560,15 +581,31 @@ const PurchaseDetail = () => {
                         <div className="text-xs text-muted-foreground">per {item.material.unit}</div>
                       </TableCell>
                       <TableCell className="text-right">
+                        {item.gst_percentage}%
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(item.gst_amount)}
+                      </TableCell>
+                      <TableCell className="text-right">
                         {formatCurrency(item.transport_share || 0)}
                       </TableCell>
                       <TableCell className="text-right">
                         {formatCurrency(item.true_line_total || item.line_total)}
-                        {item.transport_share > 0 && (
-                          <div className="text-xs text-muted-foreground">
-                            Base: {formatCurrency(item.line_total)}
-                          </div>
-                        )}
+                        <div className="text-xs text-muted-foreground">
+                          Base: {formatCurrency(item.line_total)}
+                          {item.gst_amount > 0 && (
+                            <>
+                              <br />
+                              GST: {formatCurrency(item.gst_amount)}
+                            </>
+                          )}
+                          {item.transport_share > 0 && (
+                            <>
+                              <br />
+                              Transport: {formatCurrency(item.transport_share)}
+                            </>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

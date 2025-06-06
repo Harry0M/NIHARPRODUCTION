@@ -80,4 +80,6 @@ export interface Component {
   is_custom?: boolean;
   component_cost?: number | null;
   component_cost_breakdown?: any | null;
+  width?: string | number | null; // Added width property
+  length?: string | number | null; // Added length property
 }

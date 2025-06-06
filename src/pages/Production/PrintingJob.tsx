@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { ArrowLeft, Printer, Plus } from "lucide-react";
@@ -61,7 +60,8 @@ export default function PrintingJob() {
             order_number,
             quantity,
             bag_length,
-            bag_width
+            bag_width,
+            printing_charge
           )
         `)
         .eq('id', id)
@@ -312,12 +312,14 @@ export default function PrintingJob() {
             length: jobCard.orders.bag_length,
             width: jobCard.orders.bag_width
           }}
-          partDimensions={partDimensions} // Pass the extracted part dimensions
+          partDimensions={partDimensions}
           onSubmit={handleSubmit}
           onCancel={() => setShowNewJobForm(false)}
           isSubmitting={submitting}
           totalCuttingQuantity={totalCuttingQuantity}
           remainingQuantity={remainingQuantity}
+          printingCharge={jobCard.orders.printing_charge}
+          orderQuantity={jobCard.orders.quantity}
         />
       )}
 
@@ -385,7 +387,6 @@ export default function PrintingJob() {
         <PrintingJobForm
           initialData={{
             ...printingJobs.find(job => job.id === selectedJobId)!,
-            // Convert numeric database values to strings for the form
             sheet_length: String(printingJobs.find(job => job.id === selectedJobId)!.sheet_length || ''),
             sheet_width: String(printingJobs.find(job => job.id === selectedJobId)!.sheet_width || ''),
             rate: String(printingJobs.find(job => job.id === selectedJobId)!.rate || ''),
@@ -397,12 +398,14 @@ export default function PrintingJob() {
             length: jobCard.orders.bag_length,
             width: jobCard.orders.bag_width
           }}
-          partDimensions={partDimensions} // Pass the extracted part dimensions
+          partDimensions={partDimensions}
           onSubmit={handleSubmit}
           onCancel={() => setSelectedJobId(null)}
           isSubmitting={submitting}
           totalCuttingQuantity={totalCuttingQuantity}
           remainingQuantity={remainingQuantity + (Number(printingJobs.find(job => job.id === selectedJobId)!.pulling) || 0)}
+          printingCharge={jobCard.orders.printing_charge}
+          orderQuantity={jobCard.orders.quantity}
         />
       )}
     </div>

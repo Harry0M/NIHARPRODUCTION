@@ -62,7 +62,14 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
                 rate,
                 status,
                 notes,
-                waste_quantity
+                waste_quantity,
+                order_component:component_id (
+                  component_type,
+                  custom_name,
+                  size,
+                  color,
+                  gsm
+                )
               )
             `)
             .eq('id', jobId)
@@ -232,9 +239,9 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
       case 'cutting':
         return (
           <>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h4 className="font-medium mb-1">Received Quantity</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <h4 className="text-sm font-medium mb-1">Received Quantity</h4>
                 <p className="text-sm text-muted-foreground">
                   {jobDetails.received_quantity || "Not recorded"}
                 </p>
@@ -242,18 +249,34 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
             </div>
             
             {jobDetails.components && jobDetails.components.length > 0 && (
-              <div className="mt-4">
-                <h4 className="font-medium mb-2">Components</h4>
-                <div className="space-y-3">
-                  {jobDetails.components.map((component: any) => (
-                    <div key={component.id} className="p-3 border rounded-md">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="font-medium capitalize">{component.component_type}</div>
+              <div className="space-y-4">
+                <h4 className="font-medium">Components</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {jobDetails.components
+                    .sort((a: any, b: any) => {
+                      const consumptionA = parseFloat(a.consumption || '0');
+                      const consumptionB = parseFloat(b.consumption || '0');
+                      return consumptionB - consumptionA;
+                    })
+                    .map((component: any) => (
+                    <div key={component.id} className="p-4 border rounded-lg bg-card">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="font-medium capitalize">
+                          {component.order_component?.custom_name || 
+                           component.order_component?.component_type || 
+                           'Unnamed Component'}
+                          {component.order_component?.size && 
+                            <span className="ml-2 text-sm text-muted-foreground">
+                              ({component.order_component.size})
+                            </span>
+                          }
+                        </div>
                         <Badge variant={getBadgeVariant(component.status)}>
                           {component.status}
                         </Badge>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
+                      
+                      <div className="grid grid-cols-2 gap-3 text-sm">
                         <div>
                           <span className="text-muted-foreground">Width:</span> {component.width || 'N/A'}
                         </div>
@@ -275,17 +298,19 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
                         <div>
                           <span className="text-muted-foreground">Rate:</span> {component.rate || 'N/A'}
                         </div>
-                        {component.notes && (
-                          <div className="col-span-2">
-                            <span className="text-muted-foreground">Notes:</span> {component.notes}
-                          </div>
-                        )}
                         {component.waste_quantity && (
                           <div>
                             <span className="text-muted-foreground">Waste:</span> {component.waste_quantity}
                           </div>
                         )}
                       </div>
+                      
+                      {component.notes && (
+                        <div className="mt-3 pt-3 border-t">
+                          <span className="text-muted-foreground">Notes:</span>
+                          <p className="text-sm mt-1">{component.notes}</p>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -296,61 +321,66 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
         
       case 'printing':
         return (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <h4 className="font-medium mb-1">Pulling</h4>
-              <p className="text-sm text-muted-foreground">
-                {jobDetails.pulling || "Not specified"}
-              </p>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <h4 className="text-sm font-medium mb-1">Pulling</h4>
+                <p className="text-sm text-muted-foreground">
+                  {jobDetails.pulling || "Not specified"}
+                </p>
+              </div>
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <h4 className="text-sm font-medium mb-1">GSM</h4>
+                <p className="text-sm text-muted-foreground">
+                  {jobDetails.gsm || "Not specified"}
+                </p>
+              </div>
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <h4 className="text-sm font-medium mb-1">Sheet Length</h4>
+                <p className="text-sm text-muted-foreground">
+                  {jobDetails.sheet_length || "Not specified"}
+                </p>
+              </div>
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <h4 className="text-sm font-medium mb-1">Sheet Width</h4>
+                <p className="text-sm text-muted-foreground">
+                  {jobDetails.sheet_width || "Not specified"}
+                </p>
+              </div>
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <h4 className="text-sm font-medium mb-1">Received Quantity</h4>
+                <p className="text-sm text-muted-foreground">
+                  {jobDetails.received_quantity || "Not recorded"}
+                </p>
+              </div>
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <h4 className="text-sm font-medium mb-1">Expected Completion</h4>
+                <p className="text-sm text-muted-foreground">
+                  {jobDetails.expected_completion_date ? formatDate(jobDetails.expected_completion_date) : "Not set"}
+                </p>
+              </div>
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <h4 className="text-sm font-medium mb-1">Rate</h4>
+                <p className="text-sm text-muted-foreground">
+                  {jobDetails.rate || "Not specified"}
+                </p>
+              </div>
             </div>
-            <div>
-              <h4 className="font-medium mb-1">GSM</h4>
-              <p className="text-sm text-muted-foreground">
-                {jobDetails.gsm || "Not specified"}
-              </p>
-            </div>
-            <div>
-              <h4 className="font-medium mb-1">Sheet Length</h4>
-              <p className="text-sm text-muted-foreground">
-                {jobDetails.sheet_length || "Not specified"}
-              </p>
-            </div>
-            <div>
-              <h4 className="font-medium mb-1">Sheet Width</h4>
-              <p className="text-sm text-muted-foreground">
-                {jobDetails.sheet_width || "Not specified"}
-              </p>
-            </div>
-            <div>
-              <h4 className="font-medium mb-1">Received Quantity</h4>
-              <p className="text-sm text-muted-foreground">
-                {jobDetails.received_quantity || "Not recorded"}
-              </p>
-            </div>
-            <div>
-              <h4 className="font-medium mb-1">Expected Completion</h4>
-              <p className="text-sm text-muted-foreground">
-                {jobDetails.expected_completion_date ? formatDate(jobDetails.expected_completion_date) : "Not set"}
-              </p>
-            </div>
-            <div>
-              <h4 className="font-medium mb-1">Rate</h4>
-              <p className="text-sm text-muted-foreground">
-                {jobDetails.rate || "Not specified"}
-              </p>
-            </div>
+            
             {jobDetails.print_image && (
-              <div className="col-span-2">
-                <h4 className="font-medium mb-1">Print Image</h4>
-                <div className="h-32 w-32 bg-muted rounded-md overflow-hidden">
-                  <img 
-                    src={jobDetails.print_image} 
-                    alt="Print design" 
-                    className="h-full w-full object-contain"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/placeholder.svg';
-                    }}
-                  />
+              <div className="p-4 border rounded-lg bg-card">
+                <h4 className="text-sm font-medium mb-3">Print Image</h4>
+                <div className="flex justify-center">
+                  <div className="h-48 w-48 bg-muted rounded-md overflow-hidden">
+                    <img 
+                      src={jobDetails.print_image} 
+                      alt="Print design" 
+                      className="h-full w-full object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/placeholder.svg';
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -359,85 +389,85 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
         
       case 'stitching':
         return (
-          <>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h4 className="font-medium mb-1">Total Quantity</h4>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <h4 className="text-sm font-medium mb-1">Total Quantity</h4>
                 <p className="text-sm text-muted-foreground">
                   {jobDetails.total_quantity || "Not specified"}
                 </p>
               </div>
-              <div>
-                <h4 className="font-medium mb-1">Start Date</h4>
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <h4 className="text-sm font-medium mb-1">Start Date</h4>
                 <p className="text-sm text-muted-foreground">
                   {jobDetails.start_date ? formatDate(jobDetails.start_date) : "Not set"}
                 </p>
               </div>
-              <div>
-                <h4 className="font-medium mb-1">Expected Completion</h4>
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <h4 className="text-sm font-medium mb-1">Expected Completion</h4>
                 <p className="text-sm text-muted-foreground">
                   {jobDetails.expected_completion_date ? formatDate(jobDetails.expected_completion_date) : "Not set"}
                 </p>
               </div>
-              <div>
-                <h4 className="font-medium mb-1">Rate</h4>
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <h4 className="text-sm font-medium mb-1">Rate</h4>
                 <p className="text-sm text-muted-foreground">
                   {jobDetails.rate || "Not specified"}
                 </p>
               </div>
             </div>
             
-            <div className="mt-4">
-              <h4 className="font-medium mb-2">Component Quantities</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="p-4 border rounded-lg bg-card">
+              <h4 className="text-sm font-medium mb-3">Component Quantities</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 {jobDetails.part_quantity !== null && (
-                  <div className="p-2 border rounded-md">
+                  <div className="p-3 bg-muted/50 rounded-lg">
                     <div className="text-sm font-medium">Part</div>
-                    <div className="text-lg">{jobDetails.part_quantity}</div>
+                    <div className="text-lg mt-1">{jobDetails.part_quantity}</div>
                   </div>
                 )}
                 {jobDetails.border_quantity !== null && (
-                  <div className="p-2 border rounded-md">
+                  <div className="p-3 bg-muted/50 rounded-lg">
                     <div className="text-sm font-medium">Border</div>
-                    <div className="text-lg">{jobDetails.border_quantity}</div>
+                    <div className="text-lg mt-1">{jobDetails.border_quantity}</div>
                   </div>
                 )}
                 {jobDetails.handle_quantity !== null && (
-                  <div className="p-2 border rounded-md">
+                  <div className="p-3 bg-muted/50 rounded-lg">
                     <div className="text-sm font-medium">Handle</div>
-                    <div className="text-lg">{jobDetails.handle_quantity}</div>
+                    <div className="text-lg mt-1">{jobDetails.handle_quantity}</div>
                   </div>
                 )}
                 {jobDetails.chain_quantity !== null && (
-                  <div className="p-2 border rounded-md">
+                  <div className="p-3 bg-muted/50 rounded-lg">
                     <div className="text-sm font-medium">Chain</div>
-                    <div className="text-lg">{jobDetails.chain_quantity}</div>
+                    <div className="text-lg mt-1">{jobDetails.chain_quantity}</div>
                   </div>
                 )}
                 {jobDetails.runner_quantity !== null && (
-                  <div className="p-2 border rounded-md">
+                  <div className="p-3 bg-muted/50 rounded-lg">
                     <div className="text-sm font-medium">Runner</div>
-                    <div className="text-lg">{jobDetails.runner_quantity}</div>
+                    <div className="text-lg mt-1">{jobDetails.runner_quantity}</div>
                   </div>
                 )}
                 {jobDetails.piping_quantity !== null && (
-                  <div className="p-2 border rounded-md">
+                  <div className="p-3 bg-muted/50 rounded-lg">
                     <div className="text-sm font-medium">Piping</div>
-                    <div className="text-lg">{jobDetails.piping_quantity}</div>
+                    <div className="text-lg mt-1">{jobDetails.piping_quantity}</div>
                   </div>
                 )}
               </div>
             </div>
             
             {jobDetails.notes && (
-              <div className="mt-4">
-                <h4 className="font-medium mb-1">Notes</h4>
+              <div className="p-4 border rounded-lg bg-card">
+                <h4 className="text-sm font-medium mb-2">Notes</h4>
                 <p className="text-sm text-muted-foreground whitespace-pre-line">
                   {jobDetails.notes}
                 </p>
               </div>
             )}
-          </>
+          </div>
         );
         
       default:
@@ -447,7 +477,7 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -482,7 +512,7 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
           )}
         </DialogHeader>
 
-        <div className="mt-4 space-y-6">
+        <div className="space-y-6">
           {loading ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -493,27 +523,27 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-4 pb-4">
-                <div>
-                  <h4 className="font-medium mb-1">Created</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <h4 className="text-sm font-medium mb-1">Created</h4>
                   <p className="text-sm text-muted-foreground">
                     {formatDate(jobDetails.created_at)}
                   </p>
                 </div>
-                <div>
-                  <h4 className="font-medium mb-1">Worker</h4>
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <h4 className="text-sm font-medium mb-1">Worker</h4>
                   <p className="text-sm text-muted-foreground">
                     {jobDetails.worker_name || "Not assigned"}
                   </p>
                 </div>
-                <div>
-                  <h4 className="font-medium mb-1">Type</h4>
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <h4 className="text-sm font-medium mb-1">Type</h4>
                   <p className="text-sm text-muted-foreground capitalize">
                     {jobDetails.is_internal ? "Internal" : "External"}
                   </p>
                 </div>
-                <div>
-                  <h4 className="font-medium mb-1">Status</h4>
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <h4 className="text-sm font-medium mb-1">Status</h4>
                   <p className="text-sm text-muted-foreground capitalize">
                     {jobDetails.status.replace('_', ' ')}
                   </p>
@@ -522,7 +552,7 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
               
               <Separator />
               
-              <div className="pt-2">
+              <div className="space-y-6">
                 {renderJobSpecificDetails()}
               </div>
             </>
