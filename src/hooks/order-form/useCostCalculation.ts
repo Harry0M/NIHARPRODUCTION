@@ -49,19 +49,19 @@ export function useCostCalculation() {
     const totalCuttingCharge = quantity * perUnitCuttingCharge;
     const totalPrintingCharge = quantity * perUnitPrintingCharge;
     const totalStitchingCharge = quantity * perUnitStitchingCharge;
-    // Transport charge is not multiplied by quantity as it's per order
-    const totalTransportCharge = perUnitTransportCharge;
+    // Transport charge should also be multiplied by quantity
+    const totalTransportCharge = quantity * perUnitTransportCharge;
 
     // Sum up all costs
     const productionCost = totalCuttingCharge + totalPrintingCharge + 
                           totalStitchingCharge + totalTransportCharge;
     const totalCost = materialCosts + productionCost;
     
-    // Calculate per unit cost (excluding transport which is per order)
+    // Calculate per unit cost (including all production costs)
     const perUnitMaterialCost = quantity > 0 ? materialCosts / quantity : materialCosts;
     const perUnitProductionCost = 
-      perUnitCuttingCharge + perUnitPrintingCharge + perUnitStitchingCharge;
-    const perUnitCost = perUnitMaterialCost + perUnitProductionCost + (totalTransportCharge / (quantity || 1));
+      perUnitCuttingCharge + perUnitPrintingCharge + perUnitStitchingCharge + perUnitTransportCharge;
+    const perUnitCost = perUnitMaterialCost + perUnitProductionCost;
 
     return {
       // Total costs

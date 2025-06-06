@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
@@ -20,6 +19,7 @@ interface SupplierFormData {
   materials_provided: string;
   payment_terms: string;
   status: string;
+  gst: string;
 }
 
 const SupplierNew = () => {
@@ -33,7 +33,8 @@ const SupplierNew = () => {
     address: "",
     materials_provided: "",
     payment_terms: "",
-    status: "active"
+    status: "active",
+    gst: "",
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -122,6 +123,16 @@ const SupplierNew = () => {
                   onChange={handleChange}
                   placeholder="Enter supplier name"
                   required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="gst">GST Number</Label>
+                <Input
+                  id="gst"
+                  name="gst"
+                  value={formData.gst}
+                  onChange={handleChange}
+                  placeholder="Enter GST number"
                 />
               </div>
               <div className="space-y-2">

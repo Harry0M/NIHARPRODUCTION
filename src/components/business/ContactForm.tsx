@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { Building, Mail, Phone, User } from "lucide-react";
+import { Label } from "@/components/ui/label";
 
 export interface ContactFormValues {
   name: string;
@@ -42,6 +42,7 @@ export interface ContactFormValues {
   payment_terms?: string;
   service_type?: string;
   materials_provided?: string;
+  gst: string;
 }
 
 const contactFormSchema = z.object({
@@ -54,6 +55,7 @@ const contactFormSchema = z.object({
   payment_terms: z.string().optional(),
   service_type: z.string().optional(),
   materials_provided: z.string().optional(),
+  gst: z.string().optional(),
 });
 
 interface ContactFormProps {
@@ -75,6 +77,7 @@ export const ContactForm = ({ type, initialValues, onSubmit }: ContactFormProps)
     payment_terms: "",
     service_type: type === "vendor" ? "" : undefined,
     materials_provided: type === "supplier" ? "" : undefined,
+    gst: "",
   };
 
   const form = useForm<ContactFormValues>({
@@ -213,6 +216,20 @@ export const ContactForm = ({ type, initialValues, onSubmit }: ContactFormProps)
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="gst"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>GST Number</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter GST number" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

@@ -235,40 +235,17 @@ const OrderDetail = () => {
 
         // Calculate the costs using order form logic if order exists
         if (orderData) {
-          // Get quantity
-          const quantity = parseInt(orderData.total_quantity?.toString() || orderData.quantity?.toString() || '0');
-          
-          // Get production charges
-          const cuttingCharge = parseFloat(orderData.cutting_charge?.toString() || '0');
-          const printingCharge = parseFloat(orderData.printing_charge?.toString() || '0');
-          const stitchingCharge = parseFloat(orderData.stitching_charge?.toString() || '0');
-          const transportCharge = parseFloat(orderData.transport_charge?.toString() || '0');
-          
-          // Calculate costs using the same function as the order form
-          const costs = calculateTotalCost(
-            typeSafeComponents.reduce((obj, comp) => {
-              obj[comp.id] = comp;
-              return obj;
-            }, {} as Record<string, any>),
-            [], // No custom components in view mode
-            cuttingCharge,
-            printingCharge,
-            stitchingCharge,
-            transportCharge,
-            quantity
-          );
-          
-          // Get margin
-          const margin = parseFloat(orderData.margin?.toString() || '15');
-          
-          // Calculate selling price
-          const sellingPrice = calculateSellingPrice(costs.totalCost, margin);
-          
-          // Set cost calculation
+          // Set cost calculation using raw values from the database
           setCostCalculation({
-            ...costs,
-            margin,
-            sellingPrice
+            materialCost: orderData.material_cost || 0,
+            cuttingCharge: orderData.cutting_charge || 0,
+            printingCharge: orderData.printing_charge || 0,
+            stitchingCharge: orderData.stitching_charge || 0,
+            transportCharge: orderData.transport_charge || 0,
+            productionCost: orderData.production_cost || 0,
+            totalCost: orderData.total_cost || 0,
+            margin: orderData.margin || 0,
+            sellingPrice: orderData.calculated_selling_price || 0
           });
         }
         

@@ -51,7 +51,7 @@ export const CostCalculationDisplay = ({
       cuttingCharge: (costCalculation.cuttingCharge / (orderQuantity || 1)).toString(),
       printingCharge: (costCalculation.printingCharge / (orderQuantity || 1)).toString(),
       stitchingCharge: (costCalculation.stitchingCharge / (orderQuantity || 1)).toString(),
-      transportCharge: costCalculation.transportCharge.toString(),
+      transportCharge: (costCalculation.transportCharge / (orderQuantity || 1)).toString(), // Display per-unit transport charge
     });
   }, [costCalculation, orderQuantity]);
   
@@ -303,13 +303,14 @@ export const CostCalculationDisplay = ({
                               transportCharge: value
                             }));
                             
-                            const numValue = value === '' ? 0 : parseFloat(value);
-                            if (!isNaN(numValue)) {
+                            const perUnitValue = value === '' ? 0 : parseFloat(value);
+                            if (!isNaN(perUnitValue)) {
+                              const totalValue = perUnitValue * (orderQuantity || 1);
                               handleCostChange('transportCharge', {
                                 ...e,
                                 target: {
                                   ...e.target,
-                                  value: numValue.toString()
+                                  value: totalValue.toString()
                                 }
                               });
                             }

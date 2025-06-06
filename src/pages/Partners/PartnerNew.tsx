@@ -21,6 +21,7 @@ interface PartnerFormData {
   service_type?: string;
   payment_terms: string;
   status: string;
+  gst: string;
 }
 
 const PartnerNew = () => {
@@ -42,7 +43,8 @@ const PartnerNew = () => {
     materials_provided: "",
     service_type: "",
     payment_terms: "",
-    status: "active"
+    status: "active",
+    gst: ""
   });
 
   useEffect(() => {
@@ -101,7 +103,8 @@ const PartnerNew = () => {
             materials_provided: supplierData.materials_provided || "",
             service_type: "", // Not relevant for suppliers
             payment_terms: supplierData.payment_terms || "",
-            status: supplierData.status || "active"
+            status: supplierData.status || "active",
+            gst: supplierData.gst || ""
           });
         } else {
           const vendorData = data as any; // Using any for simplicity
@@ -114,7 +117,8 @@ const PartnerNew = () => {
             materials_provided: "", // Not relevant for vendors
             service_type: vendorData.service_type || "",
             payment_terms: vendorData.payment_terms || "",
-            status: vendorData.status || "active"
+            status: vendorData.status || "active",
+            gst: vendorData.gst || ""
           });
         }
       }
@@ -318,16 +322,29 @@ const PartnerNew = () => {
                 </div>
               </div>
               
-              <div className="grid gap-3">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="Contact email address"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid gap-3">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="Contact email address"
+                  />
+                </div>
+
+                <div className="grid gap-3">
+                  <Label htmlFor="gst">GST Number</Label>
+                  <Input
+                    id="gst"
+                    name="gst"
+                    value={formData.gst}
+                    onChange={handleChange}
+                    placeholder="Enter GST number"
+                  />
+                </div>
               </div>
               
               <div className="grid gap-3">

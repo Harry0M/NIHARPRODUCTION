@@ -102,7 +102,39 @@ const StockList = () => {
       // Add explicit type annotation to avoid excessive type depth error
       let query: any = supabase
         .from('inventory')
-        .select('*, suppliers(name)')
+        .select(`
+          id,
+          material_name,
+          color,
+          gsm,
+          quantity,
+          unit,
+          alternate_unit,
+          conversion_rate,
+          track_cost,
+          purchase_price,
+          selling_price,
+          status,
+          min_stock_level,
+          reorder_level,
+          category_id,
+          location_id,
+          supplier_id,
+          created_at,
+          updated_at,
+          rate,
+          reorder_quantity,
+          roll_width,
+          purchase_rate,
+          suppliers (
+            id,
+            name,
+            contact_person,
+            email,
+            phone,
+            address
+          )
+        `)
         // Only show active (non-deleted) items
         .eq('is_deleted', false);
       

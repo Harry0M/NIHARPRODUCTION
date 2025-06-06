@@ -31,6 +31,7 @@ import {
 interface Supplier {
   id: string;
   name: string;
+  gst: string | null;
   [key: string]: any;
 }
 
@@ -86,7 +87,8 @@ const PurchaseNew = () => {
     const fetchSuppliers = async () => {
       const { data, error } = await supabase
         .from("suppliers")
-        .select("id, name")
+        .select("id, name, gst")
+        .eq('status', 'active')
         .order("name");
       
       if (error) {
@@ -103,22 +105,50 @@ const PurchaseNew = () => {
   // Load inventory items
   useEffect(() => {
     const fetchInventoryItems = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("inventory")
-          .select("id, material_name, color, unit, alternate_unit, conversion_rate, purchase_price, quantity")
-          .order("material_name");
-        
-        if (error) {
-          console.error("Error fetching inventory items:", error);
-          return;
-        }
-        
-        console.log("Fetched inventory items:", data);
-        setInventoryItems(data || []);
-      } catch (err) {
-        console.error("Exception fetching inventory items:", err);
+      const { data, error } = await supabase
+        .from("inventory")
+        .select(`
+          id,
+          material_name,
+          color,
+          gsm,
+          quantity,
+          unit,
+          alternate_unit,
+          conversion_rate,
+          track_cost,
+          purchase_price,
+          selling_price,
+          status,
+          min_stock_level,
+          reorder_level,
+          category_id,
+          location_id,
+          supplier_id,
+          created_at,
+          updated_at,
+          rate,
+          reorder_quantity,
+          roll_width,
+          purchase_rate,
+          suppliers (
+            id,
+            name,
+            contact_person,
+            email,
+            phone,
+            address
+          )
+        `)
+        .is('is_deleted', false)
+        .order('material_name');
+      
+      if (error) {
+        console.error("Error fetching inventory items:", error);
+        return;
       }
+      
+      setInventoryItems(data || []);
     };
     
     fetchInventoryItems();
@@ -418,6 +448,12 @@ const PurchaseNew = () => {
                   <Search className="h-4 w-4 opacity-50" />
                 </Button>
               </div>
+              
+              {selectedSupplierId && suppliers.find(s => s.id === selectedSupplierId)?.gst && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  GST: {suppliers.find(s => s.id === selectedSupplierId)?.gst}
+                </p>
+              )}
               
               <SearchSelectDialog
                 open={isSupplierSearchOpen}

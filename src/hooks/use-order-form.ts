@@ -122,9 +122,13 @@ export function useOrderForm(): UseOrderFormReturn {
     
     console.log(`%c TOTAL MATERIAL COST: ${materialCost.toFixed(2)}`, 
       'background:#8e44ad;color:white;font-weight:bold;padding:3px;');
+      // Calculate production cost - multiply each component by order quantity
+    const totalCuttingCharge = cuttingCharge * orderQuantity;
+    const totalPrintingCharge = printingCharge * orderQuantity;
+    const totalStitchingCharge = stitchingCharge * orderQuantity;
+    const totalTransportCharge = transportCharge * orderQuantity;  // Transport should also be multiplied
     
-    // Calculate production cost
-    const productionCost = cuttingCharge + printingCharge + stitchingCharge + transportCharge;
+    const productionCost = totalCuttingCharge + totalPrintingCharge + totalStitchingCharge + totalTransportCharge;
     
     // Calculate total cost
     const totalCost = materialCost + productionCost;
@@ -142,14 +146,13 @@ export function useOrderForm(): UseOrderFormReturn {
         perUnitProductionCost: productionCost / orderQuantity
       };
     }
-    
-    // Update cost calculation state
+      // Update cost calculation state with total costs (already multiplied by order quantity)
     setCostCalculation({
       materialCost,
-      cuttingCharge,
-      printingCharge,
-      stitchingCharge,
-      transportCharge,
+      cuttingCharge: totalCuttingCharge,
+      printingCharge: totalPrintingCharge,
+      stitchingCharge: totalStitchingCharge,
+      transportCharge: totalTransportCharge,
       productionCost,
       totalCost,
       margin,

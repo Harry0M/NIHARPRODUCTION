@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -269,6 +268,11 @@ export const StockInfoGrid = ({ stockItem, linkedComponents = [], transactions =
                 {stockItem.suppliers.email && (
                   <div className="text-sm mt-1">
                     Email: {formatValue(stockItem.suppliers.email)}
+                  </div>
+                )}
+                {stockItem.suppliers.gst && (
+                  <div className="text-sm mt-1">
+                    GST: {formatValue(stockItem.suppliers.gst)}
                   </div>
                 )}
                 {stockItem.suppliers.address && (

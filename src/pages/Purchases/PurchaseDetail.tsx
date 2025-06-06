@@ -56,6 +56,7 @@ interface Purchase {
     contact_person: string;
     phone: string;
     address: string;
+    gst: string | null;
   };
   purchase_items: PurchaseItem[];
 }
@@ -464,6 +465,9 @@ const PurchaseDetail = () => {
                 )}
                 {purchase.suppliers.phone && (
                   <p>{purchase.suppliers.phone}</p>
+                )}
+                {purchase.suppliers.gst && (
+                  <p className="text-sm text-muted-foreground">GST: {purchase.suppliers.gst}</p>
                 )}
                 {purchase.suppliers.address && (
                   <p className="text-sm text-muted-foreground whitespace-pre-line">

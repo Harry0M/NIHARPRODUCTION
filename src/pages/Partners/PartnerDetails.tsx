@@ -29,6 +29,7 @@ interface Partner {
   status: string;
   created_at: string;
   updated_at: string;
+  gst?: string | null;
 }
 
 const PartnerDetails = () => {
@@ -165,6 +166,10 @@ const PartnerDetails = () => {
             <div className="space-y-1">
               <h3 className="text-sm font-medium text-muted-foreground">Phone</h3>
               <p className="text-sm">{partner.phone || 'N/A'}</p>
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-medium text-muted-foreground">GST Number</h3>
+              <p className="text-sm">{partner.gst || 'N/A'}</p>
             </div>
             <div className="space-y-1">
               <h3 className="text-sm font-medium text-muted-foreground">Address</h3>

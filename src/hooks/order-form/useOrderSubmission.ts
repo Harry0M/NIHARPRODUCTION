@@ -64,12 +64,15 @@ export function useOrderSubmission({
       // Debug all components before submission to help identify issues
       debugAllComponents(components, customComponents);
       
-      // Calculate margins and selling price
+      // Calculate margins and selling price using already calculated costs
       const materialCost = costCalculation?.materialCost || 0;
-      const cuttingCharge = parseFloat(orderDetails.cutting_charge || '0');
-      const printingCharge = parseFloat(orderDetails.printing_charge || '0');
-      const stitchingCharge = parseFloat(orderDetails.stitching_charge || '0');
-      const transportCharge = parseFloat(orderDetails.transport_charge || '0');
+      
+      // Use the already calculated total costs from costCalculation (these are already multiplied by quantity)
+      const cuttingCharge = costCalculation?.cuttingCharge || 0;
+      const printingCharge = costCalculation?.printingCharge || 0;
+      const stitchingCharge = costCalculation?.stitchingCharge || 0;
+      const transportCharge = costCalculation?.transportCharge || 0;
+      
       const productionCost = cuttingCharge + printingCharge + stitchingCharge + transportCharge;
       const totalCost = materialCost + productionCost;
       
@@ -89,7 +92,13 @@ export function useOrderSubmission({
       
       console.log("Order calculation:", {
         materialCost,
-        productionCost,
+        totalCosts: {
+          cutting: cuttingCharge,
+          printing: printingCharge,
+          stitching: stitchingCharge,
+          transport: transportCharge,
+          production: productionCost
+        },
         totalCost,
         margin,
         sellingRate
@@ -157,12 +166,12 @@ export function useOrderSubmission({
         sales_account_id: validatedSalesAccountId,
         catalog_id: orderDetails.catalog_id || null,
         special_instructions: orderDetails.special_instructions || null,
-        // Cost calculations
+        // Cost calculations - use the properly multiplied values
         material_cost: materialCost,
-        cutting_charge: parseFloat(orderDetails.cutting_charge || '0'),
-        printing_charge: parseFloat(orderDetails.printing_charge || '0'),
-        stitching_charge: parseFloat(orderDetails.stitching_charge || '0'),
-        transport_charge: parseFloat(orderDetails.transport_charge || '0'),
+        cutting_charge: cuttingCharge,
+        printing_charge: printingCharge,
+        stitching_charge: stitchingCharge,
+        transport_charge: transportCharge,
         production_cost: productionCost,
         total_cost: totalCost,
         margin: margin,
@@ -244,12 +253,12 @@ export function useOrderSubmission({
       console.log("Raw components to be saved:", allComponents);
       console.log("Number of components before validation:", allComponents.length);
       
-      // MANUAL FORMULA PROCESSING: Skip additional processing as manual formulas 
-      // are already handled in useOrderComponents.ts during real-time updates
+      // IMPORTANT: DO NOT multiply consumption by order quantity again - it's already done in useOrderComponents.ts
       const orderQuantity = parseInt(orderDetails.order_quantity || orderDetails.quantity || '1');
-      console.log("Order quantity for reference:", orderQuantity);
+      console.log("Order quantity for reference (not used for multiplication):", orderQuantity);
       
-      // Use components as-is since manual formulas have already been processed in useOrderComponents
+      // FIXED: Use components as-is without any additional processing to avoid double multiplication
+      // The consumption values were already multiplied by order quantity in useOrderComponents.ts
       const processedComponents = allComponents;
       
       console.log("Using components without additional manual formula processing to prevent double multiplication");

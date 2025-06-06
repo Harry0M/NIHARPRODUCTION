@@ -74,22 +74,18 @@ export const SupplierHistory = ({ materialId, onUpdate }: SupplierHistoryProps) 
   }, [materialId]);
 
   const fetchSuppliers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("suppliers")
-        .select("id, name")
-        .order("name");
+    const { data, error } = await supabase
+      .from("suppliers")
+      .select("id, name")
+      .eq('status', 'active')
+      .order("name");
 
-      if (error) throw error;
-      setSuppliers(data || []);
-    } catch (error) {
+    if (error) {
       console.error("Error fetching suppliers:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load suppliers",
-        variant: "destructive",
-      });
+      return;
     }
+
+    setSuppliers(data || []);
   };
 
   const fetchMaterialSuppliers = async () => {

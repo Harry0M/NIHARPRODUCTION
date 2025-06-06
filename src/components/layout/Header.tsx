@@ -1,4 +1,4 @@
-import { Bell, Search, Plus, Keyboard } from "lucide-react";
+import { Bell, Search, Plus, Keyboard, Building, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useLocation } from "react-router-dom";
@@ -11,6 +11,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useEffect, useRef } from "react";
 import { toast } from "@/hooks/use-toast";
@@ -21,7 +23,27 @@ const Header = () => {
   const location = useLocation();
   const searchRef = useRef<HTMLInputElement>(null);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+  const [gstCopied, setGstCopied] = useState(false);
+  const [addressCopied, setAddressCopied] = useState(false);
   
+  const copyToClipboard = async (text: string, setCopied: (value: boolean) => void) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast({
+        title: "Copied to clipboard",
+        description: "Text has been copied to your clipboard",
+      });
+    } catch (err) {
+      toast({
+        title: "Failed to copy",
+        description: "Please try again",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Setup keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -127,6 +149,62 @@ const Header = () => {
   return (
     <header className="h-16 border-b border-border bg-background/95 backdrop-blur-sm px-4 flex items-center justify-between sticky top-0 z-40">
       <div className="flex items-center gap-3 w-full max-w-md">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="font-semibold text-lg">
+              Nihar
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-80">
+            <DropdownMenuLabel>Company Details</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <div className="px-2 py-1.5">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">GST Number</p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => copyToClipboard("24IWNPS6583R1Z2", setGstCopied)}
+                >
+                  {gstCopied ? (
+                    <Check className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">24IWNPS6583R1Z2</p>
+            </div>
+            <div className="px-2 py-1.5">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Address</p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => copyToClipboard(
+                    "30, yamuna industrial estate, opp. neo plast, G.I.D.C, phase -1 vatva, ahmedabad, gujarat, 382445",
+                    setAddressCopied
+                  )}
+                >
+                  {addressCopied ? (
+                    <Check className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground whitespace-pre-line">
+                30, yamuna industrial estate,{'\n'}
+                opp. neo plast, G.I.D.C,{'\n'}
+                phase -1 vatva,{'\n'}
+                ahmedabad, gujarat,{'\n'}
+                382445
+              </p>
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input

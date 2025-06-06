@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useFormContext } from "react-hook-form";
 import {
@@ -18,11 +17,14 @@ import {
 } from "@/components/ui/select";
 
 interface AdditionalInfoFieldsProps {
-  suppliers?: { id: string; name: string }[];
+  suppliers?: { id: string; name: string; status: string }[];
 }
 
 export const AdditionalInfoFields = ({ suppliers }: AdditionalInfoFieldsProps) => {
   const { control } = useFormContext();
+
+  // Filter out inactive suppliers
+  const activeSuppliers = suppliers?.filter(supplier => supplier.status === 'active') || [];
 
   return (
     <div className="space-y-4">
@@ -46,7 +48,7 @@ export const AdditionalInfoFields = ({ suppliers }: AdditionalInfoFieldsProps) =
               </FormControl>
               <SelectContent>
                 <SelectItem value="none">None</SelectItem>
-                {suppliers?.map((supplier) => (
+                {activeSuppliers.map((supplier) => (
                   <SelectItem key={supplier.id} value={supplier.id}>
                     {supplier.name}
                   </SelectItem>
