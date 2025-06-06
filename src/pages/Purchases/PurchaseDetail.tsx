@@ -516,17 +516,19 @@ const PurchaseDetail = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Material</TableHead>
-                    <TableHead>Alt. Quantity</TableHead>
-                    <TableHead>Alt. Unit</TableHead>
-                    <TableHead>Main Quantity</TableHead>
-                    <TableHead>Main Unit</TableHead>
-                    <TableHead className="text-right">
-                      <div>Alt. Unit Price</div>
-                      <div className="text-xs text-muted-foreground">(Per alt unit)</div>
+                    <TableHead>
+                      <div>Alt. Quantity</div>
+                      <div className="text-xs text-muted-foreground">(Alt. Unit)</div>
+                    </TableHead>
+                    <TableHead>
+                      <div>Main Quantity</div>
+                      <div className="text-xs text-muted-foreground">(Main Unit)</div>
                     </TableHead>
                     <TableHead className="text-right">
-                      <div>Unit Price</div>
-                      <div className="text-xs text-muted-foreground">(Per main unit)</div>
+                      <div>Alt. Unit Price</div>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <div>Base Amount</div>
                     </TableHead>
                     <TableHead className="text-right">
                       <div>GST</div>
@@ -534,13 +536,16 @@ const PurchaseDetail = () => {
                     </TableHead>
                     <TableHead className="text-right">
                       <div>GST Amount</div>
-                      <div className="text-xs text-muted-foreground">(Calculated)</div>
                     </TableHead>
                     <TableHead className="text-right">
-                      <div>Transport Share</div>
-                      <div className="text-xs text-muted-foreground">(Per item)</div>
+                      <div>Transport</div>
+                      <div className="text-xs text-muted-foreground">(Share)</div>
                     </TableHead>
-                    <TableHead className="text-right">Line Total</TableHead>
+                    <TableHead className="text-right">
+                      <div>True Unit Price</div>
+                      <div className="text-xs text-muted-foreground">(With transport)</div>
+                    </TableHead>
+                    <TableHead className="text-right">Total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -553,32 +558,22 @@ const PurchaseDetail = () => {
                         )}
                       </TableCell>
                       <TableCell>
-                        {(item.quantity * (item.material.conversion_rate || 1)).toFixed(2)}
-                      </TableCell>
-                      <TableCell>{item.material.alternate_unit}</TableCell>
-                      <TableCell>{item.quantity.toFixed(2)}</TableCell>
-                      <TableCell>{item.material.unit}</TableCell>
-                      <TableCell className="text-right">
-                        <div>
-                          {formatCurrency((item.true_unit_price || item.unit_price) * (item.material.conversion_rate || 1))}
-                          {item.transport_share > 0 && (
-                            <div className="text-xs text-muted-foreground">
-                              Base: {formatCurrency(item.unit_price * (item.material.conversion_rate || 1))}
-                            </div>
-                          )}
+                        <div className="flex items-center gap-2">
+                          <span>{(item.quantity * (item.material.conversion_rate || 1)).toFixed(2)}</span>
+                          <span className="text-sm text-muted-foreground">{item.material.alternate_unit}</span>
                         </div>
-                        <div className="text-xs text-muted-foreground">per {item.material.alternate_unit}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span>{item.quantity.toFixed(2)}</span>
+                          <span className="text-sm text-muted-foreground">{item.material.unit}</span>
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div>
-                          {formatCurrency(item.true_unit_price || item.unit_price)}
-                          {item.transport_share > 0 && (
-                            <div className="text-xs text-muted-foreground">
-                              Base: {formatCurrency(item.unit_price)}
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-xs text-muted-foreground">per {item.material.unit}</div>
+                        {formatCurrency((item.true_unit_price || item.unit_price) * (item.material.conversion_rate || 1))}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(item.line_total)}
                       </TableCell>
                       <TableCell className="text-right">
                         {item.gst_percentage}%
@@ -588,6 +583,9 @@ const PurchaseDetail = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         {formatCurrency(item.transport_share || 0)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(item.true_unit_price || item.unit_price)}
                       </TableCell>
                       <TableCell className="text-right">
                         {formatCurrency(item.true_line_total || item.line_total)}

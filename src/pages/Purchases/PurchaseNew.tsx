@@ -50,17 +50,16 @@ interface PurchaseItem {
   id: string;
   material_id: string;
   material: InventoryItem | null;
-  quantity: number;
-  unit_price: number;
-  line_total: number;
-  alt_quantity?: number;
-  alt_unit_price?: number;
-  gst?: number; // GST percentage
-  gst_amount?: number; // Calculated GST amount
-  // For transport charge calculations
-  transport_share?: number;
-  true_unit_price?: number;
-  true_line_total?: number;
+  quantity: number; // Main quantity
+  alt_quantity: number; // Alternative quantity (e.g., kg)
+  alt_unit_price: number; // Price per alternative unit
+  unit_price: number; // Price per main unit
+  line_total: number; // Base amount
+  gst: number; // GST percentage
+  gst_amount: number; // Calculated GST amount
+  transport_share: number; // Share of transport charge
+  true_unit_price: number; // Unit price including transport
+  true_line_total: number; // Total including GST and transport
 }
 
 const PurchaseNew = () => {
@@ -159,63 +158,69 @@ const PurchaseNew = () => {
   // Calculate subtotal, total, and transport charge allocation
   useEffect(() => {
     // First calculate base amounts and GST for each item
-    const itemsWithGST = purchaseItems.map(item => {
-      const baseAmount = item.line_total || 0;
+    const itemsWithCalculations = purchaseItems.map(item => {
+      // Calculate alt quantity from main quantity using conversion rate
+      const altQuantity = item.material?.conversion_rate 
+        ? item.quantity * (item.material.conversion_rate || 1)
+        : item.quantity;
+      
+      // Calculate alt unit price from main unit price
+      const altUnitPrice = item.material?.conversion_rate 
+        ? item.unit_price * (item.material.conversion_rate || 1)
+        : item.unit_price;
+      
+      // Calculate base amount using alt quantity and alt unit price
+      const baseAmount = altQuantity * altUnitPrice;
+      
+      // Calculate GST amount
       const gstAmount = (baseAmount * (item.gst || 0)) / 100;
-      const totalWithGST = baseAmount + gstAmount;
+      
+      // Calculate transport share if transport charge exists
+      const transportShare = transportCharge > 0 ? 
+        (altQuantity / purchaseItems.reduce((sum, i) => {
+          const itemAltQty = i.material?.conversion_rate 
+            ? i.quantity * (i.material.conversion_rate || 1)
+            : i.quantity;
+          return sum + itemAltQty;
+        }, 0)) * transportCharge : 
+        0;
+      
+      // Calculate true unit price per main unit
+      const trueUnitPrice = item.quantity > 0 ? 
+        (baseAmount + transportShare) / item.quantity : 
+        0;
+      
+      // Calculate total line amount
+      const totalLineAmount = baseAmount + transportShare + gstAmount;
       
       return {
         ...item,
+        alt_quantity: altQuantity, // Calculated value, not stored in DB
+        alt_unit_price: altUnitPrice, // Calculated value, not stored in DB
+        line_total: baseAmount,
         gst_amount: gstAmount,
-        total_with_gst: totalWithGST,
-        transport_share: 0, // Reset transport share
-        true_unit_price: item.unit_price, // Reset true unit price
-        true_line_total: totalWithGST // Reset true line total
+        transport_share: transportShare, // Calculated value, not stored in DB
+        true_unit_price: trueUnitPrice, // Calculated value, not stored in DB
+        true_line_total: totalLineAmount // Calculated value, not stored in DB
       };
     });
 
-    // Calculate subtotal (sum of all items with GST)
-    const newSubtotal = itemsWithGST.reduce(
-      (sum, item) => sum + item.total_with_gst,
+    // Calculate subtotal (sum of all base amounts)
+    const newSubtotal = itemsWithCalculations.reduce(
+      (sum, item) => sum + item.line_total,
       0
     );
     setSubtotal(newSubtotal);
 
-    // Only calculate transport charges if there is a transport charge
-    if (transportCharge > 0) {
-      // Calculate transport charge allocation based on weight (kg)
-      const totalWeight = itemsWithGST.reduce(
-        (sum, item) => sum + (item.alt_quantity || 0),
-        0
-      );
-      
-      if (totalWeight > 0) {
-        const perKgTransportCharge = transportCharge / totalWeight;
-        
-        // Update each item with its transport share and true cost
-        setPurchaseItems(itemsWithGST.map(item => {
-          const weight = item.alt_quantity || 0;
-          const transportShare = weight * perKgTransportCharge;
-          const totalWithGSTAndTransport = item.total_with_gst + transportShare;
-          const trueUnitPrice = totalWithGSTAndTransport / (item.quantity || 1);
-          
-          return {
-            ...item,
-            transport_share: transportShare,
-            true_unit_price: trueUnitPrice,
-            true_line_total: totalWithGSTAndTransport
-          };
-        }));
-      } else {
-        setPurchaseItems(itemsWithGST);
-      }
-    } else {
-      // If no transport charge, just set the items without transport calculations
-      setPurchaseItems(itemsWithGST);
-    }
+    // Update purchase items with calculations
+    setPurchaseItems(itemsWithCalculations);
 
-    // Set total amount (subtotal + transport charge)
-    setTotalAmount(newSubtotal + (transportCharge || 0));
+    // Set total amount (subtotal + transport charge + total GST)
+    const totalGST = itemsWithCalculations.reduce(
+      (sum, item) => sum + item.gst_amount,
+      0
+    );
+    setTotalAmount(newSubtotal + (transportCharge || 0) + totalGST);
   }, [purchaseItems, transportCharge]);
   
   const addPurchaseItem = () => {
@@ -226,11 +231,15 @@ const PurchaseNew = () => {
         material_id: "", 
         material: null,
         quantity: 0, 
-        unit_price: 0, 
-        line_total: 0,
         alt_quantity: 0,
         alt_unit_price: 0,
-        gst: 0 // Initialize GST to 0
+        unit_price: 0, 
+        line_total: 0,
+        gst: 0,
+        gst_amount: 0,
+        transport_share: 0,
+        true_unit_price: 0,
+        true_line_total: 0
       }
     ]);
   };
@@ -349,7 +358,7 @@ const PurchaseNew = () => {
       if (!item.quantity || item.quantity <= 0) {
         showToast({
           title: "Invalid Quantity",
-          description: "Quantity must be greater than zero for all items",
+          description: "Please enter a valid quantity for all items",
           type: "error"
         });
         return;
@@ -358,7 +367,7 @@ const PurchaseNew = () => {
       if (!item.unit_price || item.unit_price <= 0) {
         showToast({
           title: "Invalid Price",
-          description: "Unit price must be greater than zero for all items",
+          description: "Please enter a valid unit price for all items",
           type: "error"
         });
         return;
@@ -369,7 +378,6 @@ const PurchaseNew = () => {
     
     try {
       // 1. Create the purchase record
-      // Use the raw method to bypass TypeScript issues with custom tables
       const { data: purchaseData, error: purchaseError } = await supabase
         .from('purchases')
         .insert([
@@ -402,9 +410,6 @@ const PurchaseNew = () => {
       
       // 2. Create purchase items
       for (const item of purchaseItems) {
-        const baseAmount = item.quantity * item.unit_price;
-        const gstAmount = (baseAmount * (item.gst || 0)) / 100;
-        
         const { error: itemError } = await supabase
           .from('purchase_items')
           .insert([
@@ -415,7 +420,7 @@ const PurchaseNew = () => {
               unit_price: item.unit_price,
               line_total: item.line_total,
               gst_percentage: item.gst || 0,
-              gst_amount: item.gst_amount || gstAmount
+              gst_amount: item.gst_amount || 0
             }
           ]);
         
@@ -426,9 +431,6 @@ const PurchaseNew = () => {
       }
       
       console.log("Successfully inserted purchase items");
-      
-      // We no longer update inventory here since purchase status is initially 'pending'
-      // Inventory will be updated when the purchase is marked as 'completed'
       
       showToast({
         title: "Purchase Created",
@@ -573,29 +575,34 @@ const PurchaseNew = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[300px]">Material</TableHead>
-                      <TableHead>Alt. Quantity</TableHead>
-                      <TableHead>Alt. Unit</TableHead>
-                      <TableHead>Main Quantity</TableHead>
-                      <TableHead>Main Unit</TableHead>
                       <TableHead>
-                        <div>Alt. Unit Price</div>
-                        <div className="text-xs text-muted-foreground">(Per alt unit)</div>
+                        <div>Alt. Quantity</div>
+                        <div className="text-xs text-muted-foreground">(Alt. Unit)</div>
                       </TableHead>
                       <TableHead>
-                        <div>Unit Price</div>
-                        <div className="text-xs text-muted-foreground">(Per main unit)</div>
+                        <div>Main Quantity</div>
+                        <div className="text-xs text-muted-foreground">(Main Unit)</div>
+                      </TableHead>
+                      <TableHead>
+                        <div>Alt. Unit Price</div>
+                      </TableHead>
+                      <TableHead>
+                        <div>Base Amount</div>
+                      </TableHead>
+                      <TableHead>
+                        <div>GST</div>
+                        <div className="text-xs text-muted-foreground">(%)</div>
+                      </TableHead>
+                      <TableHead>
+                        <div>GST Amount</div>
                       </TableHead>
                       <TableHead>
                         <div>Transport</div>
                         <div className="text-xs text-muted-foreground">(Share)</div>
                       </TableHead>
                       <TableHead>
-                        <div>True Price</div>
+                        <div>True Unit Price</div>
                         <div className="text-xs text-muted-foreground">(With transport)</div>
-                      </TableHead>
-                      <TableHead>
-                        <div>GST</div>
-                        <div className="text-xs text-muted-foreground">(%)</div>
                       </TableHead>
                       <TableHead>Total</TableHead>
                       <TableHead></TableHead>
@@ -604,63 +611,65 @@ const PurchaseNew = () => {
                   <TableBody>
                     {purchaseItems.map((item) => (
                       <TableRow key={item.id}>
+                        <TableCell className="font-medium">
+                          <Select
+                            value={item.material_id}
+                            onValueChange={(value) => updatePurchaseItem(item.id, "material_id", value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select material" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {inventoryItems.map((inv) => (
+                                <SelectItem key={inv.id} value={inv.id}>
+                                  {inv.material_name}
+                                  {inv.color && ` - ${inv.color}`}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
-                            <div className="flex-1">
-                              <Button
-                                variant="outline"
-                                className="w-full justify-between text-left font-normal"
-                                onClick={() => {
-                                  setCurrentPurchaseItemId(item.id);
-                                  setIsMaterialSearchOpen(true);
-                                }}
-                              >
-                                {item.material 
-                                  ? `${item.material.material_name}${item.material.color ? ` - ${item.material.color}` : ''}` 
-                                  : "Select material"}
-                                <Search className="h-4 w-4 opacity-50" />
-                              </Button>
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              type="button"
-                              onClick={() => {
-                                setCurrentPurchaseItemId(item.id);
-                                setIsNewInventoryDialogOpen(true);
-                              }}
-                              title="Create new inventory item"
-                            >
-                              <FilePlus className="h-4 w-4" />
-                            </Button>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={item.alt_quantity || ""}
+                              onChange={(e) =>
+                                updatePurchaseItem(
+                                  item.id,
+                                  "alt_quantity",
+                                  parseFloat(e.target.value) || 0
+                                )
+                              }
+                              className="w-24"
+                            />
+                            <span className="text-sm text-muted-foreground">
+                              {item.material?.alternate_unit || "-"}
+                            </span>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={item.alt_quantity || ""}
-                            onChange={(e) =>
-                              updatePurchaseItem(
-                                item.id,
-                                "alt_quantity",
-                                parseFloat(e.target.value) || 0
-                              )
-                            }
-                            className="w-24"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {item.material?.alternate_unit || ""}
-                        </TableCell>
-                        <TableCell>
-                          {item.material && item.alt_quantity && item.material.conversion_rate
-                            ? (item.alt_quantity / (item.material.conversion_rate || 1)).toFixed(2)
-                            : item.quantity?.toFixed(2) || "0.00"}
-                        </TableCell>
-                        <TableCell>
-                          {item.material?.unit || ""}
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={item.quantity || ""}
+                              onChange={(e) =>
+                                updatePurchaseItem(
+                                  item.id,
+                                  "quantity",
+                                  parseFloat(e.target.value) || 0
+                                )
+                              }
+                              className="w-24"
+                            />
+                            <span className="text-sm text-muted-foreground">
+                              {item.material?.unit || "-"}
+                            </span>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Input
@@ -677,22 +686,10 @@ const PurchaseNew = () => {
                             }
                             className="w-24"
                           />
-                          <div className="text-xs text-muted-foreground">
-                            per {item.material?.alternate_unit || 'alt unit'}
-                          </div>
                         </TableCell>
                         <TableCell>
-                          {item.material?.conversion_rate 
-                            ? formatCurrency((item.alt_unit_price || 0) / item.material.conversion_rate)
-                            : formatCurrency(item.unit_price || 0)}
-                          <div className="text-xs text-muted-foreground">
-                            per {item.material?.unit || 'unit'}
-                          </div>
+                          {formatCurrency(item.line_total)}
                         </TableCell>
-                        <TableCell>
-                          {formatCurrency(item.transport_share || 0)}
-                        </TableCell>
-                        {renderTruePriceCell(item)}
                         <TableCell>
                           <Input
                             type="number"
@@ -710,7 +707,33 @@ const PurchaseNew = () => {
                             className="w-20"
                           />
                         </TableCell>
-                        {renderTotalCell(item)}
+                        <TableCell>
+                          {formatCurrency(item.gst_amount)}
+                        </TableCell>
+                        <TableCell>
+                          {formatCurrency(item.transport_share)}
+                        </TableCell>
+                        <TableCell>
+                          {formatCurrency(item.true_unit_price)}
+                        </TableCell>
+                        <TableCell>
+                          {formatCurrency(item.true_line_total)}
+                          <div className="text-xs text-muted-foreground">
+                            Base: {formatCurrency(item.line_total)}
+                            {item.gst_amount > 0 && (
+                              <>
+                                <br />
+                                GST: {formatCurrency(item.gst_amount)}
+                              </>
+                            )}
+                            {item.transport_share > 0 && (
+                              <>
+                                <br />
+                                Transport: {formatCurrency(item.transport_share)}
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <Button
                             variant="ghost"

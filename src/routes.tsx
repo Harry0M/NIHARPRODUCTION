@@ -50,6 +50,7 @@ import TransactionHistory from "@/pages/Analysis/TransactionHistory";
 import PartnersAnalysis from "@/pages/Analysis/PartnersAnalysis";
 import WastageAnalysis from "@/pages/Analysis/WastageAnalysis";
 import PriceTrendAnalysis from "@/pages/Analysis/PriceTrendAnalysis";
+import PurchaseAnalysis from "@/pages/Analysis/PurchaseAnalysis";
 
 const routes = [
   {
@@ -109,8 +110,7 @@ const routes = [
               { path: ":id", element: <DispatchDetail /> },
             ],
           },
-          {
-            path: "analysis",
+          {            path: "analysis",
             children: [
               { path: "", element: <AnalysisDashboard /> },
               { path: "materials", element: <MaterialConsumption /> },
@@ -122,6 +122,7 @@ const routes = [
               { path: "partners", element: <PartnersAnalysis /> },
               { path: "partner/:id/:type", element: <PartnerPerformance /> },
               { path: "price-trends", element: <PriceTrendAnalysis /> },
+              { path: "purchases", element: <PurchaseAnalysis /> },
             ],
           },
           {
