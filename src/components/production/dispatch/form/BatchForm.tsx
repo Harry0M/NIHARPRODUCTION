@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,7 +28,7 @@ export const BatchForm = ({
 
   return (
     <Card>
-      <CardHeader className="py-4">
+      <CardHeader className="py-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">Batch {index + 1}</CardTitle>
           {canDelete && (
@@ -44,9 +43,9 @@ export const BatchForm = ({
           )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3">
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label>Quantity</Label>
             <Input
               type="number"
@@ -60,7 +59,7 @@ export const BatchForm = ({
               Available: {remainingQuantity} (Max: {maxQuantity})
             </p>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label>Delivery Date</Label>
             <Input
               type="date"
@@ -70,13 +69,14 @@ export const BatchForm = ({
             />
           </div>
         </div>
-        <div className="space-y-2">
+        
+        <div className="space-y-1.5">
           <Label>Notes (Optional)</Label>
           <Textarea
             value={batch.notes}
             onChange={(e) => onBatchChange(index, 'notes', e.target.value)}
             placeholder="Add any notes for this batch"
-            rows={2}
+            rows={1}
           />
         </div>
       </CardContent>

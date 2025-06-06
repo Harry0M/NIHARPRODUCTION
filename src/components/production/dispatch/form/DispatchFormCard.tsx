@@ -2,13 +2,14 @@ import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Truck } from "lucide-react";
+import { Plus, Truck, Minus } from "lucide-react";
 import { StageStatus } from "../../StageStatus";
 import type { BatchData, DispatchFormData, DispatchFormProps } from "./types";
 import { BatchForm } from "./BatchForm";
 import { RecipientForm } from "./RecipientForm";
 import { QualityControls } from "./QualityControls";
 import { MultipleBatchCreator } from "./MultipleBatchCreator";
+import { Input } from "@/components/ui/input";
 
 export const DispatchFormCard = ({
   orderNumber,
@@ -169,30 +170,91 @@ export const DispatchFormCard = ({
                   Remaining quantity: {quantity - getTotalBatchQuantity()}
                 </p>
               </div>
-              <Button 
-                type="button" 
-                onClick={addBatch}
-                variant="outline"
-                size="sm"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Batch
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  type="button" 
+                  onClick={() => setBatches([{ quantity: 0, delivery_date: "", notes: "" }])}
+                  variant="outline"
+                  size="sm"
+                >
+                  Clear All
+                </Button>
+                <Button 
+                  type="button" 
+                  onClick={addBatch}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Batch
+                </Button>
+              </div>
             </div>
 
-            <div className="space-y-4">
-              {batches.map((batch, index) => (
-                <BatchForm
-                  key={index}
-                  batch={batch}
-                  index={index}
-                  remainingQuantity={quantity - getTotalBatchQuantity() + Number(batch.quantity)}
-                  canDelete={batches.length > 1}
-                  onBatchChange={handleBatchChange}
-                  onBatchDelete={removeBatch}
-                />
-              ))}
-            </div>
+            <Card>
+              <CardContent className="p-0">
+                <div className="max-h-[400px] overflow-y-auto relative">
+                  <table className="w-full border-collapse">
+                    <thead className="sticky top-0 bg-muted/50 z-10">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-sm font-medium border-b">Batch</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium border-b">Quantity</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium border-b">Delivery Date</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium border-b">Notes</th>
+                        <th className="px-4 py-3 text-right text-sm font-medium border-b">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {batches.map((batch, index) => (
+                        <tr key={index} className="hover:bg-muted/30">
+                          <td className="px-4 py-3 text-sm whitespace-nowrap">Batch {index + 1}</td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <Input
+                              type="number"
+                              value={batch.quantity}
+                              onChange={(e) => handleBatchChange(index, 'quantity', Number(e.target.value))}
+                              min="1"
+                              max={quantity - getTotalBatchQuantity() + Number(batch.quantity)}
+                              className="w-24"
+                              required
+                            />
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <Input
+                              type="date"
+                              value={batch.delivery_date}
+                              onChange={(e) => handleBatchChange(index, 'delivery_date', e.target.value)}
+                              className="w-40"
+                              required
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <Input
+                              value={batch.notes}
+                              onChange={(e) => handleBatchChange(index, 'notes', e.target.value)}
+                              placeholder="Add notes"
+                              className="w-48"
+                            />
+                          </td>
+                          <td className="px-4 py-3 text-right whitespace-nowrap">
+                            {batches.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeBatch(index)}
+                              >
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
 
             {getTotalBatchQuantity() !== quantity && (
               <Alert variant="destructive">
