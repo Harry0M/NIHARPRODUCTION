@@ -21,6 +21,7 @@ export interface DispatchFormProps {
   companyName: string;
   companyAddress?: string;
   quantity: number;
+  stitchingReceivedQuantity: number;
   stages: {
     name: string;
     status: "pending" | "in_progress" | "completed" | "cancelled";

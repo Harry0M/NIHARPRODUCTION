@@ -12,10 +12,12 @@ import { MultipleBatchCreator } from "./MultipleBatchCreator";
 import { Input } from "@/components/ui/input";
 
 export const DispatchFormCard = ({
+  jobCardId,
   orderNumber,
   companyName,
   companyAddress,
   quantity,
+  stitchingReceivedQuantity,
   stages,
   onDispatchSubmit,
 }: DispatchFormProps) => {
@@ -71,6 +73,12 @@ export const DispatchFormCard = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Check if stitching received quantity is available
+    if (stitchingReceivedQuantity <= 0) {
+      alert('Cannot dispatch: No quantity received from stitching jobs. Please ensure stitching jobs are completed with received quantities.');
+      return;
+    }
+    
     // Validate form
     if (!formData.delivery_address || !formData.recipient_name) {
       alert('Please fill in all required fields');
@@ -84,8 +92,8 @@ export const DispatchFormCard = ({
 
     // Validate batches
     const totalBatchQuantity = getTotalBatchQuantity();
-    if (totalBatchQuantity !== quantity) {
-      alert(`Total batch quantity (${totalBatchQuantity}) must equal order quantity (${quantity})`);
+    if (totalBatchQuantity !== stitchingReceivedQuantity) {
+      alert(`Total batch quantity (${totalBatchQuantity}) must equal stitching received quantity (${stitchingReceivedQuantity})`);
       return;
     }
 
@@ -128,8 +136,7 @@ export const DispatchFormCard = ({
           <CardDescription>
             Complete the dispatch information for order #{orderNumber} for {companyName}
           </CardDescription>
-        </CardHeader>
-        {/* Order production stages status */}
+        </CardHeader>          {/* Order production stages status */}
         <CardContent className="space-y-6">
           <div className="p-4 bg-muted/50 rounded-md">
             <h3 className="font-medium mb-3">Production Status</h3>
@@ -146,6 +153,28 @@ export const DispatchFormCard = ({
             </div>
           </div>
 
+          {/* Quantity Information */}
+          <div className="p-4 bg-blue-50 rounded-md border border-blue-200">
+            <h3 className="font-medium mb-3 text-blue-900">Quantity Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-blue-700">Order Quantity:</span>
+                <span className="font-medium">{quantity} units</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-blue-700">Stitching Received Quantity:</span>
+                <span className="font-medium text-blue-900">{stitchingReceivedQuantity} units</span>
+              </div>
+            </div>
+            {stitchingReceivedQuantity !== quantity && (
+              <div className="mt-2 p-2 bg-yellow-100 rounded text-sm text-yellow-800">
+                <strong>Note:</strong> Dispatch will be based on stitching received quantity ({stitchingReceivedQuantity} units)
+                {stitchingReceivedQuantity < quantity && 
+                  ` - ${quantity - stitchingReceivedQuantity} units were lost during production.`}
+              </div>
+            )}
+          </div>
+
           {/* Recipient Information */}
           <RecipientForm
             recipientName={formData.recipient_name}
@@ -157,7 +186,7 @@ export const DispatchFormCard = ({
 
           {/* Multiple Batch Creator */}
           <MultipleBatchCreator
-            orderQuantity={quantity}
+            orderQuantity={stitchingReceivedQuantity}
             createBatches={createMultipleBatches}
           />
           
@@ -167,7 +196,7 @@ export const DispatchFormCard = ({
               <div>
                 <h3 className="font-medium">Dispatch Batches</h3>
                 <p className="text-sm text-muted-foreground">
-                  Remaining quantity: {quantity - getTotalBatchQuantity()}
+                  Remaining quantity: {stitchingReceivedQuantity - getTotalBatchQuantity()}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -214,7 +243,7 @@ export const DispatchFormCard = ({
                               value={batch.quantity}
                               onChange={(e) => handleBatchChange(index, 'quantity', Number(e.target.value))}
                               min="1"
-                              max={quantity - getTotalBatchQuantity() + Number(batch.quantity)}
+                              max={stitchingReceivedQuantity - getTotalBatchQuantity() + Number(batch.quantity)}
                               className="w-24"
                               required
                             />
@@ -256,10 +285,10 @@ export const DispatchFormCard = ({
               </CardContent>
             </Card>
 
-            {getTotalBatchQuantity() !== quantity && (
+            {getTotalBatchQuantity() !== stitchingReceivedQuantity && (
               <Alert variant="destructive">
                 <AlertDescription>
-                  Total batch quantity ({getTotalBatchQuantity()}) must equal order quantity ({quantity})
+                  Total batch quantity ({getTotalBatchQuantity()}) must equal stitching received quantity ({stitchingReceivedQuantity})
                 </AlertDescription>
               </Alert>
             )}
@@ -267,7 +296,7 @@ export const DispatchFormCard = ({
 
           {/* Quality Control */}
           <QualityControls
-            quantity={quantity}
+            quantity={stitchingReceivedQuantity}
             qualityChecked={formData.confirm_quality_check}
             quantityChecked={formData.confirm_quantity_check}
             onQualityChange={(checked) => handleFieldChange('confirm_quality_check', checked)}
@@ -276,7 +305,7 @@ export const DispatchFormCard = ({
         </CardContent>
 
         <CardFooter className="flex justify-end space-x-2">
-          <Button type="submit" disabled={loading || getTotalBatchQuantity() !== quantity}>
+          <Button type="submit" disabled={loading || getTotalBatchQuantity() !== stitchingReceivedQuantity}>
             {loading ? "Processing..." : "Complete Dispatch"}
           </Button>
         </CardFooter>

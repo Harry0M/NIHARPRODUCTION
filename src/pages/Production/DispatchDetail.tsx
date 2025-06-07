@@ -9,6 +9,29 @@ import { PageHeader } from "@/components/production/dispatch/PageHeader";
 import { useOrderDispatchData } from "@/hooks/use-dispatch-data";
 import { useDispatchActions } from "@/hooks/use-dispatch-actions";
 
+// Interface for stitching job to fix TypeScript types
+interface StitchingJob {
+  received_quantity: number | null;
+  provided_quantity?: number | null;
+  status?: string;
+  id?: string;
+}
+
+// Interface for dispatch form data
+interface DispatchFormData {
+  recipient_name: string;
+  delivery_address: string;
+  tracking_number?: string;
+  notes?: string;
+  batches: Array<{
+    quantity: number;
+    delivery_date: string;
+    notes?: string;
+  }>;
+  confirm_quality_check: boolean;
+  confirm_quantity_check: boolean;
+}
+
 const DispatchDetail = () => {
   const { id: orderId } = useParams();
   const { order, dispatchData, dispatchBatches, productionStages, loading } = useOrderDispatchData(orderId || '');
@@ -56,7 +79,7 @@ const DispatchDetail = () => {
     );
   };
 
-  const handleDispatchSubmit = async (formData: any) => {
+  const handleDispatchSubmit = async (formData: DispatchFormData) => {
     if (!orderId) return;
     const success = await handleDispatch(orderId, formData);
     if (success) {
@@ -105,6 +128,11 @@ const DispatchDetail = () => {
                 ''
               }
               quantity={order?.quantity || 0}
+              stitchingReceivedQuantity={
+                order?.job_cards?.[0]?.stitching_jobs?.reduce((total: number, job: StitchingJob) => 
+                  total + (job.received_quantity || 0), 0
+                ) || 0
+              }
               stages={productionStages}
               onDispatchSubmit={handleDispatchSubmit}
             />
