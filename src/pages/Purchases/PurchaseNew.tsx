@@ -32,7 +32,7 @@ interface Supplier {
   id: string;
   name: string;
   gst?: string | null;
-  [key: string]: any;
+  [key: string]: string | number | boolean | null | undefined;
 }
 
 interface InventoryItem {
@@ -50,16 +50,20 @@ interface PurchaseItem {
   id: string;
   material_id: string;
   material: InventoryItem | null;
-  quantity: number; // Main quantity
-  alt_quantity: number; // Alternative quantity (e.g., kg)
-  alt_unit_price: number; // Price per alternative unit
-  unit_price: number; // Price per main unit
-  line_total: number; // Base amount
-  gst: number; // GST percentage
-  gst_amount: number; // Calculated GST amount
-  transport_share: number; // Share of transport charge
-  true_unit_price: number; // Unit price including transport
-  true_line_total: number; // Total including GST and transport
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+  alt_quantity?: number;
+  alt_unit_price?: number;
+  gst?: number; // GST percentage
+  gst_percentage?: number; // GST percentage (alternative field name)
+  gst_amount?: number; // Calculated GST amount
+  transport_share?: number;
+  true_unit_price?: number;
+  true_line_total?: number;
+  total?: number;
+  actual_meter?: number;
+  base_amount?: number; // Add base_amount field
 }
 
 const PurchaseNew = () => {
@@ -155,72 +159,82 @@ const PurchaseNew = () => {
     fetchInventoryItems();
   }, []);
   
-  // Calculate subtotal, total, and transport charge allocation
+  // Calculate transport share and totals when transport charge changes
   useEffect(() => {
-    // First calculate base amounts and GST for each item
-    const itemsWithCalculations = purchaseItems.map(item => {
-      // Calculate alt quantity from main quantity using conversion rate
-      const altQuantity = item.material?.conversion_rate 
-        ? item.quantity * (item.material.conversion_rate || 1)
-        : item.quantity;
+    if (purchaseItems.length === 0) {
+      setSubtotal(0);
+      setTotalAmount(0);
+      return;
+    }
+
+    // Calculate total of all alt quantities to determine transport share proportion
+    const totalAltQuantity = purchaseItems.reduce(
+      (sum, item) => sum + (item.alt_quantity || 0),
+      0
+    );
+
+    // Calculate per alt unit transport rate
+    const perAltUnitTransportRate = totalAltQuantity > 0 
+      ? (transportCharge || 0) / totalAltQuantity 
+      : 0;
+
+    // Update items with transport share and final calculations
+    const updatedItems = purchaseItems.map(item => {
+      const altQuantity = item.alt_quantity || 0;
+      const altUnitPrice = item.alt_unit_price || 0;
+      const gstRate = item.gst || 0;
+      const mainQuantity = item.quantity || 0;
       
-      // Calculate alt unit price from main unit price
-      const altUnitPrice = item.material?.conversion_rate 
-        ? item.unit_price * (item.material.conversion_rate || 1)
-        : item.unit_price;
-      
-      // Calculate base amount using alt quantity and alt unit price
+      // Base amount = alt_quantity * alt_unit_price (this is the base amount without GST)
       const baseAmount = altQuantity * altUnitPrice;
       
-      // Calculate GST amount
-      const gstAmount = (baseAmount * (item.gst || 0)) / 100;
+      // Calculate GST amount using the correct formula: (alt quantity * alt unit price) * gst_rate / 100
+      const gstAmount = (baseAmount * gstRate) / 100;
       
-      // Calculate transport share if transport charge exists
-      const transportShare = transportCharge > 0 ? 
-        (altQuantity / purchaseItems.reduce((sum, i) => {
-          const itemAltQty = i.material?.conversion_rate 
-            ? i.quantity * (i.material.conversion_rate || 1)
-            : i.quantity;
-          return sum + itemAltQty;
-        }, 0)) * transportCharge : 
-        0;
+      // Transport Share = alt_quantity × per_alt_unit_transport_rate
+      const transportShare = altQuantity * perAltUnitTransportRate;
       
-      // Calculate true unit price per main unit
-      const trueUnitPrice = item.quantity > 0 ? 
-        (baseAmount + transportShare) / item.quantity : 
-        0;
+      // Unit Price = [(alt unit price * alt quantity) + transport charge] / main unit
+      const unitPrice = mainQuantity > 0 
+        ? (baseAmount + transportShare) / mainQuantity 
+        : 0;
       
-      // Calculate total line amount
-      const totalLineAmount = baseAmount + transportShare + gstAmount;
+      // Line Total = base_amount + gst_amount + transport_share (complete cost per item)
+      const lineTotal = baseAmount + gstAmount + transportShare;
       
       return {
         ...item,
-        alt_quantity: altQuantity, // Calculated value, not stored in DB
-        alt_unit_price: altUnitPrice, // Calculated value, not stored in DB
-        line_total: baseAmount,
+        base_amount: baseAmount, // Pure base amount without GST
         gst_amount: gstAmount,
-        transport_share: transportShare, // Calculated value, not stored in DB
-        true_unit_price: trueUnitPrice, // Calculated value, not stored in DB
-        true_line_total: totalLineAmount // Calculated value, not stored in DB
+        transport_share: transportShare,
+        unit_price: unitPrice,
+        line_total: lineTotal, // Complete cost (base + GST + transport)
+        total: lineTotal // Keep total same as line_total for backward compatibility
       };
     });
 
-    // Calculate subtotal (sum of all base amounts)
-    const newSubtotal = itemsWithCalculations.reduce(
-      (sum, item) => sum + item.line_total,
+    // Calculate subtotal (sum of all line totals - no need to add transport since it's already included)
+    const newSubtotal = updatedItems.reduce(
+      (sum, item) => sum + (item.line_total || 0),
       0
     );
     setSubtotal(newSubtotal);
 
-    // Update purchase items with calculations
-    setPurchaseItems(itemsWithCalculations);
+    // Calculate total amount (subtotal includes everything now)
+    const newTotalAmount = newSubtotal;
+    setTotalAmount(newTotalAmount);
 
-    // Set total amount (subtotal + transport charge + total GST)
-    const totalGST = itemsWithCalculations.reduce(
-      (sum, item) => sum + item.gst_amount,
-      0
-    );
-    setTotalAmount(newSubtotal + (transportCharge || 0) + totalGST);
+    // Only update state if there are actual changes to avoid infinite loops
+    const hasChanges = purchaseItems.some((item, index) => {
+      const updatedItem = updatedItems[index];
+      return item.transport_share !== updatedItem.transport_share ||
+             item.unit_price !== updatedItem.unit_price ||
+             item.total !== updatedItem.total;
+    });
+
+    if (hasChanges) {
+      setPurchaseItems(updatedItems);
+    }
   }, [purchaseItems, transportCharge]);
   
   const addPurchaseItem = () => {
@@ -231,15 +245,12 @@ const PurchaseNew = () => {
         material_id: "", 
         material: null,
         quantity: 0, 
-        alt_quantity: 0,
-        alt_unit_price: 0,
         unit_price: 0, 
         line_total: 0,
-        gst: 0,
-        gst_amount: 0,
-        transport_share: 0,
-        true_unit_price: 0,
-        true_line_total: 0
+        alt_quantity: 0,
+        alt_unit_price: 0,
+        gst: 0, // Initialize GST to 0
+        actual_meter: 0 // Initialize actual_meter to 0
       }
     ]);
   };
@@ -253,8 +264,8 @@ const PurchaseNew = () => {
     field: keyof PurchaseItem, 
     value: string | number
   ) => {
-    setPurchaseItems(
-      purchaseItems.map(item => {
+    setPurchaseItems(prevItems => {
+      return prevItems.map(item => {
         if (item.id === id) {
           const updatedItem = { ...item, [field]: value };
           
@@ -266,62 +277,49 @@ const PurchaseNew = () => {
             
             updatedItem.material = selectedMaterial || null;
             
-            // Set the default unit price from inventory if available
+            // Set the default prices from inventory if available
             if (selectedMaterial?.purchase_price) {
-              // Set alt_unit_price and convert to main unit price
               if (selectedMaterial.conversion_rate && selectedMaterial.conversion_rate > 0) {
                 updatedItem.alt_unit_price = selectedMaterial.purchase_price * selectedMaterial.conversion_rate;
-                updatedItem.unit_price = selectedMaterial.purchase_price;
               } else {
                 updatedItem.alt_unit_price = selectedMaterial.purchase_price;
-                updatedItem.unit_price = selectedMaterial.purchase_price;
               }
             }
           }
           
-          // When alt_quantity changes, update main quantity
-          if (field === "alt_quantity") {
-            if (updatedItem.material?.conversion_rate && updatedItem.material.conversion_rate > 0) {
-              updatedItem.quantity = (value as number) / updatedItem.material.conversion_rate;
-            } else {
-              updatedItem.quantity = value as number;
-            }
-            
-            // Recalculate line total
-            updatedItem.line_total = updatedItem.quantity * updatedItem.unit_price;
-          }
+          // Calculate derived values based on the new formula
+          const altQuantity = field === "alt_quantity" ? (value as number) : (updatedItem.alt_quantity || 0);
+          const altUnitPrice = field === "alt_unit_price" ? (value as number) : (updatedItem.alt_unit_price || 0);
+          const gstRate = field === "gst" ? (value as number) : (updatedItem.gst || 0);
           
-          // When alt_unit_price changes, update main unit price
-          if (field === "alt_unit_price") {
-            if (updatedItem.material?.conversion_rate && updatedItem.material.conversion_rate > 0) {
-              updatedItem.unit_price = (value as number) / updatedItem.material.conversion_rate;
-            } else {
-              updatedItem.unit_price = value as number;
-            }
-            
-            // Recalculate line total
-            updatedItem.line_total = updatedItem.quantity * updatedItem.unit_price;
-          }
+          // Calculate main quantity from alt quantity
+          const mainQuantity = updatedItem.material?.conversion_rate 
+            ? altQuantity / updatedItem.material.conversion_rate 
+            : altQuantity;
           
-          // Keep original calculations for direct changes to main quantity or unit price
-          if (field === "quantity" || field === "unit_price") {
-            updatedItem.line_total = updatedItem.quantity * updatedItem.unit_price;
-            
-            // Update alt values when main values change
-            if (field === "quantity" && updatedItem.material?.conversion_rate) {
-              updatedItem.alt_quantity = updatedItem.quantity * updatedItem.material.conversion_rate;
-            }
-            
-            if (field === "unit_price" && updatedItem.material?.conversion_rate) {
-              updatedItem.alt_unit_price = updatedItem.unit_price * updatedItem.material.conversion_rate;
-            }
-          }
+          // Base amount = Alt. Quantity × Alt. Unit Price
+          const baseAmount = altQuantity * altUnitPrice;
+          
+          // GST amount = base_amount × (gst_rate / 100)
+          const gstAmount = (baseAmount * gstRate) / 100;
+          
+          // Note: Transport share and unit price will be calculated in useEffect
+          // based on the total transport charge and proportional distribution
+          
+          // Update calculated fields - final values will be set by useEffect
+          updatedItem.quantity = mainQuantity;
+          updatedItem.base_amount = baseAmount;
+          updatedItem.gst_amount = gstAmount;
+          // These will be recalculated in useEffect:
+          updatedItem.transport_share = 0;
+          updatedItem.unit_price = mainQuantity > 0 ? baseAmount / mainQuantity : 0;
+          updatedItem.line_total = baseAmount; // Will be updated in useEffect to include transport and GST
           
           return updatedItem;
         }
         return item;
-      })
-    );
+      });
+    });
   };
   
   const handleSubmit = async () => {
@@ -358,7 +356,7 @@ const PurchaseNew = () => {
       if (!item.quantity || item.quantity <= 0) {
         showToast({
           title: "Invalid Quantity",
-          description: "Please enter a valid quantity for all items",
+          description: "Quantity must be greater than zero for all items",
           type: "error"
         });
         return;
@@ -367,7 +365,7 @@ const PurchaseNew = () => {
       if (!item.unit_price || item.unit_price <= 0) {
         showToast({
           title: "Invalid Price",
-          description: "Please enter a valid unit price for all items",
+          description: "Unit price must be greater than zero for all items",
           type: "error"
         });
         return;
@@ -378,6 +376,7 @@ const PurchaseNew = () => {
     
     try {
       // 1. Create the purchase record
+      // Use the raw method to bypass TypeScript issues with custom tables
       const { data: purchaseData, error: purchaseError } = await supabase
         .from('purchases')
         .insert([
@@ -410,27 +409,51 @@ const PurchaseNew = () => {
       
       // 2. Create purchase items
       for (const item of purchaseItems) {
-        const { error: itemError } = await supabase
-          .from('purchase_items')
-          .insert([
-            {
-              purchase_id: purchaseId,
-              material_id: item.material_id,
-              quantity: item.quantity,
-              unit_price: item.unit_price,
-              line_total: item.line_total,
-              gst_percentage: item.gst || 0,
-              gst_amount: item.gst_amount || 0
-            }
-          ]);
-        
-        if (itemError) {
-          console.error("Error inserting purchase item:", itemError);
-          throw itemError;
+        try {
+          // Calculate the values correctly for database storage
+          const baseAmount = item.base_amount || 0; // Pure base amount (alt_quantity * alt_unit_price)
+          const transportShare = item.transport_share || 0;
+          const gstAmount = item.gst_amount || 0;
+          const lineTotal = baseAmount + gstAmount + transportShare; // Line total = base + GST + transport
+          
+          // Calculate unit price using the same formula as display: [(alt unit price * alt quantity) + transport charge] / main unit
+          const unitPrice = item.quantity > 0 
+            ? (baseAmount + transportShare) / item.quantity 
+            : item.unit_price || 0;
+          
+          const purchaseItemData = {
+            purchase_id: purchaseId,
+            material_id: item.material_id,
+            quantity: item.quantity || 0,
+            alt_quantity: item.alt_quantity || 0,
+            alt_unit_price: item.alt_unit_price || 0,
+            unit_price: unitPrice,
+            line_total: lineTotal,
+            gst_percentage: item.gst || item.gst_percentage || 0,
+            gst_amount: gstAmount,
+            actual_meter: item.actual_meter || 0
+          };
+
+          console.log('Inserting purchase item:', purchaseItemData);
+
+          const { error: itemError } = await supabase
+            .from('purchase_items')
+            .insert([purchaseItemData]);
+
+          if (itemError) {
+            console.error("Error inserting purchase item:", itemError);
+            throw itemError;
+          }
+        } catch (error) {
+          console.error("Error processing purchase item:", error);
+          throw error;
         }
       }
       
       console.log("Successfully inserted purchase items");
+      
+      // We no longer update inventory here since purchase status is initially 'pending'
+      // Inventory will be updated when the purchase is marked as 'completed'
       
       showToast({
         title: "Purchase Created",
@@ -440,11 +463,11 @@ const PurchaseNew = () => {
       
       // Use window.location.href instead of navigate to ensure full page refresh
       window.location.href = `/purchases/${purchaseId}`;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating purchase:", error);
       showToast({
         title: "Error",
-        description: error.message || "Failed to create purchase",
+        description: error instanceof Error ? error.message : "Failed to create purchase",
         type: "error"
       });
     } finally {
@@ -453,10 +476,11 @@ const PurchaseNew = () => {
   };
   
   const renderTotalCell = (item: PurchaseItem) => {
-    const baseAmount = item.line_total || 0;
+    const lineTotal = item.line_total || 0; // This now includes base_amount + gst_amount + transport_share
+    const transportShare = item.transport_share || 0;
+    const total = lineTotal; // No need to add transport share since it's already included in line_total
+    const baseAmount = item.base_amount || 0;
     const gstAmount = item.gst_amount || 0;
-    const transportShare = transportCharge > 0 ? (item.transport_share || 0) : 0;
-    const total = baseAmount + gstAmount + transportShare;
 
     return (
       <TableCell>
@@ -475,25 +499,6 @@ const PurchaseNew = () => {
               Transport: {formatCurrency(transportShare)}
             </>
           )}
-        </div>
-      </TableCell>
-    );
-  };
-  
-  const renderTruePriceCell = (item: PurchaseItem) => {
-    const baseAmount = item.line_total || 0;
-    const gstAmount = item.gst_amount || 0;
-    const transportShare = transportCharge > 0 ? (item.transport_share || 0) : 0;
-    const total = baseAmount + gstAmount + transportShare;
-    const trueUnitPrice = item.quantity ? total / item.quantity : 0;
-
-    return (
-      <TableCell>
-        {formatCurrency(trueUnitPrice)}
-        <div className="text-xs text-muted-foreground">
-          per {item.material?.unit || 'unit'}
-          <br />
-          Total: {formatCurrency(total)}
         </div>
       </TableCell>
     );
@@ -575,34 +580,18 @@ const PurchaseNew = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[300px]">Material</TableHead>
+                      <TableHead>Alt. Quantity & Unit</TableHead>
+                      <TableHead>Main Quantity & Unit</TableHead>
+                      <TableHead>Alt. Unit Price</TableHead>
+                      <TableHead>Unit Price</TableHead>
+                      <TableHead>Actual Meter</TableHead>
                       <TableHead>
-                        <div>Alt. Quantity</div>
-                        <div className="text-xs text-muted-foreground">(Alt. Unit)</div>
-                      </TableHead>
-                      <TableHead>
-                        <div>Main Quantity</div>
-                        <div className="text-xs text-muted-foreground">(Main Unit)</div>
-                      </TableHead>
-                      <TableHead>
-                        <div>Alt. Unit Price</div>
-                      </TableHead>
-                      <TableHead>
-                        <div>Base Amount</div>
+                        <div>Transport</div>
+                        <div className="text-xs text-muted-foreground">(Alt Qty %)</div>
                       </TableHead>
                       <TableHead>
                         <div>GST</div>
                         <div className="text-xs text-muted-foreground">(%)</div>
-                      </TableHead>
-                      <TableHead>
-                        <div>GST Amount</div>
-                      </TableHead>
-                      <TableHead>
-                        <div>Transport</div>
-                        <div className="text-xs text-muted-foreground">(Share)</div>
-                      </TableHead>
-                      <TableHead>
-                        <div>True Unit Price</div>
-                        <div className="text-xs text-muted-foreground">(With transport)</div>
                       </TableHead>
                       <TableHead>Total</TableHead>
                       <TableHead></TableHead>
@@ -611,23 +600,36 @@ const PurchaseNew = () => {
                   <TableBody>
                     {purchaseItems.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell className="font-medium">
-                          <Select
-                            value={item.material_id}
-                            onValueChange={(value) => updatePurchaseItem(item.id, "material_id", value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select material" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {inventoryItems.map((inv) => (
-                                <SelectItem key={inv.id} value={inv.id}>
-                                  {inv.material_name}
-                                  {inv.color && ` - ${inv.color}`}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <div className="flex-1">
+                              <Button
+                                variant="outline"
+                                className="w-full justify-between text-left font-normal"
+                                onClick={() => {
+                                  setCurrentPurchaseItemId(item.id);
+                                  setIsMaterialSearchOpen(true);
+                                }}
+                              >
+                                {item.material 
+                                  ? `${item.material.material_name}${item.material.color ? ` - ${item.material.color}` : ''}` 
+                                  : "Select material"}
+                                <Search className="h-4 w-4 opacity-50" />
+                              </Button>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              type="button"
+                              onClick={() => {
+                                setCurrentPurchaseItemId(item.id);
+                                setIsNewInventoryDialogOpen(true);
+                              }}
+                              title="Create new inventory item"
+                            >
+                              <FilePlus className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -643,10 +645,22 @@ const PurchaseNew = () => {
                                   parseFloat(e.target.value) || 0
                                 )
                               }
-                              className="w-24"
+                              className="w-20"
                             />
                             <span className="text-sm text-muted-foreground">
-                              {item.material?.alternate_unit || "-"}
+                              {item.material?.alternate_unit || ""}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm">
+                              {item.material && item.alt_quantity && item.material.conversion_rate
+                                ? (item.alt_quantity / (item.material.conversion_rate || 1)).toFixed(2)
+                                : item.quantity?.toFixed(2) || "0.00"}
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                              {item.material?.unit || ""}
                             </span>
                           </div>
                         </TableCell>
@@ -656,18 +670,26 @@ const PurchaseNew = () => {
                               type="number"
                               min="0"
                               step="0.01"
-                              value={item.quantity || ""}
+                              value={item.alt_unit_price || ""}
                               onChange={(e) =>
                                 updatePurchaseItem(
                                   item.id,
-                                  "quantity",
+                                  "alt_unit_price",
                                   parseFloat(e.target.value) || 0
                                 )
                               }
                               className="w-24"
                             />
                             <span className="text-sm text-muted-foreground">
-                              {item.material?.unit || "-"}
+                              /{item.material?.alternate_unit || "unit"}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span>{formatCurrency(item.unit_price || 0)}</span>
+                            <span className="text-sm text-muted-foreground">
+                              /{item.material?.unit || "unit"}
                             </span>
                           </div>
                         </TableCell>
@@ -676,19 +698,16 @@ const PurchaseNew = () => {
                             type="number"
                             min="0"
                             step="0.01"
-                            value={item.alt_unit_price || ""}
-                            onChange={(e) =>
-                              updatePurchaseItem(
-                                item.id,
-                                "alt_unit_price",
-                                parseFloat(e.target.value) || 0
-                              )
-                            }
+                            value={item.actual_meter || ""}
+                            onChange={(e) => {
+                              const value = e.target.value === "" ? 0 : parseFloat(e.target.value);
+                              updatePurchaseItem(item.id, "actual_meter", value);
+                            }}
                             className="w-24"
                           />
                         </TableCell>
                         <TableCell>
-                          {formatCurrency(item.line_total)}
+                          {formatCurrency(item.transport_share || 0)}
                         </TableCell>
                         <TableCell>
                           <Input
@@ -707,33 +726,7 @@ const PurchaseNew = () => {
                             className="w-20"
                           />
                         </TableCell>
-                        <TableCell>
-                          {formatCurrency(item.gst_amount)}
-                        </TableCell>
-                        <TableCell>
-                          {formatCurrency(item.transport_share)}
-                        </TableCell>
-                        <TableCell>
-                          {formatCurrency(item.true_unit_price)}
-                        </TableCell>
-                        <TableCell>
-                          {formatCurrency(item.true_line_total)}
-                          <div className="text-xs text-muted-foreground">
-                            Base: {formatCurrency(item.line_total)}
-                            {item.gst_amount > 0 && (
-                              <>
-                                <br />
-                                GST: {formatCurrency(item.gst_amount)}
-                              </>
-                            )}
-                            {item.transport_share > 0 && (
-                              <>
-                                <br />
-                                Transport: {formatCurrency(item.transport_share)}
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
+                        {renderTotalCell(item)}
                         <TableCell>
                           <Button
                             variant="ghost"
@@ -748,7 +741,7 @@ const PurchaseNew = () => {
                     
                     {/* Add Item button as a table row */}
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center p-2">
+                      <TableCell colSpan={8} className="text-center p-2">
                         <Button
                           variant="outline"
                           size="sm"
@@ -819,27 +812,34 @@ const PurchaseNew = () => {
                     className="w-full"
                   />
                 </div>
+                {/* Display transport rate calculation */}
+                {transportCharge > 0 && purchaseItems.length > 0 && (
+                  <div className="text-xs text-muted-foreground mt-1 p-2 bg-blue-50 rounded">
+                    <div>Transport Rate Calculation:</div>
+                    <div>
+                      Total Alt Quantity: {purchaseItems.reduce((sum, item) => sum + (item.alt_quantity || 0), 0).toFixed(2)}
+                    </div>
+                    <div>
+                      Per Alt Unit Rate: ₹{purchaseItems.reduce((sum, item) => sum + (item.alt_quantity || 0), 0) > 0 
+                        ? (transportCharge / purchaseItems.reduce((sum, item) => sum + (item.alt_quantity || 0), 0)).toFixed(2) 
+                        : '0.00'}
+                    </div>
+                  </div>
+                )}
               </div>
               
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Subtotal (Before GST):</span>
-                  <span>{formatCurrency(purchaseItems.reduce((sum, item) => sum + (item.line_total || 0), 0))}</span>
+                  <span className="text-muted-foreground">Subtotal (Base Cost):</span>
+                  <span>{formatCurrency(purchaseItems.reduce((sum, item) => sum + (item.base_amount || 0), 0))}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Total GST:</span>
-                  <span>{formatCurrency(purchaseItems.reduce((sum, item) => {
-                    const baseAmount = item.line_total || 0;
-                    return sum + (baseAmount * (item.gst || 0)) / 100;
-                  }, 0))}</span>
+                  <span>{formatCurrency(purchaseItems.reduce((sum, item) => sum + (item.gst_amount || 0), 0))}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Subtotal (After GST):</span>
-                  <span>{formatCurrency(subtotal)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Transport Charge:</span>
-                  <span>{formatCurrency(transportCharge || 0)}</span>
+                  <span className="text-muted-foreground">Total Transport:</span>
+                  <span>{formatCurrency(purchaseItems.reduce((sum, item) => sum + (item.transport_share || 0), 0))}</span>
                 </div>
                 <div className="border-t pt-2 mt-2 flex justify-between items-center font-bold">
                   <span>Total Amount:</span>

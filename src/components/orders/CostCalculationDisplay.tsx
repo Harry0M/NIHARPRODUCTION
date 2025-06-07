@@ -11,13 +11,15 @@ interface CostCalculationDisplayProps {
     printingCharge: number;
     stitchingCharge: number;
     transportCharge: number;
-    productionCost: number;
+    baseCost: number;
+    gstAmount: number;
     totalCost: number;
     margin: number;
     sellingPrice: number;
-    perUnitCost?: number;
-    perUnitMaterialCost?: number;
-    perUnitProductionCost?: number;
+    perUnitBaseCost: number;
+    perUnitTransportCost: number;
+    perUnitGstCost: number;
+    perUnitCost: number;
   };
   onMarginChange?: (margin: number) => void;
   onCostChange?: (type: string, value: number) => void;
@@ -31,6 +33,7 @@ export const CostCalculationDisplay = ({
   orderQuantity = 1
 }: CostCalculationDisplayProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  
   // Make sure we always update state when the props change
   useEffect(() => {
     setEditableCosts({
@@ -39,7 +42,8 @@ export const CostCalculationDisplay = ({
       printingCharge: costCalculation.printingCharge,
       stitchingCharge: costCalculation.stitchingCharge,
       transportCharge: costCalculation.transportCharge,
-      productionCost: costCalculation.productionCost,
+      baseCost: costCalculation.baseCost,
+      gstAmount: costCalculation.gstAmount,
       totalCost: costCalculation.totalCost,
       margin: costCalculation.margin,
       sellingPrice: costCalculation.sellingPrice,
@@ -51,7 +55,7 @@ export const CostCalculationDisplay = ({
       cuttingCharge: (costCalculation.cuttingCharge / (orderQuantity || 1)).toString(),
       printingCharge: (costCalculation.printingCharge / (orderQuantity || 1)).toString(),
       stitchingCharge: (costCalculation.stitchingCharge / (orderQuantity || 1)).toString(),
-      transportCharge: (costCalculation.transportCharge / (orderQuantity || 1)).toString(), // Display per-unit transport charge
+      transportCharge: (costCalculation.transportCharge / (orderQuantity || 1)).toString(),
     });
   }, [costCalculation, orderQuantity]);
   
@@ -61,7 +65,8 @@ export const CostCalculationDisplay = ({
     printingCharge: costCalculation.printingCharge,
     stitchingCharge: costCalculation.stitchingCharge,
     transportCharge: costCalculation.transportCharge,
-    productionCost: costCalculation.productionCost,
+    baseCost: costCalculation.baseCost,
+    gstAmount: costCalculation.gstAmount,
     totalCost: costCalculation.totalCost,
     margin: costCalculation.margin,
     sellingPrice: costCalculation.sellingPrice,
@@ -73,7 +78,7 @@ export const CostCalculationDisplay = ({
     cuttingCharge: (costCalculation.cuttingCharge / (orderQuantity || 1)).toString(),
     printingCharge: (costCalculation.printingCharge / (orderQuantity || 1)).toString(),
     stitchingCharge: (costCalculation.stitchingCharge / (orderQuantity || 1)).toString(),
-    transportCharge: costCalculation.transportCharge.toString(),
+    transportCharge: (costCalculation.transportCharge / (orderQuantity || 1)).toString(),
   });
   
   const formatCurrency = (value: number) => {
@@ -128,7 +133,7 @@ export const CostCalculationDisplay = ({
         {isExpanded ? (
           <div className="space-y-4">
             <div>
-              <h3 className="text-sm font-medium text-muted-foreground mb-2">Material Costs</h3>
+              <h3 className="text-sm font-medium text-muted-foreground mb-2">Base Costs</h3>
               <div className="bg-slate-50 p-3 rounded-md">
                 <div className="flex justify-between items-center">
                   <span>Material Cost</span>
@@ -160,12 +165,10 @@ export const CostCalculationDisplay = ({
                     <span className="text-xs text-muted-foreground">Total</span>
                   </div>
                 </div>
-                {costCalculation.perUnitMaterialCost !== undefined && (
-                  <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
-                    <span>Per piece</span>
-                    <span>{formatCurrency(costCalculation.perUnitMaterialCost)}</span>
-                  </div>
-                )}
+                <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
+                  <span>Per unit</span>
+                  <span>{formatCurrency(costCalculation.perUnitBaseCost)}</span>
+                </div>
               </div>
             </div>
             
@@ -294,7 +297,7 @@ export const CostCalculationDisplay = ({
                         <input
                           type="text"
                           inputMode="decimal"
-                          className="w-24 h-8 text-right bg-white border border-blue-200 focus:border-blue-400 rounded-md px-2"
+                          className="w-20 h-8 text-right bg-white border border-blue-200 focus:border-blue-400 rounded-md px-2"
                           value={inputValues.transportCharge}
                           onChange={(e) => {
                             const value = e.target.value.replace(/[^0-9.]/g, '');
@@ -316,129 +319,117 @@ export const CostCalculationDisplay = ({
                             }
                           }}
                         />
-                        <span className="text-xs text-muted-foreground">Total</span>
+                        <span className="text-xs text-muted-foreground">Per unit</span>
                       </div>
+
                     </div>
                     <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
-                      <span>Per unit</span>
-                      <span>{formatCurrency(costCalculation.transportCharge / (orderQuantity || 1))}</span>
+                      <span>Total</span>
+                      <span>{formatCurrency(costCalculation.transportCharge)}</span>
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground mb-2">Cost Summary</h3>
+              <div className="space-y-2">
+                <div className="bg-slate-50 p-3 rounded-md">
+                  <div className="flex justify-between items-center">
+                    <span>Base Cost</span>
+                    <span>{formatCurrency(costCalculation.baseCost)}</span>
+                  </div>
+                  <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
+                    <span>Per unit</span>
+                    <span>{formatCurrency(costCalculation.perUnitBaseCost)}</span>
                   </div>
                 </div>
                 
                 <div className="bg-slate-50 p-3 rounded-md">
-                  <div className="flex justify-between items-center font-medium">
-                    <span>Total Production Cost</span>
-                    <span>{formatCurrency(costCalculation.productionCost)}</span>
+                  <div className="flex justify-between items-center">
+                    <span>Transport Cost</span>
+                    <span>{formatCurrency(costCalculation.transportCharge)}</span>
                   </div>
-                  {costCalculation.perUnitProductionCost !== undefined && (
-                    <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
-                      <span>Per piece</span>
-                      <span>{formatCurrency(costCalculation.perUnitProductionCost)}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-            
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground mb-2">Total Cost</h3>
-              <div className="bg-slate-50 p-3 rounded-md">
-                <div className="flex justify-between items-center font-medium">
-                  <span>Total Cost</span>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      className="w-24 h-8 text-right"
-                      value={editableCosts.materialCost + costCalculation.productionCost}
-                      onChange={(e) => handleCostChange('totalCost', e)}
-                    />
-                    <span className="text-xs text-muted-foreground">Total</span>
-                  </div>
-                </div>
-                {costCalculation.perUnitCost !== undefined && (
                   <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
-                    <span>Cost per piece</span>
+                    <span>Per unit</span>
+                    <span>{formatCurrency(costCalculation.perUnitTransportCost)}</span>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-3 rounded-md">
+                  <div className="flex justify-between items-center">
+                    <span>GST</span>
+                    <span>{formatCurrency(costCalculation.gstAmount)}</span>
+                  </div>
+                  <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
+                    <span>Per unit</span>
+                    <span>{formatCurrency(costCalculation.perUnitGstCost)}</span>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-3 rounded-md font-medium">
+                  <div className="flex justify-between items-center">
+                    <span>Total Cost</span>
+                    <span>{formatCurrency(costCalculation.totalCost)}</span>
+                  </div>
+                  <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
+                    <span>Per unit</span>
                     <span>{formatCurrency(costCalculation.perUnitCost)}</span>
                   </div>
-                )}
+                </div>
               </div>
             </div>
-            
-            <Separator />
-            
-            <div className="bg-blue-50 p-3 rounded-md">
-              <div className="flex justify-between items-center font-medium">
-                <span>Total Cost</span>
-                <span>{formatCurrency(costCalculation.totalCost)}</span>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="margin">Profit Margin (%)</Label>
-              <Input
-                id="margin"
-                type="number"
-                min="0"
-                max="100"
-                step="0.1"
-                value={costCalculation.margin}
-                onChange={handleMarginChange}
-                className="max-w-xs"
-              />
-            </div>
-            
-            {/* Add profit amount section */}
-            <div className="bg-slate-50 p-3 rounded-md">
-              <div className="flex justify-between items-center">
-                <span>Selling Price</span>
-                <span className="font-medium">{formatCurrency(costCalculation.sellingPrice)}</span>
-              </div>
-            </div>
-            
-            <div className={`p-3 rounded-md ${profitIsPositive ? 'bg-green-50' : 'bg-red-50'}`}>
-              <div className="flex justify-between items-center font-medium">
-                <span>Profit</span>
-                <span className={profitIsPositive ? 'text-green-600' : 'text-red-600'}>
-                  {formatCurrency(profit)}
-                </span>
+
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground mb-2">Pricing</h3>
+              <div className="space-y-2">
+                <div className="bg-slate-50 p-3 rounded-md">
+                  <div className="flex justify-between items-center">
+                    <span>Margin</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        className="w-20 h-8 text-right bg-white border border-blue-200 focus:border-blue-400 rounded-md px-2"
+                        value={costCalculation.margin.toString()}
+                        onChange={handleMarginChange}
+                      />
+                      <span className="text-xs text-muted-foreground">%</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-slate-50 p-3 rounded-md font-medium">
+                  <div className="flex justify-between items-center">
+                    <span>Selling Price</span>
+                    <span>{formatCurrency(costCalculation.sellingPrice)}</span>
+                  </div>
+                  <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
+                    <span>Profit</span>
+                    <span className={profitIsPositive ? "text-green-600" : "text-red-600"}>
+                      {formatCurrency(profit)}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-muted-foreground">Material Cost</Label>
-                <div className="font-medium text-lg">{formatCurrency(costCalculation.materialCost)}</div>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Production Cost</Label>
-                <div className="font-medium text-lg">{formatCurrency(costCalculation.productionCost)}</div>
-              </div>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Total Cost:</span>
+              <span className="font-medium">{formatCurrency(costCalculation.totalCost)}</span>
             </div>
-            
-            <Separator />
-            
-            <div className="grid grid-cols-4 gap-4">
-              <div>
-                <Label className="text-muted-foreground">Total Cost</Label>
-                <div className="font-medium text-lg">{formatCurrency(costCalculation.totalCost)}</div>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Margin</Label>
-                <div className="font-medium text-lg">{costCalculation.margin}%</div>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Selling Price</Label>
-                <div className="font-medium text-lg text-green-700">{formatCurrency(costCalculation.sellingPrice)}</div>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Profit</Label>
-                <div className={`font-medium text-lg ${profitIsPositive ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(profit)}
-                </div>
-              </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Selling Price:</span>
+              <span className="font-medium">{formatCurrency(costCalculation.sellingPrice)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Profit:</span>
+              <span className={`font-medium ${profitIsPositive ? "text-green-600" : "text-red-600"}`}>
+                {formatCurrency(profit)}
+              </span>
             </div>
           </div>
         )}

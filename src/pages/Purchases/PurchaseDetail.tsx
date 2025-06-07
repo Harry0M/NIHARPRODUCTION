@@ -17,11 +17,13 @@ import {
 } from "@/components/ui/table";
 import { formatCurrency } from "@/utils/formatters";
 import { showToast } from "@/components/ui/enhanced-toast";
+import { completePurchaseWithActualMeter, reversePurchaseCompletion } from "@/utils/purchaseInventoryUtils";
 
 interface InventoryItem {
   id: string;
   material_name: string;
-  color: string;
+  color?: string;
+  gsm?: string;
   unit: string;
   alternate_unit: string;
   conversion_rate: number;
@@ -36,6 +38,12 @@ interface PurchaseItem {
   gst_percentage: number;
   gst_amount: number;
   material: InventoryItem;
+  actual_meter: number;
+  alt_quantity: number;
+  alt_unit_price: number;
+  true_unit_price?: number;
+  transport_share?: number;
+  true_line_total?: number;
 }
 
 interface Purchase {
@@ -43,13 +51,13 @@ interface Purchase {
   purchase_number: string;
   purchase_date: string;
   supplier_id: string;
+  total_amount: number;
+  status: string;
   transport_charge: number;
   subtotal: number;
-  total_amount: number;
   created_by: string;
   created_at: string;
   updated_at: string;
-  status: string;
   notes: string;
   invoice_number?: string;
   suppliers: {
@@ -60,16 +68,7 @@ interface Purchase {
     address: string;
     gst: string | null;
   };
-  purchase_items: {
-    id: string;
-    material_id: string;
-    quantity: number;
-    unit_price: number;
-    line_total: number;
-    gst_percentage: number;
-    gst_amount: number;
-    material: InventoryItem;
-  }[];
+  purchase_items: PurchaseItem[];
 }
 
 const PurchaseDetail = () => {
@@ -95,6 +94,8 @@ const PurchaseDetail = () => {
             line_total,
             gst_percentage,
             gst_amount,
+            alt_quantity,
+            alt_unit_price,
             material:inventory (
               id,
               material_name,
@@ -102,7 +103,8 @@ const PurchaseDetail = () => {
               unit,
               alternate_unit,
               conversion_rate
-            )
+            ),
+            actual_meter
           )
         `)
         .eq('id', id)
@@ -117,50 +119,22 @@ const PurchaseDetail = () => {
     enabled: !!id,
   });
   
-  const [purchaseItemsWithTransport, setPurchaseItemsWithTransport] = useState<any[]>([]);
+  const [purchaseItemsWithTransport, setPurchaseItemsWithTransport] = useState<PurchaseItem[]>([]);
   const [perKgTransportRate, setPerKgTransportRate] = useState<number>(0);
 
   useEffect(() => {
     if (data) {
       setPurchase(data);
-      
-      // Calculate transport share and true prices
-      const items = data.purchase_items || [];
-      const totalWeight = items.reduce(
-        (sum, item) => sum + (item.quantity * (item.material?.conversion_rate || 1) || 0),
-        0
-      );
-      
-      if (totalWeight > 0 && data.transport_charge > 0) {
-        const perKgRate = data.transport_charge / totalWeight;
-        setPerKgTransportRate(perKgRate);
-        
-        const itemsWithTransport = items.map(item => {
-          const weight = item.quantity * (item.material?.conversion_rate || 1);
-          const transportShare = weight * perKgRate;
-          const trueUnitPrice = item.unit_price + (transportShare / (item.quantity || 1));
-          const trueLineTotal = trueUnitPrice * item.quantity;
-          
-          return {
-            ...item,
-            transport_share: transportShare,
-            true_unit_price: trueUnitPrice,
-            true_line_total: trueLineTotal
-          };
-        });
-        
-        setPurchaseItemsWithTransport(itemsWithTransport);
-      } else {
-        setPurchaseItemsWithTransport(items);
-      }
+      // Only set the data for display - no calculations or modifications
+      setPurchaseItemsWithTransport(data.purchase_items || []);
     }
   }, [data]);
   
   // Helper function to sleep for a given number of milliseconds
-  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
   
   // Helper function to get current inventory quantity
-  const getCurrentInventoryQuantity = async (materialId) => {
+  const getCurrentInventoryQuantity = async (materialId: string) => {
     const { data, error } = await supabase
       .from("inventory")
       .select("quantity, material_name")
@@ -182,8 +156,8 @@ const PurchaseDetail = () => {
       console.log(`======= START STATUS CHANGE TO ${newStatus} =======`);
       console.log(`Purchase ID: ${id}`);
       
-      // Check ALL inventory quantities BEFORE anything happens
-      console.log("BEFORE ANY CHANGES - Current inventory quantities:");
+      // Check inventory quantities BEFORE any changes
+      console.log("BEFORE STATUS CHANGE - Current inventory quantities:");
       for (const item of purchase.purchase_items) {
         const inventoryBefore = await getCurrentInventoryQuantity(item.material_id);
         if (inventoryBefore) {
@@ -191,124 +165,103 @@ const PurchaseDetail = () => {
         }
       }
       
-      // First update the purchase status
-      const { error } = await supabase
-        .from('purchases')
-        .update({ status: newStatus })
-        .eq('id', id);
-      
-      if (error) {
-        throw error;
-      }
-      
-      // Wait 1 second to see if any triggers/processes update inventory immediately after status change
-      console.log("Waiting 1 second to check for automatic inventory updates...");
-      await sleep(1000);
-      
-      // Check inventory quantities AFTER status update but BEFORE our manual update
-      console.log("AFTER STATUS UPDATE (before our manual update) - Current inventory quantities:");
-      for (const item of purchase.purchase_items) {
-        const inventoryAfterStatus = await getCurrentInventoryQuantity(item.material_id);
-        if (inventoryAfterStatus) {
-          console.log(`${inventoryAfterStatus.material_name}: ${inventoryAfterStatus.quantity} (Material ID: ${item.material_id})`);
-        }
-      }
-      
-      // If status is being changed to completed, only update prices with transport adjustments
-      // IMPORTANT: The inventory quantities will be updated ONLY by the database trigger
-      if (newStatus === "completed") {
-        console.log("INFO: Purchase being marked as completed", id);
-        console.log("INFO: Inventory quantities will be updated ONLY by database trigger");
+      // Handle status change logic using our TypeScript utility functions
+      if (newStatus === "completed" && purchase.status !== "completed") {
+        console.log("INFO: Purchase being marked as completed - using TypeScript inventory logic");
         
-        // Only update purchase prices with transport charge adjustments
-        if (purchase.transport_charge > 0) {
-          console.log("INFO: Updating inventory purchase prices with transport charges included");
-          console.log("Purchase items:", purchase.purchase_items);
-          
-          // First get inventory data for conversion rates
-          const inventoryData = {};
-          for (const item of purchase.purchase_items) {
-            const { data: invData } = await supabase
-              .from('inventory')
-              .select('id, conversion_rate, purchase_price')
-              .eq('id', item.material_id)
-              .single();
-            
-            if (invData) {
-              inventoryData[item.material_id] = invData;
-              console.log(`Got inventory data for ${item.material_id}: Conversion rate: ${invData.conversion_rate}, Current price: ${invData.purchase_price}`);
+        // Use our TypeScript utility function instead of database triggers
+        const result = await completePurchaseWithActualMeter({
+          id: purchase.id,
+          purchase_number: purchase.purchase_number,
+          transport_charge: purchase.transport_charge,
+          purchase_items: purchase.purchase_items.map(item => ({
+            id: item.id,
+            material_id: item.material_id,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            line_total: item.line_total,
+            actual_meter: item.actual_meter || 0,
+            material: {
+              id: item.material.id,
+              material_name: item.material.material_name,
+              conversion_rate: item.material.conversion_rate,
+              unit: item.material.unit
             }
-          }
-          
-          // Calculate total weight directly using purchase items and inventory data
-          let totalWeight = 0;
-          for (const item of purchase.purchase_items) {
-            const conversionRate = inventoryData[item.material_id]?.conversion_rate || 1;
-            const itemWeight = item.quantity * conversionRate;
-            totalWeight += itemWeight;
-            console.log(`Item ${item.material_id}: Quantity: ${item.quantity}, Conversion: ${conversionRate}, Weight: ${itemWeight}kg`);
-          }
-          
-          console.log(`Total weight: ${totalWeight}kg, Transport charge: ${purchase.transport_charge}`);
-          
-          if (totalWeight > 0) {
-            // Calculate per kg transport rate
-            const perKgTransport = purchase.transport_charge / totalWeight;
-            console.log(`Per kg transport rate: ${perKgTransport}`);
-            
-            // Update each inventory item with transport-adjusted price
-            for (const item of purchase.purchase_items) {
-              const invData = inventoryData[item.material_id];
-              if (!invData) continue;
-              
-              const conversionRate = invData.conversion_rate || 1;
-              const itemWeight = item.quantity * conversionRate;
-              const transportShare = itemWeight * perKgTransport;
-              const trueUnitPrice = item.unit_price + (transportShare / item.quantity);
-              
-              console.log(`Calculating for ${item.material_id}:`);
-              console.log(`- Base unit price: ${item.unit_price}`);
-              console.log(`- Item weight: ${itemWeight}kg`);
-              console.log(`- Transport share: ${transportShare}`);
-              console.log(`- True unit price: ${trueUnitPrice}`);
-              
-              // Update inventory purchase rate (the correct field used by the system)
-              const { error: updateError } = await supabase
-                .from('inventory')
-                .update({ 
-                  purchase_rate: trueUnitPrice,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', item.material_id);
-              
-              if (updateError) {
-                console.error(`Error updating inventory price for ${item.material_id}:`, updateError);
-              } else {
-                console.log(`Successfully updated price for ${item.material_id} to ${trueUnitPrice}`);
-              }
+          }))
+        });
+        
+        if (!result.success) {
+          throw new Error(result.error || "Failed to complete purchase inventory updates");
+        }
+        
+        console.log("INFO: Successfully completed inventory updates using actual_meter logic");
+        
+        // Update the purchase status after successful inventory updates
+        const { error } = await supabase
+          .from('purchases')
+          .update({ status: newStatus })
+          .eq('id', id);
+        
+        if (error) {
+          // If status update fails, we should ideally reverse the inventory changes
+          console.error("Status update failed, inventory may be inconsistent:", error);
+          throw error;
+        }
+        
+      } else if (purchase.status === "completed" && newStatus !== "completed") {
+        console.log("INFO: Purchase status changing from completed - reversing inventory changes");
+        
+        // Use our TypeScript utility function to reverse inventory changes
+        const result = await reversePurchaseCompletion({
+          id: purchase.id,
+          purchase_number: purchase.purchase_number,
+          purchase_items: purchase.purchase_items.map(item => ({
+            id: item.id,
+            material_id: item.material_id,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            line_total: item.line_total,
+            actual_meter: item.actual_meter || 0,
+            material: {
+              id: item.material.id,
+              material_name: item.material.material_name,
+              conversion_rate: item.material.conversion_rate,
+              unit: item.material.unit
             }
-          }
-        } else {
-          console.log("INFO: No transport charge, skipping price adjustment");
+          }))
+        });
+        
+        if (!result.success) {
+          throw new Error(result.error || "Failed to reverse purchase inventory changes");
+        }
+        
+        console.log("INFO: Successfully reversed inventory changes");
+        
+        // Update the purchase status after successful inventory reversal
+        const { error } = await supabase
+          .from('purchases')
+          .update({ status: newStatus })
+          .eq('id', id);
+        
+        if (error) {
+          console.error("Status update failed after inventory reversal:", error);
+          throw error;
+        }
+        
+      } else {
+        // For other status changes (like pending to cancelled), just update the status
+        const { error } = await supabase
+          .from('purchases')
+          .update({ status: newStatus })
+          .eq('id', id);
+        
+        if (error) {
+          throw error;
         }
       }
       
-      // If changing from completed to another status (like pending or cancelled)
-      // We should handle reverting the inventory changes here
-      else if (purchase.status === "completed") {
-        // For now, we'll just show a warning that inventory won't be automatically adjusted
-        showToast({
-          title: "Inventory Note",
-          description: "Inventory quantities won't be automatically adjusted when changing from 'completed' status. Manual adjustment may be needed.",
-          type: "warning"
-        });
-      }
-      
-      // Final check of inventory quantities and transaction logs
-      console.log("\n======= FINAL STATE CHECK AFTER STATUS CHANGE =======");
-      
-      // Check final inventory quantities
-      console.log("FINAL INVENTORY STATE:");
+      // Final check of inventory quantities
+      console.log("AFTER STATUS CHANGE - Final inventory quantities:");
       for (const item of purchase.purchase_items) {
         const finalInventory = await getCurrentInventoryQuantity(item.material_id);
         if (finalInventory) {
@@ -339,11 +292,12 @@ const PurchaseDetail = () => {
       });
       
       refetch();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating purchase status:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to update purchase status";
       showToast({
         title: "Error",
-        description: error.message || "Failed to update purchase status",
+        description: errorMessage,
         type: "error"
       });
     }
@@ -516,19 +470,18 @@ const PurchaseDetail = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Material</TableHead>
-                    <TableHead>
-                      <div>Alt. Quantity</div>
-                      <div className="text-xs text-muted-foreground">(Alt. Unit)</div>
-                    </TableHead>
-                    <TableHead>
-                      <div>Main Quantity</div>
-                      <div className="text-xs text-muted-foreground">(Main Unit)</div>
-                    </TableHead>
+                    <TableHead>Alt. Quantity</TableHead>
+                    <TableHead>Alt. Unit</TableHead>
+                    <TableHead>Main Quantity</TableHead>
+                    <TableHead>Main Unit</TableHead>
+                    <TableHead>Actual Meter</TableHead>
                     <TableHead className="text-right">
                       <div>Alt. Unit Price</div>
+                      <div className="text-xs text-muted-foreground">(Per alt unit)</div>
                     </TableHead>
                     <TableHead className="text-right">
-                      <div>Base Amount</div>
+                      <div>Unit Price</div>
+                      <div className="text-xs text-muted-foreground">(Per main unit)</div>
                     </TableHead>
                     <TableHead className="text-right">
                       <div>GST</div>
@@ -536,44 +489,43 @@ const PurchaseDetail = () => {
                     </TableHead>
                     <TableHead className="text-right">
                       <div>GST Amount</div>
+                      <div className="text-xs text-muted-foreground">(Calculated)</div>
                     </TableHead>
                     <TableHead className="text-right">
-                      <div>Transport</div>
-                      <div className="text-xs text-muted-foreground">(Share)</div>
+                      <div>Transport Share</div>
+                      <div className="text-xs text-muted-foreground">(Per item)</div>
                     </TableHead>
-                    <TableHead className="text-right">
-                      <div>True Unit Price</div>
-                      <div className="text-xs text-muted-foreground">(With transport)</div>
-                    </TableHead>
-                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-right">Line Total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {purchaseItemsWithTransport.map((item) => (
+                  {purchase.purchase_items.map((item) => (
                     <TableRow key={item.id}>
-                      <TableCell className="font-medium">
-                        {item.material.material_name}
-                        {item.material.color && (
-                          <span className="text-muted-foreground"> - {item.material.color}</span>
-                        )}
-                      </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span>{(item.quantity * (item.material.conversion_rate || 1)).toFixed(2)}</span>
-                          <span className="text-sm text-muted-foreground">{item.material.alternate_unit}</span>
+                        <div className="font-medium">{item.material.material_name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {item.material.color && `Color: ${item.material.color}`}
+                          {item.material.gsm && ` GSM: ${item.material.gsm}`}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span>{item.quantity.toFixed(2)}</span>
-                          <span className="text-sm text-muted-foreground">{item.material.unit}</span>
+                        {(item.quantity * (item.material.conversion_rate || 1)).toFixed(2)}
+                      </TableCell>
+                      <TableCell>{item.material.alternate_unit}</TableCell>
+                      <TableCell>{item.quantity.toFixed(2)}</TableCell>
+                      <TableCell>{item.material.unit}</TableCell>
+                      <TableCell>{item.actual_meter || 0}</TableCell>
+                      <TableCell className="text-right">
+                        <div>
+                          {formatCurrency(item.alt_unit_price || 0)}
                         </div>
+                        <div className="text-xs text-muted-foreground">per {item.material.alternate_unit}</div>
                       </TableCell>
                       <TableCell className="text-right">
-                        {formatCurrency((item.true_unit_price || item.unit_price) * (item.material.conversion_rate || 1))}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(item.line_total)}
+                        <div>
+                          {formatCurrency(item.unit_price || 0)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">per {item.material.unit}</div>
                       </TableCell>
                       <TableCell className="text-right">
                         {item.gst_percentage}%
@@ -585,25 +537,7 @@ const PurchaseDetail = () => {
                         {formatCurrency(item.transport_share || 0)}
                       </TableCell>
                       <TableCell className="text-right">
-                        {formatCurrency(item.true_unit_price || item.unit_price)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(item.true_line_total || item.line_total)}
-                        <div className="text-xs text-muted-foreground">
-                          Base: {formatCurrency(item.line_total)}
-                          {item.gst_amount > 0 && (
-                            <>
-                              <br />
-                              GST: {formatCurrency(item.gst_amount)}
-                            </>
-                          )}
-                          {item.transport_share > 0 && (
-                            <>
-                              <br />
-                              Transport: {formatCurrency(item.transport_share)}
-                            </>
-                          )}
-                        </div>
+                        {formatCurrency(item.line_total || 0)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -634,16 +568,11 @@ const PurchaseDetail = () => {
                   <span className="font-medium">Subtotal:</span>
                   <span className="font-medium">{formatCurrency(purchase.subtotal)}</span>
                 </div>
-                <div className="flex justify-between py-2">
-                  <span className="font-medium">Transport Charge:</span>
-                  <span className="font-medium">
-                    {formatCurrency(purchase.transport_charge)}
-                    {perKgTransportRate > 0 && (
-                      <div className="text-xs text-muted-foreground">
-                        ({formatCurrency(perKgTransportRate)}/kg)
-                      </div>
-                    )}
-                  </span>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Transport Charge:</span>
+                  <div className="text-right">
+                    <div>{formatCurrency(purchase.transport_charge)}</div>
+                  </div>
                 </div>
                 <div className="flex justify-between py-2 text-lg">
                   <span className="font-bold">Total Amount:</span>

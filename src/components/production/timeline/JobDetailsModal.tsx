@@ -68,11 +68,7 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
                   custom_name,
                   size,
                   color,
-                  gsm,
-                  inventory:material_id (
-                    material_name,
-                    unit
-                  )
+                  gsm
                 )
               )
             `)
@@ -255,20 +251,14 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
             {jobDetails.components && jobDetails.components.length > 0 && (
               <div className="space-y-4">
                 <h4 className="font-medium">Components</h4>
-                
-                {/* Components with data */}
-                {jobDetails.components
-                  .filter((component: any) => {
-                    return component.width || component.height || component.counter || 
-                           component.rewinding || component.roll_width || component.consumption || 
-                           component.rate || component.waste_quantity;
-                  })
-                  .sort((a: any, b: any) => {
-                    const consumptionA = parseFloat(a.consumption || '0');
-                    const consumptionB = parseFloat(b.consumption || '0');
-                    return consumptionB - consumptionA;
-                  })
-                  .map((component: any) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {jobDetails.components
+                    .sort((a: any, b: any) => {
+                      const consumptionA = parseFloat(a.consumption || '0');
+                      const consumptionB = parseFloat(b.consumption || '0');
+                      return consumptionB - consumptionA;
+                    })
+                    .map((component: any) => (
                     <div key={component.id} className="p-4 border rounded-lg bg-card">
                       <div className="flex items-center justify-between mb-3">
                         <div className="font-medium capitalize">
@@ -280,11 +270,6 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
                               ({component.order_component.size})
                             </span>
                           }
-                          {component.order_component?.inventory?.material_name && (
-                            <div className="text-sm font-medium mt-1 px-2 py-1 bg-primary/10 rounded-md inline-block">
-                              Material: {component.order_component.inventory.material_name}
-                            </div>
-                          )}
                         </div>
                         <Badge variant={getBadgeVariant(component.status)}>
                           {component.status}
@@ -318,16 +303,6 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
                             <span className="text-muted-foreground">Waste:</span> {component.waste_quantity}
                           </div>
                         )}
-                        {component.order_component?.color && (
-                          <div>
-                            <span className="text-muted-foreground">Color:</span> {component.order_component.color}
-                          </div>
-                        )}
-                        {component.order_component?.gsm && (
-                          <div>
-                            <span className="text-muted-foreground">GSM:</span> {component.order_component.gsm}
-                          </div>
-                        )}
                       </div>
                       
                       {component.notes && (
@@ -338,51 +313,7 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
                       )}
                     </div>
                   ))}
-
-                {/* Empty components */}
-                {jobDetails.components
-                  .filter((component: any) => {
-                    return !component.width && !component.height && !component.counter && 
-                           !component.rewinding && !component.roll_width && !component.consumption && 
-                           !component.rate && !component.waste_quantity;
-                  })
-                  .length > 0 && (
-                  <div className="mt-6">
-                    <h4 className="text-sm font-medium text-muted-foreground mb-3">Pending Components</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {jobDetails.components
-                        .filter((component: any) => {
-                          return !component.width && !component.height && !component.counter && 
-                                 !component.rewinding && !component.roll_width && !component.consumption && 
-                                 !component.rate && !component.waste_quantity;
-                        })
-                        .map((component: any) => (
-                          <div key={component.id} className="p-4 border rounded-lg bg-muted/30">
-                            <div className="flex items-center justify-between">
-                              <div className="font-medium capitalize text-muted-foreground">
-                                {component.order_component?.custom_name || 
-                                 component.order_component?.component_type || 
-                                 'Unnamed Component'}
-                                {component.order_component?.size && 
-                                  <span className="ml-2 text-sm text-muted-foreground">
-                                    ({component.order_component.size})
-                                  </span>
-                                }
-                                {component.order_component?.inventory?.material_name && (
-                                  <div className="text-sm mt-1 px-2 py-1 bg-muted rounded-md inline-block">
-                                    Material: {component.order_component.inventory.material_name}
-                                  </div>
-                                )}
-                              </div>
-                              <Badge variant="outline">
-                                {component.status}
-                              </Badge>
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
+                </div>
               </div>
             )}
           </>

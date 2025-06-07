@@ -312,7 +312,7 @@ const OrderDetail = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-[1400px] mx-auto">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Button 
@@ -353,36 +353,31 @@ const OrderDetail = () => {
           <span className="text-sm">Created on {formatDate(order.created_at)}</span>
         </div>
       </div>
-      
-      <Tabs defaultValue="details" className="w-full">
-        <TabsList className="grid grid-cols-2 w-full max-w-md">
-          <TabsTrigger value="details">Order Details</TabsTrigger>
-          <TabsTrigger value="production">Production</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="details" className="space-y-6 pt-4">
-          {/* Order Information Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package size={18} />
-                Order Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Order Information Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package size={18} />
+              Order Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-y-4">
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground">Company Name</h3>
+                <p className="text-lg">{order.company_name}</p>
+              </div>
+              {order.sales_account_id && (
                 <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Company Name</h3>
-                  <p className="text-lg">{order.company_name}</p>
+                  <h3 className="text-sm font-medium text-muted-foreground">Sales Account</h3>
+                  <p className="text-lg">
+                    {companies.find(c => c.id === order.sales_account_id)?.name || 'Unknown Account'}
+                  </p>
                 </div>
-                {order.sales_account_id && (
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground">Sales Account</h3>
-                    <p className="text-lg">
-                      {companies.find(c => c.id === order.sales_account_id)?.name || 'Unknown Account'}
-                    </p>
-                  </div>
-                )}
+              )}
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Order Date</h3>
                   <p className="text-lg">{formatDate(order.order_date)}</p>
@@ -393,6 +388,8 @@ const OrderDetail = () => {
                     <p className="text-lg">{formatDate(order.delivery_date)}</p>
                   </div>
                 )}
+              </div>
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Product Quantity</h3>
                   <p className="text-lg">
@@ -413,6 +410,8 @@ const OrderDetail = () => {
                       : Number(order.quantity).toLocaleString()} units
                   </p>
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Bag Size</h3>
                   <p className="text-lg">{order.bag_length} × {order.bag_width} inches</p>
@@ -423,210 +422,160 @@ const OrderDetail = () => {
                     <p className="text-lg">{order.border_dimension} inches</p>
                   </div>
                 )}
-                {order.rate && (
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground">Rate per Bag</h3>
-                    <p className="text-lg">${order.rate.toFixed(2)}</p>
-                  </div>
-                )}
-                {order.special_instructions && (
-                  <div className="col-span-1 md:col-span-2">
-                    <h3 className="text-sm font-medium text-muted-foreground">Special Instructions</h3>
-                    <p className="text-lg whitespace-pre-line">{order.special_instructions}</p>
-                  </div>
-                )}
               </div>
-            </CardContent>
-          </Card>
+              {order.rate && (
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Rate per Bag</h3>
+                  <p className="text-lg">${order.rate.toFixed(2)}</p>
+                </div>
+              )}
+              {order.special_instructions && (
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Special Instructions</h3>
+                  <p className="text-lg whitespace-pre-line">{order.special_instructions}</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Component List Card */}
+        {/* Cost Calculation Display */}
+        {costCalculation && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <ClipboardList size={18} />
-                Bag Components
+                <Calculator size={18} />
+                Cost Calculation
               </CardTitle>
-              <CardDescription>Details of all components for this order</CardDescription>
             </CardHeader>
             <CardContent>
-              {components.length > 0 ? (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Size</TableHead>
-                        <TableHead>Material</TableHead>
-                        <TableHead>Color</TableHead>
-                        <TableHead>GSM</TableHead>
-                        <TableHead>Consumption</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {components.map((component) => (
-                        <TableRow key={component.id}>
-                          <TableCell className="font-medium">
-                            {component.component_type === 'custom' && component.custom_name 
-                              ? component.custom_name 
-                              : getComponentTypeDisplay(component.component_type)}
-                          </TableCell>
-                          <TableCell>{component.size || "-"}</TableCell>
-                          <TableCell>
-                            {component.inventory?.material_name || "-"}
-                          </TableCell>
-                          <TableCell>{component.color || "-"}</TableCell>
-                          <TableCell>{component.gsm || "-"}</TableCell>
-                          <TableCell>
-                            {component.consumption 
-                              ? `${parseFloat(component.consumption.toString()).toFixed(2)} ${component.inventory?.unit || 'units'}`
-                              : "-"}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground mb-2">No components found for this order</p>
-                  <p className="text-sm text-red-500">
-                    If you just created this order and added components, please try refreshing the page.
-                    If the issue persists, check the browser console for any errors.
-                  </p>
-                  
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="mt-4"
-                    onClick={async () => {
-                      if (id) {
-                        const result = await testInsertOrderComponents(id);
-                        if (result.success) {
-                          toast({
-                            title: "Test Successful",
-                            description: "A test component was added. Please refresh the page to see it.",
-                          });
-                          // Reload components
-                          const { data, error } = await supabase
-                            .from("order_components")
-                            .select(`
-                              *,
-                              inventory:material_id (
-                                id,
-                                material_name,
-                                unit,
-                                color,
-                                gsm,
-                                purchase_rate
-                              )
-                            `)
-                            .eq("order_id", id);
-                            
-                          if (!error && data) {
-                            console.log("Reloaded components:", data);
-                            // Convert components data to match our Component type
-                            const reloadedComponents: Component[] = data.map(comp => ({
-                              ...comp,
-                              gsm: comp.gsm !== null ? String(comp.gsm) : null,
-                              inventory: comp.inventory && typeof comp.inventory === 'object' ? 
-                                comp.inventory as InventoryMaterial : null,
-                              materialRate: comp.inventory && typeof comp.inventory === 'object' 
-                                ? (comp.inventory as any).purchase_rate
-                                : null
-                            }));
-                            setComponents(reloadedComponents);
-                          }
-                        } else {
-                          toast({
-                            title: "Test Failed",
-                            description: "Failed to insert test component. See console for details.",
-                            variant: "destructive"
-                          });
-                        }
-                      }
-                    }}
-                  >
-                    Test Add Component
-                  </Button>
-                </div>
-              )}
+              <CostCalculationDisplay costCalculation={costCalculation} />
             </CardContent>
           </Card>
+        )}
+      </div>
 
-          {/* Material Summary Table */}
-          {materialSummary.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Layers size={18} />
-                  Material Consumption
-                </CardTitle>
-                <CardDescription>Summary of all materials used in this order</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Material</TableHead>
-                        <TableHead>Specifications</TableHead>
-                        <TableHead>Consumption</TableHead>
-                        <TableHead>Rate</TableHead>
-                        <TableHead>Cost</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {materialSummary.map((material) => (
-                        <TableRow key={material.material_id}>
-                          <TableCell className="font-medium">
-                            {material.material_name}
-                          </TableCell>
-                          <TableCell>
-                            {[
-                              material.color ? `Color: ${material.color}` : null,
-                              material.gsm ? `GSM: ${material.gsm}` : null
-                            ].filter(Boolean).join(', ') || '-'}
-                          </TableCell>
-                          <TableCell>
-                            {material.total_consumption.toFixed(2)} {material.unit}
-                          </TableCell>
-                          <TableCell>
-                            {material.purchase_rate 
-                              ? formatCurrency(material.purchase_rate) 
-                              : '-'}
-                          </TableCell>
-                          <TableCell>
-                            {formatCurrency(material.total_cost)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
+      {/* Component List Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ClipboardList size={18} />
+            Bag Components
+          </CardTitle>
+          <CardDescription>Details of all components for this order</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {components.length > 0 ? (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Size</TableHead>
+                    <TableHead>Material</TableHead>
+                    <TableHead>Color</TableHead>
+                    <TableHead>GSM</TableHead>
+                    <TableHead>Consumption</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {components.map((component) => (
+                    <TableRow key={component.id}>
+                      <TableCell className="font-medium">
+                        {component.component_type === 'custom' && component.custom_name 
+                          ? component.custom_name 
+                          : getComponentTypeDisplay(component.component_type)}
+                      </TableCell>
+                      <TableCell>{component.size || "-"}</TableCell>
+                      <TableCell>
+                        {component.inventory?.material_name || "-"}
+                      </TableCell>
+                      <TableCell>{component.color || "-"}</TableCell>
+                      <TableCell>{component.gsm || "-"}</TableCell>
+                      <TableCell>
+                        {component.consumption 
+                          ? `${parseFloat(component.consumption.toString()).toFixed(2)} ${component.inventory?.unit || 'units'}`
+                          : "-"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground mb-2">No components found for this order</p>
+              <p className="text-sm text-red-500">
+                If you just created this order and added components, please try refreshing the page.
+                If the issue persists, check the browser console for any errors.
+              </p>
+            </div>
           )}
-          
-          {/* Cost Calculation Display */}
-          {costCalculation && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calculator size={18} />
-                  Cost Calculation
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CostCalculationDisplay costCalculation={costCalculation} />
-              </CardContent>
-            </Card>
-          )}
-          
-        </TabsContent>
-        
-        <TabsContent value="production" className="space-y-6 pt-4">
+        </CardContent>
+      </Card>
+
+      {/* Material Summary Table */}
+      {materialSummary.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Layers size={18} />
+              Material Consumption
+            </CardTitle>
+            <CardDescription>Summary of all materials used in this order</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Material</TableHead>
+                    <TableHead>Specifications</TableHead>
+                    <TableHead>Consumption</TableHead>
+                    <TableHead>Rate</TableHead>
+                    <TableHead>Cost</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {materialSummary.map((material) => (
+                    <TableRow key={material.material_id}>
+                      <TableCell className="font-medium">
+                        {material.material_name}
+                      </TableCell>
+                      <TableCell>
+                        {[
+                          material.color ? `Color: ${material.color}` : null,
+                          material.gsm ? `GSM: ${material.gsm}` : null
+                        ].filter(Boolean).join(', ') || '-'}
+                      </TableCell>
+                      <TableCell>
+                        {material.total_consumption.toFixed(2)} {material.unit}
+                      </TableCell>
+                      <TableCell>
+                        {material.purchase_rate 
+                          ? formatCurrency(material.purchase_rate) 
+                          : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {formatCurrency(material.total_cost)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Job Cards Section */}
+      <Card>
+        <CardHeader>
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Job Cards</h2>
+            <CardTitle className="flex items-center gap-2">
+              <FileText size={18} />
+              Job Cards
+            </CardTitle>
             <Button asChild>
               <Link to={`/production/job-cards/new?orderId=${id}`}>
                 <Plus size={16} className="mr-1" />
@@ -634,9 +583,10 @@ const OrderDetail = () => {
               </Link>
             </Button>
           </div>
-          
+        </CardHeader>
+        <CardContent>
           {jobCards.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {jobCards.map((jobCard) => (
                 <Card key={jobCard.id}>
                   <CardHeader className="pb-3">
@@ -682,24 +632,22 @@ const OrderDetail = () => {
               ))}
             </div>
           ) : (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-1">No job cards yet</h3>
-                <p className="text-muted-foreground text-center mb-4">
-                  Create a job card to start production for this order
-                </p>
-                <Button asChild>
-                  <Link to={`/production/job-cards/new?orderId=${id}`}>
-                    <Plus size={16} className="mr-1" />
-                    Create Job Card
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
+            <div className="flex flex-col items-center justify-center py-12">
+              <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-1">No job cards yet</h3>
+              <p className="text-muted-foreground text-center mb-4">
+                Create a job card to start production for this order
+              </p>
+              <Button asChild>
+                <Link to={`/production/job-cards/new?orderId=${id}`}>
+                  <Plus size={16} className="mr-1" />
+                  Create Job Card
+                </Link>
+              </Button>
+            </div>
           )}
-        </TabsContent>
-      </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 };

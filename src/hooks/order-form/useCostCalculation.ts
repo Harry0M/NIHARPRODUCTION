@@ -1,4 +1,3 @@
-
 import { useCallback } from "react";
 import { Component } from "@/types/order-form";
 import * as CostUtils from "@/utils/costCalculationUtils";
@@ -14,7 +13,8 @@ export function useCostCalculation() {
     printingCharge = 0,
     stitchingCharge = 0,
     transportCharge = 0,
-    quantity = 0
+    quantity = 0,
+    gstRate = 0
   ) => {
     // Calculate material costs from all components
     const materialCosts = [...Object.values(components), ...customComponents]
@@ -23,7 +23,14 @@ export function useCostCalculation() {
         
         // Calculate cost based on material rate and consumption if available
         if (comp.materialRate && comp.consumption) {
-          const cost = parseFloat(comp.materialRate) * parseFloat(comp.consumption);
+          // Calculate unit price using the formula: alt quantity * alt unit price / main quantity
+          const altQuantity = parseFloat(comp.consumption) || 0;
+          const altUnitPrice = parseFloat(comp.materialRate) || 0;
+          const mainQuantity = quantity || 1;
+          
+          const unitPrice = (altQuantity * altUnitPrice) / mainQuantity;
+          const cost = unitPrice * mainQuantity;
+          
           if (!isNaN(cost)) {
             // Set the calculated cost on the component
             comp.materialCost = cost;
@@ -49,19 +56,22 @@ export function useCostCalculation() {
     const totalCuttingCharge = quantity * perUnitCuttingCharge;
     const totalPrintingCharge = quantity * perUnitPrintingCharge;
     const totalStitchingCharge = quantity * perUnitStitchingCharge;
-    // Transport charge should also be multiplied by quantity
     const totalTransportCharge = quantity * perUnitTransportCharge;
 
-    // Sum up all costs
-    const productionCost = totalCuttingCharge + totalPrintingCharge + 
-                          totalStitchingCharge + totalTransportCharge;
-    const totalCost = materialCosts + productionCost;
+    // Calculate base cost (material + production costs)
+    const baseCost = materialCosts + totalCuttingCharge + totalPrintingCharge + totalStitchingCharge;
     
-    // Calculate per unit cost (including all production costs)
-    const perUnitMaterialCost = quantity > 0 ? materialCosts / quantity : materialCosts;
-    const perUnitProductionCost = 
-      perUnitCuttingCharge + perUnitPrintingCharge + perUnitStitchingCharge + perUnitTransportCharge;
-    const perUnitCost = perUnitMaterialCost + perUnitProductionCost;
+    // Calculate GST amount
+    const gstAmount = (baseCost * gstRate) / 100;
+    
+    // Calculate total cost including GST
+    const totalCost = baseCost + totalTransportCharge + gstAmount;
+    
+    // Calculate per unit costs
+    const perUnitBaseCost = quantity > 0 ? baseCost / quantity : baseCost;
+    const perUnitTransportCost = quantity > 0 ? totalTransportCharge / quantity : totalTransportCharge;
+    const perUnitGstCost = quantity > 0 ? gstAmount / quantity : gstAmount;
+    const perUnitCost = perUnitBaseCost + perUnitTransportCost + perUnitGstCost;
 
     return {
       // Total costs
@@ -70,16 +80,14 @@ export function useCostCalculation() {
       printingCharge: totalPrintingCharge, 
       stitchingCharge: totalStitchingCharge,
       transportCharge: totalTransportCharge,
-      productionCost,
+      baseCost,
+      gstAmount,
       totalCost,
       
       // Per unit costs
-      perUnitMaterialCost,
-      perUnitCuttingCharge,
-      perUnitPrintingCharge,
-      perUnitStitchingCharge,
-      perUnitTransportCharge,
-      perUnitProductionCost,
+      perUnitBaseCost,
+      perUnitTransportCost,
+      perUnitGstCost,
       perUnitCost
     };
   }, []);

@@ -1,4 +1,3 @@
-
 import { OrderFormData } from "@/types/order";
 import { ConsumptionFormulaType } from "@/components/production/ConsumptionCalculator";
 
@@ -45,10 +44,16 @@ export interface CostCalculation {
   printingCharge: number;
   stitchingCharge: number;
   transportCharge: number;
-  productionCost: number;
+  baseCost: number;
+  gstAmount: number;
   totalCost: number;
   margin: number;
   sellingPrice: number;
+  // Per unit costs
+  perUnitBaseCost: number;
+  perUnitTransportCost: number;
+  perUnitGstCost: number;
+  perUnitCost: number;
 }
 
 export interface UseOrderFormReturn {
