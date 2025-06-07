@@ -87,6 +87,11 @@ interface Company {
   name: string;
 }
 
+interface CatalogProduct {
+  id: string;
+  name: string;
+}
+
 interface MaterialSummary {
   material_id: string;
   material_name: string;
@@ -109,6 +114,7 @@ const OrderDetail = () => {
   const [totalMaterialCost, setTotalMaterialCost] = useState<number>(0);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [costCalculation, setCostCalculation] = useState<any>(null);
+  const [catalogProduct, setCatalogProduct] = useState<{name: string} | null>(null);
   
   // Get cost calculation functions
   const { calculateTotalCost, calculateSellingPrice } = useCostCalculation();
@@ -233,6 +239,19 @@ const OrderDetail = () => {
         if (jobCardsError) throw jobCardsError;
         setJobCards(jobCardsData || []);
 
+        // Fetch catalog product if catalog_id exists
+        if (orderData && orderData.catalog_id) {
+          const { data: catalogData, error: catalogError } = await supabase
+            .from("catalog")
+            .select("id, name")
+            .eq("id", orderData.catalog_id)
+            .single();
+            
+          if (!catalogError && catalogData) {
+            setCatalogProduct({ name: catalogData.name });
+          }
+        }
+
         // Calculate the costs using order form logic if order exists
         if (orderData) {
           // Set cost calculation using raw values from the database
@@ -354,7 +373,7 @@ const OrderDetail = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* Order Information Card */}
         <Card>
           <CardHeader>
@@ -369,12 +388,10 @@ const OrderDetail = () => {
                 <h3 className="text-sm font-medium text-muted-foreground">Company Name</h3>
                 <p className="text-lg">{order.company_name}</p>
               </div>
-              {order.sales_account_id && (
+              {catalogProduct && (
                 <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Sales Account</h3>
-                  <p className="text-lg">
-                    {companies.find(c => c.id === order.sales_account_id)?.name || 'Unknown Account'}
-                  </p>
+                  <h3 className="text-sm font-medium text-muted-foreground">Catalog Product</h3>
+                  <p className="text-lg">{catalogProduct.name}</p>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-4">
@@ -439,20 +456,6 @@ const OrderDetail = () => {
           </CardContent>
         </Card>
 
-        {/* Cost Calculation Display */}
-        {costCalculation && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calculator size={18} />
-                Cost Calculation
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CostCalculationDisplay costCalculation={costCalculation} />
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       {/* Component List Card */}
@@ -648,6 +651,21 @@ const OrderDetail = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Cost Calculation Display */}
+      {costCalculation && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calculator size={18} />
+              Cost Calculation
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CostCalculationDisplay costCalculation={costCalculation} />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

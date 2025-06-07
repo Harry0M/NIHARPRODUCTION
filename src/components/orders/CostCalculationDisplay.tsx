@@ -82,11 +82,13 @@ export const CostCalculationDisplay = ({
   });
   
   const formatCurrency = (value: number) => {
+    // Handle NaN values by returning 0
+    const safeValue = isNaN(value) ? 0 : value;
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       minimumFractionDigits: 2
-    }).format(value);
+    }).format(safeValue);
   };
   
   const handleMarginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -167,7 +169,7 @@ export const CostCalculationDisplay = ({
                 </div>
                 <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
                   <span>Per unit</span>
-                  <span>{formatCurrency(costCalculation.perUnitBaseCost)}</span>
+                  <span>{formatCurrency(isNaN(costCalculation.perUnitBaseCost) ? 0 : costCalculation.perUnitBaseCost)}</span>
                 </div>
               </div>
             </div>
@@ -337,34 +339,12 @@ export const CostCalculationDisplay = ({
               <div className="space-y-2">
                 <div className="bg-slate-50 p-3 rounded-md">
                   <div className="flex justify-between items-center">
-                    <span>Base Cost</span>
-                    <span>{formatCurrency(costCalculation.baseCost)}</span>
-                  </div>
-                  <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
-                    <span>Per unit</span>
-                    <span>{formatCurrency(costCalculation.perUnitBaseCost)}</span>
-                  </div>
-                </div>
-                
-                <div className="bg-slate-50 p-3 rounded-md">
-                  <div className="flex justify-between items-center">
                     <span>Transport Cost</span>
                     <span>{formatCurrency(costCalculation.transportCharge)}</span>
                   </div>
                   <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
                     <span>Per unit</span>
-                    <span>{formatCurrency(costCalculation.perUnitTransportCost)}</span>
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 p-3 rounded-md">
-                  <div className="flex justify-between items-center">
-                    <span>GST</span>
-                    <span>{formatCurrency(costCalculation.gstAmount)}</span>
-                  </div>
-                  <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
-                    <span>Per unit</span>
-                    <span>{formatCurrency(costCalculation.perUnitGstCost)}</span>
+                    <span>{formatCurrency(isNaN(costCalculation.perUnitTransportCost) ? 0 : costCalculation.perUnitTransportCost)}</span>
                   </div>
                 </div>
 
@@ -375,7 +355,7 @@ export const CostCalculationDisplay = ({
                   </div>
                   <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
                     <span>Per unit</span>
-                    <span>{formatCurrency(costCalculation.perUnitCost)}</span>
+                    <span>{formatCurrency(isNaN(costCalculation.perUnitCost) ? 0 : costCalculation.perUnitCost)}</span>
                   </div>
                 </div>
               </div>
