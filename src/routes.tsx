@@ -1,10 +1,11 @@
+
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
 } from "react-router-dom";
-import { useAuth } from "./hooks/use-auth";
+import { useAuth } from "@/context/AuthContext";
 import Dashboard from "./pages/Dashboard";
 import Orders from "./pages/Orders";
 import OrderDetail from "./pages/OrderDetail";
