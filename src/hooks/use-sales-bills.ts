@@ -90,7 +90,9 @@ export const useSalesBills = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setSalesBills(data || []);
+      
+      // Type assertion to handle the database response
+      setSalesBills((data || []) as SalesBill[]);
     } catch (err: any) {
       setError(err.message);
       console.error('Error fetching sales bills:', err);
@@ -105,7 +107,7 @@ export const useSalesBills = () => {
       
       const { error } = await supabase
         .from('sales_bills')
-        .insert([formData]);
+        .insert(formData);
 
       if (error) throw error;
 
