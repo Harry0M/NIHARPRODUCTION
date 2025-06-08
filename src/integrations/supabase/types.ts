@@ -165,6 +165,7 @@ export type Database = {
           formula: string | null
           gsm: number | null
           id: string
+          is_manual_consumption: boolean | null
           length: number | null
           material_id: string | null
           material_linked: boolean | null
@@ -183,6 +184,7 @@ export type Database = {
           formula?: string | null
           gsm?: number | null
           id?: string
+          is_manual_consumption?: boolean | null
           length?: number | null
           material_id?: string | null
           material_linked?: boolean | null
@@ -201,6 +203,7 @@ export type Database = {
           formula?: string | null
           gsm?: number | null
           id?: string
+          is_manual_consumption?: boolean | null
           length?: number | null
           material_id?: string | null
           material_linked?: boolean | null
@@ -216,6 +219,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "catalog"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_components_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "order_template_associations"
+            referencedColumns: ["template_id"]
           },
         ]
       }
@@ -301,6 +311,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "order_material_breakdown"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "components_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_template_associations"
             referencedColumns: ["order_id"]
           },
           {
@@ -985,6 +1002,13 @@ export type Database = {
             foreignKeyName: "job_cards_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_template_associations"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "job_cards_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -1049,6 +1073,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "order_material_breakdown"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "job_wastage_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_template_associations"
             referencedColumns: ["order_id"]
           },
           {
@@ -1173,6 +1204,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "order_material_breakdown"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "material_order_usage_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_template_associations"
             referencedColumns: ["order_id"]
           },
           {
@@ -1368,6 +1406,13 @@ export type Database = {
             foreignKeyName: "order_components_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_template_associations"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "order_components_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -1425,6 +1470,13 @@ export type Database = {
             foreignKeyName: "order_dispatches_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_template_associations"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "order_dispatches_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -1452,6 +1504,7 @@ export type Database = {
           material_cost: number | null
           order_date: string
           order_number: string
+          order_quantity: number | null
           printing_charge: number | null
           production_cost: number | null
           quantity: number
@@ -1460,7 +1513,9 @@ export type Database = {
           special_instructions: string | null
           status: Database["public"]["Enums"]["order_status"] | null
           stitching_charge: number | null
+          template_id: string | null
           template_margin: number | null
+          template_sync_enabled: boolean
           total_cost: number | null
           transport_charge: number | null
           updated_at: string
@@ -1486,6 +1541,7 @@ export type Database = {
           material_cost?: number | null
           order_date?: string
           order_number: string
+          order_quantity?: number | null
           printing_charge?: number | null
           production_cost?: number | null
           quantity: number
@@ -1494,7 +1550,9 @@ export type Database = {
           special_instructions?: string | null
           status?: Database["public"]["Enums"]["order_status"] | null
           stitching_charge?: number | null
+          template_id?: string | null
           template_margin?: number | null
+          template_sync_enabled?: boolean
           total_cost?: number | null
           transport_charge?: number | null
           updated_at?: string
@@ -1520,6 +1578,7 @@ export type Database = {
           material_cost?: number | null
           order_date?: string
           order_number?: string
+          order_quantity?: number | null
           printing_charge?: number | null
           production_cost?: number | null
           quantity?: number
@@ -1528,7 +1587,9 @@ export type Database = {
           special_instructions?: string | null
           status?: Database["public"]["Enums"]["order_status"] | null
           stitching_charge?: number | null
+          template_id?: string | null
           template_margin?: number | null
+          template_sync_enabled?: boolean
           total_cost?: number | null
           transport_charge?: number | null
           updated_at?: string
@@ -1547,6 +1608,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "order_template_associations"
+            referencedColumns: ["template_id"]
           },
         ]
       }
@@ -1614,27 +1689,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      processed_events: {
-        Row: {
-          event_type: string
-          id: string
-          processed_at: string
-          reference_id: string
-        }
-        Insert: {
-          event_type: string
-          id?: string
-          processed_at?: string
-          reference_id: string
-        }
-        Update: {
-          event_type?: string
-          id?: string
-          processed_at?: string
-          reference_id?: string
-        }
-        Relationships: []
       }
       product_details: {
         Row: {
@@ -1710,6 +1764,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "catalog"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_details_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "order_template_associations"
+            referencedColumns: ["template_id"]
           },
         ]
       }
@@ -1860,7 +1921,12 @@ export type Database = {
       }
       purchase_items: {
         Row: {
+          actual_meter: number
+          alt_quantity: number
+          alt_unit_price: number
           created_at: string
+          gst_amount: number | null
+          gst_percentage: number | null
           id: string
           line_total: number
           material_id: string
@@ -1870,7 +1936,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          actual_meter?: number
+          alt_quantity?: number
+          alt_unit_price?: number
           created_at?: string
+          gst_amount?: number | null
+          gst_percentage?: number | null
           id?: string
           line_total: number
           material_id: string
@@ -1880,7 +1951,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          actual_meter?: number
+          alt_quantity?: number
+          alt_unit_price?: number
           created_at?: string
+          gst_amount?: number | null
+          gst_percentage?: number | null
           id?: string
           line_total?: number
           material_id?: string
@@ -1938,6 +2014,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          gst: number | null
           id: string
           invoice_number: string | null
           notes: string | null
@@ -1953,6 +2030,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          gst?: number | null
           id?: string
           invoice_number?: string | null
           notes?: string | null
@@ -1968,6 +2046,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          gst?: number | null
           id?: string
           invoice_number?: string | null
           notes?: string | null
@@ -1986,6 +2065,133 @@ export type Database = {
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_bills: {
+        Row: {
+          bill_date: string
+          bill_number: string
+          catalog_id: string | null
+          catalog_name: string
+          company_address: string | null
+          company_name: string
+          created_at: string | null
+          created_by: string | null
+          dispatch_id: string | null
+          due_date: string | null
+          gst_amount: number | null
+          gst_percentage: number
+          id: string
+          notes: string | null
+          order_id: string | null
+          payment_status: string
+          quantity: number
+          rate: number
+          status: string
+          subtotal: number | null
+          terms_and_conditions: string | null
+          total_amount: number | null
+          transport_charge: number
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          bill_date?: string
+          bill_number: string
+          catalog_id?: string | null
+          catalog_name: string
+          company_address?: string | null
+          company_name: string
+          created_at?: string | null
+          created_by?: string | null
+          dispatch_id?: string | null
+          due_date?: string | null
+          gst_amount?: number | null
+          gst_percentage?: number
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          payment_status?: string
+          quantity: number
+          rate: number
+          status?: string
+          subtotal?: number | null
+          terms_and_conditions?: string | null
+          total_amount?: number | null
+          transport_charge?: number
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          bill_date?: string
+          bill_number?: string
+          catalog_id?: string | null
+          catalog_name?: string
+          company_address?: string | null
+          company_name?: string
+          created_at?: string | null
+          created_by?: string | null
+          dispatch_id?: string | null
+          due_date?: string | null
+          gst_amount?: number | null
+          gst_percentage?: number
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          payment_status?: string
+          quantity?: number
+          rate?: number
+          status?: string
+          subtotal?: number | null
+          terms_and_conditions?: string | null
+          total_amount?: number | null
+          transport_charge?: number
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_bills_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_bills_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "order_template_associations"
+            referencedColumns: ["template_id"]
+          },
+          {
+            foreignKeyName: "sales_bills_dispatch_id_fkey"
+            columns: ["dispatch_id"]
+            isOneToOne: false
+            referencedRelation: "dispatch_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_bills_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_material_breakdown"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "sales_bills_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_template_associations"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "sales_bills_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]
@@ -2074,6 +2280,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           email: string | null
+          gst: string | null
           id: string
           materials_provided: string | null
           name: string
@@ -2088,6 +2295,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           email?: string | null
+          gst?: string | null
           id?: string
           materials_provided?: string | null
           name: string
@@ -2102,6 +2310,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           email?: string | null
+          gst?: string | null
           id?: string
           materials_provided?: string | null
           name?: string
@@ -2109,6 +2318,30 @@ export type Database = {
           phone?: string | null
           status?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      system_config: {
+        Row: {
+          created_at: string
+          description: string | null
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          key?: string
+          updated_at?: string
+          value?: string
         }
         Relationships: []
       }
@@ -2164,6 +2397,13 @@ export type Database = {
             foreignKeyName: "transactions_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_template_associations"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -2190,6 +2430,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           email: string | null
+          gst: string | null
           id: string
           name: string
           payment_terms: string | null
@@ -2204,6 +2445,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           email?: string | null
+          gst?: string | null
           id?: string
           name: string
           payment_terms?: string | null
@@ -2218,6 +2460,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           email?: string | null
+          gst?: string | null
           id?: string
           name?: string
           payment_terms?: string | null
@@ -2431,6 +2674,102 @@ export type Database = {
           },
         ]
       }
+      order_template_associations: {
+        Row: {
+          bag_length: number | null
+          bag_width: number | null
+          border_dimension: number | null
+          cutting_charge: number | null
+          order_id: string | null
+          order_number: string | null
+          printing_charge: number | null
+          rate: number | null
+          stitching_charge: number | null
+          template_id: string | null
+          template_name: string | null
+          template_sync_enabled: boolean | null
+          transport_charge: number | null
+        }
+        Relationships: []
+      }
+      sales_bills_summary: {
+        Row: {
+          bag_length: number | null
+          bag_width: number | null
+          bill_date: string | null
+          bill_number: string | null
+          catalog_id: string | null
+          catalog_name: string | null
+          catalog_selling_rate: number | null
+          company_address: string | null
+          company_name: string | null
+          created_at: string | null
+          created_by: string | null
+          dispatch_delivery_date: string | null
+          dispatch_id: string | null
+          due_date: string | null
+          gst_amount: number | null
+          gst_percentage: number | null
+          id: string | null
+          notes: string | null
+          order_id: string | null
+          order_number: string | null
+          payment_status: string | null
+          quantity: number | null
+          rate: number | null
+          status: string | null
+          subtotal: number | null
+          terms_and_conditions: string | null
+          total_amount: number | null
+          transport_charge: number | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_bills_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_bills_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "order_template_associations"
+            referencedColumns: ["template_id"]
+          },
+          {
+            foreignKeyName: "sales_bills_dispatch_id_fkey"
+            columns: ["dispatch_id"]
+            isOneToOne: false
+            referencedRelation: "dispatch_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_bills_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_material_breakdown"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "sales_bills_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_template_associations"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "sales_bills_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wastage_analysis: {
         Row: {
           company_name: string | null
@@ -2453,6 +2792,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "order_material_breakdown"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "job_wastage_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_template_associations"
             referencedColumns: ["order_id"]
           },
           {
@@ -2507,9 +2853,17 @@ export type Database = {
         Args: { target_id: string }
         Returns: boolean
       }
+      ensure_product_order_links: {
+        Args: { product_id: string }
+        Returns: Json
+      }
       force_delete_order: {
         Args: { target_id: string }
         Returns: boolean
+      }
+      generate_bill_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       get_catalog_cost_data: {
         Args: { catalog_id: string }
@@ -2522,6 +2876,16 @@ export type Database = {
           transport_charge: number
           margin: number
           selling_rate: number
+        }[]
+      }
+      get_company_order_counts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          company_id: string
+          company_name: string
+          as_company_count: number
+          as_sales_account_count: number
+          total_orders: number
         }[]
       }
       get_deduplicated_order_consumption: {
@@ -2562,6 +2926,10 @@ export type Database = {
           created_at: string
         }[]
       }
+      get_system_config: {
+        Args: { config_key: string }
+        Returns: boolean
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -2592,6 +2960,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      set_config_value: {
+        Args: { key: string; value: string }
+        Returns: undefined
+      }
       set_default_material_supplier: {
         Args: { p_material_id: string; p_supplier_id: string }
         Returns: undefined
@@ -2600,9 +2972,30 @@ export type Database = {
         Args: { input_inventory_id: string }
         Returns: boolean
       }
+      update_catalog_from_order_values: {
+        Args: {
+          p_template_id: string
+          p_bag_length: number
+          p_bag_width: number
+          p_default_quantity: number
+          p_default_rate: number
+          p_cutting_charge: number
+          p_printing_charge: number
+          p_stitching_charge: number
+          p_transport_charge: number
+          p_height: number
+          p_border_dimension: number
+          p_material_cost: number
+        }
+        Returns: boolean
+      }
       update_component_material: {
         Args: { component_id: string; material_id: string }
         Returns: boolean
+      }
+      update_orders_from_template: {
+        Args: { template_id: string }
+        Returns: undefined
       }
     }
     Enums: {
