@@ -50,6 +50,8 @@ import TransactionHistory from "@/pages/Analysis/TransactionHistory";
 import PartnersAnalysis from "@/pages/Analysis/PartnersAnalysis";
 import WastageAnalysis from "@/pages/Analysis/WastageAnalysis";
 import PriceTrendAnalysis from "@/pages/Analysis/PriceTrendAnalysis";
+import SellsList from "@/pages/Sells/SellsList";
+import SellsCreateForm from "@/pages/Sells/SellsCreateForm";
 
 const routes = [
   {
@@ -150,6 +152,13 @@ const routes = [
               { path: "", element: <PurchaseList /> },
               { path: "new", element: <PurchaseNew /> },
               { path: ":id", element: <PurchaseDetail /> },
+            ],
+          },
+          {
+            path: "sells",
+            children: [
+              { path: "", element: <SellsList /> },
+              { path: "create/:orderId", element: <SellsCreateForm /> },
             ],
           },
           // Redirects from old routes

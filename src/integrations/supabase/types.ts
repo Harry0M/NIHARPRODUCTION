@@ -1987,6 +1987,83 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "suppliers"
             referencedColumns: ["id"]
+          },        ]
+      }
+      sales_invoices: {
+        Row: {
+          company_name: string
+          created_at: string | null
+          created_by: string | null
+          gst_amount: number
+          gst_percentage: number
+          id: string
+          invoice_number: string
+          notes: string | null
+          order_id: string | null
+          other_expenses: number
+          product_name: string
+          quantity: number
+          rate: number
+          subtotal: number
+          total_amount: number
+          transport_charge: number
+          transport_included: boolean
+          updated_at: string | null
+        }
+        Insert: {
+          company_name: string
+          created_at?: string | null
+          created_by?: string | null
+          gst_amount: number
+          gst_percentage: number
+          id?: string
+          invoice_number: string
+          notes?: string | null
+          order_id?: string | null
+          other_expenses: number
+          product_name: string
+          quantity: number
+          rate: number
+          subtotal: number
+          total_amount: number
+          transport_charge: number
+          transport_included: boolean
+          updated_at?: string | null
+        }
+        Update: {
+          company_name?: string
+          created_at?: string | null
+          created_by?: string | null
+          gst_amount?: number
+          gst_percentage?: number
+          id?: string
+          invoice_number?: string
+          notes?: string | null
+          order_id?: string | null
+          other_expenses?: number
+          product_name?: string
+          quantity?: number
+          rate?: number
+          subtotal?: number
+          total_amount?: number
+          transport_charge?: number
+          transport_included?: boolean
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_invoices_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_invoices_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
           },
         ]
       }

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 // Using NavLink for client-side routing without page refreshes
 import { Link, useLocation } from "react-router-dom";
@@ -16,7 +15,8 @@ import {
   FileText,
   ShoppingCart,
   Building,
-  BarChart
+  BarChart,
+  TrendingUp
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -30,6 +30,7 @@ const navItems = [
   { name: "Dispatch", path: "/dispatch", icon: Truck },
   { name: "Inventory", path: "/inventory", icon: Database },
   { name: "Purchases", path: "/purchases", icon: ShoppingCart },
+  { name: "Sells", path: "/sells", icon: TrendingUp },
   { name: "Analysis", path: "/analysis", icon: BarChart },
   { name: "Settings", path: "/settings", icon: Settings },
   { name: "Companies", path: "/companies", icon: Building },
