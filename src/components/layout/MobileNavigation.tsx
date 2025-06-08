@@ -5,7 +5,8 @@ import {
   Package, 
   FileText,
   Factory,
-  MoreHorizontal
+  MoreHorizontal,
+  Receipt
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -85,8 +86,7 @@ const MobileNavigation = () => {
                 <MoreHorizontal className="h-6 w-6 mb-1" />
                 <span className="text-xs">More</span>
               </DropdownMenuTrigger>
-              <DropdownMenuContent side="top" align="end" className="w-56 mb-2">
-                <DropdownMenuItem>
+              <DropdownMenuContent side="top" align="end" className="w-56 mb-2">                <DropdownMenuItem>
                   <a 
                     href="#" 
                     onClick={(e) => {
@@ -96,6 +96,19 @@ const MobileNavigation = () => {
                     className="flex items-center gap-2 py-2 w-full"
                   >
                     Partners
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <a 
+                    href="#" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      window.location.href = "/sales-bills";
+                    }}
+                    className="flex items-center gap-2 py-2 w-full"
+                  >
+                    <Receipt className="h-4 w-4 mr-2" />
+                    Sales Bills
                   </a>
                 </DropdownMenuItem>
                 <DropdownMenuItem>

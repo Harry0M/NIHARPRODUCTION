@@ -16,7 +16,8 @@ import {
   FileText,
   ShoppingCart,
   Building,
-  BarChart
+  BarChart,
+  Receipt
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -28,6 +29,7 @@ const navItems = [
   { name: "Job Cards", path: "/production/job-cards", icon: FileText },
   { name: "Partners", path: "/partners", icon: Users },
   { name: "Dispatch", path: "/dispatch", icon: Truck },
+  { name: "Sales Bills", path: "/sales-bills", icon: Receipt },
   { name: "Inventory", path: "/inventory", icon: Database },
   { name: "Purchases", path: "/purchases", icon: ShoppingCart },
   { name: "Analysis", path: "/analysis", icon: BarChart },
