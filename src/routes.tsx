@@ -1,4 +1,3 @@
-
 import { Navigate } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import AuthLayout from "@/components/layout/AuthLayout";
@@ -50,6 +49,7 @@ import TransactionHistory from "@/pages/Analysis/TransactionHistory";
 import PartnersAnalysis from "@/pages/Analysis/PartnersAnalysis";
 import WastageAnalysis from "@/pages/Analysis/WastageAnalysis";
 import PriceTrendAnalysis from "@/pages/Analysis/PriceTrendAnalysis";
+import PurchaseAnalysis from "@/pages/Analysis/PurchaseAnalysis";
 import SellsList from "@/pages/Sells/SellsList";
 import SellsCreateForm from "@/pages/Sells/SellsCreateForm";
 import SalesInvoiceDetail from "@/pages/Sells/SalesInvoiceDetail";
@@ -126,6 +126,7 @@ const routes = [
               { path: "partners", element: <PartnersAnalysis /> },
               { path: "partner/:id/:type", element: <PartnerPerformance /> },
               { path: "price-trends", element: <PriceTrendAnalysis /> },
+              { path: "purchases", element: <PurchaseAnalysis /> },
             ],
           },
           {

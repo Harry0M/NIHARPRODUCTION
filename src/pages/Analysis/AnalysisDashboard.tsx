@@ -92,8 +92,23 @@ const AnalysisDashboard = () => {
             </CardContent>
           </Card>
           
+          {/* Purchase Analysis */}
+          <Card className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate('/analysis/purchases')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center">
+                <Package className="h-5 w-5 mr-2" />
+                Purchase Analysis
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Analyze purchase patterns, supplier performance, and material reception
+              </p>
+            </CardContent>
+          </Card>
+          
           {/* Transaction History */}
-          <Card className="hover:bg-accent/50 transition-colors cursor-pointer bg-accent/20" onClick={() => navigate('/analysis/transactions')}>
+          <Card className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate('/analysis/transactions')}>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center">
                 <FileText className="h-5 w-5 mr-2" />
