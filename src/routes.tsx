@@ -50,11 +50,6 @@ import TransactionHistory from "@/pages/Analysis/TransactionHistory";
 import PartnersAnalysis from "@/pages/Analysis/PartnersAnalysis";
 import WastageAnalysis from "@/pages/Analysis/WastageAnalysis";
 import PriceTrendAnalysis from "@/pages/Analysis/PriceTrendAnalysis";
-import SalesBillList from "@/pages/SalesBills/SalesBillList";
-import DispatchList from "@/pages/SalesBills/DispatchList";
-import SalesBillNew from "@/pages/SalesBills/SalesBillNew";
-import SalesBillDetail from "@/pages/SalesBills/SalesBillDetail";
-import SalesBillEdit from "@/pages/SalesBills/SalesBillEdit";
 
 const routes = [
   {
@@ -148,22 +143,13 @@ const routes = [
               { path: ":type/:id/edit", element: <PartnerNew /> },
               { path: ":id/performance", element: <PartnerPerformance /> },
             ],
-          },          {
+          },
+          {
             path: "purchases",
             children: [
               { path: "", element: <PurchaseList /> },
               { path: "new", element: <PurchaseNew /> },
               { path: ":id", element: <PurchaseDetail /> },
-            ],
-          },
-          {
-            path: "sales-bills",
-            children: [
-              { path: "", element: <SalesBillList /> },
-              { path: "select-dispatch", element: <DispatchList /> },
-              { path: "new/:dispatchId", element: <SalesBillNew /> },
-              { path: ":id", element: <SalesBillDetail /> },
-              { path: ":id/edit", element: <SalesBillEdit /> },
             ],
           },
           // Redirects from old routes
