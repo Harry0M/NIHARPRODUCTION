@@ -10,6 +10,7 @@ import { LoadingSpinner } from "@/components/production/LoadingSpinner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { addMonths, subMonths, format, parseISO } from "date-fns";
+import { DateRange } from "react-day-picker";
 import {
   BarChart,
   Bar,
@@ -70,7 +71,7 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'
 const PurchaseAnalysis = () => {
   const [activeTab, setActiveTab] = useState("materials");
   const [timeRange, setTimeRange] = useState("12"); // months
-  const [dateRange, setDateRange] = useState({
+  const [dateRange, setDateRange] = useState<DateRange>({
     from: subMonths(new Date(), 12),
     to: new Date()
   });
@@ -298,7 +299,7 @@ const PurchaseAnalysis = () => {
           </Select>
           <DatePickerWithRange
             date={dateRange}
-            onDateChange={setDateRange}
+            onChange={(range) => setDateRange(range)}
           />
         </div>
       </div>
@@ -352,28 +353,33 @@ const PurchaseAnalysis = () => {
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Top Materials by Value</CardTitle>
+                <CardTitle>Material Purchase Trends</CardTitle>
+                <CardDescription>Track material purchase values over time</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={materialAnalysis?.slice(0, 5)}
-                        dataKey="total_value"
-                        nameKey="material_name"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={100}
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      >
-                        {materialAnalysis?.slice(0, 5).map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
+                    <LineChart data={materialAnalysis?.slice(0, 5)}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="material_name" />
+                      <YAxis />
                       <Tooltip formatter={(value) => formatCurrency(value as number)} />
                       <Legend />
-                    </PieChart>
+                      <Line
+                        type="monotone"
+                        dataKey="total_value"
+                        name="Total Value"
+                        stroke="#8884d8"
+                        strokeWidth={2}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="average_price"
+                        name="Average Price"
+                        stroke="#82ca9d"
+                        strokeWidth={2}
+                      />
+                    </LineChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
@@ -417,20 +423,33 @@ const PurchaseAnalysis = () => {
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Supplier Performance</CardTitle>
+                <CardTitle>Supplier Performance Trends</CardTitle>
+                <CardDescription>Track supplier performance over time</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={supplierAnalysis?.slice(0, 5)}>
+                    <LineChart data={supplierAnalysis?.slice(0, 5)}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="supplier_name" />
                       <YAxis />
                       <Tooltip formatter={(value) => formatCurrency(value as number)} />
                       <Legend />
-                      <Bar dataKey="total_value" name="Total Value" fill="#8884d8" />
-                      <Bar dataKey="average_order_value" name="Avg. Order Value" fill="#82ca9d" />
-                    </BarChart>
+                      <Line
+                        type="monotone"
+                        dataKey="total_value"
+                        name="Total Value"
+                        stroke="#8884d8"
+                        strokeWidth={2}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="average_order_value"
+                        name="Avg. Order Value"
+                        stroke="#82ca9d"
+                        strokeWidth={2}
+                      />
+                    </LineChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
@@ -472,21 +491,33 @@ const PurchaseAnalysis = () => {
           <div className="grid gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>Received Analysis</CardTitle>
-                <CardDescription>Compare ordered vs received quantities</CardDescription>
+                <CardTitle>Received Analysis Trends</CardTitle>
+                <CardDescription>Track ordered vs received quantities over time</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={receivedAnalysis?.slice(0, 10)}>
+                    <LineChart data={receivedAnalysis?.slice(0, 10)}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="material_name" />
                       <YAxis />
                       <Tooltip />
                       <Legend />
-                      <Bar dataKey="unit_quantity" name="Ordered Quantity" fill="#8884d8" />
-                      <Bar dataKey="actual_meter" name="Received Quantity" fill="#82ca9d" />
-                    </BarChart>
+                      <Line
+                        type="monotone"
+                        dataKey="unit_quantity"
+                        name="Ordered Quantity"
+                        stroke="#8884d8"
+                        strokeWidth={2}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="actual_meter"
+                        name="Received Quantity"
+                        stroke="#82ca9d"
+                        strokeWidth={2}
+                      />
+                    </LineChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
