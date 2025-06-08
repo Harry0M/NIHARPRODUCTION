@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthProvider } from "@/context/AuthContext";
+import AppLayout from "@/components/layout/AppLayout";
 import Dashboard from "@/pages/Dashboard";
 import OrderList from "@/pages/Orders/OrderList";
 import OrderDetail from "@/pages/Orders/OrderDetail";
@@ -33,23 +34,29 @@ const routes = [
     path: "/",
     element: <ProtectedRoute />,
     children: [
-      { index: true, element: <Dashboard /> },
-      { path: "orders", element: <OrderList /> },
-      { path: "orders/new", element: <OrderNew /> },
-      { path: "orders/:id", element: <OrderDetail /> },
-      { path: "orders/edit/:id", element: <OrderEdit /> },
-      { path: "catalog", element: <CatalogList /> },
-      { path: "catalog/new", element: <CatalogNew /> },
-      { path: "catalog/:id", element: <CatalogDetail /> },
-      { path: "catalog/edit/:id", element: <CatalogEdit /> },
-      { path: "production", element: <ProductionDashboard /> },
-      { path: "production/cutting", element: <CuttingJob /> },
-      { path: "production/printing", element: <PrintingJob /> },
-      { path: "production/stitching", element: <StitchingJob /> },
-      { path: "production/dispatch", element: <Dispatch /> },
-      { path: "dispatch/:id", element: <DispatchDetail /> },
-      { path: "sales/bills", element: <SalesBills /> },
-      { path: "sales/bills/new", element: <SalesBillNew /> },
+      {
+        path: "/",
+        element: <AppLayout />,
+        children: [
+          { index: true, element: <Dashboard /> },
+          { path: "orders", element: <OrderList /> },
+          { path: "orders/new", element: <OrderNew /> },
+          { path: "orders/:id", element: <OrderDetail /> },
+          { path: "orders/edit/:id", element: <OrderEdit /> },
+          { path: "catalog", element: <CatalogList /> },
+          { path: "catalog/new", element: <CatalogNew /> },
+          { path: "catalog/:id", element: <CatalogDetail /> },
+          { path: "catalog/edit/:id", element: <CatalogEdit /> },
+          { path: "production", element: <ProductionDashboard /> },
+          { path: "production/cutting", element: <CuttingJob /> },
+          { path: "production/printing", element: <PrintingJob /> },
+          { path: "production/stitching", element: <StitchingJob /> },
+          { path: "production/dispatch", element: <Dispatch /> },
+          { path: "dispatch/:id", element: <DispatchDetail /> },
+          { path: "sales/bills", element: <SalesBills /> },
+          { path: "sales/bills/new", element: <SalesBillNew /> },
+        ],
+      },
     ],
   },
 ];
