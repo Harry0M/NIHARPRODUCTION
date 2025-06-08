@@ -26,6 +26,7 @@ const SalesBillNew = () => {
     rate: 0,
     gst_percentage: 18,
     transport_charge: 0,
+    bill_number: `SB-${Date.now()}`, // Generate a default bill number
     bill_date: new Date().toISOString().split('T')[0],
     status: 'draft',
     payment_status: 'pending',
@@ -43,7 +44,7 @@ const SalesBillNew = () => {
         order_id: order.order_id,
         company_name: order.company_name,
         company_address: order.company_address || '',
-        catalog_name: order.catalog_name,
+        catalog_name: order.catalog_name || '',
         catalog_id: order.catalog_id,
         quantity: order.quantity,
         rate: order.catalog_selling_rate || 0
@@ -148,6 +149,28 @@ const SalesBillNew = () => {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
+                    <Label htmlFor="bill_number">Bill Number</Label>
+                    <Input
+                      id="bill_number"
+                      value={formData.bill_number}
+                      onChange={(e) => setFormData(prev => ({...prev, bill_number: e.target.value}))}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="bill_date">Bill Date</Label>
+                    <Input
+                      id="bill_date"
+                      type="date"
+                      value={formData.bill_date}
+                      onChange={(e) => setFormData(prev => ({...prev, bill_date: e.target.value}))}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
                     <Label htmlFor="company_name">Company Name</Label>
                     <Input
                       id="company_name"
@@ -228,26 +251,14 @@ const SalesBillNew = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="bill_date">Bill Date</Label>
-                    <Input
-                      id="bill_date"
-                      type="date"
-                      value={formData.bill_date}
-                      onChange={(e) => setFormData(prev => ({...prev, bill_date: e.target.value}))}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="due_date">Due Date</Label>
-                    <Input
-                      id="due_date"
-                      type="date"
-                      value={formData.due_date || ''}
-                      onChange={(e) => setFormData(prev => ({...prev, due_date: e.target.value}))}
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="due_date">Due Date</Label>
+                  <Input
+                    id="due_date"
+                    type="date"
+                    value={formData.due_date || ''}
+                    onChange={(e) => setFormData(prev => ({...prev, due_date: e.target.value}))}
+                  />
                 </div>
 
                 <div>

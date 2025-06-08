@@ -32,7 +32,7 @@ const Auth = () => {
         description: "You have been successfully logged in"
       });
       
-      navigate("/dashboard");
+      navigate("/"); // Navigate to root instead of /dashboard
     } catch (error: any) {
       toast({
         title: "Error signing in",

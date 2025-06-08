@@ -52,7 +52,7 @@ export interface SalesBillFormData {
   rate: number;
   gst_percentage: number;
   transport_charge: number;
-  bill_number?: string;
+  bill_number: string; // Make this required to match database
   bill_date: string;
   due_date?: string;
   status: 'draft' | 'sent' | 'paid' | 'cancelled';

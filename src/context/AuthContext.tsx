@@ -42,7 +42,7 @@ export const AuthProvider = ({ children, initialUser }: AuthProviderProps) => {
           if (event === "SIGNED_OUT") {
             navigate("/auth");
           } else if (event === "SIGNED_IN" && location.pathname === "/auth") {
-            navigate("/dashboard");
+            navigate("/"); // Navigate to root instead of /dashboard
           }
         }, 0);
       }
