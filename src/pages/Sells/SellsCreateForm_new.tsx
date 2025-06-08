@@ -13,7 +13,6 @@ import { formatCurrency } from "@/utils/formatters";
 import { Database } from "@/integrations/supabase/types";
 
 type Order = Database["public"]["Tables"]["orders"]["Row"];
-type SalesInvoiceInsert = Database["public"]["Tables"]["sales_invoices"]["Insert"];
 
 interface SellsFormData {
   invoiceNumber: string;
@@ -102,13 +101,15 @@ const SellsCreateForm = () => {
     const transport = formData.transportIncluded ? 0 : formData.transportCharge;
     return subtotal + gstAmount + transport + formData.otherExpenses;
   };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!order) return;
 
     setSaving(true);
-    try {      // Create sales invoice record
-      const salesInvoiceData: SalesInvoiceInsert = {
+    try {
+      // Create sells record (you may need to create this table)
+      const sellsData = {
         order_id: order.id,
         invoice_number: formData.invoiceNumber,
         company_name: formData.companyName,
@@ -122,19 +123,11 @@ const SellsCreateForm = () => {
         other_expenses: formData.otherExpenses,
         subtotal: calculateSubtotal(),
         total_amount: calculateTotal(),
+        created_at: new Date().toISOString(),
       };
 
-      // Insert into sales_invoices table
-      const { data: salesInvoice, error: salesError } = await supabase
-        .from('sales_invoices')
-        .insert(salesInvoiceData)
-        .select()
-        .single();
-
-      if (salesError) throw salesError;
-
-      // Also create a transaction record for tracking
-      const { error: transactionError } = await supabase
+      // For now, we'll create a transaction record
+      const { error } = await supabase
         .from('transactions')
         .insert({
           type: 'sales_invoice',
@@ -144,17 +137,18 @@ const SellsCreateForm = () => {
           date: new Date().toISOString().split('T')[0],
         });
 
-      if (transactionError) throw transactionError;      toast({
-        title: "Sales invoice created successfully",
-        description: `Invoice ${formData.invoiceNumber} has been created and recorded`,
+      if (error) throw error;
+
+      toast({
+        title: "Sales record created successfully",
+        description: `Invoice ${formData.invoiceNumber} has been recorded`,
       });
 
-      // Navigate to the invoice detail page
-      navigate(`/sells/invoice/${salesInvoice.id}`);
+      navigate('/sells');
     } catch (error) {
       toast({
-        title: "Error creating sales invoice",
-        description: error instanceof Error ? error.message : "Failed to save sales invoice",
+        title: "Error creating sales record",
+        description: error instanceof Error ? error.message : "Failed to save sales record",
         variant: "destructive",
       });
     } finally {

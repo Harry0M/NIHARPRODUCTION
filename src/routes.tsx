@@ -52,6 +52,8 @@ import WastageAnalysis from "@/pages/Analysis/WastageAnalysis";
 import PriceTrendAnalysis from "@/pages/Analysis/PriceTrendAnalysis";
 import SellsList from "@/pages/Sells/SellsList";
 import SellsCreateForm from "@/pages/Sells/SellsCreateForm";
+import SalesInvoiceDetail from "@/pages/Sells/SalesInvoiceDetail";
+import SalesInvoiceEdit from "@/pages/Sells/SalesInvoiceEdit";
 
 const routes = [
   {
@@ -159,6 +161,8 @@ const routes = [
             children: [
               { path: "", element: <SellsList /> },
               { path: "create/:orderId", element: <SellsCreateForm /> },
+              { path: "invoice/:invoiceId", element: <SalesInvoiceDetail /> },
+              { path: "invoice/:invoiceId/edit", element: <SalesInvoiceEdit /> },
             ],
           },
           // Redirects from old routes

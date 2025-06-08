@@ -3,6 +3,7 @@
 ## ✅ COMPLETED FEATURES
 
 ### 1. SellsList Component (`src/pages/Sells/SellsList.tsx`)
+
 - ✅ Fetches and displays orders with "completed" status
 - ✅ Displays order information in a table format
 - ✅ "Create Invoice" button on each order row
@@ -11,19 +12,23 @@
 - ✅ Error handling and loading states
 
 ### 2. SellsCreateForm Component (`src/pages/Sells/SellsCreateForm.tsx`)
+
 - ✅ **Auto-populated fields from order data:**
+
   - Company name (read-only)
   - Product name (read-only)
   - Quantity (editable, pre-filled)
   - Rate (editable, pre-filled)
 
 - ✅ **Manual input fields:**
+
   - Invoice number (required)
   - Transport charge with inclusion toggle
   - GST percentage
   - Other expenses
 
 - ✅ **Real-time calculations:**
+
   - Subtotal = quantity × rate
   - GST amount = subtotal × (GST% / 100)
   - Total = subtotal + GST + transport (if not included) + other expenses
@@ -35,6 +40,7 @@
 - ✅ **Success notifications** with toast messages
 
 ### 3. Database Implementation
+
 - ✅ **sales_invoices table** created with all form fields:
   ```sql
   - id (UUID, primary key)
@@ -58,11 +64,13 @@
 - ✅ **No database triggers** as requested
 
 ### 4. Routing & Navigation
+
 - ✅ **Route configuration** in `src/routes.tsx`
 - ✅ **Breadcrumb support** in `src/components/navigation/BreadcrumbTrail.tsx`
 - ✅ **Navigation flow:** Orders → Click → Create Form → Submit → Success
 
 ### 5. TypeScript Integration
+
 - ✅ **Complete type definitions** in `src/integrations/supabase/types.ts`
 - ✅ **Type-safe database operations**
 - ✅ **Proper interfaces** for all components
@@ -71,21 +79,26 @@
 ## 🚀 TESTING THE WORKFLOW
 
 ### Manual Testing Steps:
+
 1. **Start the application:**
+
    ```bash
    npm run dev
    ```
 
 2. **Navigate to Sells page:**
+
    - Go to `/sells` in the browser
    - Should see list of completed orders
 
 3. **Create invoice:**
+
    - Click on any order row
    - Should navigate to `/sells/create/{orderId}`
    - Form should be pre-populated with order data
 
 4. **Fill out form:**
+
    - Enter invoice number (required)
    - Adjust quantity/rate if needed
    - Toggle transport inclusion
@@ -99,23 +112,27 @@
    - Data should be saved to database
 
 ### Automated Testing:
+
 Use the test script in `test-sells-workflow.js`:
+
 ```javascript
 // In browser console:
-sellsTest.runFullTest()
+sellsTest.runFullTest();
 ```
 
 ## 📊 DATABASE VERIFICATION
 
 ### Check sales_invoices data:
+
 ```sql
 SELECT * FROM sales_invoices ORDER BY created_at DESC LIMIT 5;
 ```
 
 ### Check transactions created:
+
 ```sql
-SELECT * FROM transactions 
-WHERE type = 'sales_invoice' 
+SELECT * FROM transactions
+WHERE type = 'sales_invoice'
 ORDER BY created_at DESC LIMIT 5;
 ```
 

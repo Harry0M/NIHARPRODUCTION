@@ -15,7 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Search, RefreshCw, Calendar, Package, Building } from "lucide-react";
 import PaginationControls from "@/components/ui/pagination-controls";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { formatCurrency } from "@/utils/formatters";
 import { Database } from "@/integrations/supabase/types";
 
@@ -34,6 +34,7 @@ interface SellsFilters {
 
 const SellsList = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [orders, setOrders] = useState<CompletedOrder[]>([]);
   const [loading, setLoading] = useState(true);  const [filters, setFilters] = useState<SellsFilters>({
     searchTerm: "",
@@ -113,13 +114,55 @@ const SellsList = () => {
     } finally {
       setLoading(false);    }
   }, [filters, page, pageSize]);
-
   useEffect(() => {
     fetchCompletedOrders();
   }, [fetchCompletedOrders]);
 
+  // Check for URL parameters and handle auto-refresh after edits
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const refreshTrigger = urlParams.get('refresh');
+    
+    if (refreshTrigger === 'invoice-updated') {
+      console.log("Invoice update detected, refreshing sells list...");
+      // Force refresh the data
+      fetchCompletedOrders();
+      
+      // Show success message
+      toast({
+        title: "Data Refreshed",
+        description: "Sales invoice updated successfully. List has been refreshed.",
+      });
+      
+      // Clean URL by removing the query parameter
+      navigate('/sells', { replace: true });
+    }
+  }, [location.search, fetchCompletedOrders, navigate]);
+
   const handleRefresh = () => {
     fetchCompletedOrders();
+  };
+
+  const handleViewInvoice = async (orderId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('sales_invoices')
+        .select('id')
+        .eq('order_id', orderId)
+        .single();
+
+      if (error) throw error;
+      
+      if (data) {
+        navigate(`/sells/invoice/${data.id}`);
+      }
+    } catch (error) {
+      toast({
+        title: "Error fetching invoice",
+        description: error instanceof Error ? error.message : "Could not find invoice for this order",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -290,12 +333,10 @@ const SellsList = () => {
                     <TableHead>Invoice Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
-                </TableHeader>
-                <TableBody>                  {orders.map((order) => (
+                </TableHeader>                <TableBody>                  {orders.map((order) => (
                     <TableRow
                       key={order.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => navigate(`/sells/create/${order.id}`)}
+                      className="hover:bg-muted/50"
                     >
                       <TableCell className="font-medium">
                         {order.order_number}
@@ -314,16 +355,40 @@ const SellsList = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/sells/create/${order.id}`);
-                          }}
-                        >
-                          Create Invoice
-                        </Button>
+                        {order.has_sales_invoice ? (
+                          <Badge variant="default" className="bg-blue-50 text-blue-700 border-blue-200">
+                            Invoiced
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                            Pending Invoice
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {order.has_sales_invoice ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewInvoice(order.id);
+                            }}
+                          >
+                            View Details
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/sells/create/${order.id}`);
+                            }}
+                          >
+                            Create Invoice
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

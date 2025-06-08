@@ -35,6 +35,7 @@ const routes: BreadcrumbConfig[] = [
   { path: "/settings", label: "Settings" },  { path: "/companies", label: "Companies" },
   { path: "/sells", label: "Sells" },
   { path: "/sells/create", label: "Create Invoice", exact: false },
+  { path: "/sells/invoice", label: "Invoice Details", exact: false },
 ];
 
 export const BreadcrumbTrail = () => {
