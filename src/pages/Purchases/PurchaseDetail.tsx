@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Printer, AlertTriangle, FileCheck, FileClock, FileX, Trash2 } from "lucide-react";
+import { ArrowLeft, Printer, AlertTriangle, FileCheck, FileClock, FileX, Trash2, Edit } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -388,6 +388,15 @@ const PurchaseDetail = () => {
           >
             <Printer className="h-4 w-4" />
             Print
+          </Button>
+          
+          <Button
+            variant="outline"
+            className="flex items-center gap-2"
+            onClick={() => navigate(`/purchases/${purchase.id}/edit`)}
+          >
+            <Edit className="h-4 w-4" />
+            Edit Purchase
           </Button>
           
           {purchase.status === "pending" && (

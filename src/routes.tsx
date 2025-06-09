@@ -20,6 +20,7 @@ import CatalogOrders from "@/pages/Inventory/CatalogOrders";
 import PurchaseList from "@/pages/Purchases/PurchaseList";
 import PurchaseNew from "@/pages/Purchases/PurchaseNew";
 import PurchaseDetail from "@/pages/Purchases/PurchaseDetail";
+import PurchaseEdit from "@/pages/Purchases/PurchaseEdit";
 import ProductionDashboard from "@/pages/Production/ProductionDashboard";
 import JobCardList from "@/pages/Production/JobCardList";
 import JobCardNew from "@/pages/Production/JobCardNew";
@@ -155,6 +156,7 @@ const routes = [
               { path: "", element: <PurchaseList /> },
               { path: "new", element: <PurchaseNew /> },
               { path: ":id", element: <PurchaseDetail /> },
+              { path: ":id/edit", element: <PurchaseEdit /> },
             ],
           },
           {
