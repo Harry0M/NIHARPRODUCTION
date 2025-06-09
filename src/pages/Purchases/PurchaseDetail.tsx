@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Printer, AlertTriangle, FileCheck, FileClock, FileX } from "lucide-react";
+import { ArrowLeft, Printer, AlertTriangle, FileCheck, FileClock, FileX, Trash2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -18,6 +18,8 @@ import {
 import { formatCurrency } from "@/utils/formatters";
 import { showToast } from "@/components/ui/enhanced-toast";
 import { completePurchaseWithActualMeter, reversePurchaseCompletion } from "@/utils/purchaseInventoryUtils";
+import { usePurchaseDeletion } from "@/hooks/use-purchase-deletion";
+import { DeletePurchaseDialog } from "@/components/purchases/list/DeletePurchaseDialog";
 
 interface InventoryItem {
   id: string;
@@ -75,6 +77,20 @@ const PurchaseDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [purchase, setPurchase] = useState<Purchase | null>(null);
+
+  // Purchase deletion hook
+  const {
+    purchaseToDelete,
+    deleteDialogOpen,
+    deleteLoading,
+    handleDeleteClick,
+    handleDeletePurchase,
+    cancelDelete,
+    setDeleteDialogOpen
+  } = usePurchaseDeletion(() => {
+    // Navigate back to purchases list after deletion
+    navigate("/purchases");
+  });
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['purchase', id],
@@ -399,6 +415,15 @@ const PurchaseDetail = () => {
               Reactivate Purchase
             </Button>
           )}
+          
+          <Button
+            variant="outline"
+            className="text-destructive hover:text-destructive/80"
+            onClick={() => handleDeleteClick(purchase.id)}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete Purchase
+          </Button>
         </div>
       </div>
       
@@ -583,6 +608,15 @@ const PurchaseDetail = () => {
           </div>
         </CardContent>
       </Card>
+
+      <DeletePurchaseDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDeletePurchase}
+        isLoading={deleteLoading}
+        purchaseNumber={purchase.purchase_number}
+        status={purchase.status}
+      />
     </div>
   );
 };

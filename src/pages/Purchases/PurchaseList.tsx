@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Trash2, MoreHorizontal } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,7 +24,15 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { formatCurrency } from "@/utils/formatters";
+import { usePurchaseDeletion } from "@/hooks/use-purchase-deletion";
+import { DeletePurchaseDialog } from "@/components/purchases/list/DeletePurchaseDialog";
 
 interface Purchase {
   id: string;
@@ -51,6 +59,20 @@ const PurchaseList = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
+  
+  // Purchase deletion hook
+  const {
+    purchaseToDelete,
+    deleteDialogOpen,
+    deleteLoading,
+    handleDeleteClick,
+    handleDeletePurchase,
+    cancelDelete,
+    setDeleteDialogOpen
+  } = usePurchaseDeletion((purchaseId) => {
+    // Refresh the purchases list after deletion
+    refetch();
+  });
   
   // Main purchases query with pagination
   const { data: purchasesData, isLoading, refetch } = useQuery({
@@ -103,8 +125,7 @@ const PurchaseList = () => {
       }
       
       return data as Purchase[];
-    },
-    keepPreviousData: true,
+    }
   });
 
   const getStatusBadgeClass = (status: string) => {
@@ -139,12 +160,8 @@ const PurchaseList = () => {
     );
 
     // Calculate which page links to show
-    let startPage = Math.max(1, page - 2);
-    let endPage = Math.min(totalPages, startPage + 4);
-    
-    if (endPage - startPage < 4) {
-      startPage = Math.max(1, endPage - 4);
-    }
+    const startPage = Math.max(1, page - 2);
+    const endPage = Math.min(totalPages, startPage + 4);
 
     // First page
     if (startPage > 1) {
@@ -209,6 +226,11 @@ const PurchaseList = () => {
     navigate(`/purchases/${id}`);
   };
 
+  // Get the purchase to delete for the dialog
+  const purchaseToDeleteData = purchaseToDelete 
+    ? purchasesData?.find(p => p.id === purchaseToDelete)
+    : null;
+
   return (
     <Card className="w-full">
       <CardHeader className="pb-3">
@@ -262,28 +284,71 @@ const PurchaseList = () => {
                     <TableHead>Items</TableHead>
                     <TableHead>Total Amount</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="w-[50px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {purchasesData.map((purchase) => (
-                    <TableRow 
-                      key={purchase.id}
-                      className="cursor-pointer hover:bg-muted/50 transition-colors"
-                      onClick={() => goToDetail(purchase.id)}
-                    >
-                      <TableCell className="font-medium">
+                    <TableRow key={purchase.id}>
+                      <TableCell 
+                        className="font-medium cursor-pointer hover:text-primary"
+                        onClick={() => navigate(`/purchases/${purchase.id}`)}
+                      >
                         {purchase.purchase_number}
                       </TableCell>
-                      <TableCell>
+                      <TableCell 
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/purchases/${purchase.id}`)}
+                      >
                         {new Date(purchase.purchase_date).toLocaleDateString()}
                       </TableCell>
-                      <TableCell>{purchase.suppliers?.name || "N/A"}</TableCell>
-                      <TableCell>{purchase.purchase_items?.length || 0}</TableCell>
-                      <TableCell>{formatCurrency(purchase.total_amount)}</TableCell>
-                      <TableCell>
+                      <TableCell 
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/purchases/${purchase.id}`)}
+                      >
+                        {purchase.suppliers?.name || "N/A"}
+                      </TableCell>
+                      <TableCell 
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/purchases/${purchase.id}`)}
+                      >
+                        {purchase.purchase_items?.length || 0}
+                      </TableCell>
+                      <TableCell 
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/purchases/${purchase.id}`)}
+                      >
+                        {formatCurrency(purchase.total_amount)}
+                      </TableCell>
+                      <TableCell 
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/purchases/${purchase.id}`)}
+                      >
                         <Badge className={getStatusBadgeClass(purchase.status)}>
                           {purchase.status}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteClick(purchase.id);
+                              }}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -346,6 +411,15 @@ const PurchaseList = () => {
           </div>
         )}
       </CardContent>
+
+      <DeletePurchaseDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDeletePurchase}
+        isLoading={deleteLoading}
+        purchaseNumber={purchaseToDeleteData?.purchase_number}
+        status={purchaseToDeleteData?.status}
+      />
     </Card>
   );
 };

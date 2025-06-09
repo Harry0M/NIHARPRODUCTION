@@ -1857,9 +1857,9 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }
-      purchase_items: {
+      }      purchase_items: {
         Row: {
+          actual_meter: number
           created_at: string
           id: string
           line_total: number
@@ -1868,8 +1868,8 @@ export type Database = {
           quantity: number
           unit_price: number
           updated_at: string
-        }
-        Insert: {
+        }        Insert: {
+          actual_meter?: number
           created_at?: string
           id?: string
           line_total: number
@@ -1878,8 +1878,8 @@ export type Database = {
           quantity: number
           unit_price: number
           updated_at?: string
-        }
-        Update: {
+        }        Update: {
+          actual_meter?: number
           created_at?: string
           id?: string
           line_total?: number

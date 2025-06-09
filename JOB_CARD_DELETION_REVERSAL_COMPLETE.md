@@ -7,18 +7,21 @@ This implementation adds comprehensive material consumption reversal functionali
 ## Key Features
 
 ### ✅ Material Consumption Reversal
+
 - **Automatic Detection**: Identifies all materials consumed during job card creation
 - **Quantity Restoration**: Adds back the exact quantities that were consumed
 - **Transaction Logging**: Creates detailed audit trail of reversals
 - **Error Handling**: Gracefully handles failures while continuing deletion process
 
 ### ✅ Comprehensive Coverage
+
 - **Single Job Card Deletion**: Enhanced `useJobCardDelete.ts` hook
 - **Bulk Job Card Deletion**: Enhanced `useBulkJobCardDelete.ts` hook
 - **Validation**: Pre-deletion validation with warnings
 - **User Feedback**: Clear messaging about material consumption reversal
 
 ### ✅ Data Integrity
+
 - **Reference Preservation**: Maintains links to original order components
 - **Metadata Tracking**: Stores detailed context in transaction logs
 - **Error Recovery**: Continues with deletion even if reversal has issues
@@ -28,24 +31,28 @@ This implementation adds comprehensive material consumption reversal functionali
 
 ### Core Files Modified/Created
 
-#### 1. **`src/utils/jobCardInventoryUtils.ts`** *(NEW)*
+#### 1. **`src/utils/jobCardInventoryUtils.ts`** _(NEW)_
+
 - `reverseJobCardMaterialConsumption()` - Main reversal function
 - `validateJobCardDeletion()` - Pre-deletion validation
 - Follows same patterns as purchase reversal system
 - Comprehensive error handling and logging
 
-#### 2. **`src/hooks/job-cards/useJobCardDelete.ts`** *(ENHANCED)*
+#### 2. **`src/hooks/job-cards/useJobCardDelete.ts`** _(ENHANCED)_
+
 - Added material consumption reversal before deletion
 - Enhanced error handling with proper TypeScript types
 - Integrated validation warnings
 - Improved user feedback
 
-#### 3. **`src/hooks/job-cards/useBulkJobCardDelete.ts`** *(ENHANCED)*
+#### 3. **`src/hooks/job-cards/useBulkJobCardDelete.ts`** _(ENHANCED)_
+
 - Added reversal logic for each job card in bulk operation
 - Enhanced error handling and progress tracking
 - Continues processing even if individual reversals fail
 
 #### 4. **UI Components Enhanced**
+
 - `JobCardDeleteDialog.tsx` - Added material reversal warning
 - `BulkJobCardDeleteDialog.tsx` - Added bulk reversal information
 - Clear user messaging about inventory restoration
@@ -66,7 +73,7 @@ for (const component of components) {
   // 4. Restore inventory quantity
   const newQuantity = previousQuantity + component.consumption;
   await supabase.from('inventory').update({ quantity: newQuantity });
-  
+
   // 5. Create reversal transaction log
   await supabase.from('inventory_transaction_log').insert({
     transaction_type: "job-card-reversal",
@@ -107,6 +114,7 @@ for (const component of components) {
 ## Testing and Verification
 
 ### Automated Testing
+
 - **Test Script**: `test-job-card-deletion-reversal.js`
 - **Functions Available**:
   - `testJobCardDeletionReversal()` - Comprehensive test preparation
@@ -114,6 +122,7 @@ for (const component of components) {
   - `verifyReversalLogs(jobCardId, jobNumber)` - Audit trail verification
 
 ### Manual Testing Steps
+
 1. **Create a job card** with material consumption
 2. **Note inventory quantities** before deletion
 3. **Delete the job card** using either single or bulk deletion
@@ -124,6 +133,7 @@ for (const component of components) {
 ### Test Scenarios Covered
 
 #### ✅ Single Job Card Deletion
+
 - Material consumption properly reversed
 - Inventory quantities restored
 - Transaction logs created with proper metadata
@@ -131,12 +141,14 @@ for (const component of components) {
 - Graceful handling when no components exist
 
 #### ✅ Bulk Job Card Deletion
+
 - Multiple job cards processed sequentially
 - Individual reversal failures don't stop bulk operation
 - Progress tracking and error reporting
 - Comprehensive success/failure summary
 
 #### ✅ Edge Cases
+
 - Job cards without material consumption
 - Missing order components
 - Inventory items that have been deleted
@@ -146,18 +158,21 @@ for (const component of components) {
 ## Integration with Existing Systems
 
 ### Follows Purchase Reversal Pattern
+
 - Same transaction log structure as purchase reversals
 - Consistent error handling patterns
 - Similar user feedback mechanisms
 - Maintains audit trail standards
 
 ### Database Compatibility
+
 - Uses existing `inventory_transaction_log` table
 - Compatible with current inventory management system
 - Maintains referential integrity
 - No schema changes required
 
 ### UI/UX Consistency
+
 - Consistent with purchase reversal messaging
 - Clear warnings about material consumption
 - Progress indicators for bulk operations
@@ -166,12 +181,14 @@ for (const component of components) {
 ## Error Handling Strategy
 
 ### Graceful Degradation
+
 - **Primary Goal**: Complete job card deletion
 - **Secondary Goal**: Reverse material consumption
 - **Strategy**: Continue deletion even if reversal fails
 - **User Feedback**: Clear messaging about any issues
 
 ### Error Scenarios Handled
+
 1. **Material Not Found**: Log warning, continue with deletion
 2. **Inventory Update Fails**: Log error, continue with other materials
 3. **Transaction Log Fails**: Log error, inventory still updated
@@ -181,12 +198,14 @@ for (const component of components) {
 ## Security and Permissions
 
 ### Access Control
+
 - Uses existing Supabase RLS policies
 - Requires same permissions as job card deletion
 - No additional security risks introduced
 - Audit trail for compliance requirements
 
 ### Data Validation
+
 - Validates job card exists before reversal
 - Checks material references before updating
 - Prevents negative inventory (optional based on settings)
@@ -195,12 +214,14 @@ for (const component of components) {
 ## Performance Considerations
 
 ### Optimizations
+
 - **Batch Operations**: Process components efficiently
 - **Minimal Queries**: Fetch all needed data upfront
 - **Error Isolation**: Single component failure doesn't affect others
 - **Progress Tracking**: User feedback during long operations
 
 ### Bulk Operation Efficiency
+
 - Sequential processing to maintain data consistency
 - Progress reporting for user experience
 - Timeout handling for large batches
@@ -209,6 +230,7 @@ for (const component of components) {
 ## Future Enhancements
 
 ### Potential Improvements
+
 - **Undo Functionality**: Allow reversal of deletions
 - **Advanced Validation**: Check for downstream dependencies
 - **Batch Optimization**: Parallel processing where safe
@@ -216,6 +238,7 @@ for (const component of components) {
 - **Notification System**: Alert relevant users of reversals
 
 ### Integration Opportunities
+
 - **Workflow Management**: Integration with approval workflows
 - **Reporting**: Material consumption/reversal reports
 - **Forecasting**: Impact of deletions on inventory planning
@@ -237,19 +260,22 @@ The system ensures that deleting job cards maintains inventory accuracy by autom
 ## Quick Reference
 
 ### Key Functions
+
 - `reverseJobCardMaterialConsumption(jobCard)` - Core reversal logic
 - `validateJobCardDeletion(jobCardId)` - Pre-deletion validation
 - `useJobCardDelete()` - Enhanced single deletion hook
 - `useBulkJobCardDelete()` - Enhanced bulk deletion hook
 
 ### Transaction Types
+
 - `"consumption"` - Original material consumption (job card creation)
 - `"job-card-reversal"` - Material consumption reversal (job card deletion)
 
 ### Test Commands
+
 ```javascript
 // Browser console testing
-testJobCardDeletionReversal()
-monitorInventoryDuringDeletion(jobCardId)
-verifyReversalLogs(jobCardId, jobNumber)
+testJobCardDeletionReversal();
+monitorInventoryDuringDeletion(jobCardId);
+verifyReversalLogs(jobCardId, jobNumber);
 ```
