@@ -30,12 +30,18 @@ const JobCardDeleteDialog = ({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
+      <AlertDialogContent>        <AlertDialogHeader>
           <AlertDialogTitle>Are you sure you want to delete this job card?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will permanently delete the job card and all associated cutting, printing, and stitching jobs.
-            This action cannot be undone.
+          <AlertDialogDescription className="space-y-2">
+            <p>
+              This will permanently delete the job card and all associated cutting, printing, and stitching jobs.
+            </p>
+            <p className="text-orange-600 dark:text-orange-400 font-medium">
+              ⚠️ Material consumption will be automatically reversed and inventory quantities will be restored.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              This action cannot be undone.
+            </p>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

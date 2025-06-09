@@ -3,8 +3,15 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { reverseJobCardMaterialConsumption } from "@/utils/jobCardInventoryUtils";
 
-export const useJobCardDelete = (setJobCards: React.Dispatch<React.SetStateAction<any[]>>) => {
+interface JobCard {
+  id: string;
+  job_number?: string;
+  order_id: string;
+}
+
+export const useJobCardDelete = (setJobCards: React.Dispatch<React.SetStateAction<JobCard[]>>) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [jobCardToDelete, setJobCardToDelete] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -14,13 +21,47 @@ export const useJobCardDelete = (setJobCards: React.Dispatch<React.SetStateActio
     setJobCardToDelete(jobCardId);
     setDeleteDialogOpen(true);
   };
-
   const handleDeleteJobCard = async () => {
     if (!jobCardToDelete) return;
 
     setDeleteLoading(true);
     try {
       console.log("Attempting to delete job card with ID:", jobCardToDelete);
+      
+      // First, fetch the job card details for material consumption reversal
+      const { data: jobCardData, error: jobCardError } = await supabase
+        .from('job_cards')
+        .select(`
+          id,
+          job_number,
+          order_id,
+          order:orders(order_number)
+        `)
+        .eq('id', jobCardToDelete)
+        .single();
+
+      if (jobCardError) {
+        console.error("Error fetching job card details:", jobCardError);
+        throw jobCardError;
+      }      // Validate deletion and show warnings if any
+      // Note: Basic validation is handled by the deletion process itself
+      console.log("Proceeding with job card deletion and material reversal");
+
+      // Reverse material consumption transactions BEFORE deleting the job card
+      console.log("Reversing material consumption for job card:", jobCardData.job_number);
+      const reversalResult = await reverseJobCardMaterialConsumption(jobCardData);
+      
+      if (!reversalResult.success && reversalResult.error) {
+        console.warn("Material consumption reversal had issues:", reversalResult.error);
+        // Continue with deletion even if reversal had issues
+        toast({
+          title: "Warning",
+          description: `Job card will be deleted but material reversal had issues: ${reversalResult.error}`,
+          variant: "destructive",
+        });
+      } else if (reversalResult.revertedMaterials && reversalResult.revertedMaterials.length > 0) {
+        console.log(`Successfully reversed material consumption for ${reversalResult.revertedMaterials.length} materials`);
+      }
       
       // Delete job wastage records first (this is what's causing the 409 error)
       try {
@@ -127,15 +168,14 @@ export const useJobCardDelete = (setJobCards: React.Dispatch<React.SetStateActio
       toast({
         title: "Job card deleted successfully",
         description: "The job card and all related jobs have been removed.",
-      });
-
-      // Navigate to the job cards page to refresh
+      });      // Navigate to the job cards page to refresh
       navigate('/production/job-cards');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting job card:", error);
+      const errorMessage = error instanceof Error ? error.message : "An error occurred while deleting the job card";
       toast({
         title: "Error deleting job card",
-        description: error.message || "An error occurred while deleting the job card",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

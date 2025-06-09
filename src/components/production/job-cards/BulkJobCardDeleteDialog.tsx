@@ -35,9 +35,16 @@ const BulkJobCardDeleteDialog = ({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure you want to delete {jobCardCount} job cards?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will permanently delete {jobCardCount} job cards and all associated cutting, printing, and stitching jobs.
-            This action cannot be undone.
+          <AlertDialogDescription className="space-y-2">
+            <p>
+              This will permanently delete {jobCardCount} job cards and all associated cutting, printing, and stitching jobs.
+            </p>
+            <p className="text-orange-600 dark:text-orange-400 font-medium">
+              ⚠️ Material consumption will be automatically reversed for each job card and inventory quantities will be restored.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              This action cannot be undone and may take some time to complete.
+            </p>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
