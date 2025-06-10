@@ -178,7 +178,7 @@ const StockDetail = () => {
             <StockForm stockId={id} />
           </TabsContent>
           <TabsContent value="view" className="mt-4">
-            <Card className="p-6">
+            <Card className="p-6 max-w-[1400px] mx-auto">
               {stockItem ? (
                 <div className="space-y-6">
                   <StockInfoGrid 

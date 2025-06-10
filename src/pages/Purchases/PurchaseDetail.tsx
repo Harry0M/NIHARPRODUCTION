@@ -197,12 +197,12 @@ const PurchaseDetail = () => {
             unit_price: item.unit_price,
             line_total: item.line_total,
             actual_meter: item.actual_meter || 0,
-            material: {
+            material: item.material ? {
               id: item.material.id,
               material_name: item.material.material_name,
               conversion_rate: item.material.conversion_rate,
               unit: item.material.unit
-            }
+            } : null
           }))
         });
         
@@ -238,12 +238,12 @@ const PurchaseDetail = () => {
             unit_price: item.unit_price,
             line_total: item.line_total,
             actual_meter: item.actual_meter || 0,
-            material: {
+            material: item.material ? {
               id: item.material.id,
               material_name: item.material.material_name,
               conversion_rate: item.material.conversion_rate,
               unit: item.material.unit
-            }
+            } : null
           }))
         });
         
@@ -536,30 +536,32 @@ const PurchaseDetail = () => {
                   {purchase.purchase_items.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell>
-                        <div className="font-medium">{item.material.material_name}</div>
+                        <div className="font-medium">
+                          {item.material ? item.material.material_name : "Material not found"}
+                        </div>
                         <div className="text-sm text-muted-foreground">
-                          {item.material.color && `Color: ${item.material.color}`}
-                          {item.material.gsm && ` GSM: ${item.material.gsm}`}
+                          {item.material?.color && `Color: ${item.material.color}`}
+                          {item.material?.gsm && ` GSM: ${item.material.gsm}`}
                         </div>
                       </TableCell>
                       <TableCell>
-                        {(item.quantity * (item.material.conversion_rate || 1)).toFixed(2)}
+                        {(item.quantity * (item.material?.conversion_rate || 1)).toFixed(2)}
                       </TableCell>
-                      <TableCell>{item.material.alternate_unit}</TableCell>
+                      <TableCell>{item.material?.alternate_unit || "N/A"}</TableCell>
                       <TableCell>{item.quantity.toFixed(2)}</TableCell>
-                      <TableCell>{item.material.unit}</TableCell>
+                      <TableCell>{item.material?.unit || "N/A"}</TableCell>
                       <TableCell>{item.actual_meter || 0}</TableCell>
                       <TableCell className="text-right">
                         <div>
                           {formatCurrency(item.alt_unit_price || 0)}
                         </div>
-                        <div className="text-xs text-muted-foreground">per {item.material.alternate_unit}</div>
+                        <div className="text-xs text-muted-foreground">per {item.material?.alternate_unit || "N/A"}</div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div>
                           {formatCurrency(item.unit_price || 0)}
                         </div>
-                        <div className="text-xs text-muted-foreground">per {item.material.unit}</div>
+                        <div className="text-xs text-muted-foreground">per {item.material?.unit || "N/A"}</div>
                       </TableCell>
                       <TableCell className="text-right">
                         {item.gst_percentage}%

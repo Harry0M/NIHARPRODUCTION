@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -15,11 +14,12 @@ import {
 } from "@/components/ui/table";
 import { 
   ArrowLeft, Search, FileText, ExternalLink, 
-  ArrowDownCircle, ArrowUpCircle, ChevronDown, Info 
+  ArrowDownCircle, ArrowUpCircle, ChevronDown, Info, Trash2 
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/production/LoadingSpinner";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tooltip,
   TooltipContent,
@@ -43,6 +43,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { TransactionHistoryDeleteDialog } from "@/components/dialogs/TransactionHistoryDeleteDialog";
 
 // Types for transaction data
 interface TransactionHistoryItem {
@@ -58,8 +59,7 @@ interface TransactionHistoryItem {
   reference_type: string | null;
   reference_id: string | null;
   reference_number: string | null;
-  notes: string | null;
-  metadata: any;
+  notes: string | null;  metadata: Record<string, unknown>;
 }
 
 // Filter type
@@ -78,6 +78,9 @@ const TransactionHistory = () => {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const pageSize = 15;
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
+  const [selectionMode, setSelectionMode] = useState(false);
   
   // Filter state
   const [filters, setFilters] = useState<TransactionFilters>({
@@ -177,9 +180,8 @@ const TransactionHistory = () => {
     });
     setPage(1);
   };
-  
-  // Update a single filter
-  const updateFilter = (key: keyof TransactionFilters, value: any) => {
+    // Update a single filter
+  const updateFilter = (key: keyof TransactionFilters, value: string | Date | null | { startDate: Date | null; endDate: Date | null }) => {
     setFilters(prev => ({ ...prev, [key]: value }));
     setPage(1); // Reset to first page when filters change
   };
@@ -230,7 +232,6 @@ const TransactionHistory = () => {
       icon: Info
     };
   };
-
   const getReferenceTypeDisplay = (type: string | null) => {
     if (!type) return "Manual Entry";
     
@@ -244,6 +245,35 @@ const TransactionHistory = () => {
       default:
         return type;
     }
+  };
+
+  // Selection handler functions
+  const handleSelectTransaction = (transactionId: string, isSelected: boolean) => {
+    if (isSelected) {
+      setSelectedTransactionIds(prev => [...prev, transactionId]);
+    } else {
+      setSelectedTransactionIds(prev => prev.filter(id => id !== transactionId));
+    }
+  };
+
+  const handleSelectAllTransactions = (isSelected: boolean) => {
+    if (isSelected && transactionData?.transactions) {
+      setSelectedTransactionIds(transactionData.transactions.map(t => t.id));
+    } else {
+      setSelectedTransactionIds([]);
+    }
+  };
+
+  const toggleSelectionMode = () => {
+    setSelectionMode(!selectionMode);
+    if (!selectionMode) {
+      setSelectedTransactionIds([]);
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedTransactionIds.length === 0) return;
+    setIsDeleteDialogOpen(true);
   };
   
   // Navigate to reference
@@ -265,16 +295,57 @@ const TransactionHistory = () => {
   if (isLoading) {
     return <LoadingSpinner />;
   }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-1.5">
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm" onClick={() => navigate('/analysis')}>
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back
-          </Button>
-          <h1 className="text-2xl font-bold">Material Transaction History</h1>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" size="sm" onClick={() => navigate('/analysis')}>
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+            <h1 className="text-2xl font-bold">Material Transaction History</h1>
+          </div>          <div className="flex items-center space-x-2">
+            <Button 
+              variant={selectionMode ? "default" : "outline"} 
+              size="sm"
+              onClick={toggleSelectionMode}
+            >
+              <Checkbox className="h-4 w-4 mr-2" />
+              {selectionMode ? "Exit Selection" : "Select Mode"}
+            </Button>
+            
+            {selectionMode && selectedTransactionIds.length > 0 && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleDeleteSelected}
+                className="text-destructive hover:text-destructive border-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Selected ({selectedTransactionIds.length})
+              </Button>
+            )}
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setIsDeleteDialogOpen(true)}
+                    className="text-destructive hover:text-destructive border-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Clear History
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Delete transaction history records (inventory will not be affected)</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </div>
         <p className="text-muted-foreground">
           View detailed history of all material transactions, including usage in orders
@@ -365,15 +436,28 @@ const TransactionHistory = () => {
       </Card>
       
       {/* Transactions Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <FileText className="h-5 w-5 mr-2" />
-            Transaction History
-          </CardTitle>
-          <CardDescription>
-            Showing {transactionData?.transactions.length || 0} of {transactionData?.totalCount || 0} transactions
-          </CardDescription>
+      <Card>        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center">
+                <FileText className="h-5 w-5 mr-2" />
+                Transaction History
+              </CardTitle>
+              <CardDescription>
+                Showing {transactionData?.transactions.length || 0} of {transactionData?.totalCount || 0} transactions
+              </CardDescription>
+            </div>
+            {selectionMode && transactionData?.transactions && transactionData.transactions.length > 0 && (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  checked={selectedTransactionIds.length === transactionData.transactions.length}
+                  onCheckedChange={handleSelectAllTransactions}
+                  aria-label="Select all transactions"
+                />
+                <span className="text-sm text-muted-foreground">Select All</span>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid gap-3">
@@ -578,15 +662,26 @@ const TransactionHistory = () => {
                 const typeInfo = getTransactionTypeColor(transaction.transaction_type);
                 const { icon: Icon } = typeInfo;
                 const isNegative = transaction.quantity < 0;
-                
-                return (
+                  return (
                   <div 
                     key={transaction.id} 
-                    className={`border rounded-md p-0 overflow-hidden hover:border-primary transition-colors`}
+                    className={`border rounded-md p-0 overflow-hidden hover:border-primary transition-colors ${
+                      selectedTransactionIds.includes(transaction.id) ? 'border-primary bg-primary/5' : ''
+                    }`}
                   >
                     {/* Header with transaction type & date */}
                     <div className={`py-1.5 px-3 ${typeInfo.bg || 'bg-gray-100'}`}>
                       <div className="flex justify-between items-center">
+                        {selectionMode && (
+                          <Checkbox
+                            checked={selectedTransactionIds.includes(transaction.id)}
+                            onCheckedChange={(checked) => 
+                              handleSelectTransaction(transaction.id, !!checked)
+                            }
+                            aria-label={`Select transaction ${transaction.id}`}
+                            className="h-4 w-4"
+                          />
+                        )}
                         <div className="flex items-center gap-1 font-medium">
                           {typeInfo.label === "Addition" && <ArrowUpCircle className="h-3.5 w-3.5" />}
                           {typeInfo.label === "Consumption" && <ArrowDownCircle className="h-3.5 w-3.5" />}
@@ -595,80 +690,72 @@ const TransactionHistory = () => {
                           {(typeInfo.label === "Unknown" || !typeInfo.label) && <Info className="h-3.5 w-3.5" />}
                           <span>{typeInfo.label || transaction.transaction_type}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs">{format(new Date(transaction.transaction_date), "MMM d, yyyy")}</span>
-                          <span className="text-xs text-muted-foreground">{format(new Date(transaction.transaction_date), "h:mm a")}</span>
-                        </div>
                       </div>
                     </div>
-                    
-                    <div className="p-3">
+
+                    <div className="p-4 space-y-3">
                       {/* Material name */}
-                      <div className="font-medium mb-2">{transaction.material_name}</div>
-                      
+                      <div className="bg-blue-50 dark:bg-blue-950/30 px-3 py-2 rounded-md border border-blue-200 dark:border-blue-800">
+                        <div className="text-sm font-semibold text-blue-800 dark:text-blue-300">
+                          {transaction.material_name}
+                        </div>
+                      </div>
+
                       {/* Stock changes */}
-                      <div className="flex justify-between items-center mb-2 bg-muted/30 p-2 rounded-md">
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">Opening:</span>{" "}
-                          <span className="font-medium">{transaction.previous_quantity.toFixed(2)}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className={`text-sm font-semibold ${isNegative ? 'text-red-500 dark:text-red-400' : 'text-green-500 dark:text-green-400'}`}>
-                            {isNegative ? '' : '+'}{transaction.quantity.toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">Closing:</span>{" "}
-                          <span className="font-medium">{transaction.new_quantity.toFixed(2)}</span>
+                      <div className="bg-slate-50 dark:bg-slate-950/30 px-3 py-2 rounded-md border border-slate-200 dark:border-slate-800">
+                        <div className="flex justify-between items-center">
+                          <div className="text-sm">
+                            <span className="font-semibold text-slate-700 dark:text-slate-300">Opening:</span>{" "}
+                            <span className="font-bold text-orange-600 dark:text-orange-400">{transaction.previous_quantity.toFixed(2)}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-lg font-bold px-2 py-1 rounded ${
+                              isNegative 
+                                ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30' 
+                                : 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30'
+                            }`}>
+                              {isNegative ? '' : '+'}{transaction.quantity.toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="text-sm">
+                            <span className="font-semibold text-slate-700 dark:text-slate-300">Closing:</span>{" "}
+                            <span className="font-bold text-green-600 dark:text-green-400">{transaction.new_quantity.toFixed(2)}</span>
+                          </div>
                         </div>
                       </div>
-                      
+
+                      {/* Transaction date */}
+                      <div className="text-sm text-muted-foreground">
+                        <span>Transaction Date: {format(new Date(transaction.transaction_date), "dd MMM yyyy, h:mm a")}</span>
+                      </div>
+
                       {/* Reference information */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1 text-sm">
-                          {transaction.reference_type ? (
-                            <div
-                              className="underline cursor-pointer flex items-center"
-                              onClick={() => navigateToReference(transaction.reference_type, transaction.reference_id)}
-                            >
-                              <span>{getReferenceTypeDisplay(transaction.reference_type)}</span>
-                              {transaction.reference_number && (
-                                <span className="ml-1">#{transaction.reference_number}</span>
-                              )}
-                              <ExternalLink className="h-3 w-3 ml-1" />
+                      {transaction.reference_type && (
+                        <div className="bg-green-50 dark:bg-green-950/30 px-3 py-2 rounded-md border border-green-200 dark:border-green-800">
+                          <div className="flex items-center justify-between">
+                            <div className="text-sm">
+                              <span className="font-semibold text-green-700 dark:text-green-300">
+                                {getReferenceTypeDisplay(transaction.reference_type)}:
+                              </span>{" "}
+                              <span className="font-bold text-green-800 dark:text-green-400">
+                                {transaction.reference_number}
+                              </span>
                             </div>
-                          ) : (
-                            <span className="text-muted-foreground">Manual Entry</span>
-                          )}
-                        </div>
-                        
-                        {/* Unit display */}
-                        <span className="text-sm text-muted-foreground">{transaction.unit}</span>
-                      </div>
-                      
-                      {/* Notes if available */}
-                      {transaction.notes && (
-                        <div className="mt-2 text-sm text-muted-foreground border-t border-border pt-2 italic">
-                          "{transaction.notes}"
+                            <button
+                              onClick={() => navigateToReference(transaction.reference_type, transaction.reference_id)}
+                              className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded-md transition-colors"
+                            >
+                              View {getReferenceTypeDisplay(transaction.reference_type)}
+                            </button>
+                          </div>
                         </div>
                       )}
-                      
-                      {/* Additional metadata if available */}
-                      {transaction.metadata && typeof transaction.metadata === 'object' && Object.keys(transaction.metadata).length > 0 && (
-                        <div className="mt-2 pt-2 border-t border-border">
-                          <div className="text-xs text-muted-foreground mb-1">Additional information</div>
-                          <div className="grid grid-cols-2 gap-1 text-xs">
-                            {Object.entries(transaction.metadata || {}).filter(([key]) => 
-                              key && 
-                              !['material_name', 'unit'].includes(key) && 
-                              typeof key === 'string' && 
-                              key.trim() !== ''
-                            ).map(([key, value], index) => (
-                              <div key={index} className="contents">
-                                <span className="text-muted-foreground">{key.replace(/_/g, ' ')}:</span>
-                                <span>{typeof value === 'object' ? JSON.stringify(value) : String(value || '')}</span>
-                              </div>
-                            ))}
+
+                      {/* Notes if available */}
+                      {transaction.notes && (
+                        <div className="bg-gray-50 dark:bg-gray-950/30 px-3 py-2 rounded-md border border-gray-200 dark:border-gray-800">
+                          <div className="text-sm text-gray-700 dark:text-gray-300 italic">
+                            💬 "{transaction.notes}"
                           </div>
                         </div>
                       )}
@@ -734,10 +821,15 @@ const TransactionHistory = () => {
                   </PaginationItem>
                 </PaginationContent>
               </Pagination>
-            </div>
-          )}
+            </div>          )}
         </CardContent>
       </Card>
+        {/* Transaction History Delete Dialog */}
+      <TransactionHistoryDeleteDialog 
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        selectedTransactionIds={selectedTransactionIds}
+      />
       
     </div>
   );

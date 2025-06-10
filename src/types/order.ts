@@ -44,6 +44,7 @@ export interface OrderFormData {
   rate: string;
   special_instructions: string;
   order_date: string;
+  order_number?: string; // Manual order number entry
   sales_account_id?: string | null;
   catalog_id?: string | null;
   // Cost-related fields
@@ -79,7 +80,11 @@ export interface Component {
   inventory?: InventoryMaterial | null;
   is_custom?: boolean;
   component_cost?: number | null;
-  component_cost_breakdown?: any | null;
+  component_cost_breakdown?: {
+    material_cost: number;
+    material_rate: number;
+    consumption: number | null;
+  } | null;
   width?: string | number | null; // Added width property
   length?: string | number | null; // Added length property
 }

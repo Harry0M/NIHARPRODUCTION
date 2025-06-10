@@ -311,17 +311,20 @@ const PurchaseDetail = () => {
                   {purchase.purchase_items.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">
-                        {item.material.material_name}
-                        {item.material.color && (
+                        {item.material ? item.material.material_name : "Material not found"}
+                        {item.material?.color && (
                           <span className="text-muted-foreground"> - {item.material.color}</span>
                         )}
                       </TableCell>
                       <TableCell>{item.quantity.toFixed(2)}</TableCell>
-                      <TableCell>{item.material.main_unit}</TableCell>
+                      <TableCell>{item.material?.main_unit || "N/A"}</TableCell>
                       <TableCell>
-                        {(item.quantity / (item.material.main_to_alternative_ratio || 1)).toFixed(2)}
+                        {item.material ? 
+                          (item.quantity / (item.material.main_to_alternative_ratio || 1)).toFixed(2) : 
+                          "N/A"
+                        }
                       </TableCell>
-                      <TableCell>{item.material.alternative_unit}</TableCell>
+                      <TableCell>{item.material?.alternative_unit || "N/A"}</TableCell>
                       <TableCell className="text-right">{formatCurrency(item.unit_price)}</TableCell>
                       <TableCell className="text-right">{formatCurrency(item.line_total)}</TableCell>
                     </TableRow>

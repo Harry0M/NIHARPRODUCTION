@@ -1,19 +1,25 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Truck } from "lucide-react";
+import { FileText, Truck, Edit2, Package } from "lucide-react";
 import type { DispatchData } from "@/types/dispatch";
 import type { DispatchBatch } from "@/types/dispatch";
 import { downloadAsCSV, downloadAsPDF } from "@/utils/downloadUtils";
 import { DownloadButton } from "@/components/DownloadButton";
+import { EditableDispatchBatches } from "./EditableDispatchBatches";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface DispatchDetailsProps {
   dispatch: DispatchData;
   batches: DispatchBatch[];
   orderNumber?: string;
   companyName?: string;
+  onBatchesUpdated?: () => void;
 }
 
-export const DispatchDetails = ({ dispatch, batches, orderNumber, companyName }: DispatchDetailsProps) => {
+export const DispatchDetails = ({ dispatch, batches, orderNumber, companyName, onBatchesUpdated }: DispatchDetailsProps) => {
+  const [isEditMode, setIsEditMode] = useState(false);
+  const navigate = useNavigate();
   // Handler for CSV download
   const handleDownloadCSV = () => {
     const downloadData = [{
@@ -89,44 +95,82 @@ export const DispatchDetails = ({ dispatch, batches, orderNumber, companyName }:
             <div><strong>Quantity Check:</strong> {dispatch.quantity_checked ? "Yes" : "No"}</div>
             <div><strong>Notes:</strong> {dispatch.notes || "—"}</div>
           </div>
-        </div>
-
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
+        </div>        <div className="space-y-4">          <div className="flex items-center justify-between">
             <h3 className="font-medium">Dispatch Batches</h3>
-            <div className="text-sm text-muted-foreground">
-              Total Batches: {batches.length} | Total Quantity: {batches.reduce((sum, batch) => sum + batch.quantity, 0)}
+            <div className="flex items-center gap-2">
+              <div className="text-sm text-muted-foreground">
+                Total Batches: {batches.length} | Total Quantity: {batches.reduce((sum, batch) => sum + batch.quantity, 0)}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/dispatch/${dispatch.id}/batches`)}
+              >
+                <Package className="h-4 w-4 mr-2" />
+                Batch Manager
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditMode(!isEditMode)}
+              >
+                <Edit2 className="h-4 w-4 mr-2" />
+                {isEditMode ? 'View Only' : 'Edit Batches'}
+              </Button>
             </div>
           </div>
 
-          <Card>
-            <CardContent className="p-0">
-              <div className="max-h-[400px] overflow-y-auto relative">
-                <table className="w-full border-collapse">
-                  <thead className="sticky top-0 bg-muted/50 z-10">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-sm font-medium border-b">Batch No.</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium border-b">Quantity</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium border-b">Delivery Date</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium border-b">Notes</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {batches.map((batch) => (
-                      <tr key={batch.id} className="hover:bg-muted/30">
-                        <td className="px-4 py-3 text-sm whitespace-nowrap">Batch {batch.batch_number}</td>
-                        <td className="px-4 py-3 text-sm whitespace-nowrap">{batch.quantity}</td>
-                        <td className="px-4 py-3 text-sm whitespace-nowrap">
-                          {new Date(batch.delivery_date).toLocaleDateString()}
-                        </td>
-                        <td className="px-4 py-3 text-sm">{batch.notes || "—"}</td>
+          {isEditMode ? (
+            <EditableDispatchBatches
+              dispatchId={dispatch.id}
+              batches={batches}
+              onBatchesUpdated={() => {
+                if (onBatchesUpdated) {
+                  onBatchesUpdated();
+                }
+              }}
+            />
+          ) : (
+            <Card>
+              <CardContent className="p-0">
+                <div className="max-h-[400px] overflow-y-auto relative">
+                  <table className="w-full border-collapse">
+                    <thead className="sticky top-0 bg-muted/50 z-10">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-sm font-medium border-b">Batch No.</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium border-b">Quantity</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium border-b">Delivery Date</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium border-b">Status</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium border-b">Notes</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+                    </thead>
+                    <tbody className="divide-y">
+                      {batches.map((batch) => (
+                        <tr key={batch.id} className="hover:bg-muted/30">
+                          <td className="px-4 py-3 text-sm whitespace-nowrap">Batch {batch.batch_number}</td>
+                          <td className="px-4 py-3 text-sm whitespace-nowrap">{batch.quantity}</td>
+                          <td className="px-4 py-3 text-sm whitespace-nowrap">
+                            {new Date(batch.delivery_date).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-3 text-sm whitespace-nowrap">
+                            <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                              batch.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                              batch.status === 'dispatched' ? 'bg-blue-100 text-blue-800' :
+                              batch.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {(batch.status || 'pending').charAt(0).toUpperCase() + (batch.status || 'pending').slice(1)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm">{batch.notes || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </CardContent>
     </Card>

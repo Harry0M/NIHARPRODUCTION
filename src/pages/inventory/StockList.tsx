@@ -32,6 +32,28 @@ import {
 } from "@/components/ui/pagination";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+interface DeletionPreview {
+  inventory_id: string;
+  material_name: string;
+  deletion_preview: {
+    will_be_deleted: {
+      inventory_item: boolean;
+      non_consumption_transactions: number;
+      catalog_material_references: number;
+    };
+    will_be_preserved: {
+      consumption_transactions: number;
+      purchase_history: number;
+      order_history: number;
+    };
+    will_be_modified: {
+      purchase_items_lose_material_ref: number;
+      order_components_lose_material_ref: number;
+    };
+  };
+  summary: string;
+}
+
 const StockList = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -47,6 +69,7 @@ const StockList = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [totalCount, setTotalCount] = useState(0);
+  const [deletionPreview, setDeletionPreview] = useState<DeletionPreview | null>(null);
 
   // Track materials with recent updates
   useEffect(() => {
@@ -100,6 +123,7 @@ const StockList = () => {
       
       // Then fetch the paginated data
       // Add explicit type annotation to avoid excessive type depth error
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let query: any = supabase
         .from('inventory')
         .select(`
@@ -268,7 +292,7 @@ const StockList = () => {
     return data && data.length > 0;
   };
 
-  const handleDeleteClick = async (e: React.MouseEvent, id: string, name: string) => {
+    const handleDeleteClick = async (e: React.MouseEvent, id: string, name: string) => {
     e.stopPropagation(); // Prevent triggering the row click
     setDeletingStockId(id);
     
@@ -276,6 +300,22 @@ const StockList = () => {
     const hasRelatedTransactions = await checkForTransactions(id);
     setHasTransactions(hasRelatedTransactions);
     setDeleteWithTransactions(false);
+    
+    // Get deletion preview
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: preview, error } = await (supabase.rpc as any)('preview_inventory_hard_deletion', {
+        input_inventory_id: id
+      });
+      
+      if (error) {
+        console.error("Error getting deletion preview:", error);
+      } else {
+        setDeletionPreview(preview as DeletionPreview);
+      }
+    } catch (error) {
+      console.error("Error getting deletion preview:", error);
+    }
     
     setIsDeleteDialogOpen(true);
   };
@@ -285,30 +325,28 @@ const StockList = () => {
     
     setIsDeleting(true);
     try {
-      console.log(`Attempting to soft-delete inventory item: ${deletingStockId}`);
+      console.log(`Attempting to hard-delete inventory item: ${deletingStockId}`);
       
-      // Use the soft delete function instead of directly deleting
-      // This preserves purchase history while marking the item as deleted
-      // Using any type assertion to bypass TypeScript RPC function name checking
-      // since our new function isn't in the predefined list
-      const { data, error } = await supabase
-        .rpc('soft_delete_inventory_item' as any, {
-          input_inventory_id: deletingStockId
-        });
+      // Use the new hard delete function with consumption preservation
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.rpc as any)('hard_delete_inventory_with_consumption_preserve', {
+        input_inventory_id: deletingStockId
+      });
 
       if (error) {
-        console.error("Error soft-deleting inventory item:", error);
+        console.error("Error hard-deleting inventory item:", error);
         showToast({
-          title: "Delete failed",
+          title: "Hard delete failed",
           description: error.message,
           type: "error"
         });
         throw error;
       }
 
+      const summary = (data as { message?: string })?.message || "Item has been hard deleted successfully";
       showToast({
-        title: "Stock deleted successfully",
-        description: hasTransactions ? "All related transaction records were also deleted." : "",
+        title: "Inventory item hard deleted",
+        description: summary,
         type: "success"
       });
       
@@ -326,6 +364,7 @@ const StockList = () => {
       setIsDeleteDialogOpen(false);
       setDeletingStockId(null);
       setHasTransactions(false);
+      setDeletionPreview(null);
     }
   };
 
@@ -337,6 +376,22 @@ const StockList = () => {
     const hasRelatedTransactions = await checkForTransactions(stockId);
     setHasTransactions(hasRelatedTransactions);
     setDeleteWithTransactions(false);
+    
+    // Get deletion preview
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: preview, error } = await (supabase.rpc as any)('preview_inventory_hard_deletion', {
+        input_inventory_id: stockId
+      });
+      
+      if (error) {
+        console.error("Error getting deletion preview:", error);
+      } else {
+        setDeletionPreview(preview as DeletionPreview);
+      }
+    } catch (error) {
+      console.error("Error getting deletion preview:", error);
+    }
     
     // Set the ID of the stock item to delete
     setDeletingStockId(stockId);
@@ -692,6 +747,7 @@ const StockList = () => {
         hasTransactions={hasTransactions}
         deleteWithTransactions={deleteWithTransactions}
         onToggleDeleteWithTransactions={setDeleteWithTransactions}
+        deletionPreview={deletionPreview}
       />
     </div>
   );

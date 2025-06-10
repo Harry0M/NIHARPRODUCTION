@@ -1,7 +1,6 @@
 
 import { useState } from "react";
 import { OrderFormData } from "@/types/order";
-import { useOrderFormValidation } from "./useOrderFormValidation";
 
 export function useOrderDetails() {
   const [orderDetails, setOrderDetails] = useState<OrderFormData>({
@@ -16,10 +15,9 @@ export function useOrderDetails() {
     rate: "",
     special_instructions: "",
     sales_account_id: null,
-    order_date: new Date().toISOString().split('T')[0]
+    order_date: new Date().toISOString().split('T')[0],
+    order_number: "" // Manual order number entry
   });
-  
-  const { clearFieldError } = useOrderFormValidation();
   
   const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 
     target: { name: string; value: string | null } 
@@ -54,9 +52,6 @@ export function useOrderDetails() {
         }
       }
     }
-    
-    // Clear validation error when field is changed
-    clearFieldError(name as any);
   };
   
   return {

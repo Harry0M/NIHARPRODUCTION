@@ -11,6 +11,7 @@ interface OrderDetailsSectionProps {
   formErrors: {
     quantity?: string;
     order_date?: string;
+    order_number?: string;
     product_quantity?: string;
     total_quantity?: string;
   };
@@ -143,9 +144,7 @@ export const OrderDetailsSection = ({
             onChange={handleOrderChange}
             min="1"
           />
-        </div>
-
-        {/* Order Date Field */}
+        </div>        {/* Order Date Field */}
         <div className="space-y-2">
           <Label htmlFor="order_date" className="flex items-center gap-1">
             Order Date
@@ -165,6 +164,31 @@ export const OrderDetailsSection = ({
               <AlertCircle className="h-3 w-3" /> {formErrors.order_date}
             </p>
           )}
+        </div>
+
+        {/* Order Number Field */}
+        <div className="space-y-2">
+          <Label htmlFor="order_number" className="flex items-center gap-1">
+            Order Number
+            <span className="text-xs text-muted-foreground">(Optional)</span>
+          </Label>
+          <Input 
+            id="order_number"
+            name="order_number"
+            type="text"
+            value={formData.order_number || ""}
+            onChange={handleOrderChange}
+            placeholder="Enter manual order number (leave blank for auto-generated)"
+            className={formErrors.order_number ? "border-destructive" : ""}
+          />
+          {formErrors.order_number && (
+            <p className="text-xs text-destructive flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" /> {formErrors.order_number}
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground">
+            If left blank, an order number will be automatically generated
+          </p>
         </div>
       </div>
     </div>

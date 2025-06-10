@@ -30,6 +30,7 @@ import PrintingJob from "@/pages/Production/PrintingJob";
 import StitchingJob from "@/pages/Production/StitchingJob";
 import Dispatch from "@/pages/Production/Dispatch";
 import DispatchDetail from "@/pages/Production/DispatchDetail";
+import DispatchBatchManager from "@/pages/Production/DispatchBatchManager";
 import CompanyList from "@/pages/Companies/CompanyList";
 import CompanyNew from "@/pages/Companies/CompanyNew";
 import CompanyDetails from "@/pages/Companies/CompanyDetails";
@@ -112,6 +113,7 @@ const routes = [
             children: [
               { path: "", element: <Dispatch /> },
               { path: ":id", element: <DispatchDetail /> },
+              { path: ":id/batches", element: <DispatchBatchManager /> },
             ],
           },
           {

@@ -2,7 +2,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { Check, AlertTriangle } from "lucide-react";
+import { Check, AlertTriangle, Package } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { OrderWithJobStatus } from "../types";
 
@@ -55,8 +55,7 @@ export const DispatchTableRow = ({
         )}
       </TableCell>
       <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
-      <TableCell className="text-right">
-        <div className="flex justify-end gap-2">
+      <TableCell className="text-right">        <div className="flex justify-end gap-2">
           {isDispatched ? (
             <>
               <Button
@@ -65,6 +64,14 @@ export const DispatchTableRow = ({
                 variant="outline"
               >
                 View Dispatch Details
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => navigate(`/dispatch/${order.id}/batches`)}
+                variant="outline"
+              >
+                <Package className="h-4 w-4 mr-1" />
+                Manage Batches
               </Button>
               <Button
                 size="sm"

@@ -116,6 +116,12 @@ const DispatchDetail = () => {
             <DispatchDetails 
               dispatch={dispatchData}
               batches={dispatchBatches}
+              orderNumber={order?.order_number}
+              companyName={order?.company_name}
+              onBatchesUpdated={() => {
+                // Refresh the data when batches are updated
+                window.location.reload();
+              }}
             />
           ) : (
             <DispatchForm

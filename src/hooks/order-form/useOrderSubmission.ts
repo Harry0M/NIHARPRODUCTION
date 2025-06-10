@@ -162,6 +162,7 @@ export function useOrderSubmission({
         border_dimension: orderDetails.border_dimension ? parseFloat(orderDetails.border_dimension) : null,
         rate: sellingRate,
         order_date: orderDetails.order_date,
+        order_number: orderDetails.order_number || null, // Manual order number entry (null for auto-generation)
         // Use the validated sales_account_id to prevent foreign key constraint errors
         sales_account_id: validatedSalesAccountId,
         catalog_id: orderDetails.catalog_id || null,
