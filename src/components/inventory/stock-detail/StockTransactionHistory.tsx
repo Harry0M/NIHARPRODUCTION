@@ -138,11 +138,11 @@ export const StockTransactionHistory = ({
         description: `Found ${(txData?.length || 0) + (logData?.length || 0)} transaction records`,
         type: "info"
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error in local transaction refresh:", error);
       showToast({
         title: "Error refreshing transactions",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Unknown error occurred",
         type: "error"
       });
     } finally {
@@ -425,59 +425,155 @@ export const StockTransactionHistory = ({
               const isRecent = new Date(log.transaction_date) > new Date(Date.now() - 3600000 * 24);
               const isNegative = log.quantity < 0;
               const referenceInfo = getReferenceInfo(log);
+              const { reference_type, reference_number, reference_id, metadata, transaction_type } = log;
               
               return (
                 <div 
                   key={log.id} 
-                  className={`border rounded-md p-0 overflow-hidden ${hoveredTransaction === log.id ? 'border-primary' : 'border-border'}`}
+                  className={`border rounded-lg p-0 overflow-hidden shadow-sm ${hoveredTransaction === log.id ? 'border-primary shadow-md' : 'border-border'} transition-all duration-200`}
                   onMouseEnter={() => setHoveredTransaction(log.id)}
                   onMouseLeave={() => setHoveredTransaction(null)}
                 >
                   {/* Header with transaction type */}
-                  <div className={`py-1.5 px-3 ${typeInfo.color}`}>
+                  <div className={`py-2 px-4 ${typeInfo.color}`}>
                     <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-1 font-medium">
-                        {Icon && <Icon className="h-3.5 w-3.5" />}
-                        <span>{typeInfo.label}</span>
+                      <div className="flex items-center gap-2 font-semibold">
+                        {Icon && <Icon className="h-4 w-4" />}
+                        <span className="text-sm">{typeInfo.label}</span>
                       </div>
-                      <span className="text-xs">{formatDate(log.transaction_date)}</span>
+                      <span className="text-xs opacity-80">{formatDate(log.transaction_date)}</span>
                     </div>
                   </div>
                   
                   {/* Main content */}
-                  <div className="p-3">
-                    {/* Stock changes */}
-                    <div className="flex justify-between items-center mb-2">
-                      <div className="text-sm font-medium">
-                        <span className="text-muted-foreground">Opening:</span>{" "}
-                        <span>{log.previous_quantity.toFixed(2)}</span>
+                  <div className="p-4 space-y-3">
+                    {/* Material Name - Highlighted */}
+                    {log.metadata?.material_name && (
+                      <div className="bg-blue-50 dark:bg-blue-950/30 px-3 py-2 rounded-md border border-blue-200 dark:border-blue-800">
+                        <div className="text-sm font-semibold text-blue-800 dark:text-blue-300">
+                          📦 {log.metadata.material_name}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <span className={`text-sm font-semibold ${isNegative ? 'text-red-500 dark:text-red-400' : 'text-green-500 dark:text-green-400'}`}>
-                          {isNegative ? '' : '+'}{log.quantity.toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="text-sm font-medium">
-                        <span className="text-muted-foreground">Closing:</span>{" "}
-                        <span>{log.new_quantity.toFixed(2)}</span>
+                    )}
+
+                    {/* Stock changes - Highlighted */}
+                    <div className="bg-slate-50 dark:bg-slate-950/30 px-3 py-2 rounded-md border border-slate-200 dark:border-slate-800">
+                      <div className="flex justify-between items-center">
+                        <div className="text-sm">
+                          <span className="font-semibold text-slate-700 dark:text-slate-300">Opening:</span>{" "}
+                          <span className="font-bold text-orange-600 dark:text-orange-400">{log.previous_quantity.toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-lg font-bold px-2 py-1 rounded ${isNegative ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30' : 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30'}`}>
+                            {isNegative ? '' : '+'}{log.quantity.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="text-sm">
+                          <span className="font-semibold text-slate-700 dark:text-slate-300">Closing:</span>{" "}
+                          <span className="font-bold text-green-600 dark:text-green-400">{log.new_quantity.toFixed(2)}</span>
+                        </div>
                       </div>
                     </div>
                     
-                    {/* Reference information */}
-                    {log.reference_id && (
-                      <div className="flex items-center gap-1 text-sm">
-                        {referenceInfo.icon && <referenceInfo.icon className="h-3.5 w-3.5 text-muted-foreground" />}
-                        <span>{referenceInfo.label}</span>
-                        {referenceInfo.detail && (
-                          <span className="text-muted-foreground">{referenceInfo.detail}</span>
+                    {/* Transaction Date - Non-highlighted */}
+                    <div className="text-sm text-muted-foreground">
+                      <span>Transaction Date: {formatDate(log.transaction_date)}</span>
+                    </div>
+
+                    {/* Purchase Entry Date - Highlighted for purchases */}
+                    {log.metadata?.purchase_date && (
+                      <div className="bg-purple-50 dark:bg-purple-950/30 px-3 py-2 rounded-md border border-purple-200 dark:border-purple-800">
+                        <div className="text-sm">
+                          <span className="font-semibold text-purple-700 dark:text-purple-300">Purchase Entry Date:</span>{" "}
+                          <span className="font-bold text-purple-800 dark:text-purple-400">
+                            {new Date(log.metadata.purchase_date).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Purchase Reference - Highlighted with Link */}
+                    {reference_type?.toLowerCase().includes('purchase') && (
+                      <div className="bg-green-50 dark:bg-green-950/30 px-3 py-2 rounded-md border border-green-200 dark:border-green-800">
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm">
+                            <span className="font-semibold text-green-700 dark:text-green-300">Purchase Number:</span>{" "}
+                            <span className="font-bold text-green-800 dark:text-green-400">
+                              {reference_number || 'N/A'}
+                            </span>
+                          </div>
+                          {reference_id && (
+                            <button
+                              onClick={() => window.open(`/inventory/purchases/${reference_id}`, '_blank')}
+                              className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded-md transition-colors"
+                            >
+                              View Purchase
+                            </button>
+                          )}
+                        </div>
+                        {metadata?.company_name && (
+                          <div className="text-sm mt-1">
+                            <span className="font-semibold text-green-700 dark:text-green-300">Supplier:</span>{" "}
+                            <span className="font-bold text-green-800 dark:text-green-400">{metadata.company_name}</span>
+                          </div>
                         )}
+                      </div>
+                    )}
+
+                    {/* Order Reference - Highlighted with Link */}
+                    {reference_type?.toLowerCase().includes('order') && (
+                      <div className="bg-indigo-50 dark:bg-indigo-950/30 px-3 py-2 rounded-md border border-indigo-200 dark:border-indigo-800">
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm">
+                            <span className="font-semibold text-indigo-700 dark:text-indigo-300">Order ID:</span>{" "}
+                            <span className="font-bold text-indigo-800 dark:text-indigo-400">
+                              {metadata?.order_number || reference_number || 'N/A'}
+                            </span>
+                          </div>
+                          {metadata?.order_id && (
+                            <button
+                              onClick={() => window.open(`/orders/${metadata.order_id}`, '_blank')}
+                              className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded-md transition-colors"
+                            >
+                              View Order
+                            </button>
+                          )}
+                        </div>
+                        {metadata?.company_name && (
+                          <div className="text-sm mt-1">
+                            <span className="font-semibold text-indigo-700 dark:text-indigo-300">Company:</span>{" "}
+                            <span className="font-bold text-indigo-800 dark:text-indigo-400">{metadata.company_name}</span>
+                          </div>
+                        )}
+                        {metadata?.component_type && (
+                          <div className="text-sm mt-1">
+                            <span className="font-semibold text-indigo-700 dark:text-indigo-300">Component:</span>{" "}
+                            <span className="font-bold text-indigo-800 dark:text-indigo-400">{metadata.component_type}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Manual Adjustment - Highlighted */}
+                    {(transaction_type?.toLowerCase().includes('manual') || transaction_type?.toLowerCase().includes('adjustment')) && (
+                      <div className="bg-yellow-50 dark:bg-yellow-950/30 px-3 py-2 rounded-md border border-yellow-200 dark:border-yellow-800">
+                        <div className="text-sm">
+                          <span className="font-semibold text-yellow-700 dark:text-yellow-300">Manual Adjustment</span>
+                          {metadata?.update_source && (
+                            <span className="font-bold text-yellow-800 dark:text-yellow-400 ml-2">
+                              ({metadata.update_source})
+                            </span>
+                          )}
+                        </div>
                       </div>
                     )}
                     
                     {/* Notes if available */}
                     {log.notes && (
-                      <div className="mt-1 text-sm text-muted-foreground italic">
-                        "{log.notes}"
+                      <div className="bg-gray-50 dark:bg-gray-950/30 px-3 py-2 rounded-md border border-gray-200 dark:border-gray-800">
+                        <div className="text-sm text-gray-700 dark:text-gray-300 italic">
+                          💬 "{log.notes}"
+                        </div>
                       </div>
                     )}
                   </div>
