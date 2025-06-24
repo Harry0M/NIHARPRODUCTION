@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { recordOrderMaterialUsageWithNegatives } from "@/utils/allowNegativeInventory";
+import { recordJobCardMaterialUsage } from "@/utils/allowNegativeInventory";
+import { createJobCardConsumptionBatch } from "@/utils/jobCardConsumptionUtils";
 
 interface Order {
   id: string;
@@ -37,14 +38,12 @@ const JobCardNew = () => {
         const { data, error } = await supabase
           .from("orders")
           .select("id, order_number, company_name, quantity, bag_length, bag_width, status")
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
+          .order("created_at", { ascending: false });        if (error) throw error;
         setOrders(data || []);
-      } catch (error: any) {
+      } catch (error: unknown) {
         toast({
           title: "Error fetching orders",
-          description: error.message,
+          description: error instanceof Error ? error.message : "Unknown error occurred",
           variant: "destructive",
         });
       } finally {
@@ -131,13 +130,20 @@ const JobCardNew = () => {
       if (!jobCardResult) {
         throw new Error("Failed to create job card after multiple attempts");
       }
-      
-      // After job card is created, calculate and record material consumption
+        // After job card is created, calculate and record material consumption
       try {
         console.log("Fetching order components for consumption calculation");
         const { data: components, error: componentsError } = await supabase
           .from("order_components")
-          .select("*")
+          .select(`
+            *,
+            material:inventory(
+              id,
+              material_name,
+              unit,
+              quantity
+            )
+          `)
           .eq("order_id", selectedOrderId);
           
         if (componentsError) {
@@ -163,71 +169,89 @@ const JobCardNew = () => {
           const orderNumber = orderData.order_number;
           console.log(`Processing material consumption for order #${orderNumber}`);
           
-          // Track material consumption results
-          const consumptionResults = [];
-          let successCount = 0;
-          let errorCount = 0;
+          // Track inventory update results
+          let inventorySuccessCount = 0;
+          let inventoryErrorCount = 0;
           
-          // Process each component with material consumption
+          // Step 1: Update inventory quantities using the existing function
           for (const component of components) {
-            if (component.material_id && component.consumption > 0) {
-              console.log(`Processing consumption for ${component.component_type} component:`, {
+            if (component.material_id && component.consumption > 0 && component.material) {
+              console.log(`Processing inventory update for ${component.component_type} component:`, {
                 materialId: component.material_id,
                 consumption: component.consumption
               });
               
               try {
-                // Use the function that allows negative inventory
-                const result = await recordOrderMaterialUsageWithNegatives(
+                const result = await recordJobCardMaterialUsage(
+                  jobCardResult.id,
+                  jobCardResult.job_number || 'New Job',
                   selectedOrderId,
                   orderNumber,
                   component.material_id,
                   component.consumption,
-                  `Material used for ${component.component_type} component (Job Card: ${jobCardResult.job_number || 'New Job'})`
+                  component.component_type
                 );
                 
                 if (!result.success) {
                   console.warn(`Warning: Inventory update failed for component ${component.component_type}:`, result);
-                  errorCount++;
+                  inventoryErrorCount++;
                 } else {
                   console.log(`Inventory updated for component ${component.component_type}:`, {
                     previousQuantity: result.previousQuantity,
                     newQuantity: result.newQuantity,
                     consumed: component.consumption
                   });
-                  successCount++;
-                  consumptionResults.push(result);
+                  inventorySuccessCount++;
                 }
-              } catch (materialError) {
+              } catch (materialError: unknown) {
                 console.error(`Error processing material ${component.material_id}:`, materialError);
-                errorCount++;
+                inventoryErrorCount++;
               }
             }
           }
           
-          console.log(`Material consumption complete: ${successCount} successful, ${errorCount} errors`);
+          // Step 2: Create job card consumption records for accurate reversal
+          console.log("Creating job card consumption records...");
+          const consumptionResult = await createJobCardConsumptionBatch(
+            jobCardResult.id,
+            jobCardResult.job_number || 'New Job',
+            selectedOrderId,
+            orderNumber,
+            components
+          );
           
-          // Show toast with consumption summary
-          if (successCount > 0) {
+          console.log(`Material processing complete:`);
+          console.log(`- Inventory updates: ${inventorySuccessCount} successful, ${inventoryErrorCount} errors`);
+          console.log(`- Consumption records: ${consumptionResult.successCount} successful, ${consumptionResult.errorCount} errors`);
+          
+          // Show toast with comprehensive summary
+          if (inventorySuccessCount > 0 && consumptionResult.successCount > 0) {
             toast({
-              title: "Material consumption recorded",
-              description: `Updated inventory for ${successCount} materials${errorCount > 0 ? ` (${errorCount} errors)` : ''}`,
+              title: "Job card created successfully",
+              description: `Material consumption recorded for ${Math.min(inventorySuccessCount, consumptionResult.successCount)} materials`,
             });
-          } else if (errorCount > 0) {
+          } else if (inventorySuccessCount > 0 || consumptionResult.successCount > 0) {
+            toast({
+              title: "Job card created with warnings",
+              description: `Some material consumption records may be incomplete`,
+              variant: "destructive",
+            });
+          } else if (inventoryErrorCount > 0 || consumptionResult.errorCount > 0) {
             toast({
               title: "Warning: Material consumption issues",
-              description: `Failed to update inventory for ${errorCount} materials`,
+              description: `Job card created but failed to process material consumption`,
               variant: "destructive",
             });
           }
         } else {
           console.log("No components found for this order, skipping material consumption");
         }
-      } catch (consumptionError: any) {
+      } catch (consumptionError: unknown) {
+        const errorMessage = consumptionError instanceof Error ? consumptionError.message : "Unknown error";
         console.error("Error processing material consumption:", consumptionError);
         toast({
           title: "Warning: Material consumption issue",
-          description: `Job card created but failed to process material consumption: ${consumptionError.message}`,
+          description: `Job card created but failed to process material consumption: ${errorMessage}`,
           variant: "destructive",
         });
       }
@@ -236,12 +260,11 @@ const JobCardNew = () => {
         title: "Job Card created",
         description: `Job ${jobCardResult.job_number || 'card'} created successfully`,
       });
-      
-      navigate(`/production/job-cards/${jobCardResult.id}`);
-    } catch (error: any) {
+        navigate(`/production/job-cards/${jobCardResult.id}`);
+    } catch (error: unknown) {
       toast({
         title: "Error creating job card",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive",
       });
       setSubmitting(false);

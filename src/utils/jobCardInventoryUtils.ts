@@ -104,20 +104,79 @@ export const reverseJobCardMaterialConsumption = async (
       } else {
         orderNumber = orderData.order_number;
       }
+    }    // Get original consumption amounts from transaction logs when job card was created
+    const { data: originalConsumptionLogs, error: logsError } = await supabase
+      .from("inventory_transaction_log")
+      .select(`
+        material_id,
+        quantity,
+        metadata
+      `)
+      .eq("reference_id", jobCard.id)
+      .eq("transaction_type", "consumption")
+      .eq("reference_type", "JobCard");
+
+    if (logsError) {
+      console.error("Error fetching original consumption logs:", logsError);
+      errors.push(`Failed to fetch original consumption logs: ${logsError.message}`);
     }
+
+    // Create a map of material_id + component_id/component_type to original consumption quantity
+    // This handles cases where the same material is used in multiple components
+    const originalConsumptionMap = new Map<string, number>();
+    if (originalConsumptionLogs) {
+      for (const log of originalConsumptionLogs) {
+        if (log.material_id && log.quantity && log.metadata) {
+          const originalAmount = Math.abs(log.quantity);
+          
+          // Safely access metadata properties with type checking
+          const metadata = typeof log.metadata === 'object' && log.metadata !== null ? 
+            log.metadata as Record<string, unknown> : {};
+          const componentId = metadata.component_id as string;
+          const componentType = metadata.component_type as string;
+          
+          // Create a unique key for material + component combination
+          const key = componentId ? `${log.material_id}_${componentId}` : `${log.material_id}_${componentType}`;
+          originalConsumptionMap.set(key, originalAmount);
+          
+          console.log(`Found original consumption for material ${log.material_id} in ${componentType}: ${originalAmount} units`);
+        }
+      }
+    }
+
+    console.log(`Found original consumption records for ${originalConsumptionMap.size} material-component combinations`);
 
     // Process each component to reverse material consumption
     for (const component of components) {
-      if (!component.material_id || !component.consumption || component.consumption <= 0) {
-        console.log(`Skipping component ${component.component_type} - no material or consumption`);
+      if (!component.material_id) {
+        console.log(`Skipping component ${component.component_type} - no material_id`);
         continue;
       }
 
-      const consumptionQuantity = component.consumption;
+      // Look for original consumption amount using material_id + component_id combination
+      const componentKey = `${component.material_id}_${component.id}`;
+      const componentTypeKey = `${component.material_id}_${component.component_type}`;
+      
+      // Try component_id first, then fall back to component_type
+      const originalConsumption = originalConsumptionMap.get(componentKey) || 
+                                 originalConsumptionMap.get(componentTypeKey);
+      
+      // Use original consumption amount if available, otherwise fall back to current component consumption
+      const consumptionQuantity = originalConsumption || component.consumption || 0;
+
+      if (consumptionQuantity <= 0) {
+        console.log(`Skipping component ${component.component_type} - no consumption amount found (original: ${originalConsumption}, current: ${component.consumption})`);
+        continue;
+      }
+
       const materialName = component.material?.material_name || "Unknown Material";
       const materialUnit = component.material?.unit || "";
 
-      console.log(`Reversing ${component.component_type}: restoring ${consumptionQuantity} units of ${materialName}`);
+      if (originalConsumption) {
+        console.log(`Reversing ${component.component_type}: restoring ${consumptionQuantity} units of ${materialName} (using ORIGINAL component-specific consumption)`);
+      } else {
+        console.log(`Reversing ${component.component_type}: restoring ${consumptionQuantity} units of ${materialName} (using current consumption amount as fallback)`);
+      }
 
       try {
         // Get current inventory quantity

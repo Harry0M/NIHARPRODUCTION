@@ -15,6 +15,7 @@ export function useOrderDetails() {
     rate: "",
     special_instructions: "",
     sales_account_id: null,
+    catalog_id: null, // Product catalog ID
     order_date: new Date().toISOString().split('T')[0],
     order_number: "" // Manual order number entry
   });

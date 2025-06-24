@@ -171,6 +171,12 @@ const OrderEdit = () => {
         });
         handleOrderChange({
           target: {
+            name: "order_number",
+            value: typedOrderData.order_number || ""
+          }
+        });
+        handleOrderChange({
+          target: {
             name: "cutting_charge",
             value: typedOrderData.cutting_charge?.toString() || "0"
           }
@@ -202,6 +208,14 @@ const OrderEdit = () => {
 
         // If there's a catalog_id, fetch and set the product
         if (typedOrderData.catalog_id) {
+          // Set the catalog_id in form data first
+          handleOrderChange({
+            target: {
+              name: "catalog_id",
+              value: typedOrderData.catalog_id
+            }
+          });
+          
           const { data: catalogData, error: catalogError } = await supabase
             .from("catalog")
             .select("*, catalog_components(*)")

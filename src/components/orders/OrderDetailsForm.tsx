@@ -16,7 +16,7 @@ interface OrderDetailsFormProps {
   handleOrderChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 
     target: { name: string; value: string | null } 
   }) => void;
-  onProductSelect?: (components: any[]) => void;
+  onProductSelect?: (components: unknown[]) => void;
   formErrors: {
     company?: string;
     quantity?: string;
@@ -45,7 +45,9 @@ export const OrderDetailsForm = ({
 
   // Set initial product ID from form data if it exists
   useEffect(() => {
-    if (formData.catalog_id && !selectedProductId) {
+    console.log("OrderDetailsForm - formData.catalog_id:", formData.catalog_id, "selectedProductId:", selectedProductId);
+    if (formData.catalog_id && formData.catalog_id !== selectedProductId) {
+      console.log("OrderDetailsForm - Setting selectedProductId to:", formData.catalog_id);
       setSelectedProductId(formData.catalog_id);
     }
   }, [formData.catalog_id, selectedProductId]);

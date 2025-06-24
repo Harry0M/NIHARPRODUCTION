@@ -1,9 +1,0 @@
-[?25l
-    Select a project:                                                                                                  
-                                                                                                                       
-  >  1. cbjkksedbztvnufnaeod [name: pomovi6971@cotigz.com's Project, org: potlvqszrmnjgwhzqoci, region: ap-southeast-1]
-    2. jsvsnidbgvxhriwtthfw [name: test2, org: potlvqszrmnjgwhzqoci, region: ap-southeast-1]                           
-                                                                                                                       
-                                                                                                                       
-    Γåæ/k up ΓÇó Γåô/j down ΓÇó / filter ΓÇó q quit ΓÇó ? more                                                                     
-                                                                                                                       [0D[2K[?25h[?1002l[?1003l[?1006l

@@ -141,3 +141,89 @@ export const recordOrderMaterialUsageWithNegatives = async (
     };
   }
 };
+
+/**
+ * Record material usage for a job card, allowing negative quantities
+ * This version creates transaction logs with proper job card references for accurate reversal
+ */
+export const recordJobCardMaterialUsage = async (
+  jobCardId: string,
+  jobNumber: string,
+  orderId: string,
+  orderNumber: string,
+  materialId: string,
+  quantity: number,
+  componentType: string
+) => {
+  try {
+    // First get the current quantity and material details
+    const { data: materialData, error: fetchError } = await supabase
+      .from("inventory")
+      .select("quantity, material_name, unit")
+      .eq("id", materialId)
+      .single();
+    
+    if (fetchError) throw fetchError;
+    
+    const previousQuantity = materialData.quantity;
+    const newQuantity = previousQuantity - quantity; // Allow negative quantities
+    
+    // Update the inventory table directly
+    const { error: inventoryError } = await supabase
+      .from("inventory")
+      .update({ quantity: newQuantity })
+      .eq("id", materialId);
+    
+    if (inventoryError) throw inventoryError;
+    
+    // Create a transaction log entry with job card reference
+    const { error: logError } = await supabase
+      .from("inventory_transaction_log")
+      .insert({
+        material_id: materialId,
+        transaction_type: "consumption",
+        quantity: -quantity, // Negative for consumption
+        previous_quantity: previousQuantity,
+        new_quantity: newQuantity,
+        notes: `Material consumed for ${componentType} component (Job Card: ${jobNumber}, Order: ${orderNumber})`,
+        reference_type: "JobCard",
+        reference_id: jobCardId,
+        reference_number: jobNumber,
+        metadata: {
+          material_name: materialData.material_name,
+          unit: materialData.unit,
+          component_type: componentType,
+          order_id: orderId,
+          order_number: orderNumber,
+          job_card_id: jobCardId,
+          job_number: jobNumber,
+          consumption_quantity: quantity
+        },
+        transaction_date: new Date().toISOString()
+      });
+    
+    if (logError) throw logError;
+    
+    return {
+      success: true,
+      previousQuantity,
+      newQuantity,
+      consumed: quantity
+    };
+    
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+    console.error("Error recording job card material usage:", error);
+    
+    showToast({
+      title: "Error",
+      description: errorMessage,
+      type: "error"
+    });
+    
+    return {
+      success: false,
+      error: errorMessage
+    };
+  }
+};
