@@ -162,6 +162,19 @@ const MobileNavigation = () => {
                     href="#" 
                     onClick={(e) => {
                       e.preventDefault();
+                      window.location.href = "/sells";
+                    }}
+                    className="flex items-center gap-2 py-2 w-full"
+                  >
+                    <TrendingUp className="h-4 w-4" />
+                    Sells
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <a 
+                    href="#" 
+                    onClick={(e) => {
+                      e.preventDefault();
                       window.location.href = "/companies";
                     }}
                     className="flex items-center gap-2 py-2 w-full"

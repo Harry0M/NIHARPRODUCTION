@@ -36,14 +36,13 @@ export const useCuttingJobSubmit = () => {
       const sanitizedCuttingData = {
         ...cuttingData,
         received_quantity: cuttingData.received_quantity === '' ? null : cuttingData.received_quantity
-      };
-
-      const { data: cuttingJob, error: cuttingError } = await supabase
+      };      const { data: cuttingJob, error: cuttingError } = await supabase
         .from('cutting_jobs')
         .insert({
           ...sanitizedCuttingData,
           job_card_id: jobCardId,
-          worker_name: jobName
+          worker_name: jobName,
+          vendor_id: cuttingData.vendor_id || null
         })
         .select()
         .single();
@@ -85,16 +84,16 @@ export const useCuttingJobSubmit = () => {
       setSubmitting(false);
     }
   };
-
   const updateCuttingJob = async (jobId: string, cuttingData: any, componentData: any[]) => {
     setSubmitting(true);
     setValidationError(null);
 
     try {
-      // Sanitize the cutting data numeric fields
+      // Sanitize the cutting data numeric fields and ensure vendor_id is included
       const sanitizedCuttingData = {
         ...cuttingData,
-        received_quantity: cuttingData.received_quantity === '' ? null : cuttingData.received_quantity
+        received_quantity: cuttingData.received_quantity === '' ? null : cuttingData.received_quantity,
+        vendor_id: cuttingData.vendor_id || null
       };
 
       const { error: updateError } = await supabase

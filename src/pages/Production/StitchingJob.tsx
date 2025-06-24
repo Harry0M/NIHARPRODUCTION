@@ -165,8 +165,7 @@ export default function StitchingJob() {
       )}
 
       {showNewJobForm && (
-        <StitchingForm
-          defaultValues={{
+        <StitchingForm          defaultValues={{
             received_quantity: null,
             provided_quantity: null,
             part_quantity: null,
@@ -181,7 +180,8 @@ export default function StitchingJob() {
             worker_name: "",
             is_internal: true,
             status: "pending",
-            rate: null
+            rate: null,
+            vendor_id: null
           }}
           onSubmit={async (values) => {
             const success = await handleSubmit(values);

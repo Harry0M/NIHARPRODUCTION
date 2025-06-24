@@ -19,17 +19,21 @@ interface ExtendedCustomComponent extends Component {
 export function useOrderComponents() {
   const [components, setComponents] = useState<Record<string, ExtendedComponent>>({});
   const [customComponents, setCustomComponents] = useState<Component[]>([]);
-  const [baseConsumptions, setBaseConsumptions] = useState<Record<string, number>>({});
-  const [costCalculation, setCostCalculation] = useState<CostCalculation>({
+  const [baseConsumptions, setBaseConsumptions] = useState<Record<string, number>>({});  const [costCalculation, setCostCalculation] = useState<CostCalculation>({
     materialCost: 0,
     cuttingCharge: 0,
     printingCharge: 0,
     stitchingCharge: 0,
     transportCharge: 0,
-    productionCost: 0,
+    baseCost: 0,
+    gstAmount: 0,
     totalCost: 0,
     margin: 15, // Default margin
-    sellingPrice: 0
+    sellingPrice: 0,
+    perUnitBaseCost: 0,
+    perUnitTransportCost: 0,
+    perUnitGstCost: 0,
+    perUnitCost: 0
   });
   
   const handleComponentChange = (type: string, field: string, value: string) => {
@@ -75,9 +79,9 @@ export function useOrderComponents() {
     delete updatedBaseConsumptions[`custom_${index}`];
     setBaseConsumptions(updatedBaseConsumptions);
   };
-  
-  // Track first-time quantity update to handle special case of quantity=1
+    // Track first-time quantity update to handle special case of quantity=1
   const [initialUpdateDone, setInitialUpdateDone] = useState(false);
+  const [isLoadingFromDatabase, setIsLoadingFromDatabase] = useState(false);
   
   // Add an effect to ensure base consumptions are properly set for initial calculation
   useEffect(() => {
@@ -87,12 +91,22 @@ export function useOrderComponents() {
       setInitialUpdateDone(true);
     }
   }, [components, initialUpdateDone]);
-  
-  const updateConsumptionBasedOnQuantity = (quantity: number) => {
+
+  // Add method to set loading state when components are being loaded from database
+  const setDatabaseLoadingState = (loading: boolean) => {
+    setIsLoadingFromDatabase(loading);
+    console.log(`%c Database loading state: ${loading}`, 'background: #FF9800; color: white; padding: 2px 5px;');
+  };    const updateConsumptionBasedOnQuantity = (quantity: number) => {
     if (isNaN(quantity) || quantity <= 0) return;
 
     console.log(`%c Updating consumption based on quantity: ${quantity}`, 'background: #4CAF50; color: white; padding: 2px 5px;');
     console.log("Current components state:", components);
+    
+    // CRITICAL: Skip if we're in the middle of loading components from database
+    if (isLoadingFromDatabase) {
+      console.log('%c Skipping consumption update - components being loaded from database', 'background: #FF9800; color: white; padding: 2px 5px;');
+      return;
+    }
     
     // Skip the update if we already have final consumption values
     // This prevents recalculating and overriding the values we want to keep
@@ -103,6 +117,68 @@ export function useOrderComponents() {
     if (hasFinalValues) {
       console.log('%c Skipping consumption update - using final consumption values', 'background: #FFC107; color: black; padding: 2px 5px;');
       return;
+    }
+    
+    // Check if we're in order edit mode by looking for existing component IDs
+    // In edit mode, components already have their final consumption values from database
+    const isInEditMode = Object.values(components).some(comp => comp.id && typeof comp.id === 'string' && comp.id.length > 10) || 
+                         customComponents.some(comp => comp.id && typeof comp.id === 'string' && comp.id.length > 10);
+    
+    // Additional check: if components have consumption values already set, we're likely in edit mode
+    const hasExistingConsumption = Object.values(components).some(comp => comp.consumption && parseFloat(comp.consumption) > 0) ||
+                                  customComponents.some(comp => comp.consumption && parseFloat(comp.consumption) > 0);
+    
+    if (isInEditMode || hasExistingConsumption) {
+      console.log('%c Order Edit Mode Detected: Skipping consumption recalculation to prevent double multiplication', 'background: #9C27B0; color: white; padding: 2px 5px;');
+      console.log('Edit mode detection details:', {
+        isInEditMode,
+        hasExistingConsumption,
+        componentIds: Object.values(components).map(c => c.id),
+        customComponentIds: customComponents.map(c => c.id)
+      });
+      
+      // In edit mode, only update material costs without changing consumption
+      const updatedComponents = { ...components };
+      let anyUpdated = false;
+      
+      Object.keys(updatedComponents).forEach(type => {
+        const component = updatedComponents[type];
+        if (component.consumption && component.materialRate) {
+          const consumption = parseFloat(component.consumption);
+          const newMaterialCost = consumption * component.materialRate;
+          if (Math.abs((component.materialCost || 0) - newMaterialCost) > 0.01) {
+            updatedComponents[type] = {
+              ...component,
+              materialCost: newMaterialCost
+            };
+            anyUpdated = true;
+          }
+        }
+      });
+      
+      if (anyUpdated) {
+        setComponents(updatedComponents);
+      }
+      
+      // Update custom components material costs only
+      const updatedCustomComponents = customComponents.map((component) => {
+        if (component.consumption && component.materialRate) {
+          const consumption = parseFloat(component.consumption);
+          const newMaterialCost = consumption * component.materialRate;
+          if (Math.abs((component.materialCost || 0) - newMaterialCost) > 0.01) {
+            return {
+              ...component,
+              materialCost: newMaterialCost
+            };
+          }
+        }
+        return component;
+      });
+      
+      if (JSON.stringify(updatedCustomComponents) !== JSON.stringify(customComponents)) {
+        setCustomComponents(updatedCustomComponents);
+      }
+        return; // Exit early for edit mode
     }
     
     // Special handling for quantity=1 to ensure it's not just the initial setup
@@ -178,11 +254,11 @@ export function useOrderComponents() {
         const safeBaseConsumption = Math.max(baseConsumption, 0.001);
         
         // Calculate new consumption based on quantity
-        let newConsumption = safeBaseConsumption * quantity;
-          // Handle manual formulas for custom components
+        let newConsumption = safeBaseConsumption * quantity;        // Handle manual formulas for custom components
         if (isManualFormula(component as ProcessedComponent)) {
           // For manual formulas, store original consumption if not already stored
-          const originalConsumption = (component as any).originalConsumption || safeBaseConsumption;
+          const extendedComponent = component as ExtendedCustomComponent;
+          const originalConsumption = extendedComponent.originalConsumption || safeBaseConsumption;
           // For manual formulas, multiply the original consumption by quantity
           newConsumption = originalConsumption * quantity;
           console.log(`%c Manual Formula Custom Component ${idx}: Original = ${originalConsumption}, Qty = ${quantity}, New = ${newConsumption}`,

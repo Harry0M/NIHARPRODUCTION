@@ -56,6 +56,12 @@ import SellsList from "@/pages/Sells/SellsList";
 import SellsCreateForm from "@/pages/Sells/SellsCreateForm";
 import SalesInvoiceDetail from "@/pages/Sells/SalesInvoiceDetail";
 import SalesInvoiceEdit from "@/pages/Sells/SalesInvoiceEdit";
+import VendorBillsList from "@/pages/Sells/VendorBillsList";
+import VendorBillCreateForm from "@/pages/Sells/VendorBillCreateForm";
+import VendorBillCreateSimple from "@/pages/Sells/VendorBillCreateSimple";
+import VendorBillDetail from "@/pages/Sells/VendorBillDetail";
+import VendorBillEdit from "@/pages/Sells/VendorBillEdit";
+import VendorBillsDebug from "@/pages/Sells/VendorBillsDebug";
 
 const routes = [
   {
@@ -168,6 +174,12 @@ const routes = [
               { path: "create/:orderId", element: <SellsCreateForm /> },
               { path: "invoice/:invoiceId", element: <SalesInvoiceDetail /> },
               { path: "invoice/:invoiceId/edit", element: <SalesInvoiceEdit /> },
+              { path: "vendor-bills", element: <VendorBillsList /> },
+              { path: "vendor-bills/debug", element: <VendorBillsDebug /> },
+              { path: "vendor-bills/create", element: <VendorBillCreateSimple /> },
+              { path: "vendor-bills/create/:jobType/:jobId", element: <VendorBillCreateForm /> },
+              { path: "vendor-bills/:billId", element: <VendorBillDetail /> },
+              { path: "vendor-bills/:billId/edit", element: <VendorBillEdit /> },
             ],
           },
           // Redirects from old routes

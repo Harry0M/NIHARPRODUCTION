@@ -120,14 +120,13 @@ export const useStitchingJob = (jobCardId?: string) => {
     try {
       // Format job name as "worker_name-timestamp"
       const timestamp = new Date().getTime().toString().slice(-4);
-      const jobName = `${jobData.worker_name ? jobData.worker_name : 'worker'}-${timestamp}`;
-
-      const { data, error } = await supabase
+      const jobName = `${jobData.worker_name ? jobData.worker_name : 'worker'}-${timestamp}`;      const { data, error } = await supabase
         .from('stitching_jobs')
         .insert({
           ...jobData,
           job_card_id: jobCardId,
-          worker_name: jobName
+          worker_name: jobName,
+          vendor_id: jobData.vendor_id || null
         })
         .select()
         .single();

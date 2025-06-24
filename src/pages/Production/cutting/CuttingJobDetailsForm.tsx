@@ -16,6 +16,7 @@ interface CuttingJobDetailsFormProps {
     is_internal: boolean;
     status: JobStatus;
     received_quantity: string;
+    vendor_id?: string | null;
   };
   validationError: string | null;
   orderInfo: {
@@ -27,6 +28,7 @@ interface CuttingJobDetailsFormProps {
   onCheckboxChange: (checked: boolean) => void;
   onSelectChange: (name: string, value: JobStatus) => void;
   onWorkerSelect: (workerId: string) => void;
+  onVendorIdChange?: (vendorId: string | null) => void;
   onConsumptionCalculated: (meters: number) => void;
 }
 
@@ -38,6 +40,7 @@ export function CuttingJobDetailsForm({
   onCheckboxChange,
   onSelectChange,
   onWorkerSelect,
+  onVendorIdChange,
   onConsumptionCalculated
 }: CuttingJobDetailsFormProps) {
   return (
@@ -93,14 +96,13 @@ export function CuttingJobDetailsForm({
               onChange={onInputChange}
               className="border-input"
             />
-          </div>
-
-          <div className="space-y-2">
+          </div>          <div className="space-y-2">
             <Label>Worker Name</Label>
             <VendorSelection
               serviceType="cutting"
               value={cuttingData.worker_name}
               onChange={onWorkerSelect}
+              onVendorIdChange={onVendorIdChange}
               placeholder="Select cutter or enter manually"
               className="w-full"
             />

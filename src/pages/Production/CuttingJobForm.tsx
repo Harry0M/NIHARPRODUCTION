@@ -15,7 +15,6 @@ export default function CuttingJobForm() {
   const { id } = useParams();
   const [submitting, setSubmitting] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
-
   const {
     jobCard,
     loading,
@@ -28,7 +27,8 @@ export default function CuttingJobForm() {
     setComponentData,
     handleSelectJob,
     handleNewJob,
-    handleSubmit
+    handleSubmit,
+    handleVendorIdChange
   } = useCuttingJob(id || "");
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -138,11 +138,11 @@ export default function CuttingJobForm() {
                 bag_length: jobCard.order.bag_length,
                 bag_width: jobCard.order.bag_width,
                 quantity: jobCard.order.quantity
-              }}
-              onInputChange={handleInputChange}
+              }}              onInputChange={handleInputChange}
               onCheckboxChange={handleCheckboxChange}
               onSelectChange={handleSelectChange}
               onWorkerSelect={handleWorkerSelect}
+              onVendorIdChange={handleVendorIdChange}
               onConsumptionCalculated={handleConsumptionCalculated}
             />
           </div>

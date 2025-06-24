@@ -258,12 +258,47 @@ export function useOrderSubmission({
       const orderQuantity = parseInt(orderDetails.order_quantity || orderDetails.quantity || '1');
       console.log("Order quantity for reference (not used for multiplication):", orderQuantity);
       
-      // FIXED: Use components as-is without any additional processing to avoid double multiplication
-      // The consumption values were already multiplied by order quantity in useOrderComponents.ts
-      const processedComponents = allComponents;
+      // CRITICAL FIX: For manual formulas, we need to store the ORIGINAL consumption values in the database
+      // During editing, useOrderComponents.ts multiplies consumption by order quantity for display
+      // But in the database, we should store the original values so they display correctly
+      console.log("Processing components to reverse manual formula multiplication before database save");
       
-      console.log("Using components without additional manual formula processing to prevent double multiplication");
-      console.log("Manual formulas are already processed in useOrderComponents.ts");
+      const processedComponents = allComponents.map(comp => {
+        // Check if this is a manual formula component
+        const isManual = comp.formula === 'manual' || comp.is_manual_consumption === true;
+        
+        if (isManual) {
+          // For manual formulas, we need to store the original consumption value in the database
+          let originalConsumption = comp.originalConsumption;
+          
+          // Handle edge cases where originalConsumption might not be set
+          if (!originalConsumption && comp.consumption && orderQuantity > 1) {
+            // Calculate original consumption by dividing current consumption by order quantity
+            originalConsumption = parseFloat(comp.consumption) / orderQuantity;
+            console.log(`%c MANUAL FORMULA EDGE CASE: ${comp.type} - Calculated original consumption ${originalConsumption} from ${comp.consumption} ÷ ${orderQuantity}`,
+              'background: #FF9800; color: white; padding: 2px 5px; font-weight: bold;');
+          } else if (!originalConsumption) {
+            // Fallback: use the current consumption as-is if we can't determine the original
+            originalConsumption = comp.consumption;
+            console.log(`%c MANUAL FORMULA FALLBACK: ${comp.type} - Using current consumption ${originalConsumption} as original`,
+              'background: #F44336; color: white; padding: 2px 5px; font-weight: bold;');
+          }
+          
+          console.log(`%c MANUAL FORMULA FIX: ${comp.type} - Using original consumption ${originalConsumption} instead of ${comp.consumption}`,
+            'background: #4CAF50; color: white; padding: 2px 5px; font-weight: bold;');
+          
+          return {
+            ...comp,
+            consumption: originalConsumption // Store original value in database
+          };
+        } else {
+          // For non-manual formulas, keep consumption as-is
+          console.log(`%c STANDARD FORMULA: ${comp.type} - Keeping consumption ${comp.consumption}`,
+            'background: #2196F3; color: white; padding: 2px 5px;');
+        }
+        
+        return comp;
+      });
       
       if (processedComponents.length > 0) {
         // Create a properly formatted array of components with correct data types

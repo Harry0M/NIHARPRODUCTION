@@ -46,3 +46,16 @@ export const formatPercentage = (value: number | string, decimals: number = 2): 
   
   return numValue.toFixed(decimals) + '%';
 };
+
+/**
+ * Format a date string to a localized date format
+ * @param dateString The date string to format
+ * @returns Formatted date string
+ */
+export const formatDate = (dateString: string): string => {
+  try {
+    return new Date(dateString).toLocaleDateString();
+  } catch (error) {
+    return 'Invalid Date';
+  }
+};

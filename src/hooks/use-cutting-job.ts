@@ -7,15 +7,15 @@ import { useCuttingJobSubmit } from "./cutting/use-cutting-job-submit";
 
 export const useCuttingJob = (id: string) => {
   const navigate = useNavigate();
-  const { jobCard, loading, components, existingJobs } = useCuttingJobData(id);
-  const {
+  const { jobCard, loading, components, existingJobs } = useCuttingJobData(id);  const {
     selectedJobId,
     cuttingData,
     componentData,
     setCuttingData,
     setComponentData,
     handleNewJob,
-    handleSelectJob
+    handleSelectJob,
+    handleVendorIdChange
   } = useCuttingJobForm(components);
   const {
     submitting,
@@ -68,7 +68,6 @@ export const useCuttingJob = (id: string) => {
       });
     }
   };
-
   return {
     jobCard,
     loading,
@@ -83,6 +82,7 @@ export const useCuttingJob = (id: string) => {
     setComponentData,
     handleSelectJob: (jobId: string) => handleSelectJob(jobId, existingJobs),
     handleNewJob,
-    handleSubmit
+    handleSubmit,
+    handleVendorIdChange
   };
 };

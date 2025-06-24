@@ -13,6 +13,7 @@ interface CuttingDetailsFormProps {
     is_internal: boolean;
     status: JobStatus;
     received_quantity: string;
+    vendor_id?: string | null;
   };
   validationError?: string | null;
   orderInfo: {
@@ -24,6 +25,7 @@ interface CuttingDetailsFormProps {
   onCheckboxChange: (checked: boolean) => void;
   onSelectChange: (name: string, value: JobStatus) => void;
   onWorkerSelect: (value: string) => void;
+  onVendorIdChange?: (vendorId: string | null) => void;
 }
 
 export function CuttingDetailsForm({
@@ -33,7 +35,8 @@ export function CuttingDetailsForm({
   onInputChange,
   onCheckboxChange,
   onSelectChange,
-  onWorkerSelect
+  onWorkerSelect,
+  onVendorIdChange
 }: CuttingDetailsFormProps) {
   return (
     <Card className="md:col-span-3">
@@ -65,11 +68,11 @@ export function CuttingDetailsForm({
           </div>
 
           <div className="space-y-2">
-            <Label>Worker Name</Label>
-            <VendorSelection
+            <Label>Worker Name</Label>            <VendorSelection
               serviceType="cutting"
               value={cuttingData.worker_name}
               onChange={onWorkerSelect}
+              onVendorIdChange={onVendorIdChange}
               placeholder="Select cutter or enter manually"
             />
           </div>

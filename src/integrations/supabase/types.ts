@@ -165,6 +165,7 @@ export type Database = {
           formula: string | null
           gsm: number | null
           id: string
+          is_manual_consumption: boolean | null
           length: number | null
           material_id: string | null
           material_linked: boolean | null
@@ -183,6 +184,7 @@ export type Database = {
           formula?: string | null
           gsm?: number | null
           id?: string
+          is_manual_consumption?: boolean | null
           length?: number | null
           material_id?: string | null
           material_linked?: boolean | null
@@ -201,6 +203,7 @@ export type Database = {
           formula?: string | null
           gsm?: number | null
           id?: string
+          is_manual_consumption?: boolean | null
           length?: number | null
           material_id?: string | null
           material_linked?: boolean | null
@@ -216,6 +219,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "catalog"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_components_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "order_template_associations"
+            referencedColumns: ["template_id"]
           },
         ]
       }
@@ -301,6 +311,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "order_material_breakdown"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "components_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_template_associations"
             referencedColumns: ["order_id"]
           },
           {
@@ -393,6 +410,7 @@ export type Database = {
           roll_width: number | null
           status: Database["public"]["Enums"]["job_status"] | null
           updated_at: string
+          vendor_id: string | null
           worker_name: string | null
         }
         Insert: {
@@ -406,6 +424,7 @@ export type Database = {
           roll_width?: number | null
           status?: Database["public"]["Enums"]["job_status"] | null
           updated_at?: string
+          vendor_id?: string | null
           worker_name?: string | null
         }
         Update: {
@@ -419,6 +438,7 @@ export type Database = {
           roll_width?: number | null
           status?: Database["public"]["Enums"]["job_status"] | null
           updated_at?: string
+          vendor_id?: string | null
           worker_name?: string | null
         }
         Relationships: [
@@ -427,6 +447,13 @@ export type Database = {
             columns: ["job_card_id"]
             isOneToOne: false
             referencedRelation: "job_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cutting_jobs_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
@@ -939,6 +966,115 @@ export type Database = {
           },
         ]
       }
+      job_card_consumptions: {
+        Row: {
+          component_type: string
+          consumption_amount: number
+          created_at: string | null
+          id: string
+          job_card_id: string
+          material_id: string
+          material_name: string
+          metadata: Json | null
+          order_id: string
+          order_number: string
+          unit: string
+          updated_at: string | null
+        }
+        Insert: {
+          component_type: string
+          consumption_amount: number
+          created_at?: string | null
+          id?: string
+          job_card_id: string
+          material_id: string
+          material_name: string
+          metadata?: Json | null
+          order_id: string
+          order_number: string
+          unit: string
+          updated_at?: string | null
+        }
+        Update: {
+          component_type?: string
+          consumption_amount?: number
+          created_at?: string | null
+          id?: string
+          job_card_id?: string
+          material_id?: string
+          material_name?: string
+          metadata?: Json | null
+          order_id?: string
+          order_number?: string
+          unit?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_card_consumptions_job_card_id_fkey"
+            columns: ["job_card_id"]
+            isOneToOne: false
+            referencedRelation: "job_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_card_consumptions_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "active_inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_card_consumptions_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_card_consumptions_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_consumption_analysis"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "job_card_consumptions_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_consumption_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "job_card_consumptions_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_usage_summary"
+            referencedColumns: ["material_id"]
+          },
+          {
+            foreignKeyName: "job_card_consumptions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_material_breakdown"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "job_card_consumptions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_template_associations"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "job_card_consumptions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_cards: {
         Row: {
           created_at: string
@@ -979,6 +1115,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "order_material_breakdown"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "job_cards_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_template_associations"
             referencedColumns: ["order_id"]
           },
           {
@@ -1049,6 +1192,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "order_material_breakdown"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "job_wastage_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_template_associations"
             referencedColumns: ["order_id"]
           },
           {
@@ -1173,6 +1323,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "order_material_breakdown"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "material_order_usage_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_template_associations"
             referencedColumns: ["order_id"]
           },
           {
@@ -1368,6 +1525,13 @@ export type Database = {
             foreignKeyName: "order_components_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_template_associations"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "order_components_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -1425,6 +1589,13 @@ export type Database = {
             foreignKeyName: "order_dispatches_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_template_associations"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "order_dispatches_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -1452,6 +1623,7 @@ export type Database = {
           material_cost: number | null
           order_date: string
           order_number: string
+          order_quantity: number | null
           printing_charge: number | null
           production_cost: number | null
           quantity: number
@@ -1460,7 +1632,9 @@ export type Database = {
           special_instructions: string | null
           status: Database["public"]["Enums"]["order_status"] | null
           stitching_charge: number | null
+          template_id: string | null
           template_margin: number | null
+          template_sync_enabled: boolean
           total_cost: number | null
           transport_charge: number | null
           updated_at: string
@@ -1486,6 +1660,7 @@ export type Database = {
           material_cost?: number | null
           order_date?: string
           order_number: string
+          order_quantity?: number | null
           printing_charge?: number | null
           production_cost?: number | null
           quantity: number
@@ -1494,7 +1669,9 @@ export type Database = {
           special_instructions?: string | null
           status?: Database["public"]["Enums"]["order_status"] | null
           stitching_charge?: number | null
+          template_id?: string | null
           template_margin?: number | null
+          template_sync_enabled?: boolean
           total_cost?: number | null
           transport_charge?: number | null
           updated_at?: string
@@ -1520,6 +1697,7 @@ export type Database = {
           material_cost?: number | null
           order_date?: string
           order_number?: string
+          order_quantity?: number | null
           printing_charge?: number | null
           production_cost?: number | null
           quantity?: number
@@ -1528,7 +1706,9 @@ export type Database = {
           special_instructions?: string | null
           status?: Database["public"]["Enums"]["order_status"] | null
           stitching_charge?: number | null
+          template_id?: string | null
           template_margin?: number | null
+          template_sync_enabled?: boolean
           total_cost?: number | null
           transport_charge?: number | null
           updated_at?: string
@@ -1547,6 +1727,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "order_template_associations"
+            referencedColumns: ["template_id"]
           },
         ]
       }
@@ -1567,6 +1761,7 @@ export type Database = {
           sheet_width: number | null
           status: Database["public"]["Enums"]["job_status"] | null
           updated_at: string
+          vendor_id: string | null
           worker_name: string | null
         }
         Insert: {
@@ -1585,6 +1780,7 @@ export type Database = {
           sheet_width?: number | null
           status?: Database["public"]["Enums"]["job_status"] | null
           updated_at?: string
+          vendor_id?: string | null
           worker_name?: string | null
         }
         Update: {
@@ -1603,6 +1799,7 @@ export type Database = {
           sheet_width?: number | null
           status?: Database["public"]["Enums"]["job_status"] | null
           updated_at?: string
+          vendor_id?: string | null
           worker_name?: string | null
         }
         Relationships: [
@@ -1613,28 +1810,14 @@ export type Database = {
             referencedRelation: "job_cards"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "printing_jobs_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
         ]
-      }
-      processed_events: {
-        Row: {
-          event_type: string
-          id: string
-          processed_at: string
-          reference_id: string
-        }
-        Insert: {
-          event_type: string
-          id?: string
-          processed_at?: string
-          reference_id: string
-        }
-        Update: {
-          event_type?: string
-          id?: string
-          processed_at?: string
-          reference_id?: string
-        }
-        Relationships: []
       }
       product_details: {
         Row: {
@@ -1710,6 +1893,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "catalog"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_details_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "order_template_associations"
+            referencedColumns: ["template_id"]
           },
         ]
       }
@@ -1857,33 +2047,48 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }      purchase_items: {
+      }
+      purchase_items: {
         Row: {
           actual_meter: number
+          alt_quantity: number
+          alt_unit_price: number
           created_at: string
+          gst_amount: number | null
+          gst_percentage: number | null
           id: string
           line_total: number
-          material_id: string
+          material_id: string | null
           purchase_id: string
           quantity: number
           unit_price: number
           updated_at: string
-        }        Insert: {
+        }
+        Insert: {
           actual_meter?: number
+          alt_quantity?: number
+          alt_unit_price?: number
           created_at?: string
+          gst_amount?: number | null
+          gst_percentage?: number | null
           id?: string
           line_total: number
-          material_id: string
+          material_id?: string | null
           purchase_id: string
           quantity: number
           unit_price: number
           updated_at?: string
-        }        Update: {
+        }
+        Update: {
           actual_meter?: number
+          alt_quantity?: number
+          alt_unit_price?: number
           created_at?: string
+          gst_amount?: number | null
+          gst_percentage?: number | null
           id?: string
           line_total?: number
-          material_id?: string
+          material_id?: string | null
           purchase_id?: string
           quantity?: number
           unit_price?: number
@@ -1938,6 +2143,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          gst: number | null
           id: string
           invoice_number: string | null
           notes: string | null
@@ -1953,6 +2159,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          gst?: number | null
           id?: string
           invoice_number?: string | null
           notes?: string | null
@@ -1968,6 +2175,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          gst?: number | null
           id?: string
           invoice_number?: string | null
           notes?: string | null
@@ -1987,7 +2195,8 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "suppliers"
             referencedColumns: ["id"]
-          },        ]
+          },
+        ]
       }
       sales_invoices: {
         Row: {
@@ -2014,20 +2223,20 @@ export type Database = {
           company_name: string
           created_at?: string | null
           created_by?: string | null
-          gst_amount: number
-          gst_percentage: number
+          gst_amount?: number
+          gst_percentage?: number
           id?: string
           invoice_number: string
           notes?: string | null
           order_id?: string | null
-          other_expenses: number
+          other_expenses?: number
           product_name: string
           quantity: number
           rate: number
           subtotal: number
           total_amount: number
-          transport_charge: number
-          transport_included: boolean
+          transport_charge?: number
+          transport_included?: boolean
           updated_at?: string | null
         }
         Update: {
@@ -2052,11 +2261,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "sales_invoices_created_by_fkey"
-            columns: ["created_by"]
+            foreignKeyName: "sales_invoices_order_id_fkey"
+            columns: ["order_id"]
             isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedRelation: "order_material_breakdown"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "sales_invoices_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_template_associations"
+            referencedColumns: ["order_id"]
           },
           {
             foreignKeyName: "sales_invoices_order_id_fkey"
@@ -2088,6 +2304,7 @@ export type Database = {
           start_date: string | null
           status: Database["public"]["Enums"]["job_status"] | null
           updated_at: string
+          vendor_id: string | null
           worker_name: string | null
         }
         Insert: {
@@ -2110,6 +2327,7 @@ export type Database = {
           start_date?: string | null
           status?: Database["public"]["Enums"]["job_status"] | null
           updated_at?: string
+          vendor_id?: string | null
           worker_name?: string | null
         }
         Update: {
@@ -2132,6 +2350,7 @@ export type Database = {
           start_date?: string | null
           status?: Database["public"]["Enums"]["job_status"] | null
           updated_at?: string
+          vendor_id?: string | null
           worker_name?: string | null
         }
         Relationships: [
@@ -2140,6 +2359,13 @@ export type Database = {
             columns: ["job_card_id"]
             isOneToOne: false
             referencedRelation: "job_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stitching_jobs_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
@@ -2151,6 +2377,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           email: string | null
+          gst: string | null
           id: string
           materials_provided: string | null
           name: string
@@ -2165,6 +2392,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           email?: string | null
+          gst?: string | null
           id?: string
           materials_provided?: string | null
           name: string
@@ -2179,6 +2407,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           email?: string | null
+          gst?: string | null
           id?: string
           materials_provided?: string | null
           name?: string
@@ -2186,6 +2415,30 @@ export type Database = {
           phone?: string | null
           status?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      system_config: {
+        Row: {
+          created_at: string
+          description: string | null
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          key?: string
+          updated_at?: string
+          value?: string
         }
         Relationships: []
       }
@@ -2241,6 +2494,13 @@ export type Database = {
             foreignKeyName: "transactions_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_template_associations"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -2260,6 +2520,113 @@ export type Database = {
           },
         ]
       }
+      vendor_bills: {
+        Row: {
+          bill_number: string
+          company_name: string
+          created_at: string
+          created_by: string | null
+          gst_amount: number | null
+          gst_percentage: number | null
+          id: string
+          job_id: string
+          job_number: string | null
+          job_type: string
+          notes: string | null
+          order_id: string | null
+          order_number: string | null
+          other_expenses: number | null
+          product_name: string
+          quantity: number
+          rate: number
+          status: string | null
+          subtotal: number
+          total_amount: number
+          updated_at: string
+          vendor_id: string
+          vendor_name: string
+        }
+        Insert: {
+          bill_number: string
+          company_name: string
+          created_at?: string
+          created_by?: string | null
+          gst_amount?: number | null
+          gst_percentage?: number | null
+          id?: string
+          job_id: string
+          job_number?: string | null
+          job_type: string
+          notes?: string | null
+          order_id?: string | null
+          order_number?: string | null
+          other_expenses?: number | null
+          product_name: string
+          quantity: number
+          rate: number
+          status?: string | null
+          subtotal: number
+          total_amount: number
+          updated_at?: string
+          vendor_id: string
+          vendor_name: string
+        }
+        Update: {
+          bill_number?: string
+          company_name?: string
+          created_at?: string
+          created_by?: string | null
+          gst_amount?: number | null
+          gst_percentage?: number | null
+          id?: string
+          job_id?: string
+          job_number?: string | null
+          job_type?: string
+          notes?: string | null
+          order_id?: string | null
+          order_number?: string | null
+          other_expenses?: number | null
+          product_name?: string
+          quantity?: number
+          rate?: number
+          status?: string | null
+          subtotal?: number
+          total_amount?: number
+          updated_at?: string
+          vendor_id?: string
+          vendor_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_bills_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_material_breakdown"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "vendor_bills_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_template_associations"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "vendor_bills_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_bills_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendors: {
         Row: {
           address: string | null
@@ -2267,6 +2634,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           email: string | null
+          gst: string | null
           id: string
           name: string
           payment_terms: string | null
@@ -2281,6 +2649,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           email?: string | null
+          gst?: string | null
           id?: string
           name: string
           payment_terms?: string | null
@@ -2295,6 +2664,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           email?: string | null
+          gst?: string | null
           id?: string
           name?: string
           payment_terms?: string | null
@@ -2508,6 +2878,24 @@ export type Database = {
           },
         ]
       }
+      order_template_associations: {
+        Row: {
+          bag_length: number | null
+          bag_width: number | null
+          border_dimension: number | null
+          cutting_charge: number | null
+          order_id: string | null
+          order_number: string | null
+          printing_charge: number | null
+          rate: number | null
+          stitching_charge: number | null
+          template_id: string | null
+          template_name: string | null
+          template_sync_enabled: boolean | null
+          transport_charge: number | null
+        }
+        Relationships: []
+      }
       wastage_analysis: {
         Row: {
           company_name: string | null
@@ -2530,6 +2918,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "order_material_breakdown"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "job_wastage_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "order_template_associations"
             referencedColumns: ["order_id"]
           },
           {
@@ -2568,6 +2963,34 @@ export type Database = {
         }
         Returns: number
       }
+      clear_all_transaction_history: {
+        Args: { confirmation_text?: string }
+        Returns: {
+          deleted_transaction_logs: number
+          deleted_transactions: number
+          status: string
+        }[]
+      }
+      clear_transaction_history_by_date: {
+        Args: {
+          start_date: string
+          end_date: string
+          confirmation_text?: string
+        }
+        Returns: {
+          deleted_transaction_logs: number
+          deleted_transactions: number
+          status: string
+        }[]
+      }
+      clear_transaction_history_by_material: {
+        Args: { material_id: string; confirmation_text?: string }
+        Returns: {
+          deleted_transaction_logs: number
+          deleted_transactions: number
+          status: string
+        }[]
+      }
       delete_catalog_product: {
         Args: { input_catalog_id: string }
         Returns: boolean
@@ -2577,16 +3000,46 @@ export type Database = {
         Returns: boolean
       }
       delete_order_completely: {
-        Args: { order_id: string }
+        Args: { p_order_id: string }
         Returns: boolean
+      }
+      delete_selected_transaction_logs: {
+        Args: { transaction_log_ids: string[]; confirmation_text?: string }
+        Returns: {
+          deleted_transaction_logs: number
+          deleted_transactions: number
+          status: string
+          processed_count: number
+        }[]
+      }
+      delete_single_transaction_log: {
+        Args: { transaction_log_id: string; confirmation_text?: string }
+        Returns: {
+          deleted_transaction_logs: number
+          deleted_transactions: number
+          status: string
+          transaction_details: Json
+        }[]
       }
       emergency_delete_order: {
         Args: { target_id: string }
         Returns: boolean
       }
+      ensure_product_order_links: {
+        Args: { product_id: string }
+        Returns: Json
+      }
       force_delete_order: {
         Args: { target_id: string }
         Returns: boolean
+      }
+      generate_bill_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_invoice_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       get_catalog_cost_data: {
         Args: { catalog_id: string }
@@ -2599,6 +3052,16 @@ export type Database = {
           transport_charge: number
           margin: number
           selling_rate: number
+        }[]
+      }
+      get_company_order_counts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          company_id: string
+          company_name: string
+          as_company_count: number
+          as_sales_account_count: number
+          total_orders: number
         }[]
       }
       get_deduplicated_order_consumption: {
@@ -2639,6 +3102,24 @@ export type Database = {
           created_at: string
         }[]
       }
+      get_system_config: {
+        Args: { config_key: string }
+        Returns: boolean
+      }
+      get_transaction_history_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_transaction_logs: number
+          total_transactions: number
+          oldest_log_date: string
+          newest_log_date: string
+          materials_with_transactions: number
+        }[]
+      }
+      hard_delete_inventory_with_consumption_preserve: {
+        Args: { input_inventory_id: string }
+        Returns: Json
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -2646,6 +3127,10 @@ export type Database = {
       migrate_catalog_to_product_details: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      preview_inventory_hard_deletion: {
+        Args: { input_inventory_id: string }
+        Returns: Json
       }
       record_material_usage: {
         Args: {
@@ -2669,6 +3154,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      set_config_value: {
+        Args: { key: string; value: string }
+        Returns: undefined
+      }
       set_default_material_supplier: {
         Args: { p_material_id: string; p_supplier_id: string }
         Returns: undefined
@@ -2677,9 +3166,30 @@ export type Database = {
         Args: { input_inventory_id: string }
         Returns: boolean
       }
+      update_catalog_from_order_values: {
+        Args: {
+          p_template_id: string
+          p_bag_length: number
+          p_bag_width: number
+          p_default_quantity: number
+          p_default_rate: number
+          p_cutting_charge: number
+          p_printing_charge: number
+          p_stitching_charge: number
+          p_transport_charge: number
+          p_height: number
+          p_border_dimension: number
+          p_material_cost: number
+        }
+        Returns: boolean
+      }
       update_component_material: {
         Args: { component_id: string; material_id: string }
         Returns: boolean
+      }
+      update_orders_from_template: {
+        Args: { template_id: string }
+        Returns: undefined
       }
     }
     Enums: {

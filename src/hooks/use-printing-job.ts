@@ -38,14 +38,13 @@ export const usePrintingJob = () => {
   const createPrintingJob = async (jobCardId: string, jobData: any) => {
     try {
       // Format job name as "job number-worker_name"
-      const jobName = `${jobData.worker_name ? jobData.worker_name : 'worker'}-${new Date().getTime().toString().slice(-4)}`;
-
-      const { data, error } = await supabase
+      const jobName = `${jobData.worker_name ? jobData.worker_name : 'worker'}-${new Date().getTime().toString().slice(-4)}`;      const { data, error } = await supabase
         .from('printing_jobs')
         .insert({
           ...jobData,
           job_card_id: jobCardId,
-          worker_name: jobName
+          worker_name: jobName,
+          vendor_id: jobData.vendor_id || null
         })
         .select()
         .single();

@@ -17,6 +17,7 @@ export const stitchingFormSchema = z.object({
   is_internal: z.boolean().default(true),
   status: z.enum(["pending", "in_progress", "completed"]).default("pending"),
   rate: z.coerce.number().min(0, "Rate must be a positive number").optional().nullable(),
+  vendor_id: z.string().nullable().optional(),
 });
 
 export type StitchingFormValues = z.infer<typeof stitchingFormSchema>;

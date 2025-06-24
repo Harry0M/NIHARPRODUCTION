@@ -24,6 +24,7 @@ export const WorkerFields = ({ form }: WorkerFieldsProps) => {
                 serviceType="stitching"
                 value={field.value || ""}
                 onChange={field.onChange}
+                onVendorIdChange={(vendorId) => form.setValue("vendor_id", vendorId)}
                 placeholder="Select stitcher or enter manually"
               />
             </FormControl>

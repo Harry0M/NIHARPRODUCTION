@@ -31,11 +31,13 @@ const routes: BreadcrumbConfig[] = [
   { path: "/dispatch", label: "Dispatch" },
   { path: "/vendors", label: "Vendors" },
   { path: "/suppliers", label: "Suppliers" },
-  { path: "/inventory", label: "Inventory" },
-  { path: "/settings", label: "Settings" },  { path: "/companies", label: "Companies" },
+  { path: "/inventory", label: "Inventory" },  { path: "/settings", label: "Settings" },
+  { path: "/companies", label: "Companies" },
   { path: "/sells", label: "Sells" },
   { path: "/sells/create", label: "Create Invoice", exact: false },
   { path: "/sells/invoice", label: "Invoice Details", exact: false },
+  { path: "/sells/vendor-bills", label: "Vendor Bills", exact: false },
+  { path: "/sells/vendor-bills/create", label: "Create Vendor Bill", exact: false },
 ];
 
 export const BreadcrumbTrail = () => {

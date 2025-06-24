@@ -68,6 +68,10 @@ export default function CuttingJob() {
     setCuttingData(prev => ({ ...prev, worker_name: workerId }));
   };
 
+  const handleVendorIdChange = (vendorId: string | null) => {
+    setCuttingData(prev => ({ ...prev, vendor_id: vendorId }));
+  };
+
   const handleComponentChange = (index: number, field: string, value: string) => {
     setComponentData(prev => {
       const updated = [...prev];
@@ -209,6 +213,7 @@ export default function CuttingJob() {
                 onCheckboxChange={handleCheckboxChange}
                 onSelectChange={handleSelectChange}
                 onWorkerSelect={handleWorkerSelect}
+                onVendorIdChange={handleVendorIdChange}
               />
             </div>
           </div>

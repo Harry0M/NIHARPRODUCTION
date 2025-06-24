@@ -189,8 +189,7 @@ const SellsList = () => {
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  return (
-    <div className="space-y-6">
+  return (    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <TrendingUp className="h-6 w-6 text-primary" />
@@ -199,10 +198,18 @@ const SellsList = () => {
             <p className="text-muted-foreground">View completed orders and sales data</p>
           </div>
         </div>
-        <Button variant="outline" onClick={handleRefresh} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/sells/vendor-bills')}
+          >
+            Vendor Bills
+          </Button>
+          <Button variant="outline" onClick={handleRefresh} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}

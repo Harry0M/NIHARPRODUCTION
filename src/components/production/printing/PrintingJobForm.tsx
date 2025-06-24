@@ -28,6 +28,7 @@ interface PrintingFormData {
   expected_completion_date: string;
   print_image: string;
   received_quantity: string;
+  vendor_id?: string | null;
 }
 
 interface PrintingJobFormProps {
@@ -83,7 +84,8 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
       print_image: initialData?.print_image || "",
       received_quantity: initialData?.received_quantity || "",
       id: initialData?.id,
-      job_card_id: initialData?.job_card_id
+      job_card_id: initialData?.job_card_id,
+      vendor_id: initialData?.vendor_id || null
     };
   });
   const [imagePreview, setImagePreview] = useState<string | null>(initialData?.print_image || null);
@@ -204,6 +206,10 @@ export const PrintingJobForm: React.FC<PrintingJobFormProps> = ({
                 ...prev, 
                 worker_name: value,
                 is_internal: false
+              }))}
+              onVendorIdChange={(vendorId) => setFormData(prev => ({
+                ...prev,
+                vendor_id: vendorId
               }))}
             />
           </div>

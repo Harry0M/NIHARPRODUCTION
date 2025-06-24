@@ -8,26 +8,27 @@ interface CuttingData {
   is_internal: boolean;
   status: JobStatus;
   received_quantity: string;
+  vendor_id?: string | null;
 }
 
 export const useCuttingJobForm = (components: any[]) => {
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  const [cuttingData, setCuttingData] = useState<CuttingData>({
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);  const [cuttingData, setCuttingData] = useState<CuttingData>({
     worker_name: "",
     is_internal: true,
     status: "pending",
-    received_quantity: ""
+    received_quantity: "",
+    vendor_id: null
   });
 
   const [componentData, setComponentData] = useState<CuttingComponent[]>([]);
 
   const handleNewJob = () => {
-    setSelectedJobId(null);
-    setCuttingData({
+    setSelectedJobId(null);    setCuttingData({
       worker_name: "",
       is_internal: true,
       status: "pending",
-      received_quantity: ""
+      received_quantity: "",
+      vendor_id: null
     });
 
     // Initialize componentData with the provided components, auto-filling width and height
@@ -50,12 +51,12 @@ export const useCuttingJobForm = (components: any[]) => {
   const handleSelectJob = async (jobId: string, existingJobs: any[]) => {
     const selectedJob = existingJobs.find(job => job.id === jobId);
     if (selectedJob) {
-      setSelectedJobId(jobId);
-      setCuttingData({
+      setSelectedJobId(jobId);      setCuttingData({
         worker_name: selectedJob.worker_name || "",
         is_internal: selectedJob.is_internal,
         status: selectedJob.status,
-        received_quantity: selectedJob.received_quantity?.toString() || ""
+        received_quantity: selectedJob.received_quantity?.toString() || "",
+        vendor_id: selectedJob.vendor_id || null
       });
 
       try {
@@ -93,7 +94,6 @@ export const useCuttingJobForm = (components: any[]) => {
       }
     }
   };
-
   return {
     selectedJobId,
     cuttingData,
@@ -101,6 +101,9 @@ export const useCuttingJobForm = (components: any[]) => {
     setCuttingData,
     setComponentData,
     handleNewJob,
-    handleSelectJob
+    handleSelectJob,
+    handleVendorIdChange: (vendorId: string | null) => {
+      setCuttingData(prev => ({ ...prev, vendor_id: vendorId }));
+    }
   };
 };

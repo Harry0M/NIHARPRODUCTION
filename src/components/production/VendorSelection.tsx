@@ -22,6 +22,7 @@ interface VendorSelectionProps {
   serviceType: string;
   value: string;
   onChange: (value: string) => void;
+  onVendorIdChange?: (vendorId: string | null) => void;
   placeholder?: string;
   className?: string;
 }
@@ -30,6 +31,7 @@ export const VendorSelection = ({
   serviceType,
   value,
   onChange,
+  onVendorIdChange,
   placeholder = "Select vendor...",
   className
 }: VendorSelectionProps) => {
@@ -93,15 +95,23 @@ export const VendorSelection = ({
       }, 50);
     }
   }, [isManualMode]);
-
   const handleManualInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setManualInput(newValue);
     onChange(newValue);
+    // Clear vendor_id when manually entering
+    if (onVendorIdChange) {
+      onVendorIdChange(null);
+    }
   };
 
   const handleSelectChange = (selectedValue: string) => {
     onChange(selectedValue);
+    // Find the selected vendor and get its ID
+    const selectedVendor = vendors.find(v => v.name === selectedValue);
+    if (onVendorIdChange) {
+      onVendorIdChange(selectedVendor ? selectedVendor.id : null);
+    }
   };
 
   const toggleManualMode = () => {
