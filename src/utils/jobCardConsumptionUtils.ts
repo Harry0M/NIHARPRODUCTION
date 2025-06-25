@@ -72,8 +72,9 @@ export const createJobCardConsumptionBatch = async (
       material_name: string;
       unit: string;
     };
-    metadata?: Record<string, any>;
-  }>
+    metadata?: Record<string, unknown>;
+  }>,
+  orderDate?: string
 ): Promise<JobCardConsumptionBatchResult> => {
   console.log("=== CREATING JOB CARD CONSUMPTION BATCH ===");
   console.log("Job Card:", jobNumber, "Order:", orderNumber);
@@ -95,9 +96,7 @@ export const createJobCardConsumptionBatch = async (
     if (!component.material) {
       errors.push(`Component ${component.component_type}: Missing material details`);
       continue;
-    }
-
-    const input: JobCardConsumptionInput = {
+    }    const input: JobCardConsumptionInput = {
       job_card_id: jobCardId,
       material_id: component.material_id,
       component_type: component.component_type,
@@ -106,7 +105,10 @@ export const createJobCardConsumptionBatch = async (
       material_name: component.material.material_name,
       order_id: orderId,
       order_number: orderNumber,
-      metadata: component.metadata || {}
+      metadata: {
+        ...component.metadata,
+        order_date: orderDate
+      }
     };
 
     const result = await createJobCardConsumption(input);

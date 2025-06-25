@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { ArrowLeft, Printer, AlertTriangle } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
+import { generatePurchasePDF } from "@/utils/professionalPdfUtils";
 import { showToast } from "@/components/ui/enhanced-toast";
 
 interface InventoryItem {
@@ -203,10 +204,29 @@ const PurchaseDetail = () => {
           <Button
             variant="outline"
             className="flex items-center gap-2"
-            onClick={() => window.print()}
+            onClick={() => generatePurchasePDF({
+              purchase_number: purchase.purchase_number,
+              supplier_name: purchase.suppliers.name,
+              supplier_contact: purchase.suppliers.contact_person,
+              supplier_phone: purchase.suppliers.phone,
+              supplier_address: purchase.suppliers.address,
+              purchase_date: purchase.purchase_date,
+              status: purchase.status,
+              transport_charge: purchase.transport_charge,
+              subtotal: purchase.subtotal,
+              total_amount: purchase.total_amount,
+              notes: purchase.notes,
+              purchase_items: purchase.purchase_items.map(item => ({
+                material_name: item.material?.material_name || 'Unknown Material',
+                quantity: item.quantity,
+                unit: item.material?.main_unit || 'unit',
+                unit_price: item.unit_price,
+                line_total: item.line_total
+              }))
+            }, `purchase-${purchase.purchase_number}`)}
           >
             <Printer className="h-4 w-4" />
-            Print
+            Print PDF
           </Button>
           
           {purchase.status === "pending" && (

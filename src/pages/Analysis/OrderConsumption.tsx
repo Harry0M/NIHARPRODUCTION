@@ -35,6 +35,7 @@ import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { exportToCSV, prepareOrderConsumptionDataForExport, prepareDetailedConsumptionDataForExport } from "@/utils/exportUtils";
+import { generateOrderConsumptionPDF } from "@/utils/professionalPdfUtils";
 
 const OrderConsumption = () => {
   const navigate = useNavigate();
@@ -352,8 +353,7 @@ const OrderConsumption = () => {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex justify-between items-center">
-            <CardTitle className="text-lg">Filters</CardTitle>
-            <div className="flex space-x-2">
+            <CardTitle className="text-lg">Filters</CardTitle>            <div className="flex space-x-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -366,7 +366,20 @@ const OrderConsumption = () => {
                 }}
               >
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Export Summary
+                Export CSV
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center"
+                onClick={() => {
+                  if (orderChartData && orderChartData.length > 0) {
+                    generateOrderConsumptionPDF(orderChartData, 'order-consumption-analysis');
+                  }
+                }}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Export PDF
               </Button>
               <Button
                 variant="outline"
@@ -681,7 +694,21 @@ const OrderConsumption = () => {
                         }}
                       >
                         <Download className="h-4 w-4 mr-2" />
-                        Export
+                        Export CSV
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center"
+                        onClick={() => {
+                          // Generate PDF for single order
+                          if (selectedOrder) {
+                            generateOrderConsumptionPDF([selectedOrder], `order-${selectedOrder.name}-analysis`);
+                          }
+                        }}
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Export PDF
                       </Button>
                       <Button 
                         variant="outline" 

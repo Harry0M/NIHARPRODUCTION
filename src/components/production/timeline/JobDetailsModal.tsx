@@ -11,7 +11,7 @@ import { TimelineJob } from "@/types/production";
 import { format } from "date-fns";
 import { Download, Edit } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { downloadAsPDF } from "@/utils/downloadUtils";
+import { generateJobCardPDF } from "@/utils/professionalPdfUtils";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Separator } from "@/components/ui/separator";
@@ -164,65 +164,20 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
   };
 
   const handleDownload = () => {
-    if (!jobDetails) return;
+    if (!jobDetails || !job) return;
     
-    let data;
-    switch (job.type) {
-      case 'cutting':
-        data = [
-          {
-            job_name: jobDetails.job_card?.job_name || 'N/A',
-            job_number: jobDetails.job_card?.job_number || 'N/A',
-            status: jobDetails.status,
-            worker: jobDetails.worker_name || "N/A",
-            is_internal: jobDetails.is_internal ? "Yes" : "No",
-            received_quantity: jobDetails.received_quantity,
-            created_at: formatDate(jobDetails.created_at),
-            components: jobDetails.components?.map((c: any) => 
-              `${c.component_type}: ${c.width}×${c.height}, Roll Width: ${c.roll_width || 'N/A'}, 
-              Consumption: ${c.consumption || 'N/A'}, Status: ${c.status}`
-            ).join('; ')
-          }
-        ];
-        break;
-      case 'printing':
-        data = [
-          {
-            job_name: jobDetails.job_card?.job_name || 'N/A',
-            job_number: jobDetails.job_card?.job_number || 'N/A',
-            status: jobDetails.status,
-            worker: jobDetails.worker_name || "N/A",
-            is_internal: jobDetails.is_internal ? "Yes" : "No",
-            pulling: jobDetails.pulling,
-            gsm: jobDetails.gsm,
-            sheet_dimensions: `${jobDetails.sheet_length || 'N/A'} × ${jobDetails.sheet_width || 'N/A'}`,
-            expected_completion: jobDetails.expected_completion_date ? formatDate(jobDetails.expected_completion_date) : 'N/A',
-            rate: jobDetails.rate,
-            created_at: formatDate(jobDetails.created_at)
-          }
-        ];
-        break;
-      case 'stitching':
-        data = [
-          {
-            job_name: jobDetails.job_card?.job_name || 'N/A',
-            job_number: jobDetails.job_card?.job_number || 'N/A',
-            status: jobDetails.status,
-            worker: jobDetails.worker_name || "N/A",
-            is_internal: jobDetails.is_internal ? "Yes" : "No",
-            total_quantity: jobDetails.total_quantity,
-            component_quantities: `Part: ${jobDetails.part_quantity || 'N/A'}, Border: ${jobDetails.border_quantity || 'N/A'}, Handle: ${jobDetails.handle_quantity || 'N/A'}, Chain: ${jobDetails.chain_quantity || 'N/A'}, Runner: ${jobDetails.runner_quantity || 'N/A'}, Piping: ${jobDetails.piping_quantity || 'N/A'}`,
-            start_date: jobDetails.start_date ? formatDate(jobDetails.start_date) : 'N/A',
-            expected_completion: jobDetails.expected_completion_date ? formatDate(jobDetails.expected_completion_date) : 'N/A',
-            notes: jobDetails.notes || 'None',
-            rate: jobDetails.rate,
-            created_at: formatDate(jobDetails.created_at)
-          }
-        ];
-        break;
-    }
+    // Create job card data for PDF generation
+    const jobCardData = {
+      job_name: jobDetails.job_card?.job_name || 'N/A',
+      job_number: jobDetails.job_card?.job_number || 'N/A',
+      status: jobDetails.status,
+      created_at: jobDetails.created_at,
+      worker_name: jobDetails.worker_name || "N/A",
+      is_internal: jobDetails.is_internal ? "Yes" : "No",
+      ...jobDetails // Include all other job details
+    };
     
-    downloadAsPDF(data, `${job.type}-job-${job.id}`, `${job.type.charAt(0).toUpperCase() + job.type.slice(1)} Job Details`);
+    generateJobCardPDF(jobCardData, `${job.type}-job-${job.id}`);
   };
 
   // The handleUpdate function has been moved and enhanced to use window.location.href above

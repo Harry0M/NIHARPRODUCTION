@@ -126,11 +126,27 @@ const JobCardNew = () => {
           }
         }
       }
-      
-      if (!jobCardResult) {
+        if (!jobCardResult) {
         throw new Error("Failed to create job card after multiple attempts");
       }
-        // After job card is created, calculate and record material consumption
+
+      // Refetch the job card to get the generated job_number
+      const { data: updatedJobCard, error: refetchError } = await supabase
+        .from("job_cards")
+        .select("id, job_name, job_number")
+        .eq("id", jobCardResult.id)
+        .single();
+
+      if (refetchError) {
+        console.error("Error refetching job card:", refetchError);
+        throw refetchError;
+      }
+
+      // Use the updated job card data with the generated job_number
+      jobCardResult = updatedJobCard;
+      console.log("Job card created with number:", jobCardResult.job_number);
+
+      // After job card is created, calculate and record material consumption
       try {
         console.log("Fetching order components for consumption calculation");
         const { data: components, error: componentsError } = await supabase
@@ -153,11 +169,10 @@ const JobCardNew = () => {
         
         console.log(`Found ${components?.length || 0} components for order ${selectedOrderId}`);
         
-        if (components && components.length > 0) {
-          // Get the order number for reference
+        if (components && components.length > 0) {          // Get the order details including creation date
           const { data: orderData, error: orderError } = await supabase
             .from("orders")
-            .select("order_number")
+            .select("order_number, order_date")
             .eq("id", selectedOrderId)
             .single();
             
@@ -167,7 +182,8 @@ const JobCardNew = () => {
           }
           
           const orderNumber = orderData.order_number;
-          console.log(`Processing material consumption for order #${orderNumber}`);
+          const orderDate = orderData.order_date;
+          console.log(`Processing material consumption for order #${orderNumber} created on ${orderDate}`);
           
           // Track inventory update results
           let inventorySuccessCount = 0;
@@ -180,8 +196,7 @@ const JobCardNew = () => {
                 materialId: component.material_id,
                 consumption: component.consumption
               });
-              
-              try {
+                try {
                 const result = await recordJobCardMaterialUsage(
                   jobCardResult.id,
                   jobCardResult.job_number || 'New Job',
@@ -189,7 +204,8 @@ const JobCardNew = () => {
                   orderNumber,
                   component.material_id,
                   component.consumption,
-                  component.component_type
+                  component.component_type,
+                  orderDate
                 );
                 
                 if (!result.success) {
@@ -209,15 +225,15 @@ const JobCardNew = () => {
               }
             }
           }
-          
-          // Step 2: Create job card consumption records for accurate reversal
+            // Step 2: Create job card consumption records for accurate reversal
           console.log("Creating job card consumption records...");
           const consumptionResult = await createJobCardConsumptionBatch(
             jobCardResult.id,
             jobCardResult.job_number || 'New Job',
             selectedOrderId,
             orderNumber,
-            components
+            components,
+            orderDate
           );
           
           console.log(`Material processing complete:`);

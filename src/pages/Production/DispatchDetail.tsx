@@ -1,7 +1,8 @@
 
 import { useParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
-import { downloadAsCSV, downloadAsPDF } from "@/utils/downloadUtils";
+import { downloadAsCSV } from "@/utils/downloadUtils";
+import { generateDispatchReceiptPDF } from "@/utils/professionalPdfUtils";
 import { DispatchForm } from "@/components/production/DispatchForm";
 import { OrderInfoCard } from "@/components/production/dispatch/OrderInfoCard";
 import { DispatchDetails } from "@/components/production/dispatch/DispatchDetails";
@@ -59,7 +60,7 @@ const DispatchDetail = () => {
   const handleDownloadPDF = () => {
     if (!dispatchData || !order) return;
     
-    const downloadData = [{
+    const pdfData = {
       order_number: order?.order_number || 'N/A',
       company_name: order?.company_name || 'N/A',
       delivery_date: new Date(dispatchData.delivery_date).toLocaleDateString(),
@@ -69,14 +70,11 @@ const DispatchDetail = () => {
       quality_checked: dispatchData.quality_checked ? 'Yes' : 'No',
       quantity_checked: dispatchData.quantity_checked ? 'Yes' : 'No',
       notes: dispatchData.notes || 'N/A',
-      dispatched_on: new Date(dispatchData.created_at || '').toLocaleDateString()
-    }];
+      dispatched_on: new Date(dispatchData.created_at || '').toLocaleDateString(),
+      dispatch_batches: dispatchBatches || []
+    };
     
-    downloadAsPDF(
-      downloadData, 
-      `dispatch-${order?.order_number}`,
-      `Dispatch Details: ${order?.order_number}`
-    );
+    generateDispatchReceiptPDF(pdfData, `dispatch-${order?.order_number}`);
   };
 
   const handleDispatchSubmit = async (formData: DispatchFormData) => {

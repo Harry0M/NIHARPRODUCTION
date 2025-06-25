@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { downloadAsCSV, downloadAsPDF, formatOrdersForDownload } from "@/utils/downloadUtils";
+import { downloadAsCSV, formatOrdersForDownload } from "@/utils/downloadUtils";
+import { generateOrderPDF } from "@/utils/professionalPdfUtils";
 import { DeleteOrderDialog } from "@/components/orders/list/DeleteOrderDialog";
 import { BulkDeleteDialog } from "@/components/orders/list/BulkDeleteDialog";
 import { useOrderDeletion } from "@/hooks/use-order-deletion";
@@ -180,8 +181,7 @@ const OrderList = () => {
     const formattedOrders = formatOrdersForDownload(orders);
     downloadAsCSV(formattedOrders, 'orders-list');
   };
-  
-  const handleDownloadPDF = () => {
+    const handleDownloadPDF = () => {
     if (orders.length === 0) {
       toast({
         title: "No orders to download",
@@ -191,8 +191,9 @@ const OrderList = () => {
       return;
     }
     
+    // Use the professional PDF generation
     const formattedOrders = formatOrdersForDownload(orders);
-    downloadAsPDF(formattedOrders, 'orders-list', 'Orders List');
+    generateOrderPDF(formattedOrders, 'orders-list');
   };
 
   const handleSelectOrder = (orderId: string, isSelected: boolean) => {

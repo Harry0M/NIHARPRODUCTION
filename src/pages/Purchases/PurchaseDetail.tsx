@@ -20,6 +20,7 @@ import { showToast } from "@/components/ui/enhanced-toast";
 import { completePurchaseWithActualMeter, reversePurchaseCompletion } from "@/utils/purchaseInventoryUtils";
 import { usePurchaseDeletion } from "@/hooks/use-purchase-deletion";
 import { DeletePurchaseDialog } from "@/components/purchases/list/DeletePurchaseDialog";
+import { generatePurchasePDF } from "@/utils/professionalPdfUtils";
 
 interface InventoryItem {
   id: string;
@@ -189,6 +190,7 @@ const PurchaseDetail = () => {
         const result = await completePurchaseWithActualMeter({
           id: purchase.id,
           purchase_number: purchase.purchase_number,
+          purchase_date: purchase.purchase_date,
           transport_charge: purchase.transport_charge,
           purchase_items: purchase.purchase_items.map(item => ({
             id: item.id,
@@ -231,6 +233,8 @@ const PurchaseDetail = () => {
         const result = await reversePurchaseCompletion({
           id: purchase.id,
           purchase_number: purchase.purchase_number,
+          purchase_date: purchase.purchase_date,
+          transport_charge: purchase.transport_charge,
           purchase_items: purchase.purchase_items.map(item => ({
             id: item.id,
             material_id: item.material_id,
@@ -384,10 +388,30 @@ const PurchaseDetail = () => {
           <Button
             variant="outline"
             className="flex items-center gap-2"
-            onClick={() => window.print()}
+            onClick={() => generatePurchasePDF({
+              purchase_number: purchase.purchase_number,
+              supplier_name: purchase.suppliers.name,
+              supplier_contact: purchase.suppliers.contact_person,
+              supplier_phone: purchase.suppliers.phone,
+              supplier_address: purchase.suppliers.address,
+              purchase_date: purchase.purchase_date,
+              status: purchase.status,
+              invoice_number: purchase.invoice_number,
+              transport_charge: purchase.transport_charge,
+              subtotal: purchase.subtotal,
+              total_amount: purchase.total_amount,
+              notes: purchase.notes,
+              purchase_items: purchase.purchase_items.map(item => ({
+                material_name: item.material?.material_name || 'Unknown Material',
+                quantity: item.quantity,
+                unit: item.material?.unit || 'unit',
+                unit_price: item.unit_price,
+                line_total: item.line_total
+              }))
+            }, `purchase-${purchase.purchase_number}`)}
           >
             <Printer className="h-4 w-4" />
-            Print
+            Print PDF
           </Button>
           
           <Button

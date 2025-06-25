@@ -1,8 +1,7 @@
 
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+// CSV download utilities with proper TypeScript types
 
-export const downloadAsCSV = (data: any[], filename: string) => {
+export const downloadAsCSV = (data: Record<string, unknown>[], filename: string) => {
   // Convert data to CSV format
   const headers = Object.keys(data[0]);
   const csvContent = [
@@ -34,42 +33,7 @@ export const downloadAsCSV = (data: any[], filename: string) => {
   URL.revokeObjectURL(url); // Clean up the URL object
 };
 
-export const downloadAsPDF = (data: any[], filename: string, title: string) => {
-  // Create new PDF document
-  const pdf = new jsPDF();
-  
-  // Add title
-  pdf.setFontSize(18);
-  pdf.text(title, 14, 22);
-  pdf.setFontSize(11);
-  pdf.setTextColor(100);
-  
-  // Convert data to appropriate format for autoTable
-  const headers = Object.keys(data[0]);
-  const tableData = data.map(item => 
-    headers.map(header => {
-      const value = item[header];
-      if (value === null || value === undefined) return '';
-      if (typeof value === 'object') return JSON.stringify(value);
-      return String(value);
-    })
-  );
-  
-  // Create table in PDF
-  autoTable(pdf, {
-    head: [headers.map(h => h.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()))],
-    body: tableData,
-    startY: 30,
-    theme: 'striped',
-    headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-    margin: { top: 30 }
-  });
-  
-  // Save PDF file
-  pdf.save(`${filename}.pdf`);
-};
-
-export const formatDataForCSV = (data: any) => {
+export const formatDataForCSV = (data: Record<string, unknown>) => {
   // Remove sensitive or unnecessary fields
   const excludeFields = ['id', 'created_at', 'updated_at', 'created_by'];
   
@@ -78,36 +42,41 @@ export const formatDataForCSV = (data: any) => {
     .reduce((obj, key) => {
       obj[key] = data[key];
       return obj;
-    }, {} as any);
+    }, {} as Record<string, unknown>);
 };
 
-export const formatOrdersForDownload = (orders: any[]) => {
+export const formatOrdersForDownload = (orders: Record<string, unknown>[]) => {
   return orders.map(order => ({
     order_number: order.order_number,
     company_name: order.company_name,
     quantity: order.quantity,
     bag_size: `${order.bag_length}x${order.bag_width}`,
     rate: order.rate || 'N/A',
-    status: order.status?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'N/A',
-    order_date: new Date(order.order_date).toLocaleDateString(),
-    total_amount: order.rate ? (order.rate * order.quantity).toFixed(2) : 'N/A'
+    status: order.status?.toString().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'N/A',
+    order_date: new Date(order.order_date as string).toLocaleDateString(),
+    total_amount: order.rate ? ((order.rate as number) * (order.quantity as number)).toFixed(2) : 'N/A'
   }));
 };
 
-export const formatJobCardForDownload = (jobCard: any) => {
+export const formatJobCardForDownload = (jobCard: Record<string, unknown>) => {
   if (!jobCard) return [];
+  
+  const order = jobCard.order as Record<string, unknown> | null;
+  const cuttingJobs = jobCard.cutting_jobs as Record<string, unknown>[] | null;
+  const printingJobs = jobCard.printing_jobs as Record<string, unknown>[] | null;
+  const stitchingJobs = jobCard.stitching_jobs as Record<string, unknown>[] | null;
   
   return [{
     job_name: jobCard.job_name,
     job_number: jobCard.job_number || 'N/A',
-    order_number: jobCard.order?.order_number || 'N/A',
-    company_name: jobCard.order?.company_name || 'N/A',
-    status: jobCard.status?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'N/A',
-    order_quantity: jobCard.order?.quantity || 0,
-    bag_size: jobCard.order ? `${jobCard.order.bag_length}x${jobCard.order.bag_width}` : 'N/A',
-    cutting_status: jobCard.cutting_jobs?.[0]?.status?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'Not started',
-    printing_status: jobCard.printing_jobs?.[0]?.status?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'Not started',
-    stitching_status: jobCard.stitching_jobs?.[0]?.status?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'Not started',
-    created_date: new Date(jobCard.created_at).toLocaleDateString()
+    order_number: order?.order_number || 'N/A',
+    company_name: order?.company_name || 'N/A',
+    status: jobCard.status?.toString().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'N/A',
+    order_quantity: order?.quantity || 0,
+    bag_size: order ? `${order.bag_length}x${order.bag_width}` : 'N/A',
+    cutting_status: cuttingJobs?.[0]?.status?.toString().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'Not started',
+    printing_status: printingJobs?.[0]?.status?.toString().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'Not started',
+    stitching_status: stitchingJobs?.[0]?.status?.toString().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'Not started',
+    created_date: new Date(jobCard.created_at as string).toLocaleDateString()
   }];
 };

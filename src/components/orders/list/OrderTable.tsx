@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Eye, MoreHorizontal, Plus, Trash, ChevronRight, Edit, FileText } from "lucide-react";
+import { Eye, MoreHorizontal, Plus, Trash, ChevronRight, Edit, FileText, Download } from "lucide-react";
 import { formatDate, getStatusColor, getStatusDisplay } from "@/utils/orderUtils";
 import type { Order } from "@/types/order";
 import { Badge } from "@/components/ui/badge";
+import { generateOrderPDF } from "@/utils/professionalPdfUtils";
 
 interface OrderTableProps {
   orders: Order[];

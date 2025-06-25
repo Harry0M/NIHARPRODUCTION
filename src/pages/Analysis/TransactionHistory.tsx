@@ -59,7 +59,10 @@ interface TransactionHistoryItem {
   reference_type: string | null;
   reference_id: string | null;
   reference_number: string | null;
-  notes: string | null;  metadata: Record<string, unknown>;
+  notes: string | null;  metadata: Record<string, unknown> & {
+    purchase_date?: string;
+    order_date?: string;
+  };
 }
 
 // Filter type
@@ -722,12 +725,32 @@ const TransactionHistory = () => {
                             <span className="font-bold text-green-600 dark:text-green-400">{transaction.new_quantity.toFixed(2)}</span>
                           </div>
                         </div>
-                      </div>
-
-                      {/* Transaction date */}
+                      </div>                      {/* Transaction date */}
                       <div className="text-sm text-muted-foreground">
                         <span>Transaction Date: {format(new Date(transaction.transaction_date), "dd MMM yyyy, h:mm a")}</span>
-                      </div>
+                      </div>                      {/* Purchase Entry Date - Highlighted for purchases */}
+                      {(transaction.metadata as { purchase_date?: string })?.purchase_date && (
+                        <div className="bg-purple-50 dark:bg-purple-950/30 px-3 py-2 rounded-md border border-purple-200 dark:border-purple-800">
+                          <div className="text-sm">
+                            <span className="font-semibold text-purple-700 dark:text-purple-300">Purchase Entry Date:</span>{" "}
+                            <span className="font-bold text-purple-800 dark:text-purple-400">
+                              {format(new Date((transaction.metadata as { purchase_date: string }).purchase_date), "dd MMM yyyy")}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Order Creation Date - Highlighted for job card transactions */}
+                      {transaction.reference_type === "JobCard" && (transaction.metadata as { order_date?: string })?.order_date && (
+                        <div className="bg-blue-50 dark:bg-blue-950/30 px-3 py-2 rounded-md border border-blue-200 dark:border-blue-800">
+                          <div className="text-sm">
+                            <span className="font-semibold text-blue-700 dark:text-blue-300">Order Creation Date:</span>{" "}
+                            <span className="font-bold text-blue-800 dark:text-blue-400">
+                              {format(new Date((transaction.metadata as { order_date: string }).order_date), "dd MMM yyyy")}
+                            </span>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Reference information */}
                       {transaction.reference_type && (

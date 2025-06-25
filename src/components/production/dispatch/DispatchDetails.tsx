@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { FileText, Truck, Edit2, Package } from "lucide-react";
 import type { DispatchData } from "@/types/dispatch";
 import type { DispatchBatch } from "@/types/dispatch";
-import { downloadAsCSV, downloadAsPDF } from "@/utils/downloadUtils";
+import { downloadAsCSV } from "@/utils/downloadUtils";
+import { generateDispatchReceiptPDF } from "@/utils/professionalPdfUtils";
 import { DownloadButton } from "@/components/DownloadButton";
 import { EditableDispatchBatches } from "./EditableDispatchBatches";
 import { useState } from "react";
@@ -39,29 +40,27 @@ export const DispatchDetails = ({ dispatch, batches, orderNumber, companyName, o
     
     downloadAsCSV(downloadData, `dispatch-${orderNumber}`);
   };
-
   // Handler for PDF download
   const handleDownloadPDF = () => {
-    const downloadData = [{
-      order_number: orderNumber || 'N/A',
-      company_name: companyName || 'N/A',
-      delivery_date: new Date(dispatch.delivery_date).toLocaleDateString(),
-      recipient_name: dispatch.recipient_name,
-      delivery_address: dispatch.delivery_address,
-      tracking_number: dispatch.tracking_number || 'N/A',
-      quality_checked: dispatch.quality_checked ? 'Yes' : 'No',
-      quantity_checked: dispatch.quantity_checked ? 'Yes' : 'No',
-      notes: dispatch.notes || 'N/A',
-      dispatched_on: new Date(dispatch.created_at || '').toLocaleDateString(),
-      total_batches: batches.length,
-      total_quantity: batches.reduce((sum, batch) => sum + batch.quantity, 0),
-    }];
-    
-    downloadAsPDF(
-      downloadData, 
-      `dispatch-${orderNumber}`,
-      `Dispatch Details: ${orderNumber}`
-    );
+    generateDispatchReceiptPDF({
+      orderNumber: orderNumber || 'N/A',
+      companyName: companyName || 'N/A',
+      deliveryDate: dispatch.delivery_date,
+      recipientName: dispatch.recipient_name,
+      deliveryAddress: dispatch.delivery_address,
+      trackingNumber: dispatch.tracking_number || '',
+      qualityChecked: dispatch.quality_checked,
+      quantityChecked: dispatch.quantity_checked,
+      notes: dispatch.notes || '',
+      dispatchedOn: dispatch.created_at || '',
+      batches: batches.map(batch => ({
+        id: batch.id,
+        quantity: batch.quantity,
+        quality_status: batch.quality_status || 'approved',
+        notes: batch.notes || ''
+      })),
+      totalQuantity: batches.reduce((sum, batch) => sum + batch.quantity, 0)
+    }, `dispatch-${orderNumber}`);
   };
 
   return (

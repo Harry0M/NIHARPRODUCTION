@@ -12,7 +12,8 @@ import { OrderInfoCard } from "./JobCardDetail/OrderInfoCard";
 import { ProductionTimelineCard } from "./JobCardDetail/ProductionTimelineCard";
 import { ProductionProgressCard } from "./JobCardDetail/ProductionProgressCard";
 import { DownloadButton } from "@/components/DownloadButton";
-import { downloadAsCSV, downloadAsPDF, formatJobCardForDownload } from "@/utils/downloadUtils";
+import { downloadAsCSV, formatJobCardForDownload } from "@/utils/downloadUtils";
+import { generateJobCardPDF } from "@/utils/professionalPdfUtils";
 
 type JobStatus = Database['public']['Enums']['job_status'];
 type OrderStatus = Database['public']['Enums']['order_status'];
@@ -165,15 +166,10 @@ const JobCardDetail = () => {
     const formattedData = formatJobCardForDownload(jobCard);
     downloadAsCSV(formattedData, `job-card-${jobCard.job_number || jobCard.job_name}`);
   };
-
   const handleDownloadPDF = () => {
     if (!jobCard) return;
-    const formattedData = formatJobCardForDownload(jobCard);
-    downloadAsPDF(
-      formattedData, 
-      `job-card-${jobCard.job_number || jobCard.job_name}`,
-      `Job Card: ${jobCard.job_name}`
-    );
+    // Use the enhanced job card PDF generation
+    generateJobCardPDF(jobCard, `job-card-${jobCard.job_number || jobCard.job_name}`);
   };
 
   // Transform job data to TimelineJob format

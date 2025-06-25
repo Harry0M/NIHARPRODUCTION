@@ -59,17 +59,18 @@ export const updateInventoryQuantity = async (
       newQuantity,
       change: quantityChange
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
     console.error("Error updating inventory quantity:", error);
     showToast({
       title: "Error updating inventory",
-      description: error.message || "An unexpected error occurred",
+      description: errorMessage,
       type: "error"
     });
     
     return {
       success: false,
-      error: error.message
+      error: errorMessage
     };
   }
 };
@@ -127,17 +128,18 @@ export const recordOrderMaterialUsageWithNegatives = async (
       previousQuantity,
       newQuantity
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
     console.error("Error recording material usage:", error);
     showToast({
       title: "Error recording material usage",
-      description: error.message || "An unexpected error occurred",
+      description: errorMessage,
       type: "error"
     });
     
     return {
       success: false,
-      error: error.message
+      error: errorMessage
     };
   }
 };
@@ -153,7 +155,8 @@ export const recordJobCardMaterialUsage = async (
   orderNumber: string,
   materialId: string,
   quantity: number,
-  componentType: string
+  componentType: string,
+  orderDate?: string
 ) => {
   try {
     // First get the current quantity and material details
@@ -195,6 +198,7 @@ export const recordJobCardMaterialUsage = async (
           component_type: componentType,
           order_id: orderId,
           order_number: orderNumber,
+          order_date: orderDate, // Include order creation date
           job_card_id: jobCardId,
           job_number: jobNumber,
           consumption_quantity: quantity

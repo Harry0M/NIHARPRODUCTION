@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Edit, Printer, FileText, Package, Building, Calculator, User } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
+import { generateVendorBillPDF } from "@/utils/professionalPdfUtils";
 import { Database } from "@/integrations/supabase/types";
 
 type VendorBill = Database["public"]["Tables"]["vendor_bills"]["Row"];
@@ -57,9 +58,10 @@ const VendorBillDetail = () => {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
-
   const handlePrint = () => {
-    window.print();
+    if (!bill) return;
+    // Use the enhanced vendor bill PDF generation
+    generateVendorBillPDF(bill, `vendor-bill-${bill.bill_number}`);
   };
 
   if (loading) {

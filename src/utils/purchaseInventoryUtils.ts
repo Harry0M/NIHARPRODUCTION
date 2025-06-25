@@ -25,6 +25,7 @@ interface PurchaseItemWithActualMeter {
 interface PurchaseData {
   id: string;
   purchase_number: string;
+  purchase_date?: string;
   transport_charge: number;
   purchase_items: PurchaseItemWithActualMeter[];
 }
@@ -150,8 +151,7 @@ export const completePurchaseWithActualMeter = async (
             reference_id: purchase.id,
             reference_number: purchase.purchase_number,
             reference_type: "Purchase",
-            notes: `Purchase completion - used actual_meter: ${actual_meter > 0 ? actual_meter : 'N/A (fallback to quantity)'} - purchase_rate set to unit_price: ${unit_price}`,
-            metadata: {
+            notes: `Purchase completion - used actual_meter: ${actual_meter > 0 ? actual_meter : 'N/A (fallback to quantity)'} - purchase_rate set to unit_price: ${unit_price}`,            metadata: {
               material_name: material.material_name,
               unit: material.unit,
               main_quantity: quantity,
@@ -161,7 +161,8 @@ export const completePurchaseWithActualMeter = async (
               adjusted_unit_price: adjustedUnitPrice,
               transport_charge: purchase.transport_charge,
               purchase_id: purchase.id,
-              purchase_number: purchase.purchase_number
+              purchase_number: purchase.purchase_number,
+              purchase_date: purchase.purchase_date || new Date().toISOString()
             }
           });
 
@@ -382,8 +383,7 @@ export const reversePurchaseCompletion = async (
             reference_id: purchase.id,
             reference_number: purchase.purchase_number,
             reference_type: "Purchase",
-            notes: `Purchase reversal - removed actual_meter: ${actual_meter > 0 ? actual_meter : 'N/A (fallback to quantity)'}`,
-            metadata: {
+            notes: `Purchase reversal - removed actual_meter: ${actual_meter > 0 ? actual_meter : 'N/A (fallback to quantity)'}`,            metadata: {
               material_name: material.material_name,
               unit: material.unit,
               main_quantity: quantity,
@@ -391,6 +391,7 @@ export const reversePurchaseCompletion = async (
               removed_quantity: inventoryQuantity,
               purchase_id: purchase.id,
               purchase_number: purchase.purchase_number,
+              purchase_date: purchase.purchase_date || new Date().toISOString(),
               reversal: true
             }
           });

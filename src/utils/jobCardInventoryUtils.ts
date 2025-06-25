@@ -88,12 +88,13 @@ export const reverseJobCardMaterialConsumption = async (
 
     console.log(`Found ${components.length} components to reverse`);
 
-    // Get order number for transaction reference
+    // Get order number and order date for transaction reference
     let orderNumber = jobCard.order?.order_number;
+    let orderDate: string | undefined = undefined;
     if (!orderNumber) {
       const { data: orderData, error: orderError } = await supabase
         .from("orders")
-        .select("order_number")
+        .select("order_number, order_date")
         .eq("id", jobCard.order_id)
         .single();
 
@@ -103,6 +104,7 @@ export const reverseJobCardMaterialConsumption = async (
         orderNumber = "Unknown";
       } else {
         orderNumber = orderData.order_number;
+        orderDate = orderData.order_date;
       }
     }    // Get original consumption amounts from transaction logs when job card was created
     const { data: originalConsumptionLogs, error: logsError } = await supabase
@@ -231,6 +233,7 @@ export const reverseJobCardMaterialConsumption = async (
               consumption_quantity: consumptionQuantity,
               order_id: jobCard.order_id,
               order_number: orderNumber,
+              order_date: orderDate,
               reversal: true,
               job_card_id: jobCard.id,
               job_number: jobCard.job_number

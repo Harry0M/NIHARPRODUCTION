@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Edit, Printer, FileText, Package, Building, Calculator } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { Database } from "@/integrations/supabase/types";
+import { generateSalesInvoicePDF } from "@/utils/professionalPdfUtils";
 
 type SalesInvoice = Database["public"]["Tables"]["sales_invoices"]["Row"];
 type Order = Database["public"]["Tables"]["orders"]["Row"];
@@ -106,14 +107,34 @@ const SalesInvoiceDetail = () => {
           >
             <Edit className="h-4 w-4" />
             Edit Invoice
-          </Button>
-          <Button
+          </Button>          <Button
             variant="outline"
-            onClick={() => window.print()}
+            onClick={() => generateSalesInvoicePDF({
+              invoiceNumber: invoice.invoice_number,
+              companyName: invoice.company_name,
+              productName: invoice.product_name,
+              quantity: invoice.quantity,
+              rate: invoice.rate,
+              subtotal: invoice.subtotal,
+              gstPercentage: invoice.gst_percentage,
+              gstAmount: invoice.gst_amount,
+              transportIncluded: invoice.transport_included,
+              transportCharge: invoice.transport_charge,
+              otherExpenses: invoice.other_expenses,
+              totalAmount: invoice.total_amount,
+              createdAt: invoice.created_at,
+              notes: invoice.notes || '',
+              order: invoice.orders ? {
+                orderNumber: invoice.orders.order_number,
+                orderDate: invoice.orders.order_date,
+                deliveryDate: invoice.orders.delivery_date || '',
+                status: invoice.orders.status || ''
+              } : undefined
+            }, `sales-invoice-${invoice.invoice_number}`)}
             className="flex items-center gap-2"
           >
             <Printer className="h-4 w-4" />
-            Print
+            Print PDF
           </Button>
         </div>
       </div>
