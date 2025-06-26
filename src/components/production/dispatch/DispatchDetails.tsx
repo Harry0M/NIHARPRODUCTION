@@ -21,9 +21,12 @@ interface DispatchDetailsProps {
 export const DispatchDetails = ({ dispatch, batches, orderNumber, companyName, onBatchesUpdated }: DispatchDetailsProps) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const navigate = useNavigate();
-  // Handler for CSV download
+  // Handler for CSV download - Enhanced with comprehensive data
   const handleDownloadCSV = () => {
+    const totalQuantity = batches.reduce((sum, batch) => sum + batch.quantity, 0);
+    
     const downloadData = [{
+      // Basic dispatch information
       order_number: orderNumber || 'N/A',
       company_name: companyName || 'N/A',
       delivery_date: new Date(dispatch.delivery_date).toLocaleDateString(),
@@ -34,33 +37,65 @@ export const DispatchDetails = ({ dispatch, batches, orderNumber, companyName, o
       quantity_checked: dispatch.quantity_checked ? 'Yes' : 'No',
       notes: dispatch.notes || 'N/A',
       dispatched_on: new Date(dispatch.created_at || '').toLocaleDateString(),
+      
+      // Comprehensive batch information
       total_batches: batches.length,
-      total_quantity: batches.reduce((sum, batch) => sum + batch.quantity, 0),
+      total_quantity: totalQuantity,
+      batch_details: batches.map(batch => 
+        `Batch ${batch.batch_number}: ${batch.quantity} units (${new Date(batch.delivery_date).toLocaleDateString()}) - ${batch.notes || 'No notes'}`
+      ).join(' | '),
+      
+      // Status information
+      dispatch_status: 'Dispatched',
+      all_batches_status: batches.map(batch => 
+        `Batch ${batch.batch_number}: ${(batch.status || 'pending').toUpperCase()}`
+      ).join(' | ')
     }];
     
-    downloadAsCSV(downloadData, `dispatch-${orderNumber}`);
+    downloadAsCSV(downloadData, `dispatch-comprehensive-${orderNumber}`);
   };
-  // Handler for PDF download
+  
+  // Handler for PDF download - Enhanced with comprehensive data
   const handleDownloadPDF = () => {
+    const totalQuantity = batches.reduce((sum, batch) => sum + batch.quantity, 0);
+    
     generateDispatchReceiptPDF({
+      // Order and company information
       orderNumber: orderNumber || 'N/A',
       companyName: companyName || 'N/A',
+      order_number: orderNumber || 'N/A',
+      company_name: companyName || 'N/A',
+      
+      // Dispatch details
       deliveryDate: dispatch.delivery_date,
+      delivery_date: dispatch.delivery_date,
       recipientName: dispatch.recipient_name,
+      recipient_name: dispatch.recipient_name,
       deliveryAddress: dispatch.delivery_address,
+      delivery_address: dispatch.delivery_address,
       trackingNumber: dispatch.tracking_number || '',
+      tracking_number: dispatch.tracking_number || '',
       qualityChecked: dispatch.quality_checked,
+      quality_checked: dispatch.quality_checked,
       quantityChecked: dispatch.quantity_checked,
+      quantity_checked: dispatch.quantity_checked,
       notes: dispatch.notes || '',
       dispatchedOn: dispatch.created_at || '',
+      dispatched_on: dispatch.created_at || '',
+      
+      // Comprehensive batch information
       batches: batches.map(batch => ({
         id: batch.id,
+        batch_number: batch.batch_number,
         quantity: batch.quantity,
+        delivery_date: batch.delivery_date,
         quality_status: batch.quality_status || 'approved',
+        status: batch.status || 'pending',
         notes: batch.notes || ''
       })),
-      totalQuantity: batches.reduce((sum, batch) => sum + batch.quantity, 0)
-    }, `dispatch-${orderNumber}`);
+      totalQuantity: totalQuantity,
+      total_quantity: totalQuantity
+    }, `dispatch-comprehensive-${orderNumber}`);
   };
 
   return (
@@ -78,7 +113,7 @@ export const DispatchDetails = ({ dispatch, batches, orderNumber, companyName, o
           <DownloadButton 
             onCsvClick={handleDownloadCSV}
             onPdfClick={handleDownloadPDF}
-            label="Download Receipt"
+            label="Download Complete Details"
           />
         </div>
       </CardHeader>

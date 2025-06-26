@@ -700,14 +700,16 @@ export function generateDispatchReceiptPDF(dispatchData: PDFDataItem, filename: 
     pdf.text('Batch Details', 15, currentY);
     currentY += 10;
     
-    const batchDetails = dispatchData.batches.map((batch: PDFDataItem, index: number) => [
-      `Batch ${index + 1}`,
+    const batchDetails = dispatchData.batches.map((batch: PDFDataItem) => [
+      `Batch ${batch.batch_number || 'N/A'}`,
       formatNumber(batch.quantity),
+      formatDate(batch.delivery_date),
+      formatString(batch.status?.toUpperCase() || 'PENDING'),
       formatString(batch.notes)
     ]);
     
     autoTable(pdf, {
-      head: [['Batch', 'Quantity', 'Notes']],
+      head: [['Batch #', 'Quantity', 'Delivery Date', 'Status', 'Notes']],
       body: batchDetails,
       startY: currentY,
       theme: 'striped',
@@ -720,7 +722,14 @@ export function generateDispatchReceiptPDF(dispatchData: PDFDataItem, filename: 
         fontSize: PDF_STYLES.fonts.body,
         cellPadding: 4
       },
-      foot: [['Total Quantity:', formatNumber(dispatchData.total_quantity), '']],
+      columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 25 },
+        2: { cellWidth: 35 },
+        3: { cellWidth: 25 },
+        4: { cellWidth: 80 }
+      },
+      foot: [['Total Quantity:', formatNumber(dispatchData.total_quantity), '', '', '']],
       footStyles: {
         fillColor: PDF_STYLES.colors.light,
         textColor: PDF_STYLES.colors.secondary,

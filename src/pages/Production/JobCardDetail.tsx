@@ -40,18 +40,21 @@ interface JobCardDetails {
     status: JobStatus;
     worker_name: string | null;
     created_at: string;
+    received_quantity: number | null;
   }[];
   printing_jobs: {
     id: string;
     status: JobStatus;
     worker_name: string | null;
     created_at: string;
+    received_quantity: number | null;
   }[];
   stitching_jobs: {
     id: string;
     status: JobStatus;
     worker_name: string | null;
     created_at: string;
+    received_quantity: number | null;
   }[];
 }
 
@@ -91,9 +94,9 @@ const JobCardDetail = () => {
             bag_length, bag_width, order_date, status,
             components:order_components (id, component_type, size, color, gsm, custom_name)
           ),
-          cutting_jobs (id, status, worker_name, created_at),
-          printing_jobs (id, status, worker_name, created_at),
-          stitching_jobs (id, status, worker_name, created_at)
+          cutting_jobs (id, status, worker_name, created_at, received_quantity),
+          printing_jobs (id, status, worker_name, created_at, received_quantity),
+          stitching_jobs (id, status, worker_name, created_at, received_quantity)
         `)
         .eq('id', jobCardId)
         .single();

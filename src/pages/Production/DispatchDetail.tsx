@@ -1,12 +1,11 @@
 
 import { useParams } from "react-router-dom";
-import { Loader2 } from "lucide-react";
-import { downloadAsCSV } from "@/utils/downloadUtils";
-import { generateDispatchReceiptPDF } from "@/utils/professionalPdfUtils";
+import { Loader2, ClipboardList } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 import { DispatchForm } from "@/components/production/DispatchForm";
 import { OrderInfoCard } from "@/components/production/dispatch/OrderInfoCard";
 import { DispatchDetails } from "@/components/production/dispatch/DispatchDetails";
-import { PageHeader } from "@/components/production/dispatch/PageHeader";
 import { useOrderDispatchData } from "@/hooks/use-dispatch-data";
 import { useDispatchActions } from "@/hooks/use-dispatch-actions";
 
@@ -35,47 +34,9 @@ interface DispatchFormData {
 
 const DispatchDetail = () => {
   const { id: orderId } = useParams();
+  const navigate = useNavigate();
   const { order, dispatchData, dispatchBatches, productionStages, loading } = useOrderDispatchData(orderId || '');
   const { handleDispatch } = useDispatchActions();
-
-  const handleDownloadCSV = () => {
-    if (!dispatchData || !order) return;
-    
-    const downloadData = [{
-      order_number: order?.order_number || 'N/A',
-      company_name: order?.company_name || 'N/A',
-      delivery_date: new Date(dispatchData.delivery_date).toLocaleDateString(),
-      recipient_name: dispatchData.recipient_name,
-      delivery_address: dispatchData.delivery_address,
-      tracking_number: dispatchData.tracking_number || 'N/A',
-      quality_checked: dispatchData.quality_checked ? 'Yes' : 'No',
-      quantity_checked: dispatchData.quantity_checked ? 'Yes' : 'No',
-      notes: dispatchData.notes || 'N/A',
-      dispatched_on: new Date(dispatchData.created_at || '').toLocaleDateString()
-    }];
-    
-    downloadAsCSV(downloadData, `dispatch-${order?.order_number}`);
-  };
-  
-  const handleDownloadPDF = () => {
-    if (!dispatchData || !order) return;
-    
-    const pdfData = {
-      order_number: order?.order_number || 'N/A',
-      company_name: order?.company_name || 'N/A',
-      delivery_date: new Date(dispatchData.delivery_date).toLocaleDateString(),
-      recipient_name: dispatchData.recipient_name,
-      delivery_address: dispatchData.delivery_address,
-      tracking_number: dispatchData.tracking_number || 'N/A',
-      quality_checked: dispatchData.quality_checked ? 'Yes' : 'No',
-      quantity_checked: dispatchData.quantity_checked ? 'Yes' : 'No',
-      notes: dispatchData.notes || 'N/A',
-      dispatched_on: new Date(dispatchData.created_at || '').toLocaleDateString(),
-      dispatch_batches: dispatchBatches || []
-    };
-    
-    generateDispatchReceiptPDF(pdfData, `dispatch-${order?.order_number}`);
-  };
 
   const handleDispatchSubmit = async (formData: DispatchFormData) => {
     if (!orderId) return;
@@ -88,11 +49,25 @@ const DispatchDetail = () => {
 
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
-      <PageHeader 
-        dispatchData={dispatchData}
-        onDownloadCSV={handleDownloadCSV}
-        onDownloadPDF={handleDownloadPDF}
-      />
+      {/* Simple Page Header */}
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <ClipboardList className="h-6 w-6" />
+            Dispatch Order
+          </h1>
+          <p className="text-muted-foreground mb-5">
+            Complete and track the dispatch for this order.
+          </p>
+          <Button 
+            onClick={() => navigate("/dispatch")} 
+            variant="outline" 
+            size="sm"
+          >
+            Back to Dispatch List
+          </Button>
+        </div>
+      </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
