@@ -12,6 +12,8 @@ import { MaterialSelector } from "@/components/inventory/material-selector/Mater
 import { ConsumptionCalculator, ConsumptionFormulaType } from "@/components/production/ConsumptionCalculator";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Trash2 } from "lucide-react";
+import { isManualFormula } from "@/utils/manualFormulaProcessor";
+import { Badge } from "@/components/ui/badge";
 
 interface ComponentType {
   type: string;
@@ -283,7 +285,7 @@ const ComponentForm = ({
   
   // Get selected formula or default to standard
   const selectedFormula = component.formula || 'standard';
-  const isManual = component.formula === 'manual' || !!component.is_manual_consumption;
+  const isManual = isManualFormula(component);
   
   // Debug log for manual consumption troubleshooting
   useEffect(() => {
@@ -300,7 +302,14 @@ const ComponentForm = ({
     <Card className={component.consumption ? "border-blue-200" : ""}>
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex justify-between items-center">
-          <span>{component.type}</span>
+          <div className="flex items-center gap-2">
+            <span>{component.type}</span>
+            {isManual && (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
+                Manual
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             {onRemoveComponent && (
               <Button 
@@ -430,7 +439,7 @@ const ComponentForm = ({
               quantity={parseFloat(defaultQuantity)}
               materialRate={materialRate}
               selectedFormula={selectedFormula}
-              initialIsManual={component.formula === 'manual' || !!component.is_manual_consumption}
+              initialIsManual={isManualFormula(component)}
               initialConsumption={component.consumption ? parseFloat(component.consumption) : undefined}
               onConsumptionCalculated={handleConsumptionCalculated}
               onFormulaChange={handleFormulaChange}

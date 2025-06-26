@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { downloadAsCSV, formatOrdersForDownload } from "@/utils/downloadUtils";
-import { generateOrderPDF } from "@/utils/professionalPdfUtils";
+import { generateBulkOrdersPDF } from "@/utils/professionalPdfUtils";
 import { DeleteOrderDialog } from "@/components/orders/list/DeleteOrderDialog";
 import { BulkDeleteDialog } from "@/components/orders/list/BulkDeleteDialog";
 import { useOrderDeletion } from "@/hooks/use-order-deletion";
@@ -191,9 +191,9 @@ const OrderList = () => {
       return;
     }
     
-    // Use the professional PDF generation
+    // Use the professional bulk orders PDF generation
     const formattedOrders = formatOrdersForDownload(orders);
-    generateOrderPDF(formattedOrders, 'orders-list');
+    generateBulkOrdersPDF(formattedOrders, 'orders-list');
   };
 
   const handleSelectOrder = (orderId: string, isSelected: boolean) => {

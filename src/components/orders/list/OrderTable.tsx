@@ -8,7 +8,7 @@ import { Eye, MoreHorizontal, Plus, Trash, ChevronRight, Edit, FileText, Downloa
 import { formatDate, getStatusColor, getStatusDisplay } from "@/utils/orderUtils";
 import type { Order } from "@/types/order";
 import { Badge } from "@/components/ui/badge";
-import { generateOrderPDF } from "@/utils/professionalPdfUtils";
+import { generateIndividualOrderPDF } from "@/utils/professionalPdfUtils";
 
 interface OrderTableProps {
   orders: Order[];
@@ -120,6 +120,13 @@ export const OrderTable = ({
                     >
                       <Edit className="mr-2 h-4 w-4 text-amber-500" /> 
                       <span>Edit Order</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className="cursor-pointer"
+                      onClick={() => generateIndividualOrderPDF(order, `order-${order.order_number}`)}
+                    >
+                      <Download className="mr-2 h-4 w-4 text-blue-600" /> 
+                      <span>Download PDF</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem 

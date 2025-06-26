@@ -258,38 +258,27 @@ export function useOrderSubmission({
       const orderQuantity = parseInt(orderDetails.order_quantity || orderDetails.quantity || '1');
       console.log("Order quantity for reference (not used for multiplication):", orderQuantity);
       
-      // CRITICAL FIX: For manual formulas, we need to store the ORIGINAL consumption values in the database
-      // During editing, useOrderComponents.ts multiplies consumption by order quantity for display
-      // But in the database, we should store the original values so they display correctly
-      console.log("Processing components to reverse manual formula multiplication before database save");
+      // SIMPLIFIED APPROACH: For manual formulas, we store the fetchedConsumption value
+      // which is the original consumption value from the product, not multiplied by order quantity
+      console.log("Processing components with simplified logic");
       
       const processedComponents = allComponents.map(comp => {
         // Check if this is a manual formula component
         const isManual = comp.formula === 'manual' || comp.is_manual_consumption === true;
         
         if (isManual) {
-          // For manual formulas, we need to store the original consumption value in the database
-          let originalConsumption = comp.originalConsumption;
+          // For manual consumption components, use the fetchedConsumption value
+          // This is the original manual value that hasn't been multiplied by order quantity
+          const originalManualValue = comp.fetchedConsumption ? 
+            parseFloat(comp.fetchedConsumption) : 
+            parseFloat(comp.consumption) / orderQuantity; // Fallback for compatibility
           
-          // Handle edge cases where originalConsumption might not be set
-          if (!originalConsumption && comp.consumption && orderQuantity > 1) {
-            // Calculate original consumption by dividing current consumption by order quantity
-            originalConsumption = parseFloat(comp.consumption) / orderQuantity;
-            console.log(`%c MANUAL FORMULA EDGE CASE: ${comp.type} - Calculated original consumption ${originalConsumption} from ${comp.consumption} ÷ ${orderQuantity}`,
-              'background: #FF9800; color: white; padding: 2px 5px; font-weight: bold;');
-          } else if (!originalConsumption) {
-            // Fallback: use the current consumption as-is if we can't determine the original
-            originalConsumption = comp.consumption;
-            console.log(`%c MANUAL FORMULA FALLBACK: ${comp.type} - Using current consumption ${originalConsumption} as original`,
-              'background: #F44336; color: white; padding: 2px 5px; font-weight: bold;');
-          }
-          
-          console.log(`%c MANUAL FORMULA FIX: ${comp.type} - Using original consumption ${originalConsumption} instead of ${comp.consumption}`,
+          console.log(`%c MANUAL FORMULA SAVE: ${comp.type} - Storing original manual value ${originalManualValue} (fetchedConsumption: ${comp.fetchedConsumption}, current display: ${comp.consumption})`,
             'background: #4CAF50; color: white; padding: 2px 5px; font-weight: bold;');
           
           return {
             ...comp,
-            consumption: originalConsumption // Store original value in database
+            consumption: originalManualValue // Store the original manual value in database
           };
         } else {
           // For non-manual formulas, keep consumption as-is
@@ -362,9 +351,20 @@ export function useOrderSubmission({
             // Convert string values to numbers where appropriate
             const gsmValue = convertStringToNumeric(comp.gsm);
             const rollWidthValue = convertStringToNumeric(comp.roll_width);
-            const consumptionValue = convertStringToNumeric(
+            
+            // SIMPLE CONSUMPTION MULTIPLICATION: Multiply original consumption by order quantity
+            const originalConsumption = convertStringToNumeric(
               typeof comp.consumption === 'string' ? comp.consumption : String(comp.consumption || 0)
             );
+            
+            // Get order quantity for multiplication
+            const orderQuantity = parseInt(orderDetails.quantity || orderDetails.total_quantity || '1');
+            
+            // Multiply consumption by order quantity - this is the simple approach you requested
+            const finalConsumption = originalConsumption * orderQuantity;
+            
+            console.log(`🔄 SAVE-TIME MULTIPLICATION: Component ${comp.type || 'unknown'}: ${originalConsumption} × ${orderQuantity} = ${finalConsumption}`);
+            
             const materialCost = convertStringToNumeric(
               typeof comp.materialCost === 'string' ? comp.materialCost : String(comp.materialCost || 0)
             );
@@ -383,7 +383,7 @@ export function useOrderSubmission({
               custom_name: customName,
               material_id: comp.material_id || null,
               roll_width: rollWidthValue,
-              consumption: consumptionValue,
+              consumption: finalConsumption, // Use the multiplied consumption value
               component_cost: materialCost || null,
               component_cost_breakdown: componentCostBreakdown,
               formula: formula

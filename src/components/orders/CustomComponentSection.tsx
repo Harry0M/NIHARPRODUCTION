@@ -11,6 +11,8 @@ import { Trash2 } from "lucide-react";
 import { MaterialSelector } from "@/components/inventory/material-selector/MaterialSelector";
 import { useState, useEffect } from "react";
 import { ConsumptionCalculator, ConsumptionFormulaType } from "@/components/production/ConsumptionCalculator";
+import { isManualFormula } from "@/utils/manualFormulaProcessor";
+import { Badge } from "@/components/ui/badge";
 
 // Export this interface for external use
 export interface CustomComponent {
@@ -225,7 +227,14 @@ const CustomComponentForm = ({
     <Card className={component.consumption ? "border-blue-200" : ""}>
       <CardHeader className="flex flex-row items-center justify-between p-4">
         <div className="flex flex-col">
-          <Label className="text-sm font-medium">{customName}</Label>
+          <div className="flex items-center gap-2">
+            <Label className="text-sm font-medium">{customName}</Label>
+            {isManualFormula(component) && (
+              <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200">
+                Manual
+              </Badge>
+            )}
+          </div>
           <div className="flex gap-2">
             {showConsumption && component.consumption && (
               <span className="text-xs font-medium text-blue-700">

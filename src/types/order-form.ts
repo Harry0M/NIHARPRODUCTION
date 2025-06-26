@@ -10,7 +10,7 @@ export interface Component {
   length?: string;
   width?: string;
   consumption?: string;
-  baseConsumption?: string;
+  fetchedConsumption?: string; // Store the original fetched consumption value
   roll_width?: string;
   materialRate?: number;
   materialCost?: number;

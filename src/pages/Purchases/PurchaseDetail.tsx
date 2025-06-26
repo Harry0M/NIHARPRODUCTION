@@ -45,7 +45,7 @@ interface PurchaseItem {
   alt_quantity: number;
   alt_unit_price: number;
   true_unit_price?: number;
-  transport_share?: number;
+  transport_share?: number; // Calculated field, not from database
   true_line_total?: number;
 }
 
@@ -111,17 +111,18 @@ const PurchaseDetail = () => {
             line_total,
             gst_percentage,
             gst_amount,
+            actual_meter,
             alt_quantity,
             alt_unit_price,
             material:inventory (
               id,
               material_name,
               color,
+              gsm,
               unit,
               alternate_unit,
               conversion_rate
-            ),
-            actual_meter
+            )
           )
         `)
         .eq('id', id)
@@ -388,27 +389,66 @@ const PurchaseDetail = () => {
           <Button
             variant="outline"
             className="flex items-center gap-2"
-            onClick={() => generatePurchasePDF({
-              purchase_number: purchase.purchase_number,
-              supplier_name: purchase.suppliers.name,
-              supplier_contact: purchase.suppliers.contact_person,
-              supplier_phone: purchase.suppliers.phone,
-              supplier_address: purchase.suppliers.address,
-              purchase_date: purchase.purchase_date,
-              status: purchase.status,
-              invoice_number: purchase.invoice_number,
-              transport_charge: purchase.transport_charge,
-              subtotal: purchase.subtotal,
-              total_amount: purchase.total_amount,
-              notes: purchase.notes,
-              purchase_items: purchase.purchase_items.map(item => ({
-                material_name: item.material?.material_name || 'Unknown Material',
-                quantity: item.quantity,
-                unit: item.material?.unit || 'unit',
-                unit_price: item.unit_price,
-                line_total: item.line_total
-              }))
-            }, `purchase-${purchase.purchase_number}`)}
+            onClick={() => {
+              // Calculate transport share for each item for PDF
+              const itemsWithTransportShare = purchase.purchase_items.map(item => {
+                // Calculate transport share based on weight and actual meter
+                let transportShare = 0;
+                if (purchase.transport_charge > 0 && item.actual_meter > 0) {
+                  // Calculate weight (quantity * GSM / 1000 for kg)
+                  const gsm = parseFloat(item.material?.gsm || '0');
+                  const weight = item.quantity * gsm / 1000;
+                  
+                  // Calculate total weight of all items
+                  const totalWeight = purchase.purchase_items.reduce((sum, pItem) => {
+                    const itemGsm = parseFloat(pItem.material?.gsm || '0');
+                    return sum + (pItem.quantity * itemGsm / 1000);
+                  }, 0);
+                  
+                  // Distribute transport charge proportionally
+                  if (totalWeight > 0) {
+                    const perKgTransport = purchase.transport_charge / totalWeight;
+                    transportShare = (weight * perKgTransport) / item.actual_meter;
+                  }
+                }
+                
+                return {
+                  material_name: item.material?.material_name || 'Unknown Material',
+                  color: item.material?.color,
+                  gsm: item.material?.gsm,
+                  quantity: item.quantity,
+                  unit: item.material?.unit || 'unit',
+                  alternate_unit: item.material?.alternate_unit,
+                  conversion_rate: item.material?.conversion_rate || 1,
+                  actual_meter: item.actual_meter || 0,
+                  alt_quantity: item.alt_quantity,
+                  alt_unit_price: item.alt_unit_price || 0,
+                  unit_price: item.unit_price,
+                  gst_percentage: item.gst_percentage || 0,
+                  gst_amount: item.gst_amount || 0,
+                  transport_share: transportShare,
+                  line_total: item.line_total
+                };
+              });
+              
+              generatePurchasePDF({
+                purchase_number: purchase.purchase_number,
+                supplier_name: purchase.suppliers.name,
+                supplier_contact: purchase.suppliers.contact_person,
+                supplier_phone: purchase.suppliers.phone,
+                supplier_address: purchase.suppliers.address,
+                supplier_gst: purchase.suppliers.gst,
+                purchase_date: purchase.purchase_date,
+                status: purchase.status,
+                invoice_number: purchase.invoice_number,
+                transport_charge: purchase.transport_charge,
+                subtotal: purchase.subtotal,
+                total_amount: purchase.total_amount,
+                notes: purchase.notes,
+                created_at: purchase.created_at,
+                purchase_items: itemsWithTransportShare
+              }, `purchase-${purchase.purchase_number}`);
+            }}
           >
             <Printer className="h-4 w-4" />
             Print PDF

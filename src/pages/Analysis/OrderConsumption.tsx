@@ -330,6 +330,18 @@ const OrderConsumption = () => {
   // Colors for the chart
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ff7300', '#a05195', '#d45087', '#2f4b7c'];
   
+  const handleDownloadCSV = () => {
+    if (!orderChartData?.length) return;
+    const formattedData = prepareOrderConsumptionDataForExport(orderChartData);
+    exportToCSV(formattedData, 'order-consumption-analysis');
+  };
+
+  const handleDownloadPDF = () => {
+    if (!orderChartData?.length) return;
+    const formattedData = prepareOrderConsumptionDataForExport(orderChartData);
+    generateOrderConsumptionPDF(formattedData, 'order-consumption-analysis');
+  };
+
   if (isLoading || loadingOrderDetails) {
     return <LoadingSpinner />;
   }
@@ -337,12 +349,24 @@ const OrderConsumption = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-1.5">
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm" onClick={() => navigate('/analysis')}>
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back
-          </Button>
-          <h1 className="text-2xl font-bold">Order Consumption Analysis</h1>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" size="sm" onClick={() => navigate('/analysis')}>
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+            <h1 className="text-2xl font-bold">Order Consumption Analysis</h1>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" size="sm" onClick={handleDownloadCSV}>
+              <FileSpreadsheet className="h-4 w-4 mr-1" />
+              Download CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
+              <Download className="h-4 w-4 mr-1" />
+              Download PDF
+            </Button>
+          </div>
         </div>
         <p className="text-muted-foreground">
           Analyze material usage, costs, and profitability by order

@@ -26,8 +26,6 @@ export function useOrderForm(): UseOrderFormReturn {
     setComponents,
     customComponents,
     setCustomComponents,
-    baseConsumptions,
-    setBaseConsumptions,
     costCalculation,
     setCostCalculation,
     handleComponentChange,
@@ -46,7 +44,6 @@ export function useOrderForm(): UseOrderFormReturn {
     setOrderDetails,
     setComponents,
     setCustomComponents,
-    setBaseConsumptions,
     updateConsumptionBasedOnQuantity,
     setCostCalculation
   });

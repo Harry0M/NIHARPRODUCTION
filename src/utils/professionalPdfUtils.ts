@@ -10,27 +10,29 @@ import { format } from 'date-fns';
 /**
  * Safe number formatting function
  */
-function formatNumber(value: any): string {
+function formatNumber(value: unknown): string {
   if (value === null || value === undefined || value === '') return '0';
   const num = Number(value);
   if (isNaN(num)) return '0';
-  return num.toLocaleString('en-IN');
+  // Use en-US formatting to avoid PDF rendering issues
+  return num.toLocaleString('en-US');
 }
 
 /**
  * Safe currency formatting function
  */
-function formatCurrency(value: any): string {
-  if (value === null || value === undefined || value === '') return '₹0';
+function formatCurrency(value: unknown): string {
+  if (value === null || value === undefined || value === '') return 'Rs. 0';
   const num = Number(value);
-  if (isNaN(num)) return '₹0';
-  return `₹${num.toLocaleString('en-IN')}`;
+  if (isNaN(num)) return 'Rs. 0';
+  // Use en-US formatting with "Rs." prefix for better PDF compatibility
+  return `Rs. ${num.toLocaleString('en-US')}`;
 }
 
 /**
  * Safe string formatting function
  */
-function formatString(value: any, defaultValue: string = 'N/A'): string {
+function formatString(value: unknown, defaultValue: string = 'N/A'): string {
   if (value === null || value === undefined || value === '') return defaultValue;
   return String(value);
 }
@@ -38,10 +40,10 @@ function formatString(value: any, defaultValue: string = 'N/A'): string {
 /**
  * Safe date formatting function
  */
-function formatDate(value: any): string {
+function formatDate(value: unknown): string {
   if (!value) return 'N/A';
   try {
-    const date = new Date(value);
+    const date = new Date(value as string | number | Date);
     if (isNaN(date.getTime())) return 'N/A';
     return format(date, 'dd MMM yyyy');
   } catch {
@@ -111,11 +113,24 @@ interface VendorBillData extends PDFDataItem {
   created_at?: string | Date;
   total_amount?: number;
   status?: string;
+  vendors?: {
+    contact_person?: string;
+    phone?: string;
+    gst?: string;
+    address?: string;
+  };
+  tax_amount?: number;
+  discount_amount?: number;
+  payment_terms?: string;
+  due_date?: string | Date;
+  notes?: string;
   jobs?: Array<{
     job_card_id?: string;
     quantity?: number;
     rate?: number;
     amount?: number;
+    description?: string;
+    unit?: string;
   }>;
 }
 
@@ -159,32 +174,33 @@ function addCompanyHeader(pdf: jsPDF, title: string, subtitle?: string): number 
   // Company name and details
   pdf.setFontSize(PDF_STYLES.fonts.title);
   pdf.setTextColor(...PDF_STYLES.colors.primary);
-  pdf.text('Your Company Name', 15, 25);
+  pdf.text('Nihar Creations', 15, 25);
   
   pdf.setFontSize(PDF_STYLES.fonts.small);
   pdf.setTextColor(...PDF_STYLES.colors.gray);
-  pdf.text('Address Line 1, City, State - Pincode', 15, 32);
-  pdf.text('Phone: +91-XXXXXXXXXX | Email: info@company.com', 15, 37);
+  pdf.text('30, Yamuna Industrial Estate, Opp. Neo Plast', 15, 32);
+  pdf.text('G.I.D.C, Phase-1 Vatva, Ahmedabad, Gujarat - 382445', 15, 37);
+  pdf.text('GST: 24IWNPS6583R1Z2', 15, 42);
   
   // Document title
   pdf.setFontSize(PDF_STYLES.fonts.subtitle);
   pdf.setTextColor(...PDF_STYLES.colors.secondary);
   const titleWidth = pdf.getTextWidth(title);
-  pdf.text(title, (pageWidth - titleWidth) / 2, 55);
+  pdf.text(title, (pageWidth - titleWidth) / 2, 60);
   
   if (subtitle) {
     pdf.setFontSize(PDF_STYLES.fonts.body);
     pdf.setTextColor(...PDF_STYLES.colors.gray);
     const subtitleWidth = pdf.getTextWidth(subtitle);
-    pdf.text(subtitle, (pageWidth - subtitleWidth) / 2, 62);
+    pdf.text(subtitle, (pageWidth - subtitleWidth) / 2, 67);
   }
   
   // Add a horizontal line
   pdf.setDrawColor(...PDF_STYLES.colors.light);
   pdf.setLineWidth(0.5);
-  pdf.line(15, 70, pageWidth - 15, 70);
+  pdf.line(15, 75, pageWidth - 15, 75);
   
-  return 75; // Return Y position for content start
+  return 80; // Return Y position for content start
 }
 
 /**
@@ -413,54 +429,89 @@ export function generateVendorBillPDF(billData: VendorBillData, filename: string
   
   let currentY = startY + 10;
   
-  // Vendor and bill information
+  // Split into two columns for vendor and bill information
+  const pageWidth = pdf.internal.pageSize.width;
+  const columnWidth = (pageWidth - 45) / 2;
+  
+  // Vendor information section
   pdf.setFontSize(PDF_STYLES.fonts.heading);
   pdf.setTextColor(...PDF_STYLES.colors.secondary);
-  pdf.text('Bill Information', 15, currentY);
-  currentY += 10;
+  pdf.text('Vendor Information:', 15, currentY);
+  currentY += 8;
+  
+  pdf.setFontSize(PDF_STYLES.fonts.body);
+  pdf.setTextColor(...PDF_STYLES.colors.black);
+  pdf.text(formatString(billData.vendor_name), 15, currentY);
+  currentY += 6;
+  
+  if (billData.vendors?.contact_person) {
+    pdf.text(`Contact Person: ${billData.vendors.contact_person}`, 15, currentY);
+    currentY += 6;
+  }
+  
+  if (billData.vendors?.phone) {
+    pdf.text(`Phone: ${billData.vendors.phone}`, 15, currentY);
+    currentY += 6;
+  }
+  
+  if (billData.vendors?.gst) {
+    pdf.text(`GST Number: ${billData.vendors.gst}`, 15, currentY);
+    currentY += 6;
+  }
+  
+  if (billData.vendors?.address) {
+    const addressLines = pdf.splitTextToSize(billData.vendors.address, columnWidth);
+    pdf.text(addressLines, 15, currentY);
+    currentY += 6 * addressLines.length;
+  }
+  
+  // Bill details (right column)
+  let rightColumnY = startY + 18;
+  const rightColumnX = 15 + columnWidth + 15;
+  
+  pdf.setFontSize(PDF_STYLES.fonts.heading);
+  pdf.setTextColor(...PDF_STYLES.colors.secondary);
+  pdf.text('Bill Details:', rightColumnX, rightColumnY);
+  rightColumnY += 8;
   
   const billInfo = [
     ['Bill Number:', formatString(billData.bill_number)],
-    ['Vendor Name:', formatString(billData.vendor_name)],
-    ['Service Type:', formatString(billData.job_type?.toUpperCase())],
+    ['Service Type:', formatString(billData.job_type?.replace(/_/g, ' ').toUpperCase())],
     ['Bill Date:', formatDate(billData.created_at)],
-    ['Total Amount:', formatCurrency(billData.total_amount)],
-    ['Status:', formatString(billData.status?.replace(/_/g, ' ').toUpperCase(), 'PENDING')]
+    ['Status:', formatString(billData.status?.replace(/_/g, ' ').toUpperCase(), 'PENDING')],
+    ['Total Amount:', formatCurrency(billData.total_amount)]
   ];
   
-  autoTable(pdf, {
-    body: billInfo,
-    startY: currentY,
-    theme: 'plain',
-    columnStyles: {
-      0: { fontStyle: 'bold', cellWidth: 60 },
-      1: { cellWidth: 120 }
-    },
-    styles: {
-      fontSize: PDF_STYLES.fonts.body,
-      cellPadding: 3
-    }
+  pdf.setFontSize(PDF_STYLES.fonts.body);
+  billInfo.forEach(([label, value]) => {
+    pdf.setTextColor(...PDF_STYLES.colors.gray);
+    pdf.text(label, rightColumnX, rightColumnY);
+    pdf.setTextColor(...PDF_STYLES.colors.black);
+    pdf.text(value, rightColumnX + 35, rightColumnY);
+    rightColumnY += 8;
   });
   
-  currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 15;
+  currentY = Math.max(currentY, rightColumnY) + 15;
   
-  // Job details (if available)
+  // Service/Job details (if available)
   if (billData.jobs && billData.jobs.length > 0) {
     pdf.setFontSize(PDF_STYLES.fonts.heading);
     pdf.setTextColor(...PDF_STYLES.colors.secondary);
-    pdf.text('Job Details', 15, currentY);
+    pdf.text('Service Details', 15, currentY);
     currentY += 10;
     
     const jobDetails = billData.jobs.map((job, index) => [
-      `Job ${index + 1}`,
+      `${index + 1}`,
       formatString(job.job_card_id),
+      formatString(job.description || `${billData.job_type || 'Service'} Work`),
       formatNumber(job.quantity),
+      formatString(job.unit || 'unit'),
       formatCurrency(job.rate),
       formatCurrency(job.amount)
     ]);
     
     autoTable(pdf, {
-      head: [['Job', 'Job Card ID', 'Quantity', 'Rate', 'Amount']],
+      head: [['#', 'Job Card ID', 'Description', 'Quantity', 'Unit', 'Rate', 'Amount']],
       body: jobDetails,
       startY: currentY,
       theme: 'striped',
@@ -473,13 +524,122 @@ export function generateVendorBillPDF(billData: VendorBillData, filename: string
         fontSize: PDF_STYLES.fonts.body,
         cellPadding: 4
       },
-      foot: [['', '', '', 'Total:', formatCurrency(billData.total_amount)]],
-      footStyles: {
-        fillColor: PDF_STYLES.colors.light,
-        textColor: PDF_STYLES.colors.secondary,
-        fontStyle: 'bold'
+      columnStyles: {
+        0: { cellWidth: 10, halign: 'center' },
+        1: { cellWidth: 25 },
+        2: { cellWidth: 40 },
+        3: { cellWidth: 20, halign: 'center' },
+        4: { cellWidth: 15, halign: 'center' },
+        5: { cellWidth: 25, halign: 'right' },
+        6: { cellWidth: 25, halign: 'right' }
       }
     });
+    
+    currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 15;
+    
+    // Enhanced totals section
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Bill Summary', 15, currentY);
+    currentY += 10;
+    
+    const totalsX = pageWidth - 90;
+    
+    // Calculate totals
+    const subtotal = billData.jobs.reduce((sum, job) => sum + (job.amount || 0), 0);
+    const taxAmount = billData.tax_amount || 0;
+    const discountAmount = billData.discount_amount || 0;
+    
+    const summaryData = [
+      ['Subtotal:', formatCurrency(subtotal)],
+      ...(taxAmount > 0 ? [['Tax Amount:', formatCurrency(taxAmount)]] : []),
+      ...(discountAmount > 0 ? [['Discount:', formatCurrency(discountAmount)]] : []),
+      ['Total Amount:', formatCurrency(billData.total_amount)]
+    ];
+    
+    summaryData.forEach(([label, value], index) => {
+      pdf.setFontSize(PDF_STYLES.fonts.body);
+      
+      if (index === summaryData.length - 1) {
+        // Highlight total
+        pdf.setFontSize(PDF_STYLES.fonts.heading);
+        pdf.setTextColor(...PDF_STYLES.colors.secondary);
+        // Add background box for total
+        pdf.setFillColor(...PDF_STYLES.colors.light);
+        pdf.rect(totalsX - 5, currentY - 4, 80, 10, 'F');
+      } else {
+        pdf.setTextColor(...PDF_STYLES.colors.gray);
+      }
+      
+      pdf.text(label, totalsX, currentY);
+      pdf.text(value, totalsX + 35, currentY);
+      currentY += 10;
+    });
+  } else {
+    // If no job details, show basic service information
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Service Summary', 15, currentY);
+    currentY += 10;
+    
+    const serviceData = [
+      ['Service Type:', formatString(billData.job_type?.replace(/_/g, ' ').toUpperCase())],
+      ['Total Amount:', formatCurrency(billData.total_amount)]
+    ];
+    
+    autoTable(pdf, {
+      body: serviceData,
+      startY: currentY,
+      theme: 'plain',
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 60 },
+        1: { cellWidth: 80, halign: 'right' }
+      },
+      styles: {
+        fontSize: PDF_STYLES.fonts.body,
+        cellPadding: 4
+      }
+    });
+    
+    currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 10;
+  }
+  
+  // Payment terms and conditions
+  if (billData.payment_terms || billData.due_date) {
+    currentY += 10;
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Payment Information', 15, currentY);
+    currentY += 8;
+    
+    pdf.setFontSize(PDF_STYLES.fonts.body);
+    pdf.setTextColor(...PDF_STYLES.colors.black);
+    
+    if (billData.due_date) {
+      pdf.text(`Payment Due Date: ${formatDate(billData.due_date)}`, 15, currentY);
+      currentY += 6;
+    }
+    
+    if (billData.payment_terms) {
+      pdf.text(`Payment Terms: ${billData.payment_terms}`, 15, currentY);
+      currentY += 6;
+    }
+    
+    currentY += 4;
+  }
+  
+  // Notes section if available
+  if (billData.notes) {
+    currentY += 5;
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Additional Notes:', 15, currentY);
+    currentY += 8;
+    
+    pdf.setFontSize(PDF_STYLES.fonts.body);
+    pdf.setTextColor(...PDF_STYLES.colors.black);
+    const notesLines = pdf.splitTextToSize(billData.notes, pageWidth - 30);
+    pdf.text(notesLines, 15, currentY);
   }
   
   // Add footer
@@ -598,24 +758,28 @@ export function generateSalesInvoicePDF(invoiceData: PDFDataItem, filename: stri
   const pdf = new jsPDF();
   
   // Header
-  const startY = addCompanyHeader(pdf, 'Sales Invoice', `Invoice #${invoiceData.invoice_number || 'N/A'}`);
+  const startY = addCompanyHeader(pdf, 'Sales Invoice', `Invoice #${invoiceData.invoiceNumber || 'N/A'}`);
   
   let currentY = startY + 10;
   
-  // Split into two columns for billing details
+  // Split into two columns for customer and invoice details
   const pageWidth = pdf.internal.pageSize.width;
   const columnWidth = (pageWidth - 45) / 2;
   
-  // Bill To section
+  // Customer/Bill To section (left column)
   pdf.setFontSize(PDF_STYLES.fonts.heading);
   pdf.setTextColor(...PDF_STYLES.colors.secondary);
-  pdf.text('Bill To:', 15, currentY);
+  pdf.text('Bill To', 15, currentY);
   currentY += 8;
   
   pdf.setFontSize(PDF_STYLES.fonts.body);
   pdf.setTextColor(...PDF_STYLES.colors.black);
-  pdf.text(formatString(invoiceData.customer_name), 15, currentY);
-  currentY += 6;
+  
+  // Company name (bold)
+  pdf.setFont(undefined, 'bold');
+  pdf.text(formatString(invoiceData.companyName), 15, currentY);
+  pdf.setFont(undefined, 'normal');
+  currentY += 8;
   
   if (invoiceData.customer_address) {
     const addressLines = pdf.splitTextToSize(invoiceData.customer_address, columnWidth);
@@ -623,88 +787,200 @@ export function generateSalesInvoicePDF(invoiceData: PDFDataItem, filename: stri
     currentY += 6 * addressLines.length;
   }
   
-  // Invoice details (right column)
+  // Invoice Information section (right column)
   let rightColumnY = startY + 18;
   const rightColumnX = 15 + columnWidth + 15;
   
-  const invoiceDetails = [
-    ['Invoice Date:', formatDate(invoiceData.invoice_date)],
-    ['Due Date:', formatDate(invoiceData.due_date)],
-    ['Order Reference:', formatString(invoiceData.order_reference)]
-  ];
-  
-  invoiceDetails.forEach(([label, value]) => {
-    pdf.setFontSize(PDF_STYLES.fonts.body);
-    pdf.setTextColor(...PDF_STYLES.colors.gray);
-    pdf.text(label, rightColumnX, rightColumnY);
-    pdf.setTextColor(...PDF_STYLES.colors.black);
-    pdf.text(value, rightColumnX + 40, rightColumnY);
-    rightColumnY += 8;
-  });
-  
-  currentY = Math.max(currentY, rightColumnY) + 15;
-  
-  // Items table
   pdf.setFontSize(PDF_STYLES.fonts.heading);
   pdf.setTextColor(...PDF_STYLES.colors.secondary);
-  pdf.text('Items', 15, currentY);
-  currentY += 10;
+  pdf.text('Invoice Information', rightColumnX, rightColumnY);
+  rightColumnY += 10;
   
-  const items = invoiceData.items || [];
-  const itemRows = items.map((item: PDFDataItem) => [
-    formatString(item.description),
-    formatNumber(item.quantity),
-    formatCurrency(item.rate),
-    formatCurrency(item.amount)
-  ]);
+  const invoiceDetails = [
+    ['Invoice Number:', formatString(invoiceData.invoiceNumber)],
+    ['Company Name:', formatString(invoiceData.companyName)],
+    ['Product Name:', formatString(invoiceData.productName)],
+    ['Quantity:', formatNumber(invoiceData.quantity)],
+    ['Rate:', formatCurrency(invoiceData.rate)],
+    ['Created Date:', formatDate(invoiceData.createdAt)]
+  ];
   
   autoTable(pdf, {
-    head: [['Description', 'Quantity', 'Rate', 'Amount']],
-    body: itemRows,
+    body: invoiceDetails,
+    startY: rightColumnY,
+    margin: { left: rightColumnX },
+    theme: 'plain',
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 35, textColor: PDF_STYLES.colors.gray },
+      1: { cellWidth: 50, textColor: PDF_STYLES.colors.black }
+    },
+    styles: {
+      fontSize: PDF_STYLES.fonts.body,
+      cellPadding: 2
+    }
+  });
+  
+  currentY = Math.max(currentY, (pdf as jsPDFWithAutoTable).lastAutoTable.finalY) + 15;
+  
+  // Related Order Information (if available)
+  if (invoiceData.order) {
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Related Order Information', 15, currentY);
+    currentY += 10;
+    
+    const orderDetails = [
+      ['Order Number:', formatString(invoiceData.order.orderNumber)],
+      ['Order Date:', formatDate(invoiceData.order.orderDate)],
+      ['Order Status:', formatString(invoiceData.order.status?.replace(/_/g, ' ').toUpperCase())]
+    ];
+    
+    if (invoiceData.order.deliveryDate) {
+      orderDetails.push(['Delivery Date:', formatDate(invoiceData.order.deliveryDate)]);
+    }
+    
+    autoTable(pdf, {
+      body: orderDetails,
+      startY: currentY,
+      theme: 'plain',
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 60, textColor: PDF_STYLES.colors.gray },
+        1: { cellWidth: 120, textColor: PDF_STYLES.colors.black }
+      },
+      styles: {
+        fontSize: PDF_STYLES.fonts.body,
+        cellPadding: 3
+      }
+    });
+    
+    currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 15;
+  }
+  
+  // Financial Breakdown section
+  pdf.setFontSize(PDF_STYLES.fonts.heading);
+  pdf.setTextColor(...PDF_STYLES.colors.secondary);
+  pdf.text('Financial Breakdown', 15, currentY);
+  currentY += 10;
+  
+  // Create comprehensive financial breakdown table
+  const financialData = [
+    ['Subtotal:', formatCurrency(invoiceData.subtotal)],
+    [`GST (${formatNumber(invoiceData.gstPercentage)}%):`, formatCurrency(invoiceData.gstAmount)]
+  ];
+  
+  // Add transport charge if included
+  if (invoiceData.transportIncluded && invoiceData.transportCharge > 0) {
+    financialData.push(['Transport Charge:', formatCurrency(invoiceData.transportCharge)]);
+  }
+  
+  // Add other expenses if any
+  if (invoiceData.otherExpenses > 0) {
+    financialData.push(['Other Expenses:', formatCurrency(invoiceData.otherExpenses)]);
+  }
+  
+  // Add total amount
+  financialData.push(['Total Amount:', formatCurrency(invoiceData.totalAmount)]);
+  
+  autoTable(pdf, {
+    body: financialData,
     startY: currentY,
-    theme: 'striped',
-    headStyles: {
-      fillColor: PDF_STYLES.colors.primary,
-      textColor: PDF_STYLES.colors.white,
-      fontStyle: 'bold'
+    theme: 'plain',
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 80, textColor: PDF_STYLES.colors.gray },
+      1: { cellWidth: 100, halign: 'right', textColor: PDF_STYLES.colors.black }
     },
     styles: {
       fontSize: PDF_STYLES.fonts.body,
       cellPadding: 4
     },
-    columnStyles: {
-      0: { cellWidth: 80 },
-      1: { cellWidth: 30, halign: 'center' },
-      2: { cellWidth: 40, halign: 'right' },
-      3: { cellWidth: 40, halign: 'right' }
+    didParseCell: function(data) {
+      // Highlight the total row
+      if (data.row.index === financialData.length - 1) {
+        data.cell.styles.fillColor = PDF_STYLES.colors.light;
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fontSize = PDF_STYLES.fonts.heading;
+        data.cell.styles.textColor = PDF_STYLES.colors.secondary;
+      }
     }
   });
   
-  currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 10;
+  currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 15;
   
-  // Totals section
-  const totalsX = pageWidth - 90;
-  const totalsData = [
-    ['Subtotal:', formatCurrency(invoiceData.subtotal)],
-    ['Tax:', formatCurrency(invoiceData.tax)],
-    ['Total:', formatCurrency(invoiceData.total)]
+  // Transport Details section
+  pdf.setFontSize(PDF_STYLES.fonts.heading);
+  pdf.setTextColor(...PDF_STYLES.colors.secondary);
+  pdf.text('Transport Details', 15, currentY);
+  currentY += 10;
+  
+  const transportDetails = [
+    ['Transport Included:', invoiceData.transportIncluded ? 'Yes' : 'No']
   ];
   
-  totalsData.forEach(([label, value], index) => {
-    pdf.setFontSize(PDF_STYLES.fonts.body);
-    
-    if (index === totalsData.length - 1) {
-      // Highlight total
-      pdf.setFontSize(PDF_STYLES.fonts.heading);
-      pdf.setTextColor(...PDF_STYLES.colors.secondary);
-    } else {
-      pdf.setTextColor(...PDF_STYLES.colors.gray);
+  if (invoiceData.transportIncluded && invoiceData.transportCharge > 0) {
+    transportDetails.push(['Transport Charge:', formatCurrency(invoiceData.transportCharge)]);
+  }
+  
+  autoTable(pdf, {
+    body: transportDetails,
+    startY: currentY,
+    theme: 'plain',
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 60, textColor: PDF_STYLES.colors.gray },
+      1: { cellWidth: 120, textColor: PDF_STYLES.colors.black }
+    },
+    styles: {
+      fontSize: PDF_STYLES.fonts.body,
+      cellPadding: 3
     }
-    
-    pdf.text(label, totalsX, currentY);
-    pdf.text(value, totalsX + 30, currentY);
-    currentY += 8;
   });
+  
+  currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 15;
+  
+  // GST and Tax Information
+  if (invoiceData.gstPercentage > 0) {
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Tax Information', 15, currentY);
+    currentY += 8;
+    
+    pdf.setFontSize(PDF_STYLES.fonts.body);
+    pdf.setTextColor(...PDF_STYLES.colors.black);
+    pdf.text(`This invoice is subject to ${formatNumber(invoiceData.gstPercentage)}% GST as per applicable tax regulations.`, 15, currentY);
+    currentY += 6;
+    pdf.text('Please ensure timely payment to avoid any late fees or penalties.', 15, currentY);
+    currentY += 10;
+  }
+  
+  // Notes section (if available)
+  if (invoiceData.notes && invoiceData.notes.trim()) {
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Additional Notes', 15, currentY);
+    currentY += 8;
+    
+    pdf.setFontSize(PDF_STYLES.fonts.body);
+    pdf.setTextColor(...PDF_STYLES.colors.black);
+    const notesLines = pdf.splitTextToSize(invoiceData.notes, pageWidth - 30);
+    pdf.text(notesLines, 15, currentY);
+    currentY += 6 * notesLines.length;
+  }
+  
+  // Payment terms (if space allows)
+  if (currentY < 240) {
+    currentY += 10;
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Payment Terms & Conditions', 15, currentY);
+    currentY += 8;
+    
+    pdf.setFontSize(PDF_STYLES.fonts.body);
+    pdf.setTextColor(...PDF_STYLES.colors.black);
+    pdf.text('• Payment due within 30 days of invoice date', 15, currentY);
+    currentY += 6;
+    pdf.text('• Late payment charges may apply after due date', 15, currentY);
+    currentY += 6;
+    pdf.text('• All disputes subject to local jurisdiction', 15, currentY);
+  }
   
   // Add footer
   addFooter(pdf, 1, 1);
@@ -828,130 +1104,402 @@ export function generatePurchasePDF(purchaseData: PDFDataItem, filename: string 
   const pageWidth = pdf.internal.pageSize.width;
   const columnWidth = (pageWidth - 45) / 2;
   
-  // Supplier section
+  // Supplier Information section (left column)
   pdf.setFontSize(PDF_STYLES.fonts.heading);
   pdf.setTextColor(...PDF_STYLES.colors.secondary);
-  pdf.text('Supplier:', 15, currentY);
+  pdf.text('Supplier Information', 15, currentY);
   currentY += 8;
   
   pdf.setFontSize(PDF_STYLES.fonts.body);
   pdf.setTextColor(...PDF_STYLES.colors.black);
-  pdf.text(purchaseData.supplier_name || 'N/A', 15, currentY);
-  currentY += 6;
+  
+  // Supplier name (bold)
+  pdf.setFont(undefined, 'bold');
+  pdf.text(formatString(purchaseData.supplier_name), 15, currentY);
+  pdf.setFont(undefined, 'normal');
+  currentY += 8;
   
   if (purchaseData.supplier_contact) {
-    pdf.text(`Contact: ${purchaseData.supplier_contact}`, 15, currentY);
-    currentY += 6;
+    pdf.setTextColor(...PDF_STYLES.colors.gray);
+    pdf.text('Contact Person:', 15, currentY);
+    pdf.setTextColor(...PDF_STYLES.colors.black);
+    pdf.text(formatString(purchaseData.supplier_contact), 15, currentY + 6);
+    currentY += 12;
   }
   
   if (purchaseData.supplier_phone) {
-    pdf.text(`Phone: ${purchaseData.supplier_phone}`, 15, currentY);
-    currentY += 6;
+    pdf.setTextColor(...PDF_STYLES.colors.gray);
+    pdf.text('Phone:', 15, currentY);
+    pdf.setTextColor(...PDF_STYLES.colors.black);
+    pdf.text(formatString(purchaseData.supplier_phone), 15, currentY + 6);
+    currentY += 12;
+  }
+  
+  if (purchaseData.supplier_gst) {
+    pdf.setTextColor(...PDF_STYLES.colors.gray);
+    pdf.text('GST Number:', 15, currentY);
+    pdf.setTextColor(...PDF_STYLES.colors.black);
+    pdf.text(formatString(purchaseData.supplier_gst), 15, currentY + 6);
+    currentY += 12;
   }
   
   if (purchaseData.supplier_address) {
+    pdf.setTextColor(...PDF_STYLES.colors.gray);
+    pdf.text('Address:', 15, currentY);
+    currentY += 6;
+    pdf.setTextColor(...PDF_STYLES.colors.black);
     const addressLines = pdf.splitTextToSize(purchaseData.supplier_address, columnWidth);
     pdf.text(addressLines, 15, currentY);
     currentY += 6 * addressLines.length;
   }
   
-  // Purchase details (right column)
+  // Purchase Details section (right column)
   let rightColumnY = startY + 18;
   const rightColumnX = 15 + columnWidth + 15;
   
+  pdf.setFontSize(PDF_STYLES.fonts.heading);
+  pdf.setTextColor(...PDF_STYLES.colors.secondary);
+  pdf.text('Purchase Details', rightColumnX, rightColumnY);
+  rightColumnY += 10;
+  
   const purchaseDetails = [
-    ['Purchase Date:', purchaseData.purchase_date ? format(new Date(purchaseData.purchase_date), 'dd MMM yyyy') : 'N/A'],
-    ['Status:', purchaseData.status || 'N/A'],
-    ['Invoice Number:', purchaseData.invoice_number || 'N/A'],
-    ['Transport Charge:', purchaseData.transport_charge ? `₹${purchaseData.transport_charge.toLocaleString()}` : '₹0']
+    ['Purchase Number:', formatString(purchaseData.purchase_number)],
+    ['Purchase Date:', formatDate(purchaseData.purchase_date)],
+    ['Status:', formatString(purchaseData.status?.replace(/_/g, ' ').toUpperCase())],
+    ['Invoice Number:', formatString(purchaseData.invoice_number)],
+    ['Created At:', formatDate(purchaseData.created_at)]
   ];
   
-  purchaseDetails.forEach(([label, value]) => {
-    pdf.setFontSize(PDF_STYLES.fonts.body);
-    pdf.setTextColor(...PDF_STYLES.colors.gray);
-    pdf.text(label, rightColumnX, rightColumnY);
-    pdf.setTextColor(...PDF_STYLES.colors.black);
-    pdf.text(value, rightColumnX + 40, rightColumnY);
-    rightColumnY += 8;
+  autoTable(pdf, {
+    body: purchaseDetails,
+    startY: rightColumnY,
+    margin: { left: rightColumnX },
+    theme: 'plain',
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 35, textColor: PDF_STYLES.colors.gray },
+      1: { cellWidth: 50, textColor: PDF_STYLES.colors.black }
+    },
+    styles: {
+      fontSize: PDF_STYLES.fonts.body,
+      cellPadding: 2
+    }
   });
   
-  currentY = Math.max(currentY, rightColumnY) + 15;
+  currentY = Math.max(currentY, (pdf as jsPDFWithAutoTable).lastAutoTable.finalY) + 15;
   
-  // Items table
+  // Purchase Items section with comprehensive details matching frontend
   pdf.setFontSize(PDF_STYLES.fonts.heading);
   pdf.setTextColor(...PDF_STYLES.colors.secondary);
   pdf.text('Purchase Items', 15, currentY);
   currentY += 10;
-    const items = purchaseData.purchase_items || [];
-  const itemRows = items.map((item: PDFDataItem) => [
-    item.material_name || 'N/A',
-    item.quantity?.toString() || '0',
-    item.unit || 'unit',
-    item.unit_price ? `₹${item.unit_price.toFixed(2)}` : '₹0',
-    item.line_total ? `₹${item.line_total.toLocaleString()}` : '₹0'
-  ]);
+  
+  const items = purchaseData.purchase_items || [];
+  const itemRows = items.map((item: PDFDataItem) => {
+    // Use alt_quantity if available, otherwise calculate from main quantity * conversion rate
+    const altQuantity = item.alt_quantity || ((item.quantity || 0) * (item.conversion_rate || 1));
+    
+    const materialSpecs = [
+      item.color ? `Color: ${item.color}` : '',
+      item.gsm ? `GSM: ${item.gsm}` : ''
+    ].filter(Boolean).join(', ') || '-';
+    
+    return [
+      formatString(item.material_name),
+      materialSpecs,
+      formatNumber(altQuantity.toFixed(2)),
+      formatString(item.alternate_unit),
+      formatNumber(item.quantity),
+      formatString(item.unit),
+      formatNumber(item.actual_meter || 0),
+      formatCurrency(item.alt_unit_price || 0),
+      formatCurrency(item.unit_price),
+      `${formatNumber(item.gst_percentage)}%`,
+      formatCurrency(item.gst_amount),
+      formatCurrency(item.transport_share || 0),
+      formatCurrency(item.line_total)
+    ];
+  });
   
   autoTable(pdf, {
-    head: [['Material', 'Quantity', 'Unit', 'Unit Price', 'Total']],
+    head: [['Material', 'Specifications', 'Alt. Qty', 'Alt. Unit', 'Main Qty', 'Main Unit', 'Actual Meter', 'Alt. Unit Price', 'Unit Price', 'GST %', 'GST Amount', 'Transport Share', 'Line Total']],
     body: itemRows,
     startY: currentY,
     theme: 'striped',
     headStyles: {
       fillColor: PDF_STYLES.colors.primary,
       textColor: PDF_STYLES.colors.white,
-      fontStyle: 'bold'
+      fontStyle: 'bold',
+      fontSize: PDF_STYLES.fonts.small
     },
     styles: {
-      fontSize: PDF_STYLES.fonts.body,
-      cellPadding: 4
+      fontSize: PDF_STYLES.fonts.small - 1,
+      cellPadding: 1.5
     },
     columnStyles: {
-      0: { cellWidth: 60 },
-      1: { cellWidth: 25, halign: 'center' },
-      2: { cellWidth: 25, halign: 'center' },
-      3: { cellWidth: 35, halign: 'right' },
-      4: { cellWidth: 35, halign: 'right' }
+      0: { cellWidth: 18 },                    // Material
+      1: { cellWidth: 16 },                    // Specifications
+      2: { cellWidth: 12, halign: 'center' },  // Alt. Qty
+      3: { cellWidth: 12, halign: 'center' },  // Alt. Unit
+      4: { cellWidth: 12, halign: 'center' },  // Main Qty
+      5: { cellWidth: 12, halign: 'center' },  // Main Unit
+      6: { cellWidth: 12, halign: 'center' },  // Actual Meter
+      7: { cellWidth: 15, halign: 'right' },   // Alt. Unit Price
+      8: { cellWidth: 15, halign: 'right' },   // Unit Price
+      9: { cellWidth: 10, halign: 'center' },  // GST %
+      10: { cellWidth: 15, halign: 'right' },  // GST Amount
+      11: { cellWidth: 15, halign: 'right' },  // Transport Share
+      12: { cellWidth: 15, halign: 'right' }   // Line Total
     }
   });
   
-  currentY = (pdf as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+  currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 15;
   
-  // Totals section
-  const totalsX = pageWidth - 90;
-  const totalsData = [
-    ['Subtotal:', purchaseData.subtotal ? `₹${purchaseData.subtotal.toLocaleString()}` : '₹0'],
-    ['Transport:', purchaseData.transport_charge ? `₹${purchaseData.transport_charge.toLocaleString()}` : '₹0'],
-    ['Total Amount:', purchaseData.total_amount ? `₹${purchaseData.total_amount.toLocaleString()}` : '₹0']
-  ];
+  // Summary section with comprehensive totals
+  const summaryStartY = currentY;
   
-  totalsData.forEach(([label, value], index) => {
-    pdf.setFontSize(PDF_STYLES.fonts.body);
-    
-    if (index === totalsData.length - 1) {
-      // Highlight total
-      pdf.setFontSize(PDF_STYLES.fonts.heading);
-      pdf.setTextColor(...PDF_STYLES.colors.secondary);
-    } else {
-      pdf.setTextColor(...PDF_STYLES.colors.gray);
-    }
-    
-    pdf.text(label, totalsX, currentY);
-    pdf.text(value, totalsX + 30, currentY);
-    currentY += 8;
-  });
-  
-  // Notes section if available
+  // Left side - Notes (if available)
   if (purchaseData.notes) {
-    currentY += 10;
     pdf.setFontSize(PDF_STYLES.fonts.heading);
     pdf.setTextColor(...PDF_STYLES.colors.secondary);
-    pdf.text('Notes:', 15, currentY);
+    pdf.text('Notes', 15, currentY);
     currentY += 8;
     
     pdf.setFontSize(PDF_STYLES.fonts.body);
     pdf.setTextColor(...PDF_STYLES.colors.black);
-    const notesLines = pdf.splitTextToSize(purchaseData.notes, pageWidth - 30);
+    const notesLines = pdf.splitTextToSize(purchaseData.notes, columnWidth - 10);
     pdf.text(notesLines, 15, currentY);
+  }
+  
+  // Right side - Financial Summary
+  const summaryX = rightColumnX;
+  let summaryY = summaryStartY;
+  
+  pdf.setFontSize(PDF_STYLES.fonts.heading);
+  pdf.setTextColor(...PDF_STYLES.colors.secondary);
+  pdf.text('Financial Summary', summaryX, summaryY);
+  summaryY += 10;
+  
+  // Create a bordered summary box
+  const summaryData = [
+    ['Subtotal:', formatCurrency(purchaseData.subtotal)],
+    ['Transport Charge:', formatCurrency(purchaseData.transport_charge)],
+    ['Total Amount:', formatCurrency(purchaseData.total_amount)]
+  ];
+  
+  autoTable(pdf, {
+    body: summaryData,
+    startY: summaryY,
+    margin: { left: summaryX },
+    theme: 'plain',
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 40, textColor: PDF_STYLES.colors.gray },
+      1: { cellWidth: 40, halign: 'right', textColor: PDF_STYLES.colors.black }
+    },
+    styles: {
+      fontSize: PDF_STYLES.fonts.body,
+      cellPadding: 3
+    },
+    didParseCell: function(data) {
+      // Highlight the total row
+      if (data.row.index === summaryData.length - 1) {
+        data.cell.styles.fillColor = PDF_STYLES.colors.light;
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fontSize = PDF_STYLES.fonts.heading;
+        data.cell.styles.textColor = PDF_STYLES.colors.secondary;
+      }
+    }
+  });
+  
+  // Add footer
+  addFooter(pdf, 1, 1);
+  
+  // Save the PDF
+  pdf.save(`${filename}.pdf`);
+}
+
+/**
+ * Generate bulk orders PDF for order list exports
+ */
+export function generateBulkOrdersPDF(orders: PDFDataItem[], filename: string = 'orders-list'): void {
+  const pdf = new jsPDF();
+  
+  // Add header
+  addCompanyHeader(pdf, 'Orders List Export');
+  
+  // Add summary
+  let currentY = 80;
+  pdf.setFontSize(PDF_STYLES.fonts.heading);
+  pdf.setTextColor(...PDF_STYLES.colors.primary);
+  pdf.text(`Total Orders: ${orders.length}`, 15, currentY);
+  pdf.text(`Export Date: ${formatDate(new Date())}`, 15, currentY + 10);
+  
+  currentY += 30;
+  
+  // Prepare table data
+  const tableHeaders = [
+    'Order Number', 'Company', 'Product', 'Quantity', 
+    'Bag Size', 'Rate', 'Total', 'Status', 'Date'
+  ];
+  
+  const tableData = orders.map(order => [
+    formatString(order['order_number']),
+    formatString(order['company_name']),
+    formatString(order['product_name'], 'Standard Bag'),
+    formatNumber(order['quantity']),
+    formatString(order['bag_size']),
+    formatCurrency(order['rate']),
+    formatCurrency(order['total_amount']),
+    formatString(order['status']),
+    formatDate(order['order_date'])
+  ]);
+  
+  // Add table
+  autoTable(pdf, {
+    head: [tableHeaders],
+    body: tableData,
+    startY: currentY,
+    styles: { fontSize: 9, cellPadding: 2 },
+    headStyles: { 
+      fillColor: PDF_STYLES.colors.primary,
+      textColor: PDF_STYLES.colors.white,
+      fontSize: 10,
+      fontStyle: 'bold'
+    },
+    alternateRowStyles: { fillColor: [249, 250, 251] },
+    columnStyles: {
+      0: { cellWidth: 25 }, // Order Number
+      1: { cellWidth: 30 }, // Company
+      2: { cellWidth: 25 }, // Product
+      3: { cellWidth: 20 }, // Quantity
+      4: { cellWidth: 25 }, // Bag Size
+      5: { cellWidth: 20 }, // Rate
+      6: { cellWidth: 25 }, // Total
+      7: { cellWidth: 20 }, // Status
+      8: { cellWidth: 25 }  // Date
+    }
+  });
+  
+  // Add footer
+  addFooter(pdf, 1, 1);
+  
+  // Save the PDF
+  pdf.save(`${filename}.pdf`);
+}
+
+/**
+ * Generate individual order PDF
+ */
+export function generateIndividualOrderPDF(orderData: Record<string, unknown>, filename: string): void {
+  const pdf = new jsPDF();
+  
+  // Add header
+  addCompanyHeader(pdf, 'Order Details');
+  
+  let currentY = 85;
+  
+  // Order header information
+  pdf.setFontSize(PDF_STYLES.fonts.heading);
+  pdf.setTextColor(...PDF_STYLES.colors.primary);
+  pdf.text(`Order #${formatString(orderData.order_number)}`, 15, currentY);
+  
+  currentY += 15;
+  pdf.setFontSize(PDF_STYLES.fonts.body);
+  pdf.setTextColor(...PDF_STYLES.colors.black);
+  
+  // Customer details
+  const leftColumnX = 15;
+  const rightColumnX = 110;
+  
+  pdf.text(`Company: ${formatString(orderData.company_name)}`, leftColumnX, currentY);
+  pdf.text(`Order Date: ${formatDate(orderData.order_date)}`, rightColumnX, currentY);
+  
+  currentY += 10;
+  pdf.text(`Status: ${formatString(orderData.status)}`, leftColumnX, currentY);
+  pdf.text(`Created: ${formatDate(orderData.created_at)}`, rightColumnX, currentY);
+  
+  currentY += 20;
+  
+  // Product details table
+  const productHeaders = ['Property', 'Value'];
+  const productData = [
+    ['Product Type', formatString(orderData.catalog_name || orderData.product_name, 'Standard Bag')],
+    ['Quantity', formatNumber(orderData.quantity)],
+    ['Bag Length', `${formatNumber(orderData.bag_length)} units`],
+    ['Bag Width', `${formatNumber(orderData.bag_width)} units`],
+    ['Border Dimension', formatNumber(orderData.border_dimension) + ' units'],
+    ['Rate per Unit', formatCurrency(orderData.rate)],
+    ['Total Amount', formatCurrency(Number(orderData.rate || 0) * Number(orderData.quantity || 0))]
+  ];
+  
+  autoTable(pdf, {
+    head: [productHeaders],
+    body: productData,
+    startY: currentY,
+    styles: { fontSize: 10, cellPadding: 3 },
+    headStyles: { 
+      fillColor: PDF_STYLES.colors.primary,
+      textColor: PDF_STYLES.colors.white,
+      fontStyle: 'bold'
+    },
+    columnStyles: {
+      0: { cellWidth: 60, fontStyle: 'bold' },
+      1: { cellWidth: 80 }
+    }
+  });
+  
+  currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 20;
+  
+  // Cost breakdown if available
+  if (orderData.material_cost || orderData.cutting_charge || orderData.printing_charge) {
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.primary);
+    pdf.text('Cost Breakdown', leftColumnX, currentY);
+    currentY += 15;
+    
+    const costHeaders = ['Cost Type', 'Amount'];
+    const costData = [];
+    
+    if (orderData.material_cost) costData.push(['Material Cost', formatCurrency(orderData.material_cost)]);
+    if (orderData.cutting_charge) costData.push(['Cutting Charge', formatCurrency(orderData.cutting_charge)]);
+    if (orderData.printing_charge) costData.push(['Printing Charge', formatCurrency(orderData.printing_charge)]);
+    if (orderData.stitching_charge) costData.push(['Stitching Charge', formatCurrency(orderData.stitching_charge)]);
+    if (orderData.transport_charge) costData.push(['Transport Charge', formatCurrency(orderData.transport_charge)]);
+    if (orderData.total_cost) costData.push(['Total Cost', formatCurrency(orderData.total_cost)]);
+    if (orderData.margin) costData.push(['Margin', formatCurrency(orderData.margin)]);
+    
+    if (costData.length > 0) {
+      autoTable(pdf, {
+        head: [costHeaders],
+        body: costData,
+        startY: currentY,
+        styles: { fontSize: 10, cellPadding: 3 },
+        headStyles: { 
+          fillColor: PDF_STYLES.colors.secondary,
+          textColor: PDF_STYLES.colors.white,
+          fontStyle: 'bold'
+        },
+        columnStyles: {
+          0: { cellWidth: 80, fontStyle: 'bold' },
+          1: { cellWidth: 60, halign: 'right' }
+        }
+      });
+      
+      currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 10;
+    }
+  }
+  
+  // Special instructions
+  if (orderData.special_instructions) {
+    currentY += 10;
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.primary);
+    pdf.text('Special Instructions:', leftColumnX, currentY);
+    currentY += 10;
+    
+    pdf.setFontSize(PDF_STYLES.fonts.body);
+    pdf.setTextColor(...PDF_STYLES.colors.black);
+    const instructionsLines = pdf.splitTextToSize(String(orderData.special_instructions), 180);
+    pdf.text(instructionsLines, leftColumnX, currentY);
   }
   
   // Add footer

@@ -9,7 +9,6 @@ interface UseProductSelectionProps {
   setOrderDetails: React.Dispatch<React.SetStateAction<OrderFormData>>;
   setComponents: React.Dispatch<React.SetStateAction<Record<string, any>>>;
   setCustomComponents: React.Dispatch<React.SetStateAction<any[]>>;
-  setBaseConsumptions: React.Dispatch<React.SetStateAction<Record<string, number>>>;
   updateConsumptionBasedOnQuantity: (quantity: number) => void;
   setCostCalculation?: React.Dispatch<React.SetStateAction<any>>;
 }
@@ -19,7 +18,6 @@ export function useProductSelection({
   setOrderDetails,
   setComponents,
   setCustomComponents,
-  setBaseConsumptions,
   updateConsumptionBasedOnQuantity,
   setCostCalculation
 }: UseProductSelectionProps) {
@@ -61,7 +59,6 @@ export function useProductSelection({
     const standardTypesLower = ['part', 'border', 'handle', 'chain', 'runner', 'piping'];
     const newOrderComponents: Record<string, any> = {};
     const newCustomComponents: any[] = [];
-    const newBaseConsumptions: Record<string, number> = {};
 
     // Extract all material_ids that need to be fetched
     const materialIds = components
@@ -154,6 +151,9 @@ export function useProductSelection({
       }));
     }
 
+    // Get current order quantity for manual consumption calculation
+    const currentOrderQuantity = parseFloat(orderDetails.quantity || '1');
+    
     // Create a function to process each component
     const processComponent = (component: any) => {
       if (!component) return null;
@@ -279,29 +279,18 @@ export function useProductSelection({
         console.log(`Normalized component type to: ${componentTypeLower}`);
       }
       
-      // Calculate the base consumption (per unit) from the total consumption
-      // Divide by product default quantity to get the base consumption per unit
-      let baseConsumption: number | undefined;
-      
-      if (totalConsumption) {
-        const totalConsumptionVal = parseFloat(totalConsumption);
-        if (!isNaN(totalConsumptionVal)) {
-          // Calculate base consumption per unit from total consumption
-          baseConsumption = totalConsumptionVal / productQuantity;
-          // Ensure it's at least a small positive number to avoid calculation issues
-          if (baseConsumption <= 0) baseConsumption = 0.001;
-          console.log(`Calculated base consumption: ${baseConsumption} (total: ${totalConsumptionVal} / product qty: ${productQuantity})`);
-        }
-      }
-
       // Prepare the common component object with all necessary fields
+      // Store the original fetched consumption for manual components
+      const isManualConsumption = component.formula === 'manual' || component.is_manual_consumption === true;
+      
       const commonFields = {
         color: materialColor,
         gsm: materialGsm,
         length,
         width,
         consumption: totalConsumption,
-        baseConsumption: baseConsumption?.toString(),
+        fetchedConsumption: totalConsumption, // Store original fetched consumption
+        is_manual_consumption: isManualConsumption,
         roll_width: materialRollWidth || rollWidth,
         material_id: materialId,
         materialRate,
@@ -311,8 +300,7 @@ export function useProductSelection({
       return {
         ...component,
         ...commonFields,
-        componentTypeLower,
-        baseConsumption
+        componentTypeLower
       };
     };
 
@@ -323,7 +311,7 @@ export function useProductSelection({
     processedComponents.forEach(comp => {
       if (!comp) return;
 
-      const { componentTypeLower, baseConsumption } = comp;
+      const { componentTypeLower } = comp;
       
       // IMPORTANT: Check for custom components
       // - If is_custom is true, it's a custom component
@@ -331,18 +319,12 @@ export function useProductSelection({
       // - If custom_name is provided, it's a custom component
       
       if (comp.is_custom === true || componentTypeLower === 'custom' || comp.custom_name) {
-        const customIndex = newCustomComponents.length;
         newCustomComponents.push({
           id: uuidv4(),
           type: 'custom',
           customName: comp.custom_name || comp.componentTypeLower || '',
           ...comp
         });
-        
-        // Store base consumption for this custom component
-        if (baseConsumption) {
-          newBaseConsumptions[`custom_${customIndex}`] = baseConsumption;
-        }
       } else if (standardTypesLower.includes(componentTypeLower)) {
         // Map the component type to the capitalized version used in the UI
         // Get the properly capitalized UI version from the lowercase database version
@@ -362,22 +344,15 @@ export function useProductSelection({
           type: componentTypeCapitalized, // Use properly capitalized version for UI
           ...comp
         };
-        
-        // Store base consumption for standard component
-        if (baseConsumption) {
-          newBaseConsumptions[componentTypeCapitalized] = baseConsumption;
-        }
       }
     });
 
     console.log("Setting standard components:", newOrderComponents);
     console.log("Setting custom components:", newCustomComponents);
-    console.log("Setting base consumptions:", newBaseConsumptions);
 
     // Replace all components with the new ones
     setComponents(newOrderComponents);
     setCustomComponents(newCustomComponents);
-    setBaseConsumptions(newBaseConsumptions);
 
     // Update cost calculation state if callback provided
     if (setCostCalculation) {
