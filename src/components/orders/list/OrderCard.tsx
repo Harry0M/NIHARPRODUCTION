@@ -111,7 +111,7 @@ export const OrderCard = ({ order, onDeleteClick, isSelected = false, onSelectCh
         <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm p-3 rounded-md bg-muted/30 dark:bg-muted/20 mt-2">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Quantity:</span>
-            <span className="font-medium">{order.quantity.toLocaleString()}</span>
+            <span className="font-medium">{(order.order_quantity || order.quantity || 0).toLocaleString()}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Size:</span>

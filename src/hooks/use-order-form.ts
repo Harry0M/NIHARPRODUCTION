@@ -4,7 +4,7 @@ import { useOrderFormValidation } from "./order-form/useOrderFormValidation";
 import { useProductSelection } from "./order-form/useProductSelection";
 import { useOrderSubmission } from "./order-form/useOrderSubmission";
 import { useCostCalculation } from "./order-form/useCostCalculation"; 
-import { UseOrderFormReturn } from "@/types/order-form";
+import { UseOrderFormReturn, Component } from "@/types/order-form";
 import { useEffect } from "react";
 
 export function useOrderForm(): UseOrderFormReturn {
@@ -52,7 +52,7 @@ export function useOrderForm(): UseOrderFormReturn {
   const validateForm = () => validateFormBase(orderDetails);
   
   // Call product selection handler with components
-  const handleProductSelect = (components: any[]) => {
+  const handleProductSelect = (components: Component[]) => {
     processProductComponents(components);
   };
   
@@ -79,6 +79,32 @@ export function useOrderForm(): UseOrderFormReturn {
         rate: newSellingPrice.toFixed(2)
       }));
     }
+  };
+
+  // Function to update the entire cost calculation
+  const updateCostCalculation = (updatedCosts: {
+    materialCost: number;
+    cuttingCharge: number;
+    printingCharge: number;
+    stitchingCharge: number;
+    transportCharge: number;
+    baseCost: number;
+    gstAmount: number;
+    totalCost: number;
+    margin: number;
+    sellingPrice: number;
+    perUnitBaseCost: number;
+    perUnitTransportCost: number;
+    perUnitGstCost: number;
+    perUnitCost: number;
+  }) => {
+    setCostCalculation(updatedCosts);
+    
+    // Also update the rate in order details
+    setOrderDetails(prev => ({
+      ...prev,
+      rate: updatedCosts.sellingPrice.toFixed(2)
+    }));
   };
   
   // Update cost calculation when relevant data changes
@@ -107,7 +133,7 @@ export function useOrderForm(): UseOrderFormReturn {
     const materialCost = [...Object.values(components), ...customComponents].reduce(
       (total, comp) => {
         // Ensure we use the correct material cost
-        const cost = comp?.materialCost ? parseFloat(comp.materialCost) : 0;
+        const cost = comp?.materialCost ? parseFloat(String(comp.materialCost)) : 0;
         
         if (comp && comp.type) {
           console.log(`Material cost for ${comp.type}: ${cost}`);
@@ -150,7 +176,8 @@ export function useOrderForm(): UseOrderFormReturn {
       printingCharge: totalPrintingCharge,
       stitchingCharge: totalStitchingCharge,
       transportCharge: totalTransportCharge,
-      productionCost,
+      baseCost: materialCost + totalCuttingCharge + totalPrintingCharge + totalStitchingCharge,
+      gstAmount: 0, // Add if needed
       totalCost,
       margin,
       sellingPrice,
@@ -203,6 +230,7 @@ export function useOrderForm(): UseOrderFormReturn {
     validateForm,
     updateConsumptionBasedOnQuantity,
     costCalculation, // Add cost calculation to return
-    updateMargin // Add update margin function
+    updateMargin, // Add update margin function
+    updateCostCalculation // Add update cost calculation function
   };
 }

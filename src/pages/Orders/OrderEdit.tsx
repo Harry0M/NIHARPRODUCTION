@@ -45,6 +45,7 @@ const OrderEdit = () => {
     updateConsumptionBasedOnQuantity,
     costCalculation,
     updateMargin,
+    updateCostCalculation,
     handleSubmit,
     submitting
   } = useOrderForm();
@@ -407,7 +408,11 @@ const OrderEdit = () => {
           <CostCalculationDisplay
             costCalculation={costCalculation}
             onMarginChange={updateMargin}
-                />
+            onCostCalculationUpdate={updateCostCalculation}
+            orderQuantity={parseInt(orderDetails.quantity || '1')}
+            components={components}
+            customComponents={customComponents}
+          />
           
           <CardFooter className="flex justify-end gap-4">
             <Button 

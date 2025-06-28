@@ -20,6 +20,8 @@ const OrderNew = () => {
   
   const {
     orderDetails,
+    components,
+    customComponents,
     submitting,
     formErrors,
     handleOrderChange,
@@ -28,7 +30,8 @@ const OrderNew = () => {
     validateForm,
     updateConsumptionBasedOnQuantity,
     costCalculation, // Get the cost calculation
-    updateMargin // Add function to update margin
+    updateMargin, // Add function to update margin
+    updateCostCalculation // Add function to update cost calculation
   } = useOrderForm();
   
   // Initialize performance optimizations when component mounts
@@ -101,6 +104,10 @@ const OrderNew = () => {
               <CostCalculationDisplay 
                 costCalculation={costCalculation}
                 onMarginChange={updateMargin}
+                onCostCalculationUpdate={updateCostCalculation}
+                orderQuantity={parseInt(orderDetails.quantity || '1')}
+                components={components}
+                customComponents={customComponents}
               />
             </CardContent>
           </Card>

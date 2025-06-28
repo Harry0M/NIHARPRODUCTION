@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -23,62 +23,141 @@ interface CostCalculationDisplayProps {
   };
   onMarginChange?: (margin: number) => void;
   onCostChange?: (type: string, value: number) => void;
+  onCostCalculationUpdate?: (updatedCosts: {
+    materialCost: number;
+    cuttingCharge: number;
+    printingCharge: number;
+    stitchingCharge: number;
+    transportCharge: number;
+    baseCost: number;
+    gstAmount: number;
+    totalCost: number;
+    margin: number;
+    sellingPrice: number;
+    perUnitBaseCost: number;
+    perUnitTransportCost: number;
+    perUnitGstCost: number;
+    perUnitCost: number;
+  }) => void;
   orderQuantity?: number;
+  components?: Record<string, unknown>;
+  customComponents?: unknown[];
+  readOnly?: boolean; // Flag to show only saved values without recalculation
 }
 
 export const CostCalculationDisplay = ({
   costCalculation,
   onMarginChange,
   onCostChange,
-  orderQuantity = 1
+  onCostCalculationUpdate,
+  orderQuantity = 1,
+  components = {},
+  customComponents = [],
+  readOnly = false
 }: CostCalculationDisplayProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  
+  // Calculate the actual material cost using the consumption values that will be saved to database
+  const calculateActualMaterialCost = () => {
+    const allComponents = [...Object.values(components), ...customComponents];
+    
+    return allComponents.reduce((total: number, comp: unknown) => {
+      const component = comp as { consumption?: string | number; materialRate?: string | number; type?: string };
+      if (!component || !component.consumption || !component.materialRate) return total;
+      
+      // Get the consumption value that will be saved to database
+      const originalConsumption = parseFloat(String(component.consumption)) || 0;
+      const materialRate = parseFloat(String(component.materialRate)) || 0;
+      
+      // For order form submission, consumption gets multiplied by order quantity
+      // So we need to use that same calculation here
+      const finalConsumption = originalConsumption * orderQuantity;
+      const componentCost = finalConsumption * materialRate;
+      
+      console.log(`Material cost calculation: ${component.type || 'unknown'} - ${originalConsumption} × ${orderQuantity} × ${materialRate} = ${componentCost}`);
+      
+      return total + componentCost;
+    }, 0);
+  };
+  
+  // Use the calculated material cost instead of the one from props if components are available AND not in read-only mode
+  const actualMaterialCost = !readOnly && components && Object.keys(components).length > 0 
+    ? calculateActualMaterialCost()
+    : costCalculation.materialCost;
+
+  // Ensure actualMaterialCost is a number
+  const materialCostValue = typeof actualMaterialCost === 'number' ? actualMaterialCost : 0;
+
+  // Recalculate total costs using the correct material cost (only if not read-only)
+  const recalculatedCosts = useMemo(() => {
+    if (readOnly) {
+      // In read-only mode, use exact values from database without recalculation
+      return costCalculation;
+    }
+    
+    return {
+      ...costCalculation,
+      materialCost: materialCostValue,
+      baseCost: materialCostValue + costCalculation.cuttingCharge + costCalculation.printingCharge + costCalculation.stitchingCharge,
+      totalCost: materialCostValue + costCalculation.cuttingCharge + costCalculation.printingCharge + costCalculation.stitchingCharge + costCalculation.transportCharge + costCalculation.gstAmount,
+      perUnitBaseCost: orderQuantity > 0 ? (materialCostValue + costCalculation.cuttingCharge + costCalculation.printingCharge + costCalculation.stitchingCharge) / orderQuantity : 0,
+      perUnitCost: orderQuantity > 0 ? (materialCostValue + costCalculation.cuttingCharge + costCalculation.printingCharge + costCalculation.stitchingCharge + costCalculation.transportCharge + costCalculation.gstAmount) / orderQuantity : 0,
+      sellingPrice: (materialCostValue + costCalculation.cuttingCharge + costCalculation.printingCharge + costCalculation.stitchingCharge + costCalculation.transportCharge + costCalculation.gstAmount) * (1 + (costCalculation.margin / 100))
+    };
+  }, [materialCostValue, costCalculation, orderQuantity, readOnly]);
+  
+  // Notify parent component when costs are recalculated (only if not read-only)
+  useEffect(() => {
+    if (!readOnly && onCostCalculationUpdate && (components && Object.keys(components).length > 0)) {
+      onCostCalculationUpdate(recalculatedCosts);
+    }
+  }, [recalculatedCosts, onCostCalculationUpdate, components, readOnly]);
   
   // Make sure we always update state when the props change
   useEffect(() => {
     setEditableCosts({
-      materialCost: costCalculation.materialCost,
-      cuttingCharge: costCalculation.cuttingCharge,
-      printingCharge: costCalculation.printingCharge,
-      stitchingCharge: costCalculation.stitchingCharge,
-      transportCharge: costCalculation.transportCharge,
-      baseCost: costCalculation.baseCost,
-      gstAmount: costCalculation.gstAmount,
-      totalCost: costCalculation.totalCost,
-      margin: costCalculation.margin,
-      sellingPrice: costCalculation.sellingPrice,
+      materialCost: recalculatedCosts.materialCost,
+      cuttingCharge: recalculatedCosts.cuttingCharge,
+      printingCharge: recalculatedCosts.printingCharge,
+      stitchingCharge: recalculatedCosts.stitchingCharge,
+      transportCharge: recalculatedCosts.transportCharge,
+      baseCost: recalculatedCosts.baseCost,
+      gstAmount: recalculatedCosts.gstAmount,
+      totalCost: recalculatedCosts.totalCost,
+      margin: recalculatedCosts.margin,
+      sellingPrice: recalculatedCosts.sellingPrice,
     });
     
     // Update input values when costCalculation changes
     setInputValues({
-      materialCost: costCalculation.materialCost.toString(),
-      cuttingCharge: (costCalculation.cuttingCharge / (orderQuantity || 1)).toString(),
-      printingCharge: (costCalculation.printingCharge / (orderQuantity || 1)).toString(),
-      stitchingCharge: (costCalculation.stitchingCharge / (orderQuantity || 1)).toString(),
-      transportCharge: (costCalculation.transportCharge / (orderQuantity || 1)).toString(),
+      materialCost: recalculatedCosts.materialCost.toString(),
+      cuttingCharge: (recalculatedCosts.cuttingCharge / (orderQuantity || 1)).toString(),
+      printingCharge: (recalculatedCosts.printingCharge / (orderQuantity || 1)).toString(),
+      stitchingCharge: (recalculatedCosts.stitchingCharge / (orderQuantity || 1)).toString(),
+      transportCharge: (recalculatedCosts.transportCharge / (orderQuantity || 1)).toString(),
     });
-  }, [costCalculation, orderQuantity]);
+  }, [costCalculation, orderQuantity, recalculatedCosts]);
   
   const [editableCosts, setEditableCosts] = useState({
-    materialCost: costCalculation.materialCost,
-    cuttingCharge: costCalculation.cuttingCharge,
-    printingCharge: costCalculation.printingCharge,
-    stitchingCharge: costCalculation.stitchingCharge,
-    transportCharge: costCalculation.transportCharge,
-    baseCost: costCalculation.baseCost,
-    gstAmount: costCalculation.gstAmount,
-    totalCost: costCalculation.totalCost,
-    margin: costCalculation.margin,
-    sellingPrice: costCalculation.sellingPrice,
+    materialCost: recalculatedCosts.materialCost,
+    cuttingCharge: recalculatedCosts.cuttingCharge,
+    printingCharge: recalculatedCosts.printingCharge,
+    stitchingCharge: recalculatedCosts.stitchingCharge,
+    transportCharge: recalculatedCosts.transportCharge,
+    baseCost: recalculatedCosts.baseCost,
+    gstAmount: recalculatedCosts.gstAmount,
+    totalCost: recalculatedCosts.totalCost,
+    margin: recalculatedCosts.margin,
+    sellingPrice: recalculatedCosts.sellingPrice,
   });
   
   // For direct editing
   const [inputValues, setInputValues] = useState({
-    materialCost: costCalculation.materialCost.toString(),
-    cuttingCharge: (costCalculation.cuttingCharge / (orderQuantity || 1)).toString(),
-    printingCharge: (costCalculation.printingCharge / (orderQuantity || 1)).toString(),
-    stitchingCharge: (costCalculation.stitchingCharge / (orderQuantity || 1)).toString(),
-    transportCharge: (costCalculation.transportCharge / (orderQuantity || 1)).toString(),
+    materialCost: recalculatedCosts.materialCost.toString(),
+    cuttingCharge: (recalculatedCosts.cuttingCharge / (orderQuantity || 1)).toString(),
+    printingCharge: (recalculatedCosts.printingCharge / (orderQuantity || 1)).toString(),
+    stitchingCharge: (recalculatedCosts.stitchingCharge / (orderQuantity || 1)).toString(),
+    transportCharge: (recalculatedCosts.transportCharge / (orderQuantity || 1)).toString(),
   });
   
   const formatCurrency = (value: number) => {
@@ -114,7 +193,7 @@ export const CostCalculationDisplay = ({
   };
 
   // Calculate profit amount
-  const profit = costCalculation.sellingPrice - costCalculation.totalCost;
+  const profit = recalculatedCosts.sellingPrice - recalculatedCosts.totalCost;
   const profitIsPositive = profit > 0;
 
   return (
@@ -145,7 +224,9 @@ export const CostCalculationDisplay = ({
                       inputMode="decimal"
                       className="w-24 h-8 text-right bg-white border border-blue-200 focus:border-blue-400 rounded-md px-2"
                       value={inputValues.materialCost}
+                      readOnly={readOnly}
                       onChange={(e) => {
+                        if (readOnly) return;
                         const value = e.target.value.replace(/[^0-9.]/g, '');
                         setInputValues(prev => ({
                           ...prev,
@@ -169,7 +250,7 @@ export const CostCalculationDisplay = ({
                 </div>
                 <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
                   <span>Per unit</span>
-                  <span>{formatCurrency(isNaN(costCalculation.perUnitBaseCost) ? 0 : costCalculation.perUnitBaseCost)}</span>
+                  <span>{formatCurrency(isNaN(recalculatedCosts.perUnitBaseCost) ? 0 : recalculatedCosts.perUnitBaseCost)}</span>
                 </div>
               </div>
             </div>
@@ -187,7 +268,9 @@ export const CostCalculationDisplay = ({
                           inputMode="decimal"
                           className="w-20 h-8 text-right bg-white border border-blue-200 focus:border-blue-400 rounded-md px-2"
                           value={inputValues.cuttingCharge}
+                          readOnly={readOnly}
                           onChange={(e) => {
+                            if (readOnly) return;
                             const value = e.target.value.replace(/[^0-9.]/g, '');
                             setInputValues(prev => ({
                               ...prev,
@@ -212,7 +295,7 @@ export const CostCalculationDisplay = ({
                     </div>
                     <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
                       <span>Total</span>
-                      <span>{formatCurrency(costCalculation.cuttingCharge)}</span>
+                      <span>{formatCurrency(recalculatedCosts.cuttingCharge)}</span>
                     </div>
                   </div>
                   <div className="bg-slate-50 p-3 rounded-md">
@@ -224,7 +307,9 @@ export const CostCalculationDisplay = ({
                           inputMode="decimal"
                           className="w-20 h-8 text-right bg-white border border-blue-200 focus:border-blue-400 rounded-md px-2"
                           value={inputValues.printingCharge}
+                          readOnly={readOnly}
                           onChange={(e) => {
+                            if (readOnly) return;
                             const value = e.target.value.replace(/[^0-9.]/g, '');
                             setInputValues(prev => ({
                               ...prev,
@@ -249,7 +334,7 @@ export const CostCalculationDisplay = ({
                     </div>
                     <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
                       <span>Total</span>
-                      <span>{formatCurrency(costCalculation.printingCharge)}</span>
+                      <span>{formatCurrency(recalculatedCosts.printingCharge)}</span>
                     </div>
                   </div>
                 </div>
@@ -264,7 +349,9 @@ export const CostCalculationDisplay = ({
                           inputMode="decimal"
                           className="w-20 h-8 text-right bg-white border border-blue-200 focus:border-blue-400 rounded-md px-2"
                           value={inputValues.stitchingCharge}
+                          readOnly={readOnly}
                           onChange={(e) => {
+                            if (readOnly) return;
                             const value = e.target.value.replace(/[^0-9.]/g, '');
                             setInputValues(prev => ({
                               ...prev,
@@ -289,7 +376,7 @@ export const CostCalculationDisplay = ({
                     </div>
                     <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
                       <span>Total</span>
-                      <span>{formatCurrency(costCalculation.stitchingCharge)}</span>
+                      <span>{formatCurrency(recalculatedCosts.stitchingCharge)}</span>
                     </div>
                   </div>
                   <div className="bg-slate-50 p-3 rounded-md">
@@ -301,7 +388,9 @@ export const CostCalculationDisplay = ({
                           inputMode="decimal"
                           className="w-20 h-8 text-right bg-white border border-blue-200 focus:border-blue-400 rounded-md px-2"
                           value={inputValues.transportCharge}
+                          readOnly={readOnly}
                           onChange={(e) => {
+                            if (readOnly) return;
                             const value = e.target.value.replace(/[^0-9.]/g, '');
                             setInputValues(prev => ({
                               ...prev,
@@ -327,7 +416,7 @@ export const CostCalculationDisplay = ({
                     </div>
                     <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
                       <span>Total</span>
-                      <span>{formatCurrency(costCalculation.transportCharge)}</span>
+                      <span>{formatCurrency(recalculatedCosts.transportCharge)}</span>
                     </div>
                   </div>
                 </div>
@@ -340,22 +429,22 @@ export const CostCalculationDisplay = ({
                 <div className="bg-slate-50 p-3 rounded-md">
                   <div className="flex justify-between items-center">
                     <span>Transport Cost</span>
-                    <span>{formatCurrency(costCalculation.transportCharge)}</span>
+                    <span>{formatCurrency(recalculatedCosts.transportCharge)}</span>
                   </div>
                   <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
                     <span>Per unit</span>
-                    <span>{formatCurrency(isNaN(costCalculation.perUnitTransportCost) ? 0 : costCalculation.perUnitTransportCost)}</span>
+                    <span>{formatCurrency(isNaN(recalculatedCosts.perUnitTransportCost) ? 0 : recalculatedCosts.perUnitTransportCost)}</span>
                   </div>
                 </div>
 
                 <div className="bg-slate-50 p-3 rounded-md font-medium">
                   <div className="flex justify-between items-center">
                     <span>Total Cost</span>
-                    <span>{formatCurrency(costCalculation.totalCost)}</span>
+                    <span>{formatCurrency(recalculatedCosts.totalCost)}</span>
                   </div>
                   <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
                     <span>Per unit</span>
-                    <span>{formatCurrency(isNaN(costCalculation.perUnitCost) ? 0 : costCalculation.perUnitCost)}</span>
+                    <span>{formatCurrency(isNaN(recalculatedCosts.perUnitCost) ? 0 : recalculatedCosts.perUnitCost)}</span>
                   </div>
                 </div>
               </div>
@@ -372,8 +461,9 @@ export const CostCalculationDisplay = ({
                         type="text"
                         inputMode="decimal"
                         className="w-20 h-8 text-right bg-white border border-blue-200 focus:border-blue-400 rounded-md px-2"
-                        value={costCalculation.margin.toString()}
-                        onChange={handleMarginChange}
+                        value={recalculatedCosts.margin.toString()}
+                        readOnly={readOnly}
+                        onChange={readOnly ? undefined : handleMarginChange}
                       />
                       <span className="text-xs text-muted-foreground">%</span>
                     </div>
@@ -383,7 +473,7 @@ export const CostCalculationDisplay = ({
                 <div className="bg-slate-50 p-3 rounded-md font-medium">
                   <div className="flex justify-between items-center">
                     <span>Selling Price</span>
-                    <span>{formatCurrency(costCalculation.sellingPrice)}</span>
+                    <span>{formatCurrency(recalculatedCosts.sellingPrice)}</span>
                   </div>
                   <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
                     <span>Profit</span>
@@ -399,11 +489,11 @@ export const CostCalculationDisplay = ({
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Total Cost:</span>
-              <span className="font-medium">{formatCurrency(costCalculation.totalCost)}</span>
+              <span className="font-medium">{formatCurrency(recalculatedCosts.totalCost)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Selling Price:</span>
-              <span className="font-medium">{formatCurrency(costCalculation.sellingPrice)}</span>
+              <span className="font-medium">{formatCurrency(recalculatedCosts.sellingPrice)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Profit:</span>
