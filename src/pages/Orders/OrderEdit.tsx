@@ -45,9 +45,9 @@ const OrderEdit = () => {
     updateConsumptionBasedOnQuantity,
     costCalculation,
     updateMargin,
-    updateCostCalculation,
     handleSubmit,
-    submitting
+    submitting,
+    setDatabaseLoadingState
   } = useOrderForm();
 
   // Initialize performance optimizations when component mounts
@@ -236,6 +236,11 @@ const OrderEdit = () => {
           
         if (componentsError) throw componentsError;
         
+        // Set loading state to prevent automatic consumption updates
+        if (setDatabaseLoadingState) {
+          setDatabaseLoadingState(true);
+        }
+        
         // Process components
         if (componentsData && componentsData.length > 0) {
           componentsData.forEach(comp => {
@@ -248,6 +253,17 @@ const OrderEdit = () => {
               }
             }
             
+            // CORRECTED: Handle manual consumption properly during order editing
+            const isManual = comp.formula === 'manual';
+            const dbConsumption = comp.consumption || 0; // This is the per-unit value from database
+            const orderQty = parseInt(orderDetails.order_quantity || orderDetails.quantity || '1');
+            
+            // For manual components, multiply by order quantity for display
+            // For calculated components, use the stored value as-is
+            const displayConsumption = isManual ? (dbConsumption * orderQty) : dbConsumption;
+            
+            console.log(`📥 LOADING Component ${comp.component_type}: DB=${dbConsumption}, OrderQty=${orderQty}, Display=${displayConsumption}, Formula=${comp.formula}`);
+            
             const componentData = {
               id: comp.id,
               type: comp.component_type,
@@ -256,12 +272,14 @@ const OrderEdit = () => {
               length,
               width,
               roll_width: comp.roll_width?.toString() || "",
-              consumption: comp.consumption?.toString() || "",
+              consumption: displayConsumption.toString(),
+              fetchedConsumption: dbConsumption.toString(), // Store original DB value for manual components
               material_id: comp.material_id || null,
               customName: comp.custom_name || "",
               materialCost: comp.component_cost || 0,
               componentCostBreakdown: comp.component_cost_breakdown || null,
-              formula: (comp.formula || 'standard') as ConsumptionFormulaType
+              formula: (comp.formula || 'standard') as ConsumptionFormulaType,
+              is_manual_consumption: isManual
             };
             
             if (comp.component_type === 'custom') {
@@ -282,6 +300,11 @@ const OrderEdit = () => {
               });
             }
           });
+        }
+        
+        // Turn off loading state after processing all components
+        if (setDatabaseLoadingState) {
+          setDatabaseLoadingState(false);
         }
         
       } catch (error: any) {
@@ -408,11 +431,7 @@ const OrderEdit = () => {
           <CostCalculationDisplay
             costCalculation={costCalculation}
             onMarginChange={updateMargin}
-            onCostCalculationUpdate={updateCostCalculation}
-            orderQuantity={parseInt(orderDetails.quantity || '1')}
-            components={components}
-            customComponents={customComponents}
-          />
+                />
           
           <CardFooter className="flex justify-end gap-4">
             <Button 

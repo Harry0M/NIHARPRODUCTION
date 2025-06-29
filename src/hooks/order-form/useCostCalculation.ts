@@ -7,7 +7,7 @@ export function useCostCalculation() {
    * Calculate all costs from components and production charges
    */
   const calculateTotalCost = useCallback((
-    components: Record<string, unknown>,
+    components: Record<string, any>,
     customComponents: Component[],
     cuttingCharge = 0,
     printingCharge = 0,
@@ -18,30 +18,27 @@ export function useCostCalculation() {
   ) => {
     // Calculate material costs from all components
     const materialCosts = [...Object.values(components), ...customComponents]
-      .reduce((total: number, comp: unknown) => {
-        const component = comp as { materialRate?: string | number; consumption?: string | number; materialCost?: string | number };
-        if (!component) return total;
+      .reduce((total, comp) => {
+        if (!comp) return total;
         
         // Calculate cost based on material rate and consumption if available
-        if (component.materialRate && component.consumption) {
-          // The consumption value is per unit, material rate is per unit
-          // For the total cost calculation, we need to use the actual consumption 
-          // that will be saved to database (consumption * quantity)
-          const consumption = parseFloat(String(component.consumption)) || 0;
-          const materialRate = parseFloat(String(component.materialRate)) || 0;
+        if (comp.materialRate && comp.consumption) {
+          // Calculate unit price using the formula: alt quantity * alt unit price / main quantity
+          const altQuantity = parseFloat(comp.consumption) || 0;
+          const altUnitPrice = parseFloat(comp.materialRate) || 0;
+          const mainQuantity = quantity || 1;
           
-          // Calculate total material cost: consumption × quantity × materialRate
-          const totalConsumption = consumption * quantity;
-          const cost = totalConsumption * materialRate;
+          const unitPrice = (altQuantity * altUnitPrice) / mainQuantity;
+          const cost = unitPrice * mainQuantity;
           
           if (!isNaN(cost)) {
             // Set the calculated cost on the component
-            (component as Record<string, unknown>).materialCost = cost;
+            comp.materialCost = cost;
             return total + cost;
           }
-        } else if (component.materialCost) {
+        } else if (comp.materialCost) {
           // If materialCost is already calculated, use it
-          const cost = parseFloat(String(component.materialCost));
+          const cost = parseFloat(comp.materialCost);
           if (!isNaN(cost)) {
             return total + cost;
           }
@@ -62,7 +59,7 @@ export function useCostCalculation() {
     const totalTransportCharge = quantity * perUnitTransportCharge;
 
     // Calculate base cost (material + production costs)
-    const baseCost = (typeof materialCosts === 'number' ? materialCosts : 0) + totalCuttingCharge + totalPrintingCharge + totalStitchingCharge;
+    const baseCost = materialCosts + totalCuttingCharge + totalPrintingCharge + totalStitchingCharge;
     
     // Calculate GST amount
     const gstAmount = (baseCost * gstRate) / 100;
@@ -78,7 +75,7 @@ export function useCostCalculation() {
 
     return {
       // Total costs
-      materialCost: typeof materialCosts === 'number' ? materialCosts : 0,
+      materialCost: materialCosts,
       cuttingCharge: totalCuttingCharge,
       printingCharge: totalPrintingCharge, 
       stitchingCharge: totalStitchingCharge,

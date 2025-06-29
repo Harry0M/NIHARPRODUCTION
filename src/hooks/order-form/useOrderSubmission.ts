@@ -62,6 +62,21 @@ export function useOrderSubmission({
       }
       
       // Debug all components before submission to help identify issues
+      console.log('=== CONSUMPTION VALUES BEFORE DATABASE SAVE ===');
+      console.log('Order Quantity:', orderDetails.quantity || orderDetails.total_quantity);
+      console.log('Components object:', components);
+      console.log('Custom components:', customComponents);
+      
+      // Show consumption values for each component
+      [...Object.values(components), ...customComponents].filter(Boolean).forEach(comp => {
+        console.log(`Component ${comp.type}:`);
+        console.log(`  - consumption: ${comp.consumption}`);
+        console.log(`  - fetchedConsumption: ${comp.fetchedConsumption}`);
+        console.log(`  - materialRate: ${comp.materialRate}`);
+        console.log(`  - formula: ${comp.formula}`);
+      });
+      console.log('==========================================');
+      
       debugAllComponents(components, customComponents);
       
       // Calculate margins and selling price using already calculated costs
@@ -255,38 +270,21 @@ export function useOrderSubmission({
       console.log("Number of components before validation:", allComponents.length);
       
       // IMPORTANT: DO NOT multiply consumption by order quantity again - it's already done in useOrderComponents.ts
+      // MULTIPLY fetched costs and consumption by order quantity and save
       const orderQuantity = parseInt(orderDetails.order_quantity || orderDetails.quantity || '1');
-      console.log("Order quantity for reference (not used for multiplication):", orderQuantity);
+      console.log("Order quantity for multiplication:", orderQuantity);
       
-      // SIMPLIFIED APPROACH: For manual formulas, we store the fetchedConsumption value
-      // which is the original consumption value from the product, not multiplied by order quantity
-      console.log("Processing components with simplified logic");
-      
+      // For each component, multiply consumption and costs by order quantity
       const processedComponents = allComponents.map(comp => {
-        // Check if this is a manual formula component
-        const isManual = comp.formula === 'manual' || comp.is_manual_consumption === true;
-        
-        if (isManual) {
-          // For manual consumption components, use the fetchedConsumption value
-          // This is the original manual value that hasn't been multiplied by order quantity
-          const originalManualValue = comp.fetchedConsumption ? 
-            parseFloat(comp.fetchedConsumption) : 
-            parseFloat(comp.consumption) / orderQuantity; // Fallback for compatibility
-          
-          console.log(`%c MANUAL FORMULA SAVE: ${comp.type} - Storing original manual value ${originalManualValue} (fetchedConsumption: ${comp.fetchedConsumption}, current display: ${comp.consumption})`,
-            'background: #4CAF50; color: white; padding: 2px 5px; font-weight: bold;');
-          
-          return {
-            ...comp,
-            consumption: originalManualValue // Store the original manual value in database
-          };
-        } else {
-          // For non-manual formulas, keep consumption as-is
-          console.log(`%c STANDARD FORMULA: ${comp.type} - Keeping consumption ${comp.consumption}`,
-            'background: #2196F3; color: white; padding: 2px 5px;');
-        }
-        
-        return comp;
+        // Fetch the original per-unit consumption from the product template (fetchedConsumption)
+        const perUnitConsumption = parseFloat(comp.fetchedConsumption) || 0;
+        const totalConsumption = perUnitConsumption * orderQuantity;
+        console.log(`%c DB SAVE: ${comp.type} (formula: ${comp.formula}, is_manual_consumption: ${comp.is_manual_consumption}) - Saving: fetchedConsumption=${perUnitConsumption}, totalConsumption=${totalConsumption}`,
+          'background: #4CAF50; color: white; padding: 2px 5px; font-weight: bold;');
+        return {
+          ...comp,
+          consumption: totalConsumption
+        };
       });
       
       if (processedComponents.length > 0) {
@@ -352,18 +350,20 @@ export function useOrderSubmission({
             const gsmValue = convertStringToNumeric(comp.gsm);
             const rollWidthValue = convertStringToNumeric(comp.roll_width);
             
-            // SIMPLE CONSUMPTION MULTIPLICATION: Multiply original consumption by order quantity
-            const originalConsumption = convertStringToNumeric(
+            // CORRECTED CONSUMPTION LOGIC: Use the already-processed consumption value
+            // The processedComponents array now contains the correct per-unit values
+            const perUnitConsumption = convertStringToNumeric(
               typeof comp.consumption === 'string' ? comp.consumption : String(comp.consumption || 0)
             );
             
-            // Get order quantity for multiplication
-            const orderQuantity = parseInt(orderDetails.quantity || orderDetails.total_quantity || '1');
+            // Store the per-unit consumption in database (do not multiply by quantity here)
+            // The database should store per-unit values, not total values
+            const finalConsumption = perUnitConsumption;
             
-            // Multiply consumption by order quantity - this is the simple approach you requested
-            const finalConsumption = originalConsumption * orderQuantity;
-            
-            console.log(`🔄 SAVE-TIME MULTIPLICATION: Component ${comp.type || 'unknown'}: ${originalConsumption} × ${orderQuantity} = ${finalConsumption}`);
+            console.log(`� DATABASE SAVE: Component ${comp.type || 'unknown'}: Per-unit consumption = ${finalConsumption}`);
+            console.log(`💰 MATERIAL RATE: ${comp.materialRate}`);
+            console.log(`💵 PER-UNIT COST: ${finalConsumption} × ${comp.materialRate} = ${finalConsumption * (comp.materialRate || 0)}`);
+            console.log('---');
             
             const materialCost = convertStringToNumeric(
               typeof comp.materialCost === 'string' ? comp.materialCost : String(comp.materialCost || 0)

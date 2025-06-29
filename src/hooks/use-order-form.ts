@@ -7,6 +7,12 @@ import { useCostCalculation } from "./order-form/useCostCalculation";
 import { UseOrderFormReturn, Component } from "@/types/order-form";
 import { useEffect } from "react";
 
+// Extended interface for components with manual consumption tracking
+interface ExtendedComponent extends Component {
+  is_manual_consumption?: boolean;
+  fetchedConsumption?: string;
+}
+
 export function useOrderForm(): UseOrderFormReturn {
   // Use individual hooks
   const { 
@@ -32,7 +38,8 @@ export function useOrderForm(): UseOrderFormReturn {
     handleCustomComponentChange,
     addCustomComponent,
     removeCustomComponent,
-    updateConsumptionBasedOnQuantity
+    updateConsumptionBasedOnQuantity,
+    setDatabaseLoadingState
   } = useOrderComponents();
   
   const { calculateTotalCost, calculateSellingPrice } = useCostCalculation();
@@ -80,96 +87,76 @@ export function useOrderForm(): UseOrderFormReturn {
       }));
     }
   };
-
-  // Function to update the entire cost calculation
-  const updateCostCalculation = (updatedCosts: {
-    materialCost: number;
-    cuttingCharge: number;
-    printingCharge: number;
-    stitchingCharge: number;
-    transportCharge: number;
-    baseCost: number;
-    gstAmount: number;
-    totalCost: number;
-    margin: number;
-    sellingPrice: number;
-    perUnitBaseCost: number;
-    perUnitTransportCost: number;
-    perUnitGstCost: number;
-    perUnitCost: number;
-  }) => {
-    setCostCalculation(updatedCosts);
-    
-    // Also update the rate in order details
-    setOrderDetails(prev => ({
-      ...prev,
-      rate: updatedCosts.sellingPrice.toFixed(2)
-    }));
-  };
   
-  // Update cost calculation when relevant data changes
+  // Cost calculation logic removed - will be handled elsewhere
+  
+  // SIMPLE COST CALCULATION: Fetch costs from product template and multiply by order quantity only
   useEffect(() => {
-    // Get the order quantity and total quantity separately
-    const orderQuantity = parseInt(orderDetails.quantity || '0');
-    const totalQuantity = parseInt(orderDetails.total_quantity || '0');
+    const orderQuantity = parseInt(orderDetails.quantity || '1');
     
-    // Use order quantity for production costs and total quantity for material costs
-    // This ensures production costs are per order, not per total quantity
-    if ((isNaN(orderQuantity) || orderQuantity <= 0) && (isNaN(totalQuantity) || totalQuantity <= 0)) return;
+    if (isNaN(orderQuantity) || orderQuantity <= 0) return;
 
-    // Get production charges
-    const cuttingCharge = parseFloat(orderDetails.cutting_charge || '0');
-    const printingCharge = parseFloat(orderDetails.printing_charge || '0');
-    const stitchingCharge = parseFloat(orderDetails.stitching_charge || '0');
-    const transportCharge = parseFloat(orderDetails.transport_charge || '0');
+    console.log('=== SIMPLE COST CALCULATION ===');
+    console.log('Order Quantity:', orderQuantity);
     
-    // Get margin
-    const margin = parseFloat(orderDetails.margin || '15');
-
-    // Debug log components for troubleshooting
-    console.log('Recalculating costs with components:', components);
-    
-    // Sum up all material costs from components with improved precision
-    const materialCost = [...Object.values(components), ...customComponents].reduce(
-      (total, comp) => {
-        // Ensure we use the correct material cost
-        const cost = comp?.materialCost ? parseFloat(String(comp.materialCost)) : 0;
+    // SIMPLIFIED MATERIAL COST: Calculate based on current consumption display values
+    const materialCost = [...Object.values(components), ...customComponents]
+      .filter(Boolean)
+      .reduce((total, comp) => {
+        if (!comp) return total;
         
-        if (comp && comp.type) {
-          console.log(`Material cost for ${comp.type}: ${cost}`);
+        // Get current consumption value from the form field
+        const currentConsumption = parseFloat(String(comp.consumption || '0'));
+        
+        // Get material rate (per unit consumption cost)
+        const materialRate = parseFloat(String(comp.materialRate || '0'));
+        
+        // Check if this is a manual component
+        const extendedComp = comp as ExtendedComponent;
+        const isManual = comp.formula === 'manual' || extendedComp.is_manual_consumption === true;
+        
+        let totalComponentCost;
+        
+        if (isManual) {
+          // For manual components: consumption field shows total consumption for the order
+          // materialCost = total consumption × material rate (no additional multiplication)
+          totalComponentCost = currentConsumption * materialRate;
+          console.log(`${comp.type} (MANUAL): TotalConsumption=${currentConsumption} × Rate=₹${materialRate} = ₹${totalComponentCost.toFixed(2)}`);
+        } else {
+          // For calculated components: consumption field shows total consumption for the order
+          // materialCost = total consumption × material rate (no additional multiplication)
+          totalComponentCost = currentConsumption * materialRate;
+          console.log(`${comp.type} (CALC): TotalConsumption=${currentConsumption} × Rate=₹${materialRate} = ₹${totalComponentCost.toFixed(2)}`);
         }
         
-        return total + (isNaN(cost) ? 0 : cost);
-      }, 0
-    );
+        return total + (isNaN(totalComponentCost) ? 0 : totalComponentCost);
+      }, 0);
+
+    // SIMPLE PRODUCTION COSTS: Base charges × order quantity
+    const baseCuttingCharge = parseFloat(orderDetails.cutting_charge || '0');
+    const basePrintingCharge = parseFloat(orderDetails.printing_charge || '0');
+    const baseStitchingCharge = parseFloat(orderDetails.stitching_charge || '0');
+    const baseTransportCharge = parseFloat(orderDetails.transport_charge || '0');
     
-    console.log(`%c TOTAL MATERIAL COST: ${materialCost.toFixed(2)}`, 
-      'background:#8e44ad;color:white;font-weight:bold;padding:3px;');
-      // Calculate production cost - multiply each component by order quantity
-    const totalCuttingCharge = cuttingCharge * orderQuantity;
-    const totalPrintingCharge = printingCharge * orderQuantity;
-    const totalStitchingCharge = stitchingCharge * orderQuantity;
-    const totalTransportCharge = transportCharge * orderQuantity;  // Transport should also be multiplied
+    const totalCuttingCharge = baseCuttingCharge * orderQuantity;
+    const totalPrintingCharge = basePrintingCharge * orderQuantity;
+    const totalStitchingCharge = baseStitchingCharge * orderQuantity;
+    const totalTransportCharge = baseTransportCharge * orderQuantity;
     
     const productionCost = totalCuttingCharge + totalPrintingCharge + totalStitchingCharge + totalTransportCharge;
     
-    // Calculate total cost
+    // Calculate totals
     const totalCost = materialCost + productionCost;
-    
-    // Calculate selling price based on margin
+    const margin = parseFloat(orderDetails.margin || '15');
     const sellingPrice = totalCost * (1 + margin / 100);
     
-    // For orders with quantity, calculate per-unit costs
-    let perUnitData = {};
+    console.log(`Total Material Cost: ₹${materialCost.toFixed(2)}`);
+    console.log(`Total Production Cost: ₹${productionCost.toFixed(2)}`);
+    console.log(`Total Cost: ₹${totalCost.toFixed(2)}`);
+    console.log(`Selling Price: ₹${sellingPrice.toFixed(2)}`);
+    console.log('===============================');
     
-    if (!isNaN(orderQuantity) && orderQuantity > 0) {
-      perUnitData = {
-        perUnitCost: totalCost / orderQuantity,
-        perUnitMaterialCost: materialCost / orderQuantity,
-        perUnitProductionCost: productionCost / orderQuantity
-      };
-    }
-      // Update cost calculation state with total costs (already multiplied by order quantity)
+    // Update cost calculation state
     setCostCalculation({
       materialCost,
       cuttingCharge: totalCuttingCharge,
@@ -177,14 +164,17 @@ export function useOrderForm(): UseOrderFormReturn {
       stitchingCharge: totalStitchingCharge,
       transportCharge: totalTransportCharge,
       baseCost: materialCost + totalCuttingCharge + totalPrintingCharge + totalStitchingCharge,
-      gstAmount: 0, // Add if needed
+      gstAmount: 0,
       totalCost,
       margin,
       sellingPrice,
-      ...perUnitData
+      perUnitBaseCost: orderQuantity > 0 ? (materialCost + totalCuttingCharge + totalPrintingCharge + totalStitchingCharge) / orderQuantity : 0,
+      perUnitTransportCost: orderQuantity > 0 ? totalTransportCharge / orderQuantity : 0,
+      perUnitGstCost: 0,
+      perUnitCost: orderQuantity > 0 ? totalCost / orderQuantity : 0
     });
 
-    // Also update the rate field in orderDetails
+    // Update rate in order details
     setOrderDetails(prev => ({
       ...prev,
       rate: sellingPrice.toFixed(2)
@@ -194,12 +184,13 @@ export function useOrderForm(): UseOrderFormReturn {
     components, 
     customComponents, 
     orderDetails.quantity,
-    orderDetails.total_quantity,
     orderDetails.cutting_charge,
     orderDetails.printing_charge,
     orderDetails.stitching_charge,
     orderDetails.transport_charge,
-    orderDetails.margin
+    orderDetails.margin,
+    setCostCalculation,
+    setOrderDetails
   ]);
   
   const {
@@ -231,6 +222,6 @@ export function useOrderForm(): UseOrderFormReturn {
     updateConsumptionBasedOnQuantity,
     costCalculation, // Add cost calculation to return
     updateMargin, // Add update margin function
-    updateCostCalculation // Add update cost calculation function
+    setDatabaseLoadingState // Add database loading state function
   };
 }

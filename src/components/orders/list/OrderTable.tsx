@@ -78,7 +78,7 @@ export const OrderTable = ({
                 </a>
               </TableCell>
               <TableCell className="text-sm">{order.company_name}</TableCell>
-              <TableCell className="text-right font-medium text-sm">{(order.order_quantity || order.quantity || 0).toLocaleString()}</TableCell>
+              <TableCell className="text-right font-medium text-sm">{order.quantity.toLocaleString()}</TableCell>
               <TableCell className="text-right text-sm">
                 <span className="text-muted-foreground font-medium">
                   {order.bag_length} × {order.bag_width}

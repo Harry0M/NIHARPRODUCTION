@@ -44,31 +44,14 @@ import { getStatusColor, getStatusDisplay } from "@/utils/orderUtils";
 import { useCostCalculation } from "@/hooks/order-form/useCostCalculation";
 import { CostCalculationDisplay } from "@/components/orders/CostCalculationDisplay";
 
-interface CostCalculation {
-  materialCost: number;
-  cuttingCharge: number;
-  printingCharge: number;
-  stitchingCharge: number;
-  transportCharge: number;
-  baseCost: number;
-  gstAmount: number;
-  totalCost: number;
-  margin: number;
-  sellingPrice: number;
-  perUnitBaseCost: number;
-  perUnitTransportCost: number;
-  perUnitGstCost: number;
-  perUnitCost: number;
-}
-
 interface Order {
   id: string;
   order_number: string;
   company_name: string;
   quantity: string | number;
   order_quantity: string | number;
-  product_quantity?: string | number;
-  total_quantity?: string | number;
+  product_quantity: string | number;
+  total_quantity: string | number;
   bag_length: number;
   bag_width: number;
   border_dimension?: number | null;
@@ -130,7 +113,7 @@ const OrderDetail = () => {
   const [materialSummary, setMaterialSummary] = useState<MaterialSummary[]>([]);
   const [totalMaterialCost, setTotalMaterialCost] = useState<number>(0);
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [costCalculation, setCostCalculation] = useState<CostCalculation | null>(null);
+  const [costCalculation, setCostCalculation] = useState<any>(null);
   const [catalogProduct, setCatalogProduct] = useState<{name: string} | null>(null);
   
   // Get cost calculation functions
@@ -182,13 +165,8 @@ const OrderDetail = () => {
             comp.inventory as InventoryMaterial : null,
           // Add material rate for cost calculation
           materialRate: comp.inventory && typeof comp.inventory === 'object' 
-            ? (comp.inventory as InventoryMaterial).purchase_rate
-            : null,
-          // Handle component_cost_breakdown type conversion
-          component_cost_breakdown: comp.component_cost_breakdown && 
-            typeof comp.component_cost_breakdown === 'object' ? 
-            comp.component_cost_breakdown as { material_cost: number; material_rate: number; consumption: number; } : 
-            null
+            ? (comp.inventory as any).purchase_rate
+            : null
         })) || [];
         
         console.log("ORDER DETAIL - Processed components:", typeSafeComponents);
@@ -276,50 +254,24 @@ const OrderDetail = () => {
 
         // Calculate the costs using order form logic if order exists
         if (orderData) {
-          // Get base values from database
-          const materialCost = orderData.material_cost || 0;
-          const cuttingCharge = orderData.cutting_charge || 0;
-          const printingCharge = orderData.printing_charge || 0;
-          const stitchingCharge = orderData.stitching_charge || 0;
-          const transportCharge = orderData.transport_charge || 0;
-          const productionCost = orderData.production_cost || 0;
-          const totalCost = orderData.total_cost || 0;
-          const margin = orderData.margin || 0;
-          const sellingPrice = orderData.calculated_selling_price || 0;
-          
-          // Calculate derived values for display
-          const baseCost = materialCost + cuttingCharge + printingCharge + stitchingCharge + productionCost;
-          const gstAmount = baseCost * 0.18; // 18% GST
-          const orderQuantity = Number(orderData.order_quantity || orderData.quantity || 1);
-          
-          const perUnitBaseCost = orderQuantity > 0 ? baseCost / orderQuantity : 0;
-          const perUnitTransportCost = orderQuantity > 0 ? transportCharge / orderQuantity : 0;
-          const perUnitGstCost = orderQuantity > 0 ? gstAmount / orderQuantity : 0;
-          const perUnitCost = orderQuantity > 0 ? totalCost / orderQuantity : 0;
-          
-          // Set cost calculation with all required fields
+          // Set cost calculation using raw values from the database
           setCostCalculation({
-            materialCost,
-            cuttingCharge,
-            printingCharge,
-            stitchingCharge,
-            transportCharge,
-            baseCost,
-            gstAmount,
-            totalCost,
-            margin,
-            sellingPrice,
-            perUnitBaseCost,
-            perUnitTransportCost,
-            perUnitGstCost,
-            perUnitCost
+            materialCost: orderData.material_cost || 0,
+            cuttingCharge: orderData.cutting_charge || 0,
+            printingCharge: orderData.printing_charge || 0,
+            stitchingCharge: orderData.stitching_charge || 0,
+            transportCharge: orderData.transport_charge || 0,
+            productionCost: orderData.production_cost || 0,
+            totalCost: orderData.total_cost || 0,
+            margin: orderData.margin || 0,
+            sellingPrice: orderData.calculated_selling_price || 0
           });
         }
         
-      } catch (error: unknown) {
+      } catch (error: any) {
         toast({
           title: "Error fetching order details",
-          description: error instanceof Error ? error.message : "An unknown error occurred",
+          description: error.message,
           variant: "destructive"
         });
         navigate("/orders");
@@ -710,11 +662,7 @@ const OrderDetail = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <CostCalculationDisplay 
-              costCalculation={costCalculation}
-              orderQuantity={order ? Number(order.order_quantity || order.quantity) : 1}
-              readOnly={true}
-            />
+            <CostCalculationDisplay costCalculation={costCalculation} />
           </CardContent>
         </Card>
       )}

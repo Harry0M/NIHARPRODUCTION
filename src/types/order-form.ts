@@ -76,5 +76,5 @@ export interface UseOrderFormReturn {
   updateConsumptionBasedOnQuantity: (quantity: number) => void;
   costCalculation?: CostCalculation;
   updateMargin?: (margin: number) => void;
-  updateCostCalculation?: (updatedCosts: CostCalculation) => void;
+  setDatabaseLoadingState?: (loading: boolean) => void;
 }

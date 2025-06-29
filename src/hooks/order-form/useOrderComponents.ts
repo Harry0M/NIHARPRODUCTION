@@ -35,13 +35,46 @@ export function useOrderComponents() {
       const component = prev[type] || { 
         id: uuidv4(),
         type 
-      };
+      } as ExtendedComponent;
+      
+      const updatedComponent = {
+        ...component,
+        [field]: value
+      } as ExtendedComponent;
+      
+      // SPECIAL HANDLING FOR MANUAL CONSUMPTION CHANGES
+      if (field === 'consumption' && (component.formula === 'manual' || component.is_manual_consumption === true)) {
+        // When user manually changes consumption, treat this as the new TOTAL consumption
+        // This represents the total consumption for the entire order
+        const userEnteredValue = parseFloat(value) || 0;
+        
+        console.log(`🔧 MANUAL CONSUMPTION CHANGE: ${type} - User entered total consumption: ${userEnteredValue}`);
+        
+        // Store the user-entered value as the display value (total consumption)
+        updatedComponent.consumption = value; // Current display value (total)
+        updatedComponent.is_manual_consumption = true; // Mark as manually changed
+        
+        // CALCULATE MATERIAL COST: For manual components, user enters total consumption
+        // materialCost = total consumption × material rate (no additional multiplication)
+        const materialRate = component.materialRate || 0;
+        updatedComponent.materialCost = userEnteredValue * materialRate;
+        
+        console.log(`💰 UPDATED MATERIAL COST (Manual): ${userEnteredValue} × ${materialRate} = ${updatedComponent.materialCost} (total)`);
+      }
+      
+      // GENERAL MATERIAL COST CALCULATION for any consumption change
+      if (field === 'consumption' && !(component.formula === 'manual' || component.is_manual_consumption === true)) {
+        // For non-manual (calculated) components only
+        const consumption = parseFloat(value) || 0;
+        const materialRate = component.materialRate || 0;
+        updatedComponent.materialCost = consumption * materialRate;
+        
+        console.log(`💰 MATERIAL COST UPDATE (Calculated): ${type} - ${consumption} × ${materialRate} = ${updatedComponent.materialCost}`);
+      }
+      
       return {
         ...prev,
-        [type]: {
-          ...component,
-          [field]: value
-        }
+        [type]: updatedComponent
       };
     });
   };
@@ -49,7 +82,43 @@ export function useOrderComponents() {
   const handleCustomComponentChange = (index: number, field: string, value: string) => {
     setCustomComponents(prev => {
       const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
+      const component = updated[index] as ExtendedComponent;
+      
+      updated[index] = { 
+        ...component, 
+        [field]: value 
+      };
+      
+      // SPECIAL HANDLING FOR MANUAL CONSUMPTION CHANGES IN CUSTOM COMPONENTS
+      if (field === 'consumption' && (component.formula === 'manual' || component.is_manual_consumption === true)) {
+        // When user manually changes consumption, treat this as the new TOTAL consumption
+        const userEnteredValue = parseFloat(value) || 0;
+        
+        console.log(`🔧 MANUAL CONSUMPTION CHANGE (Custom): ${component.type || 'custom'} - User entered total consumption: ${userEnteredValue}`);
+        
+        // Store the user-entered value as the display value (total consumption)
+        const extendedComponent = updated[index] as ExtendedComponent;
+        extendedComponent.consumption = value; // Current display value (total)
+        extendedComponent.is_manual_consumption = true; // Mark as manually changed
+        
+        // CALCULATE MATERIAL COST: For manual components, user enters total consumption
+        const materialRate = component.materialRate || 0;
+        extendedComponent.materialCost = userEnteredValue * materialRate;
+        
+        console.log(`💰 UPDATED MATERIAL COST (Custom Manual): ${userEnteredValue} × ${materialRate} = ${extendedComponent.materialCost} (total)`);
+      }
+      
+      // GENERAL MATERIAL COST CALCULATION for any consumption change in custom components
+      if (field === 'consumption' && !(component.formula === 'manual' || component.is_manual_consumption === true)) {
+        // For non-manual (calculated) components only
+        const consumption = parseFloat(value) || 0;
+        const materialRate = component.materialRate || 0;
+        const extendedComponent = updated[index] as ExtendedComponent;
+        extendedComponent.materialCost = consumption * materialRate;
+        
+        console.log(`💰 MATERIAL COST UPDATE (Custom Calculated): ${component.type || 'custom'} - ${consumption} × ${materialRate} = ${extendedComponent.materialCost}`);
+      }
+      
       return updated;
     });
   };
@@ -88,7 +157,7 @@ export function useOrderComponents() {
   };  const updateConsumptionBasedOnQuantity = (quantity: number) => {
     if (isNaN(quantity) || quantity <= 0) return;
 
-    console.log(`%c SIMPLE APPROACH: Multiplying manual components by quantity: ${quantity}`, 'background: #4CAF50; color: white; padding: 2px 5px; font-weight: bold;');
+    console.log(`%c QUANTITY UPDATE: Updating consumption for quantity: ${quantity}`, 'background: #4CAF50; color: white; padding: 2px 5px; font-weight: bold;');
     
     // Skip if loading from database
     if (isLoadingFromDatabase) {
@@ -96,7 +165,7 @@ export function useOrderComponents() {
       return;
     }
 
-    // SIMPLE APPROACH: Process each standard component
+    // Process each standard component
     const updatedComponents = { ...components };
     
     Object.keys(updatedComponents).forEach(type => {
@@ -116,7 +185,15 @@ export function useOrderComponents() {
       const isManual = isManualFormula(component);
       
       if (isManual) {
-        // FOR MANUAL: Use base consumption if available, otherwise use current consumption divided by previous quantity
+        // FOR MANUAL: Keep consumption as-is (user controls total consumption directly)
+        console.log(`🔶 MANUAL ${type}: Keeping user-set total consumption = ${currentConsumption}`);
+        
+        updatedComponents[type] = {
+          ...component,
+          materialCost: currentConsumption * (component.materialRate || 0)
+        };
+      } else {
+        // FOR CALCULATED: Use base consumption and multiply by new quantity
         let baseConsumption = currentConsumption;
         
         // If we have stored base consumption, use it
@@ -128,27 +205,19 @@ export function useOrderComponents() {
         
         const newConsumption = baseConsumption * quantity;
         
-        console.log(`🔶 MANUAL ${type}: Base=${baseConsumption} × Qty=${quantity} = ${newConsumption}`);
+        console.log(`� CALCULATED ${type}: Base=${baseConsumption} × Qty=${quantity} = ${newConsumption}`);
         
         updatedComponents[type] = {
           ...component,
           consumption: newConsumption.toFixed(4),
           materialCost: newConsumption * (component.materialRate || 0)
         };
-      } else {
-        // FOR CALCULATED: Keep consumption as-is
-        console.log(`🔵 CALCULATED ${type}: Keeping consumption = ${currentConsumption}`);
-        
-        updatedComponents[type] = {
-          ...component,
-          materialCost: currentConsumption * (component.materialRate || 0)
-        };
       }
     });
     
     setComponents(updatedComponents);
 
-    // SIMPLE APPROACH: Process each custom component
+    // Process each custom component
     const updatedCustomComponents = customComponents.map((component, idx) => {
       if (!component.consumption) {
         console.log(`❌ Custom ${idx}: No consumption value`);
@@ -164,7 +233,15 @@ export function useOrderComponents() {
       const isManual = isManualFormula(component as ProcessedComponent);
       
       if (isManual) {
-        // FOR MANUAL: Use base consumption if available, otherwise use current consumption
+        // FOR MANUAL: Keep consumption as-is (user controls total consumption directly)
+        console.log(`🔶 MANUAL Custom ${idx}: Keeping user-set total consumption = ${currentConsumption}`);
+        
+        return {
+          ...component,
+          materialCost: currentConsumption * (component.materialRate || 0)
+        };
+      } else {
+        // FOR CALCULATED: Use base consumption and multiply by new quantity
         let baseConsumption = currentConsumption;
         
         // If we have stored base consumption, use it
@@ -177,20 +254,12 @@ export function useOrderComponents() {
         
         const newConsumption = baseConsumption * quantity;
         
-        console.log(`🔶 MANUAL Custom ${idx}: Base=${baseConsumption} × Qty=${quantity} = ${newConsumption}`);
+        console.log(`� CALCULATED Custom ${idx}: Base=${baseConsumption} × Qty=${quantity} = ${newConsumption}`);
         
         return {
           ...component,
           consumption: newConsumption.toFixed(4),
           materialCost: newConsumption * (component.materialRate || 0)
-        };
-      } else {
-        // FOR CALCULATED: Keep consumption as-is
-        console.log(`🔵 CALCULATED Custom ${idx}: Keeping consumption = ${currentConsumption}`);
-        
-        return {
-          ...component,
-          materialCost: currentConsumption * (component.materialRate || 0)
         };
       }
     });
@@ -207,7 +276,7 @@ export function useOrderComponents() {
       materialCost
     }));
     
-    console.log(`✅ SIMPLE UPDATE COMPLETE: Material cost = ${materialCost}`);
+    console.log(`✅ QUANTITY UPDATE COMPLETE: Material cost = ${materialCost}`);
   };
 
   return {

@@ -11,7 +11,8 @@ import {
   ShoppingCart,
   BarChart,
   Building,
-  Settings
+  Settings,
+  TrendingUp
 } from "lucide-react";
 import {
   DropdownMenu,
