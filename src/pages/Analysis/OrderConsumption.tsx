@@ -441,10 +441,14 @@ const OrderConsumption = () => {
                   to: dateRange.to
                 }}
                 onChange={(range) => {
-                  setDateRange({
-                    from: range.from,
-                    to: range.to
-                  });
+                  if (range) {
+                    setDateRange({
+                      from: range.from,
+                      to: range.to
+                    });
+                  } else {
+                    setDateRange({});
+                  }
                 }}
               />
             </div>
@@ -912,88 +916,6 @@ const OrderConsumption = () => {
                               ₹{formatCurrency(selectedOrder.profit)} ({selectedOrder.profitMargin.toFixed(1)}%)
                             </span>
                           </div>
-                        </div>
-                      </div>
-                    </TabsContent>
-                    
-                    <TabsContent value="chart" className="space-y-8">
-                      {/* Material Distribution Pie Chart */}
-                      <div>
-                        <h3 className="text-lg font-medium mb-4">Material Distribution</h3>
-                        <div className="h-[300px]">
-                          {materialDistributionData.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                              <RechartsPieChart>
-                                <Pie
-                                  data={materialDistributionData}
-                                  cx="50%"
-                                  cy="50%"
-                                  labelLine={false}
-                                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                                  outerRadius={120}
-                                  fill="#8884d8"
-                                  dataKey="value"
-                                  nameKey="name"
-                                >
-                                  {materialDistributionData.map((entry: any, index: number) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                  ))}
-                                </Pie>
-                                <Tooltip 
-                                  formatter={(value: any, name: any, props: any) => [
-                                    `${value} ${props.payload.unit} (₹${formatCurrency(props.payload.materialValue)})`,
-                                    props.payload.name
-                                  ]}
-                                />
-                              </RechartsPieChart>
-                            </ResponsiveContainer>
-                          ) : (
-                            <div className="flex items-center justify-center h-full">
-                              <div className="text-center text-muted-foreground">
-                                <AlertCircle className="mx-auto h-8 w-8" />
-                                <h3 className="mt-2">No material data available</h3>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Cost Breakdown Pie Chart */}
-                      <div>
-                        <h3 className="text-lg font-medium mb-4">Cost Structure</h3>
-                        <div className="h-[300px]">
-                          {selectedOrder.totalCost > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                              <RechartsPieChart>
-                                <Pie
-                                  data={getCostBreakdownData(selectedOrder)}
-                                  cx="50%"
-                                  cy="50%"
-                                  labelLine={false}
-                                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                                  outerRadius={120}
-                                  fill="#8884d8"
-                                  dataKey="value"
-                                  nameKey="name"
-                                >
-                                  {getCostBreakdownData(selectedOrder).map((entry: any, index: number) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                  ))}
-                                </Pie>
-                                <Tooltip 
-                                  formatter={(value: any) => [`₹${formatCurrency(value)}`, "Cost"]}
-                                />
-                                <Legend />
-                              </RechartsPieChart>
-                            </ResponsiveContainer>
-                          ) : (
-                            <div className="flex items-center justify-center h-full">
-                              <div className="text-center text-muted-foreground">
-                                <AlertCircle className="mx-auto h-8 w-8" />
-                                <h3 className="mt-2">No cost data available</h3>
-                              </div>
-                            </div>
-                          )}
                         </div>
                       </div>
                     </TabsContent>

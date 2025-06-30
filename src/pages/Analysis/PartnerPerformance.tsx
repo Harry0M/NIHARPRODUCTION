@@ -1,6 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { DateRange } from "react-day-picker"
 import { 
   ArrowLeft, Users, BadgeCheck, BarChart3, Calendar, 
   DollarSign, TrendingUp, AlertCircle, PackageCheck
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { JobStatus, PrintingJobData, CuttingJobData } from '@/types/production';
+import { DatePickerWithRange } from '@/components/ui/date-range-picker';
 
 interface PartnerData {
   id: string;
@@ -125,6 +126,7 @@ const PartnerPerformance = () => {
   });
   const [timeFilter, setTimeFilter] = useState<string>('all');
   const [jobTypeFilter, setJobTypeFilter] = useState<string>('all');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   useEffect(() => {
     if (id && type) {
@@ -457,32 +459,49 @@ const PartnerPerformance = () => {
     if (jobTypeFilter !== 'all' && jobTypeFilter !== jobType) {
       return [];
     }
-    
-    if (timeFilter === 'all') {
-      return jobsList;
+
+    let filteredJobs = jobsList;
+
+    if (dateRange?.from && dateRange?.to) {
+      filteredJobs = filteredJobs.filter(job => {
+        const jobDate = new Date(job.created_at);
+        return jobDate >= dateRange.from! && jobDate <= dateRange.to!;
+      });
+    } else if (timeFilter !== 'all') {
+        const now = new Date();
+        const cutoffDate = new Date();
+        
+        switch (timeFilter) {
+          case '7days':
+            cutoffDate.setDate(now.getDate() - 7);
+            break;
+          case '30days':
+            cutoffDate.setDate(now.getDate() - 30);
+            break;
+          case '90days':
+            cutoffDate.setDate(now.getDate() - 90);
+            break;
+          case '6months':
+            cutoffDate.setMonth(now.getMonth() - 6);
+            break;
+          case '1year':
+            cutoffDate.setFullYear(now.getFullYear() - 1);
+            break;
+          case '2years':
+            cutoffDate.setFullYear(now.getFullYear() - 2);
+            break;
+          case '3years':
+            cutoffDate.setFullYear(now.getFullYear() - 3);
+            break;
+          case '4years':
+            cutoffDate.setFullYear(now.getFullYear() - 4);
+            break;
+        }
+        
+        filteredJobs = filteredJobs.filter(job => new Date(job.created_at) >= cutoffDate);
     }
-    
-    const now = new Date();
-    const cutoffDate = new Date();
-    
-    switch (timeFilter) {
-      case '30days':
-        cutoffDate.setDate(now.getDate() - 30);
-        break;
-      case '90days':
-        cutoffDate.setDate(now.getDate() - 90);
-        break;
-      case '6months':
-        cutoffDate.setMonth(now.getMonth() - 6);
-        break;
-      case '1year':
-        cutoffDate.setFullYear(now.getFullYear() - 1);
-        break;
-      default:
-        return jobsList;
-    }
-    
-    return jobsList.filter(job => new Date(job.created_at) >= cutoffDate);
+
+    return filteredJobs;
   };
 
   if (loading) {
@@ -611,18 +630,26 @@ const PartnerPerformance = () => {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="w-full sm:w-64">
-          <Select value={timeFilter} onValueChange={setTimeFilter}>
+          <Select value={timeFilter} onValueChange={setTimeFilter} disabled={!!dateRange}>
             <SelectTrigger>
               <SelectValue placeholder="Time Period" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Time</SelectItem>
+              <SelectItem value="7days">Last 7 Days</SelectItem>
               <SelectItem value="30days">Last 30 Days</SelectItem>
               <SelectItem value="90days">Last 90 Days</SelectItem>
               <SelectItem value="6months">Last 6 Months</SelectItem>
               <SelectItem value="1year">Last Year</SelectItem>
+              <SelectItem value="2years">Last 2 Years</SelectItem>
+              <SelectItem value="3years">Last 3 Years</SelectItem>
+              <SelectItem value="4years">Last 4 Years</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+        
+        <div className="w-full sm:w-64">
+          <DatePickerWithRange date={dateRange} onChange={setDateRange} />
         </div>
         
         <div className="w-full sm:w-64">

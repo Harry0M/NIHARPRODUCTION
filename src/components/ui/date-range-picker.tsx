@@ -1,4 +1,3 @@
-
 import * as React from "react"
 import { format } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
@@ -16,7 +15,7 @@ import {
 interface DatePickerWithRangeProps {
   className?: string
   date: DateRange | undefined
-  onChange: (date: DateRange) => void
+  onChange: (date: DateRange | undefined) => void
 }
 
 export function DatePickerWithRange({

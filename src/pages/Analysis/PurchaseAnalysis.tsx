@@ -7,6 +7,8 @@ import { formatCurrency, formatNumber } from "@/utils/formatters";
 import { LoadingSpinner } from "@/components/production/LoadingSpinner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { subMonths, format, parseISO } from "date-fns";
+import { DateRange } from "react-day-picker";
+import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { DollarSign, Package, ShoppingCart, TrendingUp } from "lucide-react";
 
@@ -28,13 +30,15 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 const PurchaseAnalysis = () => {
   const [timeRange, setTimeRange] = useState("12"); // months
   const [sortOrder, setSortOrder] = useState<'most' | 'least'>('most');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: subMonths(new Date(), 12),
+    to: new Date(),
+  });
 
   const { data: purchaseData, isLoading: isLoadingMaterials } = useQuery({
-    queryKey: ['purchase-summary', timeRange],
+    queryKey: ['purchase-summary', timeRange, dateRange],
     queryFn: async () => {
-      const cutoffDate = subMonths(new Date(), parseFloat(timeRange));
-      
-      const { data, error } = await supabase
+      let query = supabase
         .from('purchase_items')
         .select(`
           material_id,
@@ -47,9 +51,19 @@ const PurchaseAnalysis = () => {
             purchase_date,
             status
           )
-        `)
-        .gte('purchases.purchase_date', cutoffDate.toISOString())
-        .eq('purchases.status', 'completed');
+        `);
+
+      if (dateRange?.from && dateRange?.to) {
+        query = query.gte('purchases.purchase_date', dateRange.from.toISOString())
+                     .lte('purchases.purchase_date', dateRange.to.toISOString());
+      } else if (timeRange) {
+        const cutoffDate = subMonths(new Date(), parseFloat(timeRange));
+        query = query.gte('purchases.purchase_date', cutoffDate.toISOString());
+      }
+
+      query = query.eq('purchases.status', 'completed');
+      
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -82,14 +96,23 @@ const PurchaseAnalysis = () => {
   });
 
   const { data: monthlyData, isLoading: isLoadingMonthly } = useQuery({
-    queryKey: ['monthly-purchase-summary', timeRange],
+    queryKey: ['monthly-purchase-summary', timeRange, dateRange],
     queryFn: async () => {
-      const cutoffDate = subMonths(new Date(), parseFloat(timeRange));
-      const { data, error } = await supabase
+      let query = supabase
         .from('purchases')
-        .select('purchase_date, total_amount')
-        .gte('purchase_date', cutoffDate.toISOString())
-        .eq('status', 'completed');
+        .select('purchase_date, total_amount');
+
+      if (dateRange?.from && dateRange?.to) {
+        query = query.gte('purchase_date', dateRange.from.toISOString())
+                     .lte('purchase_date', dateRange.to.toISOString());
+      } else if (timeRange) {
+        const cutoffDate = subMonths(new Date(), parseFloat(timeRange));
+        query = query.gte('purchase_date', cutoffDate.toISOString());
+      }
+
+      query = query.eq('status', 'completed');
+      
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -267,7 +290,7 @@ const PurchaseAnalysis = () => {
                     <SelectItem value="least">Least Purchased</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select value={timeRange} onValueChange={setTimeRange}>
+                <Select value={timeRange} onValueChange={setTimeRange} disabled={!!dateRange}>
                     <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Select time range" />
                     </SelectTrigger>
@@ -277,8 +300,22 @@ const PurchaseAnalysis = () => {
                         <SelectItem value="3">Last 3 months</SelectItem>
                         <SelectItem value="6">Last 6 months</SelectItem>
                         <SelectItem value="12">Last 12 months</SelectItem>
+                        <SelectItem value="24">Last 2 years</SelectItem>
+                        <SelectItem value="36">Last 3 years</SelectItem>
+                        <SelectItem value="48">Last 4 years</SelectItem>
                     </SelectContent>
                 </Select>
+                <DatePickerWithRange
+                  date={dateRange}
+                  onChange={(range) => {
+                    setDateRange(range);
+                    if (range) {
+                      setTimeRange(""); // Clear dropdown selection
+                    } else {
+                      setTimeRange("12"); // Reset to default
+                    }
+                  }}
+                />
               </div>
             </div>
           </CardHeader>

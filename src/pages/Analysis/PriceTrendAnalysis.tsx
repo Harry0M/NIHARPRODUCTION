@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { format, differenceInMonths, parseISO, subMonths } from "date-fns";
+import { DateRange } from "react-day-picker";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatCurrency } from "@/utils/formatters";
+import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // Types
@@ -137,6 +139,10 @@ const PriceTrendAnalysis = () => {
   const navigate = useNavigate();
   const [selectedMaterial, setSelectedMaterial] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<string>("12");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: subMonths(new Date(), 12),
+    to: new Date(),
+  });
   
   // Fetch all materials
   const { data: materials, isLoading: materialsLoading } = useQuery({
@@ -154,11 +160,8 @@ const PriceTrendAnalysis = () => {
   
   // Fetch purchase history data for price trend analysis
   const { data: purchaseData, isLoading: purchaseDataLoading } = useQuery({
-    queryKey: ['price-trend-data', selectedMaterial, timeRange],
+    queryKey: ['price-trend-data', selectedMaterial, timeRange, dateRange],
     queryFn: async () => {
-      const cutoffDate = subMonths(new Date(), parseInt(timeRange));
-      
-      // Build query based on whether a specific material is selected
       let query = supabase
         .from("purchase_items")
         .select(`
@@ -184,9 +187,17 @@ const PriceTrendAnalysis = () => {
             material_name,
             unit
           )
-        `)
-        .gte('purchase.purchase_date', cutoffDate.toISOString())
-        .eq('purchase.status', 'completed');
+        `);
+
+      if (dateRange?.from && dateRange?.to) {
+        query = query.gte('purchase.purchase_date', dateRange.from.toISOString())
+                     .lte('purchase.purchase_date', dateRange.to.toISOString());
+      } else if (timeRange) {
+        const cutoffDate = subMonths(new Date(), parseInt(timeRange));
+        query = query.gte('purchase.purchase_date', cutoffDate.toISOString());
+      }
+      
+      query = query.eq('purchase.status', 'completed');
       
       // If a specific material is selected, filter for it
       if (selectedMaterial) {
@@ -329,6 +340,7 @@ const PriceTrendAnalysis = () => {
           <Select 
             value={timeRange} 
             onValueChange={setTimeRange}
+            disabled={!!dateRange}
           >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select time range" />
@@ -340,6 +352,17 @@ const PriceTrendAnalysis = () => {
               <SelectItem value="24">Last 24 months</SelectItem>
             </SelectContent>
           </Select>
+          <DatePickerWithRange
+            date={dateRange}
+            onChange={(range) => {
+              setDateRange(range);
+              if (range) {
+                setTimeRange(""); // Clear dropdown selection
+              } else {
+                setTimeRange("12"); // Reset to default
+              }
+            }}
+          />
         </div>
       </div>
       
