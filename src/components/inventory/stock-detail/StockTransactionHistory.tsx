@@ -504,7 +504,7 @@ export const StockTransactionHistory = ({
                           </div>
                           {reference_id && (
                             <button
-                              onClick={() => window.open(`/inventory/purchases/${reference_id}`, '_blank')}
+                              onClick={() => window.open(`/purchases/${reference_id}`, '_blank')}
                               className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded-md transition-colors"
                             >
                               View Purchase
