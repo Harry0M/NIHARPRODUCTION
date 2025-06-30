@@ -32,7 +32,7 @@ const PurchaseAnalysis = () => {
   const { data: purchaseData, isLoading: isLoadingMaterials } = useQuery({
     queryKey: ['purchase-summary', timeRange],
     queryFn: async () => {
-      const cutoffDate = subMonths(new Date(), parseInt(timeRange));
+      const cutoffDate = subMonths(new Date(), parseFloat(timeRange));
       
       const { data, error } = await supabase
         .from('purchase_items')
@@ -84,7 +84,7 @@ const PurchaseAnalysis = () => {
   const { data: monthlyData, isLoading: isLoadingMonthly } = useQuery({
     queryKey: ['monthly-purchase-summary', timeRange],
     queryFn: async () => {
-      const cutoffDate = subMonths(new Date(), parseInt(timeRange));
+      const cutoffDate = subMonths(new Date(), parseFloat(timeRange));
       const { data, error } = await supabase
         .from('purchases')
         .select('purchase_date, total_amount')
@@ -272,7 +272,8 @@ const PurchaseAnalysis = () => {
                         <SelectValue placeholder="Select time range" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="1">Last month</SelectItem>
+                        <SelectItem value="0.25">Last 7 days</SelectItem>
+                        <SelectItem value="1">Last 30 days</SelectItem>
                         <SelectItem value="3">Last 3 months</SelectItem>
                         <SelectItem value="6">Last 6 months</SelectItem>
                         <SelectItem value="12">Last 12 months</SelectItem>
