@@ -43,7 +43,7 @@ export const OrderTable = ({
             </TableHead>
             <TableHead className="w-[180px] font-medium">Order Number</TableHead>
             <TableHead className="font-medium">Company</TableHead>
-            <TableHead className="text-right font-medium">Quantity</TableHead>
+            <TableHead className="text-right font-medium">Order Quantity</TableHead>
             <TableHead className="text-right font-medium">Size (in)</TableHead>
             <TableHead className="font-medium">Status</TableHead>
             <TableHead className="text-right font-medium">Date</TableHead>
@@ -78,7 +78,9 @@ export const OrderTable = ({
                 </a>
               </TableCell>
               <TableCell className="text-sm">{order.company_name}</TableCell>
-              <TableCell className="text-right font-medium text-sm">{order.quantity.toLocaleString()}</TableCell>
+              <TableCell className="text-right font-medium text-sm">
+                {order.order_quantity != null ? order.order_quantity.toLocaleString() : order.quantity.toLocaleString()}
+              </TableCell>
               <TableCell className="text-right text-sm">
                 <span className="text-muted-foreground font-medium">
                   {order.bag_length} × {order.bag_width}
