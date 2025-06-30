@@ -8,7 +8,7 @@ import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from "recharts";
 import { LoadingSpinner } from "@/components/production/LoadingSpinner";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, BarChart as BarChartIcon, FileText, TrendingDown, TrendingUp, ArchiveIcon, Package, RefreshCcw, Users, AlertTriangle } from "lucide-react";
+import { AlertCircle, BarChart as BarChartIcon, FileText, TrendingDown, TrendingUp, ArchiveIcon, Package, RefreshCcw, Users, AlertTriangle, Building } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 const AnalysisDashboard = () => {
@@ -193,6 +193,21 @@ const AnalysisDashboard = () => {
             <CardContent>
               <p className="text-sm text-muted-foreground">
                 Analyze vendor and supplier job efficiency
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Company Order Analysis */}
+          <Card className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate('/analysis/company-orders')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center">
+                <Building className="h-5 w-5 mr-2" />
+                Company Orders
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Analyze order counts for each company
               </p>
             </CardContent>
           </Card>
