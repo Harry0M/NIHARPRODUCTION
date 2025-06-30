@@ -62,62 +62,84 @@ export function useOrderSubmission({
       }
       
       // Debug all components before submission to help identify issues
-      console.log('=== CONSUMPTION VALUES BEFORE DATABASE SAVE ===');
+      console.log('=== ORDER SUBMISSION START ===');
       console.log('Order Quantity:', orderDetails.quantity || orderDetails.total_quantity);
-      console.log('Components object:', components);
-      console.log('Custom components:', customComponents);
+      console.log('Catalog ID:', orderDetails.catalog_id);
       
-      // Show consumption values for each component
-      [...Object.values(components), ...customComponents].filter(Boolean).forEach(comp => {
-        console.log(`Component ${comp.type}:`);
-        console.log(`  - consumption: ${comp.consumption}`);
-        console.log(`  - fetchedConsumption: ${comp.fetchedConsumption}`);
-        console.log(`  - materialRate: ${comp.materialRate}`);
-        console.log(`  - formula: ${comp.formula}`);
-      });
-      console.log('==========================================');
+      // SIMPLIFIED COST FETCHING: Get raw costs from catalog template and multiply by order quantity
+      let materialCost = 0;
+      let cuttingCharge = 0;
+      let printingCharge = 0;
+      let stitchingCharge = 0;
+      let transportCharge = 0;
+      let margin = 15; // Default margin
+      let sellingRate = 0;
       
-      debugAllComponents(components, customComponents);
-      
-      // Calculate margins and selling price using already calculated costs
-      const materialCost = costCalculation?.materialCost || 0;
-      
-      // Use the already calculated total costs from costCalculation (these are already multiplied by quantity)
-      const cuttingCharge = costCalculation?.cuttingCharge || 0;
-      const printingCharge = costCalculation?.printingCharge || 0;
-      const stitchingCharge = costCalculation?.stitchingCharge || 0;
-      const transportCharge = costCalculation?.transportCharge || 0;
-      
-      const productionCost = cuttingCharge + printingCharge + stitchingCharge + transportCharge;
-      const totalCost = materialCost + productionCost;
-      
-      // Calculate margin and selling price
-      const margin = parseFloat(orderDetails.margin || '15');
-      let sellingRate = costCalculation?.sellingPrice || 0;
-      
-      // Use the calculated selling price from costCalculation if available,
-      // otherwise use the rate from orderDetails if specified,
-      // or calculate it based on cost and margin
-      if (orderDetails.rate && parseFloat(orderDetails.rate) > 0) {
-        sellingRate = parseFloat(orderDetails.rate);
-      } else if (sellingRate <= 0 && totalCost > 0 && margin > 0) {
-        // Calculate selling price: cost / (1 - margin/100)
-        sellingRate = totalCost / (1 - margin/100);
+      // If catalog_id is provided, fetch raw costs from the catalog template
+      if (orderDetails.catalog_id) {
+        try {
+          console.log('Fetching raw cost data from catalog template:', orderDetails.catalog_id);
+          
+          const { data: catalogData, error: catalogError } = await supabase
+            .from('catalog')
+            .select(`
+              material_cost,
+              cutting_charge,
+              printing_charge,
+              stitching_charge,
+              transport_charge,
+              margin,
+              selling_rate
+            `)
+            .eq('id', orderDetails.catalog_id)
+            .single();
+            
+          if (catalogError) {
+            console.error('Error fetching catalog cost data:', catalogError);
+            showToast({
+              title: "Warning: Could not fetch template costs",
+              description: "Using default values",
+              type: "warning"
+            });
+          } else if (catalogData) {
+            console.log('Raw catalog cost data fetched:', catalogData);
+            
+            // Get order quantity for multiplication
+            const orderQuantity = parseInt(orderDetails.order_quantity || orderDetails.quantity || '1');
+            
+            // MULTIPLY BY ORDER QUANTITY: Material cost, production costs, and transport charges
+            materialCost = (catalogData.material_cost || 0) * orderQuantity;
+            cuttingCharge = (catalogData.cutting_charge || 0) * orderQuantity;
+            printingCharge = (catalogData.printing_charge || 0) * orderQuantity;
+            stitchingCharge = (catalogData.stitching_charge || 0) * orderQuantity;
+            transportCharge = (catalogData.transport_charge || 0) * orderQuantity;
+            margin = catalogData.margin || 15;
+            sellingRate = (catalogData.selling_rate || 0) * orderQuantity;
+            
+            console.log('Costs calculated (multiplied by order quantity):', {
+              orderQuantity,
+              materialCost,
+              cuttingCharge,
+              printingCharge,
+              stitchingCharge,
+              transportCharge,
+              margin,
+              sellingRate
+            });
+          }
+        } catch (error) {
+          console.error('Exception fetching catalog costs:', error);
+          showToast({
+            title: "Warning: Error fetching template costs",
+            description: "Using default values",
+            type: "warning"
+          });
+        }
+      } else {
+        // No catalog template, use default values
+        console.log('No catalog template selected, using default cost values');
+        sellingRate = parseFloat(orderDetails.rate || '0');
       }
-      
-      console.log("Order calculation:", {
-        materialCost,
-        totalCosts: {
-          cutting: cuttingCharge,
-          printing: printingCharge,
-          stitching: stitchingCharge,
-          transport: transportCharge,
-          production: productionCost
-        },
-        totalCost,
-        margin,
-        sellingRate
-      });
       
       // Prepare data for database insert/update
       // First, validate that the sales_account_id (company_id) exists if provided
@@ -182,14 +204,14 @@ export function useOrderSubmission({
         sales_account_id: validatedSalesAccountId,
         catalog_id: orderDetails.catalog_id || null,
         special_instructions: orderDetails.special_instructions || null,
-        // Cost calculations - use the properly multiplied values
+        // Costs multiplied by order quantity: material cost, production costs, and transport charges
         material_cost: materialCost,
         cutting_charge: cuttingCharge,
         printing_charge: printingCharge,
         stitching_charge: stitchingCharge,
         transport_charge: transportCharge,
-        production_cost: productionCost,
-        total_cost: totalCost,
+        production_cost: cuttingCharge + printingCharge + stitchingCharge + transportCharge,
+        total_cost: materialCost + cuttingCharge + printingCharge + stitchingCharge + transportCharge,
         margin: margin,
         calculated_selling_price: sellingRate
       };
@@ -360,7 +382,6 @@ export function useOrderSubmission({
             // The database should store per-unit values, not total values
             const finalConsumption = perUnitConsumption;
             
-            console.log(`� DATABASE SAVE: Component ${comp.type || 'unknown'}: Per-unit consumption = ${finalConsumption}`);
             console.log(`💰 MATERIAL RATE: ${comp.materialRate}`);
             console.log(`💵 PER-UNIT COST: ${finalConsumption} × ${comp.materialRate} = ${finalConsumption * (comp.materialRate || 0)}`);
             console.log('---');

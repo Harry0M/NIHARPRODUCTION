@@ -1,56 +1,25 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 import { OrderDetailsForm } from "@/components/orders/OrderDetailsForm";
-import { CostCalculationDisplay } from "@/components/orders/CostCalculationDisplay";
 import { useOrderForm } from "@/hooks/use-order-form";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardFooter,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { OrderFormOptimizer, setupCacheInterceptor, optimizeComponentRendering } from "@/components/optimization/OrderFormOptimizer";
-import { useEffect } from "react";
+import { OrderFormOptimizer } from "@/components/optimization/OrderFormOptimizer";
 
 const OrderNew = () => {
   const navigate = useNavigate();
   
   const {
     orderDetails,
-    submitting,
-    formErrors,
     handleOrderChange,
     handleProductSelect,
-    handleSubmit,
-    validateForm,
+    formErrors,
     updateConsumptionBasedOnQuantity,
-    costCalculation, // Get the cost calculation
-    updateMargin // Add function to update margin
+    handleSubmit,
+    submitting
   } = useOrderForm();
   
-  // Initialize performance optimizations when component mounts
-  useEffect(() => {
-    // Set up the cache interceptor for API requests
-    setupCacheInterceptor();
-    
-    // Apply rendering optimizations after component is mounted
-    const timer = setTimeout(() => {
-      optimizeComponentRendering();
-    }, 500); // Wait for the component to fully render
-    
-    return () => {
-      clearTimeout(timer);
-    };
-  }, []);
-  
   const onSubmit = async (e: React.FormEvent) => {
-    if (!validateForm()) {
-      return;
-    }
-    
     const orderId = await handleSubmit(e);
     if (orderId) {
       // Use window.location.href instead of navigate for reliable page refresh
@@ -79,7 +48,7 @@ const OrderNew = () => {
         </div>
       </div>
       
-      {/* Debug information card removed */}      <form onSubmit={onSubmit} className="space-y-6">
+      <form onSubmit={onSubmit} className="space-y-6">
         <OrderDetailsForm 
           formData={orderDetails}
           handleOrderChange={handleOrderChange}
@@ -88,41 +57,19 @@ const OrderNew = () => {
           updateConsumptionBasedOnQuantity={updateConsumptionBasedOnQuantity}
         />
         
-        {/* Component sections removed - will be handled at save time */}
-        
-        {/* Cost Calculation Display */}
-        {costCalculation && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Cost Calculation</CardTitle>
-              <CardDescription>Order cost breakdown and pricing</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <CostCalculationDisplay 
-                costCalculation={costCalculation}
-                onMarginChange={updateMargin}
-              />
-            </CardContent>
-          </Card>
-        )}
-        
-        {/* Form Actions - Always visible, moved outside of collapsible section */}
-        <Card>
-          <CardFooter>
-            <div className="flex justify-end gap-2 w-full">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => window.location.href = "/orders"}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={submitting}>
-                {submitting ? "Creating..." : "Create Order"}
-              </Button>
-            </div>
-          </CardFooter>
-        </Card>
+        {/* Form Actions */}
+        <div className="flex justify-end gap-4">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={() => navigate("/orders")}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={submitting}>
+            {submitting ? "Creating Order..." : "Create Order"}
+          </Button>
+        </div>
       </form>
     </div>
     </OrderFormOptimizer>

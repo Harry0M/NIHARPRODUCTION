@@ -56,6 +56,7 @@ export const CostCalculationDisplay = ({
       printingCharge: (costCalculation.printingCharge / (orderQuantity || 1)).toString(),
       stitchingCharge: (costCalculation.stitchingCharge / (orderQuantity || 1)).toString(),
       transportCharge: (costCalculation.transportCharge / (orderQuantity || 1)).toString(),
+      margin: costCalculation.margin.toString(),
     });
   }, [costCalculation, orderQuantity]);
   
@@ -79,6 +80,7 @@ export const CostCalculationDisplay = ({
     printingCharge: (costCalculation.printingCharge / (orderQuantity || 1)).toString(),
     stitchingCharge: (costCalculation.stitchingCharge / (orderQuantity || 1)).toString(),
     transportCharge: (costCalculation.transportCharge / (orderQuantity || 1)).toString(),
+    margin: costCalculation.margin.toString(),
   });
   
   const formatCurrency = (value: number) => {
@@ -92,7 +94,13 @@ export const CostCalculationDisplay = ({
   };
   
   const handleMarginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newMargin = parseFloat(e.target.value);
+    const value = e.target.value.replace(/[^0-9.]/g, '');
+    setInputValues(prev => ({
+      ...prev,
+      margin: value
+    }));
+    
+    const newMargin = value === '' ? 0 : parseFloat(value);
     if (!isNaN(newMargin) && onMarginChange) {
       onMarginChange(newMargin);
     }
@@ -372,7 +380,7 @@ export const CostCalculationDisplay = ({
                         type="text"
                         inputMode="decimal"
                         className="w-20 h-8 text-right bg-white border border-blue-200 focus:border-blue-400 rounded-md px-2"
-                        value={costCalculation.margin.toString()}
+                        value={inputValues.margin}
                         onChange={handleMarginChange}
                       />
                       <span className="text-xs text-muted-foreground">%</span>
@@ -386,6 +394,20 @@ export const CostCalculationDisplay = ({
                     <span>{formatCurrency(costCalculation.sellingPrice)}</span>
                   </div>
                   <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
+                    <span>Per piece</span>
+                    <span>{formatCurrency(costCalculation.sellingPrice / (orderQuantity || 1))}</span>
+                  </div>
+                </div>
+                
+                <div className="bg-slate-50 p-3 rounded-md">
+                  <div className="flex justify-between items-center">
+                    <span>Selling Rate Per Piece</span>
+                    <span className="font-medium">{formatCurrency(costCalculation.sellingPrice / (orderQuantity || 1))}</span>
+                  </div>
+                </div>
+                
+                <div className="bg-slate-50 p-3 rounded-md font-medium">
+                  <div className="flex justify-between items-center">
                     <span>Profit</span>
                     <span className={profitIsPositive ? "text-green-600" : "text-red-600"}>
                       {formatCurrency(profit)}

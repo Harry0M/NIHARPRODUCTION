@@ -35,7 +35,8 @@ import {
   Pencil,
   Plus,
   Calculator,
-  Layers
+  Layers,
+  Save
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,9 +50,9 @@ interface Order {
   order_number: string;
   company_name: string;
   quantity: string | number;
-  order_quantity: string | number;
-  product_quantity: string | number;
-  total_quantity: string | number;
+  order_quantity?: string | number;
+  product_quantity?: string | number;
+  total_quantity?: string | number;
   bag_length: number;
   bag_width: number;
   border_dimension?: number | null;
@@ -62,6 +63,10 @@ interface Order {
   special_instructions: string | null;
   created_at: string;
   sales_account_id?: string | null;
+  catalog_id?: string | null;
+  company_id?: string | null;
+  created_by?: string | null;
+  updated_at?: string | null;
   // Cost calculation fields
   material_cost?: number | null;
   production_cost?: number | null;
@@ -116,6 +121,11 @@ const OrderDetail = () => {
   const [costCalculation, setCostCalculation] = useState<any>(null);
   const [catalogProduct, setCatalogProduct] = useState<{name: string} | null>(null);
   
+  // Cost editing state
+  const [isEditingCosts, setIsEditingCosts] = useState(false);
+  const [savingCosts, setSavingCosts] = useState(false);
+  const [editedCosts, setEditedCosts] = useState<any>(null);
+  
   // Get cost calculation functions
   const { calculateTotalCost, calculateSellingPrice } = useCostCalculation();
   
@@ -156,7 +166,7 @@ const OrderDetail = () => {
         console.log("ORDER DETAIL - Components count:", componentsData?.length || 0);
         
         // Convert components data to match our Component type
-        const typeSafeComponents: Component[] = componentsData?.map(comp => ({
+        const typeSafeComponents: Component[] = (componentsData?.map(comp => ({
           ...comp,
           // Ensure gsm is a string
           gsm: comp.gsm !== null ? String(comp.gsm) : null,
@@ -166,8 +176,14 @@ const OrderDetail = () => {
           // Add material rate for cost calculation
           materialRate: comp.inventory && typeof comp.inventory === 'object' 
             ? (comp.inventory as any).purchase_rate
-            : null
-        })) || [];
+            : null,
+          // Handle component_cost_breakdown properly
+          component_cost_breakdown: comp.component_cost_breakdown ? 
+            (typeof comp.component_cost_breakdown === 'string' ? 
+              JSON.parse(comp.component_cost_breakdown) : 
+              comp.component_cost_breakdown) as { material_cost: number; material_rate: number; consumption: number; }
+            : { material_cost: 0, material_rate: 0, consumption: 0 }
+        })) || []) as Component[];
         
         console.log("ORDER DETAIL - Processed components:", typeSafeComponents);
         
@@ -328,6 +344,112 @@ const OrderDetail = () => {
       style: 'currency',
       currency: 'INR',
     }).format(amount);
+  };
+
+  // Cost editing handlers
+  const handleCostChange = (type: string, value: number) => {
+    if (!editedCosts) return;
+    
+    setEditedCosts(prev => ({
+      ...prev,
+      [type]: value
+    }));
+  };
+
+  const handleMarginChange = (margin: number) => {
+    if (!editedCosts) return;
+    
+    setEditedCosts(prev => ({
+      ...prev,
+      margin
+    }));
+  };
+
+  const handleSaveCosts = async () => {
+    if (!order || !editedCosts) return;
+    
+    setSavingCosts(true);
+    try {
+      // Calculate new total cost and selling price
+      const newTotalCost = editedCosts.materialCost + editedCosts.cuttingCharge + 
+                          editedCosts.printingCharge + editedCosts.stitchingCharge + 
+                          editedCosts.transportCharge;
+      
+      const newSellingPrice = newTotalCost * (1 + editedCosts.margin / 100);
+      
+      // Update the order in the database
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          material_cost: editedCosts.materialCost,
+          cutting_charge: editedCosts.cuttingCharge,
+          printing_charge: editedCosts.printingCharge,
+          stitching_charge: editedCosts.stitchingCharge,
+          transport_charge: editedCosts.transportCharge,
+          production_cost: editedCosts.cuttingCharge + editedCosts.printingCharge + 
+                          editedCosts.stitchingCharge + editedCosts.transportCharge,
+          total_cost: newTotalCost,
+          margin: editedCosts.margin,
+          calculated_selling_price: newSellingPrice,
+          rate: newSellingPrice
+        })
+        .eq('id', order.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setOrder(prev => prev ? {
+        ...prev,
+        material_cost: editedCosts.materialCost,
+        cutting_charge: editedCosts.cuttingCharge,
+        printing_charge: editedCosts.printingCharge,
+        stitching_charge: editedCosts.stitchingCharge,
+        transport_charge: editedCosts.transportCharge,
+        production_cost: editedCosts.cuttingCharge + editedCosts.printingCharge + 
+                        editedCosts.stitchingCharge + editedCosts.transportCharge,
+        total_cost: newTotalCost,
+        margin: editedCosts.margin,
+        calculated_selling_price: newSellingPrice,
+        rate: newSellingPrice
+      } : null);
+
+      setCostCalculation(editedCosts);
+      setIsEditingCosts(false);
+      setEditedCosts(null);
+
+      toast({
+        title: "Costs updated successfully",
+        description: "Order costs have been saved.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error updating costs",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setSavingCosts(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingCosts(false);
+    setEditedCosts(null);
+  };
+
+  const handleStartEdit = () => {
+    if (!costCalculation) return;
+    
+    setEditedCosts({
+      materialCost: costCalculation.materialCost,
+      cuttingCharge: costCalculation.cuttingCharge,
+      printingCharge: costCalculation.printingCharge,
+      stitchingCharge: costCalculation.stitchingCharge,
+      transportCharge: costCalculation.transportCharge,
+      margin: costCalculation.margin,
+      sellingPrice: costCalculation.sellingPrice
+    });
+    setIsEditingCosts(true);
   };
 
   return (
@@ -656,13 +778,51 @@ const OrderDetail = () => {
       {costCalculation && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calculator size={18} />
-              Cost Calculation
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Calculator size={18} />
+                Cost Calculation
+              </CardTitle>
+              {!isEditingCosts ? (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleStartEdit}
+                  className="gap-2"
+                >
+                  <Pencil size={14} />
+                  Edit Costs
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleCancelEdit}
+                    disabled={savingCosts}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    size="sm"
+                    onClick={handleSaveCosts}
+                    disabled={savingCosts}
+                    className="gap-2"
+                  >
+                    <Save size={14} />
+                    {savingCosts ? "Saving..." : "Save Changes"}
+                  </Button>
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
-            <CostCalculationDisplay costCalculation={costCalculation} />
+            <CostCalculationDisplay 
+              costCalculation={isEditingCosts ? editedCosts : costCalculation}
+              onMarginChange={isEditingCosts ? handleMarginChange : undefined}
+              onCostChange={isEditingCosts ? handleCostChange : undefined}
+              orderQuantity={parseInt(order?.order_quantity?.toString() || order?.quantity?.toString() || '1')}
+            />
           </CardContent>
         </Card>
       )}
