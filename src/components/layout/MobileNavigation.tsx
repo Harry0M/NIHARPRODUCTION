@@ -61,14 +61,14 @@ const MobileNavigation = () => {
               href="#"
               onClick={(e) => {
                 e.preventDefault();
-                window.location.href = "/production";
+                window.location.href = "/production/job-cards";
               }}
               className={`flex flex-col items-center justify-center w-full py-1 ${
-                window.location.pathname.startsWith("/production") ? 'text-primary' : 'text-muted-foreground'
+                window.location.pathname.startsWith("/production/job-cards") ? 'text-primary' : 'text-muted-foreground'
               }`}
             >
-              <Factory className="h-6 w-6 mb-1" />
-              <span className="text-xs">Production</span>
+              <FileText className="h-6 w-6 mb-1" />
+              <span className="text-xs">Job Cards</span>
             </a>
           </li>
           <li className="flex items-center justify-center">
@@ -76,14 +76,14 @@ const MobileNavigation = () => {
               href="#"
               onClick={(e) => {
                 e.preventDefault();
-                window.location.href = "/inventory";
+                window.location.href = "/partners";
               }}
               className={`flex flex-col items-center justify-center w-full py-1 ${
-                window.location.pathname.startsWith("/inventory") ? 'text-primary' : 'text-muted-foreground'
+                window.location.pathname.startsWith("/partners") ? 'text-primary' : 'text-muted-foreground'
               }`}
             >
-              <Database className="h-6 w-6 mb-1" />
-              <span className="text-xs">Inventory</span>
+              <Users className="h-6 w-6 mb-1" />
+              <span className="text-xs">Partners</span>
             </a>
           </li>
           <li className="flex items-center justify-center">
@@ -98,38 +98,12 @@ const MobileNavigation = () => {
                     href="#" 
                     onClick={(e) => {
                       e.preventDefault();
-                      window.location.href = "/production/job-cards";
+                      window.location.href = "/companies";
                     }}
                     className="flex items-center gap-2 py-2 w-full"
                   >
-                    <FileText className="h-4 w-4" />
-                    Job Cards
-                  </a>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <a 
-                    href="#" 
-                    onClick={(e) => {
-                      e.preventDefault();
-                      window.location.href = "/partners";
-                    }}
-                    className="flex items-center gap-2 py-2 w-full"
-                  >
-                    <Users className="h-4 w-4" />
-                    Partners
-                  </a>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <a 
-                    href="#" 
-                    onClick={(e) => {
-                      e.preventDefault();
-                      window.location.href = "/dispatch";
-                    }}
-                    className="flex items-center gap-2 py-2 w-full"
-                  >
-                    <Truck className="h-4 w-4" />
-                    Dispatch
+                    <Building className="h-4 w-4" />
+                    Companies
                   </a>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
@@ -150,19 +124,6 @@ const MobileNavigation = () => {
                     href="#" 
                     onClick={(e) => {
                       e.preventDefault();
-                      window.location.href = "/analysis";
-                    }}
-                    className="flex items-center gap-2 py-2 w-full"
-                  >
-                    <BarChart className="h-4 w-4" />
-                    Analysis
-                  </a>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <a 
-                    href="#" 
-                    onClick={(e) => {
-                      e.preventDefault();
                       window.location.href = "/sells";
                     }}
                     className="flex items-center gap-2 py-2 w-full"
@@ -176,12 +137,51 @@ const MobileNavigation = () => {
                     href="#" 
                     onClick={(e) => {
                       e.preventDefault();
-                      window.location.href = "/companies";
+                      window.location.href = "/inventory";
                     }}
                     className="flex items-center gap-2 py-2 w-full"
                   >
-                    <Building className="h-4 w-4" />
-                    Companies
+                    <Database className="h-4 w-4" />
+                    Inventory
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <a 
+                    href="#" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      window.location.href = "/production";
+                    }}
+                    className="flex items-center gap-2 py-2 w-full"
+                  >
+                    <Factory className="h-4 w-4" />
+                    Production
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <a 
+                    href="#" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      window.location.href = "/analysis";
+                    }}
+                    className="flex items-center gap-2 py-2 w-full"
+                  >
+                    <BarChart className="h-4 w-4" />
+                    Analysis
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <a 
+                    href="#" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      window.location.href = "/dispatch";
+                    }}
+                    className="flex items-center gap-2 py-2 w-full"
+                  >
+                    <Truck className="h-4 w-4" />
+                    Dispatch
                   </a>
                 </DropdownMenuItem>
                 <DropdownMenuItem>

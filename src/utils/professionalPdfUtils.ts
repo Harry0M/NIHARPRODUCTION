@@ -1518,5 +1518,641 @@ export function generateIndividualOrderPDF(orderData: Record<string, unknown>, f
   pdf.save(`${filename}.pdf`);
 }
 
+/**
+ * Generate comprehensive job details PDF with all component information
+ */
+export function generateDetailedJobPDF(jobData: any, filename: string): void {
+  try {
+    if (!jobData) {
+      throw new Error('No job data provided');
+    }
+
+    const pdf = new jsPDF();
+    
+    // Header
+    const startY = addCompanyHeader(pdf, 'Job Details', `${jobData.job_card?.job_name || 'N/A'}`);
+    
+    let currentY = startY + 10;
+    
+    // Job Overview Section
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Job Overview', 15, currentY);
+    currentY += 10;
+    
+    // Job overview grid
+    const overviewData = [
+      ['Job Name:', formatString(jobData.job_card?.job_name)],
+      ['Job Number:', formatString(jobData.job_card?.job_number)],
+      ['Job ID:', formatString(jobData.id)],
+      ['Status:', formatString(jobData.status?.toUpperCase())],
+      ['Created:', formatDate(jobData.created_at)],
+      ['Worker:', formatString(jobData.worker_name)],
+      ['Type:', formatString(jobData.is_internal ? 'Internal' : 'External')]
+    ];
+    
+    autoTable(pdf, {
+      body: overviewData,
+      startY: currentY,
+      theme: 'plain',
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 60 },
+        1: { cellWidth: 120 }
+      },
+      styles: {
+        fontSize: PDF_STYLES.fonts.body,
+        cellPadding: 3
+      }
+    });
+    
+    currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 15;
+    
+    // Components Section
+    if (jobData.components && Array.isArray(jobData.components) && jobData.components.length > 0) {
+      pdf.setFontSize(PDF_STYLES.fonts.heading);
+      pdf.setTextColor(...PDF_STYLES.colors.secondary);
+      pdf.text('Components Details', 15, currentY);
+      currentY += 10;
+      
+      // Main Components
+      const mainComponents = jobData.components.filter((comp: any) => 
+        comp.order_component?.component_type === 'part' || 
+        comp.order_component?.component_type === 'border' || 
+        comp.order_component?.component_type === 'handle'
+      );
+      
+      if (mainComponents.length > 0) {
+        pdf.setFontSize(PDF_STYLES.fonts.body);
+        pdf.setTextColor(...PDF_STYLES.colors.gray);
+        pdf.text('Main Components', 15, currentY);
+        currentY += 8;
+        
+        mainComponents.forEach((component: any, index: number) => {
+          // Component header
+          pdf.setFontSize(PDF_STYLES.fonts.body);
+          pdf.setTextColor(...PDF_STYLES.colors.primary);
+          pdf.text(`${index + 1}. ${component.order_component?.component_type?.toUpperCase()} - ${component.width}x${component.height}`, 15, currentY);
+          currentY += 6;
+          
+          // Material info
+          if (component.order_component?.inventory) {
+            const material = component.order_component.inventory;
+            pdf.setTextColor(...PDF_STYLES.colors.black);
+            pdf.text(`Material: ${material.material_name} ${material.gsm}gsm ${material.color}`, 20, currentY);
+            currentY += 5;
+          }
+          
+          // Component details
+          const componentDetails = [
+            ['Width:', formatNumber(component.width)],
+            ['Height:', formatNumber(component.height)],
+            ['Counter:', formatString(component.counter)],
+            ['Rewinding:', formatString(component.rewinding)],
+            ['Roll Width:', formatNumber(component.roll_width)],
+            ['Rate:', formatString(component.rate)],
+            ['Status:', formatString(component.status?.toUpperCase())],
+            ['Consumption:', formatNumber(component.consumption)]
+          ];
+          
+          autoTable(pdf, {
+            body: componentDetails,
+            startY: currentY,
+            theme: 'plain',
+            columnStyles: {
+              0: { fontStyle: 'bold', cellWidth: 40 },
+              1: { cellWidth: 30 }
+            },
+            styles: {
+              fontSize: PDF_STYLES.fonts.small,
+              cellPadding: 2
+            },
+            margin: { left: 20 }
+          });
+          
+          currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 8;
+          
+          // Check if we need a new page
+          if (currentY > 250) {
+            pdf.addPage();
+            currentY = 20;
+          }
+        });
+      }
+      
+      // Small Components
+      const smallComponents = jobData.components.filter((comp: any) => 
+        comp.order_component?.component_type !== 'part' && 
+        comp.order_component?.component_type !== 'border' && 
+        comp.order_component?.component_type !== 'handle'
+      );
+      
+      if (smallComponents.length > 0) {
+        pdf.setFontSize(PDF_STYLES.fonts.body);
+        pdf.setTextColor(...PDF_STYLES.colors.gray);
+        pdf.text('Small Components', 15, currentY);
+        currentY += 8;
+        
+        const smallComponentsData = smallComponents.map((component: any) => [
+          formatString(component.order_component?.component_type?.toUpperCase()),
+          formatString(component.order_component?.inventory?.material_name || 'No material linked'),
+          formatString(component.status?.toUpperCase()),
+          formatNumber(component.consumption || 0)
+        ]);
+        
+        autoTable(pdf, {
+          head: [['Component', 'Material', 'Status', 'Consumption']],
+          body: smallComponentsData,
+          startY: currentY,
+          theme: 'striped',
+          headStyles: {
+            fillColor: PDF_STYLES.colors.primary,
+            textColor: PDF_STYLES.colors.white,
+            fontStyle: 'bold'
+          },
+          styles: {
+            fontSize: PDF_STYLES.fonts.small,
+            cellPadding: 3
+          }
+        });
+        
+        currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 10;
+      }
+    }
+    
+    // Summary Section
+    if (jobData.components && Array.isArray(jobData.components) && jobData.components.length > 0) {
+      const totalComponents = jobData.components.length;
+      const totalConsumption = jobData.components.reduce((sum: number, comp: any) => 
+        sum + (Number(comp.consumption) || 0), 0
+      );
+      
+      pdf.setFontSize(PDF_STYLES.fonts.heading);
+      pdf.setTextColor(...PDF_STYLES.colors.secondary);
+      pdf.text('Summary', 15, currentY);
+      currentY += 10;
+      
+      const summaryData = [
+        ['Total Components:', formatNumber(totalComponents)],
+        ['Total Consumption:', formatNumber(totalConsumption)]
+      ];
+      
+      autoTable(pdf, {
+        body: summaryData,
+        startY: currentY,
+        theme: 'plain',
+        columnStyles: {
+          0: { fontStyle: 'bold', cellWidth: 80 },
+          1: { cellWidth: 60 }
+        },
+        styles: {
+          fontSize: PDF_STYLES.fonts.body,
+          cellPadding: 4
+        }
+      });
+    }
+    
+    // Add footer
+    addFooter(pdf, 1, 1);
+    
+    // Save the PDF
+    pdf.save(`${filename}.pdf`);
+  } catch (error) {
+    console.error('Error generating detailed job PDF:', error);
+    throw error; // Re-throw to allow calling code to handle
+  }
+}
+
+/**
+ * Generate comprehensive printing job details PDF
+ */
+export function generateDetailedPrintingJobPDF(jobData: any, filename: string): void {
+  try {
+    if (!jobData) {
+      throw new Error('No printing job data provided');
+    }
+
+    const pdf = new jsPDF();
+    const startY = addCompanyHeader(pdf, 'Printing Job Details', `${jobData.job_card?.job_name || 'N/A'}`);
+    let currentY = startY + 10;
+
+    // 1. Printer's Name
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text("Printer's Name", 15, currentY);
+    pdf.setFontSize(PDF_STYLES.fonts.body);
+    pdf.setTextColor(...PDF_STYLES.colors.black);
+    pdf.text(formatString(jobData.worker_name), 60, currentY);
+    currentY += 10;
+
+    // 2. Job Number
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Job Number', 15, currentY);
+    pdf.setFontSize(PDF_STYLES.fonts.body);
+    pdf.setTextColor(...PDF_STYLES.colors.black);
+    pdf.text(formatString(jobData.job_card?.job_number), 60, currentY);
+    currentY += 10;
+
+    // 3. Date
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Date', 15, currentY);
+    pdf.setFontSize(PDF_STYLES.fonts.body);
+    pdf.setTextColor(...PDF_STYLES.colors.black);
+    pdf.text(formatDate(jobData.created_at), 60, currentY);
+    currentY += 15;
+
+    // Separator
+    pdf.setDrawColor(...PDF_STYLES.colors.light);
+    pdf.setLineWidth(0.5);
+    pdf.line(15, currentY, pdf.internal.pageSize.width - 15, currentY);
+    currentY += 8;
+
+    // 4. Job Name
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Job Name', 15, currentY);
+    pdf.setFontSize(PDF_STYLES.fonts.body);
+    pdf.setTextColor(...PDF_STYLES.colors.black);
+    pdf.text(formatString(jobData.job_card?.job_name), 60, currentY);
+    currentY += 10;
+
+    // 5. Material
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Material', 15, currentY);
+    pdf.setFontSize(PDF_STYLES.fonts.body);
+    pdf.setTextColor(...PDF_STYLES.colors.black);
+    let material = 'N/A';
+    if (jobData.material) {
+      material = formatString(jobData.material);
+    } else if (jobData.job_card?.material) {
+      material = formatString(jobData.job_card.material);
+    } else if (jobData.job_card?.components && Array.isArray(jobData.job_card.components)) {
+      const part = jobData.job_card.components.find((c: any) => c.component_type === 'part' && c.inventory?.material_name);
+      if (part) {
+        material = formatString(part.inventory.material_name);
+      }
+    }
+    pdf.text(material, 60, currentY);
+    currentY += 10;
+
+    // 6. Pulling
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Pulling', 15, currentY);
+    pdf.setFontSize(PDF_STYLES.fonts.body);
+    pdf.setTextColor(...PDF_STYLES.colors.black);
+    pdf.text(formatString(jobData.pulling), 60, currentY);
+    currentY += 10;
+
+    // 7. Sheet Length
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Sheet Length', 15, currentY);
+    pdf.setFontSize(PDF_STYLES.fonts.body);
+    pdf.setTextColor(...PDF_STYLES.colors.black);
+    pdf.text(formatNumber(jobData.sheet_length), 60, currentY);
+    currentY += 10;
+
+    // 8. Sheet Width
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Sheet Width', 15, currentY);
+    pdf.setFontSize(PDF_STYLES.fonts.body);
+    pdf.setTextColor(...PDF_STYLES.colors.black);
+    pdf.text(formatNumber(jobData.sheet_width), 60, currentY);
+    currentY += 10;
+
+    // 9. Quantity
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Quantity', 15, currentY);
+    pdf.setFontSize(PDF_STYLES.fonts.body);
+    pdf.setTextColor(...PDF_STYLES.colors.black);
+    pdf.text(formatNumber(jobData.received_quantity), 60, currentY);
+    currentY += 10;
+
+    // 10. Rate
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Rate', 15, currentY);
+    pdf.setFontSize(PDF_STYLES.fonts.body);
+    pdf.setTextColor(...PDF_STYLES.colors.black);
+    pdf.text(formatString(jobData.rate), 60, currentY);
+    currentY += 15;
+
+    // 11. All other present fields
+    // GSM
+    if (jobData.gsm) {
+      pdf.setFontSize(PDF_STYLES.fonts.heading);
+      pdf.setTextColor(...PDF_STYLES.colors.secondary);
+      pdf.text('GSM', 15, currentY);
+      pdf.setFontSize(PDF_STYLES.fonts.body);
+      pdf.setTextColor(...PDF_STYLES.colors.black);
+      pdf.text(formatString(jobData.gsm), 60, currentY);
+      currentY += 10;
+    }
+
+    // Expected Completion
+    if (jobData.expected_completion_date) {
+      pdf.setFontSize(PDF_STYLES.fonts.heading);
+      pdf.setTextColor(...PDF_STYLES.colors.secondary);
+      pdf.text('Expected Completion', 15, currentY);
+      pdf.setFontSize(PDF_STYLES.fonts.body);
+      pdf.setTextColor(...PDF_STYLES.colors.black);
+      pdf.text(formatDate(jobData.expected_completion_date), 60, currentY);
+      currentY += 15;
+    }
+
+    // Print Design Section (if available)
+    if (jobData.print_image) {
+      pdf.setFontSize(PDF_STYLES.fonts.heading);
+      pdf.setTextColor(...PDF_STYLES.colors.secondary);
+      pdf.text('Print Design', 15, currentY);
+      currentY += 10;
+      pdf.setFontSize(PDF_STYLES.fonts.body);
+      pdf.setTextColor(...PDF_STYLES.colors.gray);
+      pdf.text('Design image is available in the system', 15, currentY);
+      currentY += 8;
+      pdf.text('Image URL: ' + jobData.print_image, 15, currentY);
+      currentY += 15;
+    }
+
+    // Summary Section
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Summary', 15, currentY);
+    currentY += 10;
+    const summaryData = [
+      ['Total Received:', formatNumber(jobData.received_quantity)],
+      ['Job Status:', formatString(jobData.status?.toUpperCase())],
+      ['Worker Assigned:', formatString(jobData.worker_name)],
+      ['Job Type:', formatString(jobData.is_internal ? 'Internal' : 'External')]
+    ];
+    autoTable(pdf, {
+      body: summaryData,
+      startY: currentY,
+      theme: 'plain',
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 80 },
+        1: { cellWidth: 60 }
+      },
+      styles: {
+        fontSize: PDF_STYLES.fonts.body,
+        cellPadding: 4
+      }
+    });
+
+    // Add footer
+    addFooter(pdf, 1, 1);
+    pdf.save(`${filename}.pdf`);
+  } catch (error) {
+    console.error('Error generating detailed printing job PDF:', error);
+    throw error;
+  }
+}
+
+/**
+ * Generate comprehensive stitching job details PDF
+ */
+export function generateDetailedStitchingJobPDF(jobData: any, filename: string): void {
+  try {
+    if (!jobData) {
+      throw new Error('No stitching job data provided');
+    }
+
+    const pdf = new jsPDF();
+    
+    // Header
+    const startY = addCompanyHeader(pdf, 'Stitching Job Details', `${jobData.job_card?.job_name || 'N/A'}`);
+    
+    let currentY = startY + 10;
+    
+    // Job Overview Section
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Job Overview', 15, currentY);
+    currentY += 10;
+    
+    // Job overview grid
+    const overviewData = [
+      ['Job Name:', formatString(jobData.job_card?.job_name)],
+      ['Job Number:', formatString(jobData.job_card?.job_number)],
+      ['Job ID:', formatString(jobData.id)],
+      ['Status:', formatString(jobData.status?.toUpperCase())],
+      ['Created:', formatDate(jobData.created_at)],
+      ['Worker:', formatString(jobData.worker_name)],
+      ['Type:', formatString(jobData.is_internal ? 'Internal' : 'External')]
+    ];
+    
+    autoTable(pdf, {
+      body: overviewData,
+      startY: currentY,
+      theme: 'plain',
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 60 },
+        1: { cellWidth: 120 }
+      },
+      styles: {
+        fontSize: PDF_STYLES.fonts.body,
+        cellPadding: 3
+      }
+    });
+    
+    currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 15;
+    
+    // Stitching Specifications Section
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Stitching Specifications', 15, currentY);
+    currentY += 10;
+    
+    const stitchingSpecs = [
+      ['Start Date:', formatDate(jobData.start_date)],
+      ['Expected Completion:', formatDate(jobData.expected_completion_date)],
+      ['Rate:', formatString(jobData.rate)],
+      ['Total Quantity:', formatNumber(jobData.total_quantity)]
+    ];
+    
+    autoTable(pdf, {
+      body: stitchingSpecs,
+      startY: currentY,
+      theme: 'plain',
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 70 },
+        1: { cellWidth: 110 }
+      },
+      styles: {
+        fontSize: PDF_STYLES.fonts.body,
+        cellPadding: 4
+      }
+    });
+    
+    currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 15;
+    
+    // Component Quantities Section
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Component Quantities', 15, currentY);
+    currentY += 10;
+    
+    const componentQuantities = [];
+    
+    if (jobData.part_quantity !== null) {
+      componentQuantities.push(['Part:', formatNumber(jobData.part_quantity)]);
+    }
+    if (jobData.border_quantity !== null) {
+      componentQuantities.push(['Border:', formatNumber(jobData.border_quantity)]);
+    }
+    if (jobData.handle_quantity !== null) {
+      componentQuantities.push(['Handle:', formatNumber(jobData.handle_quantity)]);
+    }
+    if (jobData.chain_quantity !== null) {
+      componentQuantities.push(['Chain:', formatNumber(jobData.chain_quantity)]);
+    }
+    if (jobData.piping_quantity !== null) {
+      componentQuantities.push(['Piping:', formatNumber(jobData.piping_quantity)]);
+    }
+    if (jobData.runner_quantity !== null) {
+      componentQuantities.push(['Runner:', formatNumber(jobData.runner_quantity)]);
+    }
+    
+    if (componentQuantities.length > 0) {
+      autoTable(pdf, {
+        body: componentQuantities,
+        startY: currentY,
+        theme: 'striped',
+        headStyles: {
+          fillColor: PDF_STYLES.colors.primary,
+          textColor: PDF_STYLES.colors.white,
+          fontStyle: 'bold'
+        },
+        styles: {
+          fontSize: PDF_STYLES.fonts.body,
+          cellPadding: 4
+        }
+      });
+      
+      currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 15;
+    }
+    
+    // Notes Section (if available)
+    if (jobData.notes) {
+      pdf.setFontSize(PDF_STYLES.fonts.heading);
+      pdf.setTextColor(...PDF_STYLES.colors.secondary);
+      pdf.text('Additional Notes', 15, currentY);
+      currentY += 10;
+      
+      pdf.setFontSize(PDF_STYLES.fonts.body);
+      pdf.setTextColor(...PDF_STYLES.colors.black);
+      
+      // Split notes into lines that fit the page width
+      const maxWidth = pdf.internal.pageSize.width - 30; // 15px margin on each side
+      const notesLines = pdf.splitTextToSize(jobData.notes, maxWidth);
+      
+      notesLines.forEach((line: string) => {
+        pdf.text(line, 15, currentY);
+        currentY += 6;
+      });
+      
+      currentY += 10;
+    }
+    
+    // Summary Section
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Summary', 15, currentY);
+    currentY += 10;
+    
+    const totalComponents = componentQuantities.length;
+    const summaryData = [
+      ['Total Components:', formatNumber(totalComponents)],
+      ['Total Quantity:', formatNumber(jobData.total_quantity)],
+      ['Job Status:', formatString(jobData.status?.toUpperCase())],
+      ['Worker Assigned:', formatString(jobData.worker_name)],
+      ['Job Type:', formatString(jobData.is_internal ? 'Internal' : 'External')]
+    ];
+    
+    autoTable(pdf, {
+      body: summaryData,
+      startY: currentY,
+      theme: 'plain',
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 80 },
+        1: { cellWidth: 60 }
+      },
+      styles: {
+        fontSize: PDF_STYLES.fonts.body,
+        cellPadding: 4
+      }
+    });
+    
+    // Add footer
+    addFooter(pdf, 1, 1);
+    
+    // Save the PDF
+    pdf.save(`${filename}.pdf`);
+  } catch (error) {
+    console.error('Error generating detailed stitching job PDF:', error);
+    throw error;
+  }
+}
+
 // Export the existing functions for backward compatibility
 export { downloadAsCSV } from './downloadUtils';
+
+/**
+ * Unified function to generate PDF for any job type
+ * Automatically determines the job type and calls the appropriate function
+ */
+export function generateJobPDF(jobData: any, filename: string): void {
+  try {
+    if (!jobData) {
+      throw new Error('No job data provided');
+    }
+
+    // Determine job type from the data structure or table name
+    let jobType = 'unknown';
+    
+    // Check if it's a cutting job (has components array with detailed component data)
+    if (jobData.components && Array.isArray(jobData.components) && jobData.components.length > 0) {
+      const hasDetailedComponents = jobData.components.some((comp: any) => 
+        comp.width || comp.height || comp.consumption || comp.order_component
+      );
+      if (hasDetailedComponents) {
+        jobType = 'cutting';
+      }
+    }
+    
+    // Check if it's a printing job (has printing-specific fields)
+    if (jobData.pulling || jobData.gsm || jobData.sheet_length || jobData.sheet_width || jobData.print_image) {
+      jobType = 'printing';
+    }
+    
+    // Check if it's a stitching job (has stitching-specific fields)
+    if (jobData.total_quantity || jobData.part_quantity || jobData.border_quantity || jobData.handle_quantity) {
+      jobType = 'stitching';
+    }
+
+    // Call the appropriate function based on job type
+    switch (jobType) {
+      case 'cutting':
+        generateDetailedJobPDF(jobData, filename);
+        break;
+      case 'printing':
+        generateDetailedPrintingJobPDF(jobData, filename);
+        break;
+      case 'stitching':
+        generateDetailedStitchingJobPDF(jobData, filename);
+        break;
+      default:
+        // Fallback to cutting job format for unknown types
+        console.warn('Unknown job type, using cutting job format as fallback');
+        generateDetailedJobPDF(jobData, filename);
+    }
+  } catch (error) {
+    console.error('Error in unified job PDF generation:', error);
+    throw error;
+  }
+}

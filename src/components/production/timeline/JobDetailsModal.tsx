@@ -11,7 +11,7 @@ import { TimelineJob } from "@/types/production";
 import { format } from "date-fns";
 import { Download, Edit } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { generateJobCardPDF } from "@/utils/professionalPdfUtils";
+import { generateJobPDF } from "@/utils/professionalPdfUtils";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Separator } from "@/components/ui/separator";
@@ -27,6 +27,7 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
   const navigate = useNavigate();
   const [jobDetails, setJobDetails] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     if (job && open) {
@@ -163,21 +164,18 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
     window.location.href = editUrl;
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!jobDetails || !job) return;
     
-    // Create job card data for PDF generation
-    const jobCardData = {
-      job_name: jobDetails.job_card?.job_name || 'N/A',
-      job_number: jobDetails.job_card?.job_number || 'N/A',
-      status: jobDetails.status,
-      created_at: jobDetails.created_at,
-      worker_name: jobDetails.worker_name || "N/A",
-      is_internal: jobDetails.is_internal ? "Yes" : "No",
-      ...jobDetails // Include all other job details
-    };
-    
-    generateJobCardPDF(jobCardData, `${job.type}-job-${job.id}`);
+    setDownloading(true);
+    try {
+      generateJobPDF(jobDetails, `${job.type}-job-${job.id}`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      // You could add a toast notification here for better UX
+    } finally {
+      setDownloading(false);
+    }
   };
 
   // The handleUpdate function has been moved and enhanced to use window.location.href above
@@ -699,11 +697,20 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
                 variant="outline"
                 size="sm"
                 onClick={handleDownload}
-                disabled={!jobDetails}
+                disabled={!jobDetails || downloading}
                 className="hover:bg-primary/5 transition-colors"
               >
-                <Download className="h-4 w-4 mr-2" />
-                Download PDF
+                {downloading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download PDF
+                  </>
+                )}
               </Button>
               <Button
                 onClick={handleUpdate}

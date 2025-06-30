@@ -24,16 +24,16 @@ import { useAuth } from "@/context/AuthContext";
 const navItems = [
   { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
   { name: "Orders", path: "/orders", icon: Package },
-  { name: "Production", path: "/production", icon: Factory },
   { name: "Job Cards", path: "/production/job-cards", icon: FileText },
   { name: "Partners", path: "/partners", icon: Users },
-  { name: "Dispatch", path: "/dispatch", icon: Truck },
-  { name: "Inventory", path: "/inventory", icon: Database },
+  { name: "Companies", path: "/companies", icon: Building },
   { name: "Purchases", path: "/purchases", icon: ShoppingCart },
   { name: "Sells", path: "/sells", icon: TrendingUp },
+  { name: "Inventory", path: "/inventory", icon: Database },
+  { name: "Production", path: "/production", icon: Factory },
   { name: "Analysis", path: "/analysis", icon: BarChart },
+  { name: "Dispatch", path: "/dispatch", icon: Truck },
   { name: "Settings", path: "/settings", icon: Settings },
-  { name: "Companies", path: "/companies", icon: Building },
 ];
 
 const Sidebar = () => {
