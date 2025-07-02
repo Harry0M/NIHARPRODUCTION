@@ -118,13 +118,38 @@ const OrderDetail = () => {
   const [materialSummary, setMaterialSummary] = useState<MaterialSummary[]>([]);
   const [totalMaterialCost, setTotalMaterialCost] = useState<number>(0);
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [costCalculation, setCostCalculation] = useState<any>(null);
+  const [costCalculation, setCostCalculation] = useState<{
+    materialCost: number;
+    cuttingCharge: number;
+    printingCharge: number;
+    stitchingCharge: number;
+    transportCharge: number;
+    baseCost?: number;
+    gstAmount?: number;
+    totalCost: number;
+    margin: number;
+    sellingPrice: number;
+    perUnitBaseCost?: number;
+    perUnitTransportCost?: number;
+    perUnitGstCost?: number;
+    perUnitCost?: number;
+    productionCost?: number;
+  } | null>(null);
   const [catalogProduct, setCatalogProduct] = useState<{name: string} | null>(null);
   
   // Cost editing state
   const [isEditingCosts, setIsEditingCosts] = useState(false);
   const [savingCosts, setSavingCosts] = useState(false);
-  const [editedCosts, setEditedCosts] = useState<any>(null);
+  const [editedCosts, setEditedCosts] = useState<{
+    materialCost: number;
+    cuttingCharge: number;
+    printingCharge: number;
+    stitchingCharge: number;
+    transportCharge: number;
+    totalCost: number;
+    margin: number;
+    sellingPrice: number;
+  } | null>(null);
   
   // Get cost calculation functions
   const { calculateTotalCost, calculateSellingPrice } = useCostCalculation();
@@ -175,7 +200,7 @@ const OrderDetail = () => {
             comp.inventory as InventoryMaterial : null,
           // Add material rate for cost calculation
           materialRate: comp.inventory && typeof comp.inventory === 'object' 
-            ? (comp.inventory as any).purchase_rate
+            ? (comp.inventory as InventoryMaterial).purchase_rate
             : null,
           // Handle component_cost_breakdown properly
           component_cost_breakdown: comp.component_cost_breakdown ? 
@@ -270,24 +295,31 @@ const OrderDetail = () => {
 
         // Calculate the costs using order form logic if order exists
         if (orderData) {
-          // Set cost calculation using raw values from the database
+          // Set cost calculation using raw values from the database with all required fields
+          const orderQuantity = parseInt(orderData.order_quantity?.toString() || orderData.quantity?.toString() || '1');
           setCostCalculation({
             materialCost: orderData.material_cost || 0,
             cuttingCharge: orderData.cutting_charge || 0,
             printingCharge: orderData.printing_charge || 0,
             stitchingCharge: orderData.stitching_charge || 0,
             transportCharge: orderData.transport_charge || 0,
-            productionCost: orderData.production_cost || 0,
+            baseCost: orderData.total_cost || 0,
+            gstAmount: 0,
             totalCost: orderData.total_cost || 0,
             margin: orderData.margin || 0,
-            sellingPrice: orderData.calculated_selling_price || 0
+            sellingPrice: orderData.calculated_selling_price || 0,
+            perUnitBaseCost: (orderData.total_cost || 0) / orderQuantity,
+            perUnitTransportCost: (orderData.transport_charge || 0) / orderQuantity,
+            perUnitGstCost: 0,
+            perUnitCost: (orderData.total_cost || 0) / orderQuantity,
+            productionCost: orderData.production_cost || 0
           });
         }
         
-      } catch (error: any) {
+      } catch (error: unknown) {
         toast({
           title: "Error fetching order details",
-          description: error.message,
+          description: error instanceof Error ? error.message : "An error occurred",
           variant: "destructive"
         });
         navigate("/orders");
@@ -365,17 +397,35 @@ const OrderDetail = () => {
     }));
   };
 
+  const handleTotalCostChange = (totalCost: number) => {
+    if (!editedCosts) return;
+    
+    setEditedCosts(prev => ({
+      ...prev,
+      totalCost
+    }));
+  };
+
+  const handleSellingPriceChange = (sellingPrice: number) => {
+    if (!editedCosts) return;
+    
+    setEditedCosts(prev => ({
+      ...prev,
+      sellingPrice
+    }));
+  };
+
   const handleSaveCosts = async () => {
     if (!order || !editedCosts) return;
     
     setSavingCosts(true);
     try {
-      // Calculate new total cost and selling price
-      const newTotalCost = editedCosts.materialCost + editedCosts.cuttingCharge + 
+      // Use the edited values directly instead of recalculating
+      const newTotalCost = editedCosts.totalCost || (editedCosts.materialCost + editedCosts.cuttingCharge + 
                           editedCosts.printingCharge + editedCosts.stitchingCharge + 
-                          editedCosts.transportCharge;
+                          editedCosts.transportCharge);
       
-      const newSellingPrice = newTotalCost * (1 + editedCosts.margin / 100);
+      const newSellingPrice = editedCosts.sellingPrice || (newTotalCost * (1 + editedCosts.margin / 100));
       
       // Update the order in the database
       const { error } = await supabase
@@ -413,7 +463,12 @@ const OrderDetail = () => {
         rate: newSellingPrice
       } : null);
 
-      setCostCalculation(editedCosts);
+      // Update cost calculation state with the new values
+      setCostCalculation({
+        ...editedCosts,
+        totalCost: newTotalCost,
+        sellingPrice: newSellingPrice
+      });
       setIsEditingCosts(false);
       setEditedCosts(null);
 
@@ -421,10 +476,10 @@ const OrderDetail = () => {
         title: "Costs updated successfully",
         description: "Order costs have been saved.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error updating costs",
-        description: error.message,
+        description: error instanceof Error ? error.message : "An error occurred",
         variant: "destructive"
       });
     } finally {
@@ -447,7 +502,8 @@ const OrderDetail = () => {
       stitchingCharge: costCalculation.stitchingCharge,
       transportCharge: costCalculation.transportCharge,
       margin: costCalculation.margin,
-      sellingPrice: costCalculation.sellingPrice
+      sellingPrice: costCalculation.sellingPrice,
+      totalCost: costCalculation.totalCost
     });
     setIsEditingCosts(true);
   };
@@ -563,9 +619,20 @@ const OrderDetail = () => {
                 )}
               </div>
               {order.rate && (
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Rate per Bag</h3>
-                  <p className="text-lg">${order.rate.toFixed(2)}</p>
+                <div className="space-y-2">
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Total Selling Price</h3>
+                    <p className="text-lg">{formatCurrency(order.rate)}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Rate per Piece</h3>
+                    <p className="text-lg font-medium text-primary">
+                      {formatCurrency(order.rate / parseInt(order?.order_quantity?.toString() || order?.quantity?.toString() || '1'))}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Based on quantity: {parseInt(order?.order_quantity?.toString() || order?.quantity?.toString() || '1')} pieces
+                    </p>
+                  </div>
                 </div>
               )}
               {order.special_instructions && (
@@ -818,9 +885,14 @@ const OrderDetail = () => {
           </CardHeader>
           <CardContent>
             <CostCalculationDisplay 
-              costCalculation={isEditingCosts ? editedCosts : costCalculation}
+              costCalculation={isEditingCosts && editedCosts ? {
+                ...costCalculation!,
+                ...editedCosts
+              } : costCalculation!}
               onMarginChange={isEditingCosts ? handleMarginChange : undefined}
               onCostChange={isEditingCosts ? handleCostChange : undefined}
+              onTotalCostChange={isEditingCosts ? handleTotalCostChange : undefined}
+              onSellingPriceChange={isEditingCosts ? handleSellingPriceChange : undefined}
               orderQuantity={parseInt(order?.order_quantity?.toString() || order?.quantity?.toString() || '1')}
             />
           </CardContent>

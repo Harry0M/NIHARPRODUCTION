@@ -11,18 +11,21 @@ interface CostCalculationDisplayProps {
     printingCharge: number;
     stitchingCharge: number;
     transportCharge: number;
-    baseCost: number;
-    gstAmount: number;
+    baseCost?: number;
+    gstAmount?: number;
     totalCost: number;
     margin: number;
     sellingPrice: number;
-    perUnitBaseCost: number;
-    perUnitTransportCost: number;
-    perUnitGstCost: number;
-    perUnitCost: number;
+    perUnitBaseCost?: number;
+    perUnitTransportCost?: number;
+    perUnitGstCost?: number;
+    perUnitCost?: number;
   };
   onMarginChange?: (margin: number) => void;
   onCostChange?: (type: string, value: number) => void;
+  onTotalCostChange?: (totalCost: number) => void;
+  onSellingPriceChange?: (sellingPrice: number) => void;
+  onProfitChange?: (profit: number) => void;
   orderQuantity?: number;
 }
 
@@ -30,13 +33,17 @@ export const CostCalculationDisplay = ({
   costCalculation,
   onMarginChange,
   onCostChange,
+  onTotalCostChange,
+  onSellingPriceChange,
+  onProfitChange,
   orderQuantity = 1
 }: CostCalculationDisplayProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   
   // Make sure we always update state when the props change
   useEffect(() => {
-    setEditableCosts({
+    // Only update if values have actually changed to prevent unnecessary re-renders
+    const newEditableCosts = {
       materialCost: costCalculation.materialCost,
       cuttingCharge: costCalculation.cuttingCharge,
       printingCharge: costCalculation.printingCharge,
@@ -47,18 +54,27 @@ export const CostCalculationDisplay = ({
       totalCost: costCalculation.totalCost,
       margin: costCalculation.margin,
       sellingPrice: costCalculation.sellingPrice,
-    });
-    
-    // Update input values when costCalculation changes
-    setInputValues({
+    };
+
+    const newInputValues = {
       materialCost: costCalculation.materialCost.toString(),
       cuttingCharge: (costCalculation.cuttingCharge / (orderQuantity || 1)).toString(),
       printingCharge: (costCalculation.printingCharge / (orderQuantity || 1)).toString(),
       stitchingCharge: (costCalculation.stitchingCharge / (orderQuantity || 1)).toString(),
       transportCharge: (costCalculation.transportCharge / (orderQuantity || 1)).toString(),
       margin: costCalculation.margin.toString(),
-    });
-  }, [costCalculation, orderQuantity]);
+      totalCost: costCalculation.totalCost.toString(),
+      sellingPrice: costCalculation.sellingPrice.toString(),
+      sellingPricePerPiece: (costCalculation.sellingPrice / (orderQuantity || 1)).toString(),
+    };
+
+    // Batch the state updates to prevent multiple re-renders
+    setEditableCosts(newEditableCosts);
+    setInputValues(newInputValues);
+  }, [costCalculation.materialCost, costCalculation.cuttingCharge, costCalculation.printingCharge, 
+      costCalculation.stitchingCharge, costCalculation.transportCharge, costCalculation.totalCost, 
+      costCalculation.margin, costCalculation.sellingPrice, costCalculation.baseCost, 
+      costCalculation.gstAmount, orderQuantity]);
   
   const [editableCosts, setEditableCosts] = useState({
     materialCost: costCalculation.materialCost,
@@ -81,6 +97,9 @@ export const CostCalculationDisplay = ({
     stitchingCharge: (costCalculation.stitchingCharge / (orderQuantity || 1)).toString(),
     transportCharge: (costCalculation.transportCharge / (orderQuantity || 1)).toString(),
     margin: costCalculation.margin.toString(),
+    totalCost: costCalculation.totalCost.toString(),
+    sellingPrice: costCalculation.sellingPrice.toString(),
+    sellingPricePerPiece: (costCalculation.sellingPrice / (orderQuantity || 1)).toString(),
   });
   
   const formatCurrency = (value: number) => {
@@ -103,6 +122,83 @@ export const CostCalculationDisplay = ({
     const newMargin = value === '' ? 0 : parseFloat(value);
     if (!isNaN(newMargin) && onMarginChange) {
       onMarginChange(newMargin);
+    }
+  };
+
+  const handleTotalCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^0-9.]/g, '');
+    setInputValues(prev => ({
+      ...prev,
+      totalCost: value
+    }));
+    
+    const newTotalCost = value === '' ? 0 : parseFloat(value);
+    if (!isNaN(newTotalCost) && onTotalCostChange) {
+      onTotalCostChange(newTotalCost);
+    }
+  };
+
+  const handleSellingPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^0-9.]/g, '');
+    setInputValues(prev => ({
+      ...prev,
+      sellingPrice: value,
+      sellingPricePerPiece: value === '' ? '0' : (parseFloat(value) / (orderQuantity || 1)).toString()
+    }));
+    
+    const newSellingPrice = value === '' ? 0 : parseFloat(value);
+    if (!isNaN(newSellingPrice) && onSellingPriceChange) {
+      onSellingPriceChange(newSellingPrice);
+      
+      // Calculate and update margin
+      if (costCalculation.totalCost > 0) {
+        const newMargin = ((newSellingPrice - costCalculation.totalCost) / costCalculation.totalCost) * 100;
+        setInputValues(prev => ({
+          ...prev,
+          margin: newMargin.toFixed(2)
+        }));
+        if (onMarginChange) {
+          onMarginChange(newMargin);
+        }
+      }
+    }
+  };
+
+  const handleSellingPricePerPieceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^0-9.]/g, '');
+    setInputValues(prev => ({
+      ...prev,
+      sellingPricePerPiece: value,
+      sellingPrice: value === '' ? '0' : (parseFloat(value) * (orderQuantity || 1)).toString()
+    }));
+    
+    const newSellingPricePerPiece = value === '' ? 0 : parseFloat(value);
+    const newTotalSellingPrice = newSellingPricePerPiece * (orderQuantity || 1);
+    if (!isNaN(newTotalSellingPrice) && onSellingPriceChange) {
+      onSellingPriceChange(newTotalSellingPrice);
+      
+      // Calculate and update margin
+      if (costCalculation.totalCost > 0) {
+        const newMargin = ((newTotalSellingPrice - costCalculation.totalCost) / costCalculation.totalCost) * 100;
+        setInputValues(prev => ({
+          ...prev,
+          margin: newMargin.toFixed(2)
+        }));
+        if (onMarginChange) {
+          onMarginChange(newMargin);
+        }
+      }
+    }
+  };
+
+  const handleProfitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^0-9.-]/g, ''); // Allow negative values for profit
+    const newProfit = value === '' ? 0 : parseFloat(value);
+    
+    if (!isNaN(newProfit) && onSellingPriceChange) {
+      // If profit changes, calculate new selling price: sellingPrice = totalCost + profit
+      const newSellingPrice = costCalculation.totalCost + newProfit;
+      onSellingPriceChange(newSellingPrice);
     }
   };
   
@@ -174,11 +270,10 @@ export const CostCalculationDisplay = ({
                     />
                     <span className="text-xs text-muted-foreground">Total</span>
                   </div>
-                </div>
-                <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
-                  <span>Per unit</span>
-                  <span>{formatCurrency(isNaN(costCalculation.perUnitBaseCost) ? 0 : costCalculation.perUnitBaseCost)}</span>
-                </div>
+                </div>                  <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
+                    <span>Per unit</span>
+                    <span>{formatCurrency(costCalculation.perUnitBaseCost || (costCalculation.totalCost / (orderQuantity || 1)))}</span>
+                  </div>
               </div>
             </div>
             
@@ -352,18 +447,30 @@ export const CostCalculationDisplay = ({
                   </div>
                   <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
                     <span>Per unit</span>
-                    <span>{formatCurrency(isNaN(costCalculation.perUnitTransportCost) ? 0 : costCalculation.perUnitTransportCost)}</span>
+                    <span>{formatCurrency(costCalculation.perUnitTransportCost || (costCalculation.transportCharge / (orderQuantity || 1)))}</span>
                   </div>
                 </div>
 
                 <div className="bg-slate-50 p-3 rounded-md font-medium">
                   <div className="flex justify-between items-center">
                     <span>Total Cost</span>
-                    <span>{formatCurrency(costCalculation.totalCost)}</span>
+                    {onTotalCostChange ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          className="w-24 h-8 text-right bg-white border border-blue-200 focus:border-blue-400 rounded-md px-2 font-medium"
+                          value={inputValues.totalCost}
+                          onChange={handleTotalCostChange}
+                        />
+                      </div>
+                    ) : (
+                      <span>{formatCurrency(costCalculation.totalCost)}</span>
+                    )}
                   </div>
                   <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
                     <span>Per unit</span>
-                    <span>{formatCurrency(isNaN(costCalculation.perUnitCost) ? 0 : costCalculation.perUnitCost)}</span>
+                    <span>{formatCurrency(costCalculation.perUnitCost || (costCalculation.totalCost / (orderQuantity || 1)))}</span>
                   </div>
                 </div>
               </div>
@@ -391,11 +498,36 @@ export const CostCalculationDisplay = ({
                 <div className="bg-slate-50 p-3 rounded-md font-medium">
                   <div className="flex justify-between items-center">
                     <span>Selling Price</span>
-                    <span>{formatCurrency(costCalculation.sellingPrice)}</span>
+                    {onSellingPriceChange ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          className="w-24 h-8 text-right bg-white border border-blue-200 focus:border-blue-400 rounded-md px-2 font-medium"
+                          value={inputValues.sellingPrice}
+                          onChange={handleSellingPriceChange}
+                        />
+                        <span className="text-xs text-muted-foreground">Total</span>
+                      </div>
+                    ) : (
+                      <span>{formatCurrency(costCalculation.sellingPrice)}</span>
+                    )}
                   </div>
                   <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
                     <span>Per piece</span>
-                    <span>{formatCurrency(costCalculation.sellingPrice / (orderQuantity || 1))}</span>
+                    {onSellingPriceChange ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          className="w-20 h-6 text-right bg-white border border-blue-200 focus:border-blue-400 rounded-md px-1 text-xs"
+                          value={inputValues.sellingPricePerPiece}
+                          onChange={handleSellingPricePerPieceChange}
+                        />
+                      </div>
+                    ) : (
+                      <span>{formatCurrency(costCalculation.sellingPrice / (orderQuantity || 1))}</span>
+                    )}
                   </div>
                 </div>
                 
@@ -409,9 +541,21 @@ export const CostCalculationDisplay = ({
                 <div className="bg-slate-50 p-3 rounded-md font-medium">
                   <div className="flex justify-between items-center">
                     <span>Profit</span>
-                    <span className={profitIsPositive ? "text-green-600" : "text-red-600"}>
-                      {formatCurrency(profit)}
-                    </span>
+                    {onSellingPriceChange ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          className={`w-24 h-8 text-right bg-white border border-blue-200 focus:border-blue-400 rounded-md px-2 font-medium ${profitIsPositive ? "text-green-600" : "text-red-600"}`}
+                          value={profit.toFixed(2)}
+                          onChange={handleProfitChange}
+                        />
+                      </div>
+                    ) : (
+                      <span className={profitIsPositive ? "text-green-600" : "text-red-600"}>
+                        {formatCurrency(profit)}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
