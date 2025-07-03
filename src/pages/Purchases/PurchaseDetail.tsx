@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -77,6 +77,7 @@ interface Purchase {
 const PurchaseDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [purchase, setPurchase] = useState<Purchase | null>(null);
 
   // Purchase deletion hook
@@ -147,6 +148,28 @@ const PurchaseDetail = () => {
       setPurchaseItemsWithTransport(data.purchase_items || []);
     }
   }, [data]);
+
+  // Handle refresh parameter from URL (e.g., after edit)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const refreshParam = urlParams.get('refresh');
+    
+    if (refreshParam && refreshParam.startsWith('edit-')) {
+      console.log("Purchase edited, forcing data refresh...");
+      // Force refetch the data
+      refetch();
+      
+      // Clean URL by removing the refresh parameter
+      navigate(`/purchases/${id}`, { replace: true });
+      
+      // Show refresh notification
+      showToast({
+        title: "Purchase Updated",
+        description: "Purchase data has been refreshed with latest changes",
+        type: "success"
+      });
+    }
+  }, [location.search, refetch, navigate, id]);
   
   // Helper function to sleep for a given number of milliseconds
   const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

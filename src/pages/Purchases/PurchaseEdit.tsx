@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,6 +89,7 @@ interface PurchaseData {
 const PurchaseEdit = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>("");
@@ -619,8 +620,13 @@ const PurchaseEdit = () => {
         type: "success"
       });
       
-      // Navigate back to purchase detail
-      navigate(`/purchases/${id}`);
+      // Invalidate all purchase-related queries to ensure fresh data
+      await queryClient.invalidateQueries({ queryKey: ['purchase', id] });
+      await queryClient.invalidateQueries({ queryKey: ['purchase-edit', id] });
+      await queryClient.invalidateQueries({ queryKey: ['purchases'] });
+      
+      // Navigate back to purchase detail with a refresh parameter to force reload
+      navigate(`/purchases/${id}?refresh=edit-${Date.now()}`);
     } catch (error: unknown) {
       console.error("Error updating purchase:", error);
       showToast({
