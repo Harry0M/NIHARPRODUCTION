@@ -354,7 +354,7 @@ export const reversePurchaseCompletion = async (
         }
 
         const previousQuantity = currentInventory.quantity || 0;
-        const newQuantity = Math.max(0, previousQuantity - inventoryQuantity); // Prevent negative inventory
+        const newQuantity = previousQuantity - inventoryQuantity; // Allow negative inventory
 
         // Update inventory quantity
         const { error: updateError } = await supabase
