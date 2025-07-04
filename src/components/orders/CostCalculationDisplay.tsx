@@ -246,17 +246,59 @@ export const CostCalculationDisplay = ({
     }
   };
   
-  // Handle changes to any cost field
-  const handleCostChange = (type: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseFloat(e.target.value);
-    if (!isNaN(value)) {
-      setEditableCosts(prev => ({
+  // Handle changes to any cost field - PURE SUM ONLY
+  const handleCostChange = (type: string, totalValue: number) => {
+    // Update the specific cost component with the TOTAL value
+    const updatedCosts = {
+      ...editableCosts,
+      [type]: totalValue
+    };
+    
+    setEditableCosts(updatedCosts);
+    
+    // Calculate new total cost as PURE SUM of all components
+    const newTotalCost = (updatedCosts.materialCost || 0) + 
+                        (updatedCosts.cuttingCharge || 0) + 
+                        (updatedCosts.printingCharge || 0) + 
+                        (updatedCosts.stitchingCharge || 0) + 
+                        (updatedCosts.transportCharge || 0);
+    
+    // Debug logging - simplified
+    console.log('Pure Sum Calculation:', {
+      materialCost: updatedCosts.materialCost || 0,
+      cuttingCharge: updatedCosts.cuttingCharge || 0,
+      printingCharge: updatedCosts.printingCharge || 0,
+      stitchingCharge: updatedCosts.stitchingCharge || 0,
+      transportCharge: updatedCosts.transportCharge || 0,
+      pureSum: newTotalCost,
+      changedComponent: type,
+      changedValue: totalValue
+    });
+    
+    // Update total cost input
+    setInputValues(prev => ({
+      ...prev,
+      totalCost: newTotalCost.toString()
+    }));
+    
+    // Notify parent components
+    if (onCostChange) {
+      onCostChange(type, totalValue);
+    }
+    
+    if (onTotalCostChange) {
+      onTotalCostChange(newTotalCost);
+    }
+    
+    // Recalculate margin based on new total cost
+    if (newTotalCost > 0 && costCalculation.sellingPrice > 0) {
+      const newMargin = ((costCalculation.sellingPrice - newTotalCost) / newTotalCost) * 100;
+      setInputValues(prev => ({
         ...prev,
-        [type]: value
+        margin: newMargin.toFixed(2)
       }));
-      
-      if (onCostChange) {
-        onCostChange(type, value);
+      if (onMarginChange) {
+        onMarginChange(newMargin);
       }
     }
   };
@@ -302,13 +344,7 @@ export const CostCalculationDisplay = ({
                         
                         const numValue = value === '' ? 0 : parseFloat(value);
                         if (!isNaN(numValue)) {
-                          handleCostChange('materialCost', {
-                            ...e,
-                            target: {
-                              ...e.target,
-                              value: numValue.toString()
-                            }
-                          });
+                          handleCostChange('materialCost', numValue);
                         }
                       }}
                     />
@@ -344,13 +380,7 @@ export const CostCalculationDisplay = ({
                             const perUnitValue = value === '' ? 0 : parseFloat(value);
                             if (!isNaN(perUnitValue)) {
                               const totalValue = perUnitValue * (orderQuantity || 1);
-                              handleCostChange('cuttingCharge', {
-                                ...e,
-                                target: {
-                                  ...e.target,
-                                  value: totalValue.toString()
-                                }
-                              });
+                              handleCostChange('cuttingCharge', totalValue);
                             }
                           }}
                         />
@@ -381,13 +411,7 @@ export const CostCalculationDisplay = ({
                             const perUnitValue = value === '' ? 0 : parseFloat(value);
                             if (!isNaN(perUnitValue)) {
                               const totalValue = perUnitValue * (orderQuantity || 1);
-                              handleCostChange('printingCharge', {
-                                ...e,
-                                target: {
-                                  ...e.target,
-                                  value: totalValue.toString()
-                                }
-                              });
+                              handleCostChange('printingCharge', totalValue);
                             }
                           }}
                         />
@@ -421,13 +445,7 @@ export const CostCalculationDisplay = ({
                             const perUnitValue = value === '' ? 0 : parseFloat(value);
                             if (!isNaN(perUnitValue)) {
                               const totalValue = perUnitValue * (orderQuantity || 1);
-                              handleCostChange('stitchingCharge', {
-                                ...e,
-                                target: {
-                                  ...e.target,
-                                  value: totalValue.toString()
-                                }
-                              });
+                              handleCostChange('stitchingCharge', totalValue);
                             }
                           }}
                         />
@@ -458,13 +476,7 @@ export const CostCalculationDisplay = ({
                             const perUnitValue = value === '' ? 0 : parseFloat(value);
                             if (!isNaN(perUnitValue)) {
                               const totalValue = perUnitValue * (orderQuantity || 1);
-                              handleCostChange('transportCharge', {
-                                ...e,
-                                target: {
-                                  ...e.target,
-                                  value: totalValue.toString()
-                                }
-                              });
+                              handleCostChange('transportCharge', totalValue);
                             }
                           }}
                         />
