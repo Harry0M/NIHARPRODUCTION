@@ -352,7 +352,7 @@ export const CostCalculationDisplay = ({
                   </div>
                 </div>                  <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
                     <span>Per unit</span>
-                    <span>{formatCurrency(costCalculation.perUnitBaseCost || (costCalculation.totalCost / (orderQuantity || 1)))}</span>
+                    <span>{formatCurrency(costCalculation.materialCost / (orderQuantity || 1))}</span>
                   </div>
               </div>
             </div>
@@ -503,7 +503,7 @@ export const CostCalculationDisplay = ({
                   </div>
                   <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
                     <span>Per unit</span>
-                    <span>{formatCurrency(costCalculation.perUnitTransportCost || (costCalculation.transportCharge / (orderQuantity || 1)))}</span>
+                    <span>{formatCurrency(costCalculation.transportCharge / (orderQuantity || 1))}</span>
                   </div>
                 </div>
 
@@ -526,7 +526,7 @@ export const CostCalculationDisplay = ({
                   </div>
                   <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
                     <span>Per unit</span>
-                    <span>{formatCurrency(costCalculation.perUnitCost || (costCalculation.totalCost / (orderQuantity || 1)))}</span>
+                    <span>{formatCurrency(costCalculation.totalCost / (orderQuantity || 1))}</span>
                   </div>
                 </div>
               </div>
