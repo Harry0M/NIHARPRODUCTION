@@ -120,8 +120,21 @@ export const CostCalculationDisplay = ({
     }));
     
     const newMargin = value === '' ? 0 : parseFloat(value);
-    if (!isNaN(newMargin) && onMarginChange) {
-      onMarginChange(newMargin);
+    if (!isNaN(newMargin) && onSellingPriceChange && costCalculation.totalCost > 0) {
+      // When margin changes, calculate new selling price: sellingPrice = totalCost * (1 + margin/100)
+      const newSellingPrice = costCalculation.totalCost * (1 + newMargin / 100);
+      onSellingPriceChange(newSellingPrice);
+      
+      // Update selling price input values
+      setInputValues(prev => ({
+        ...prev,
+        sellingPrice: newSellingPrice.toString(),
+        sellingPricePerPiece: (newSellingPrice / (orderQuantity || 1)).toString()
+      }));
+      
+      if (onMarginChange) {
+        onMarginChange(newMargin);
+      }
     }
   };
 
@@ -135,6 +148,18 @@ export const CostCalculationDisplay = ({
     const newTotalCost = value === '' ? 0 : parseFloat(value);
     if (!isNaN(newTotalCost) && onTotalCostChange) {
       onTotalCostChange(newTotalCost);
+      
+      // When total cost changes, recalculate margin based on current selling price
+      if (newTotalCost > 0 && costCalculation.sellingPrice > 0) {
+        const newMargin = ((costCalculation.sellingPrice - newTotalCost) / newTotalCost) * 100;
+        setInputValues(prev => ({
+          ...prev,
+          margin: newMargin.toFixed(2)
+        }));
+        if (onMarginChange) {
+          onMarginChange(newMargin);
+        }
+      }
     }
   };
 
@@ -199,6 +224,25 @@ export const CostCalculationDisplay = ({
       // If profit changes, calculate new selling price: sellingPrice = totalCost + profit
       const newSellingPrice = costCalculation.totalCost + newProfit;
       onSellingPriceChange(newSellingPrice);
+      
+      // Update selling price input values
+      setInputValues(prev => ({
+        ...prev,
+        sellingPrice: newSellingPrice.toString(),
+        sellingPricePerPiece: (newSellingPrice / (orderQuantity || 1)).toString()
+      }));
+      
+      // Calculate and update margin based on new selling price
+      if (costCalculation.totalCost > 0) {
+        const newMargin = (newProfit / costCalculation.totalCost) * 100;
+        setInputValues(prev => ({
+          ...prev,
+          margin: newMargin.toFixed(2)
+        }));
+        if (onMarginChange) {
+          onMarginChange(newMargin);
+        }
+      }
     }
   };
   
@@ -538,9 +582,9 @@ export const CostCalculationDisplay = ({
                   </div>
                 </div>
                 
-                <div className="bg-slate-50 p-3 rounded-md font-medium">
-                  <div className="flex justify-between items-center">
-                    <span>Profit</span>
+                <div className="bg-green-50 p-3 rounded-md border border-green-200">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-medium text-green-900">Total Profit</span>
                     {onSellingPriceChange ? (
                       <div className="flex items-center gap-2">
                         <input
@@ -552,30 +596,63 @@ export const CostCalculationDisplay = ({
                         />
                       </div>
                     ) : (
-                      <span className={profitIsPositive ? "text-green-600" : "text-red-600"}>
+                      <span className={`font-medium ${profitIsPositive ? "text-green-600" : "text-red-600"}`}>
                         {formatCurrency(profit)}
                       </span>
                     )}
+                  </div>
+                  <div className="text-xs text-green-700">
+                    Formula: Selling Price ({formatCurrency(costCalculation.sellingPrice)}) - Total Cost ({formatCurrency(costCalculation.totalCost)})
+                  </div>
+                  <div className="flex justify-between items-center mt-2 text-sm">
+                    <span className="text-green-700">Margin %:</span>
+                    <span className={`font-medium ${profitIsPositive ? "text-green-600" : "text-red-600"}`}>
+                      {costCalculation.totalCost > 0 ? 
+                        `${((profit / costCalculation.totalCost) * 100).toFixed(2)}%` : 
+                        '0.00%'
+                      }
+                    </span>
+                  </div>
+                  <div className="text-xs text-green-700 mt-1">
+                    Margin = (Profit ÷ Total Cost) × 100
                   </div>
                 </div>
               </div>
             </div>
           </div>
         ) : (
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Total Cost:</span>
-              <span className="font-medium">{formatCurrency(costCalculation.totalCost)}</span>
+          <div className="space-y-3">
+            <div className="bg-blue-50 p-3 rounded-md border border-blue-200">
+              <h4 className="text-sm font-medium text-blue-900 mb-2">Calculation Summary</h4>
+              <div className="text-xs text-blue-700 space-y-1">
+                <div>Profit = Selling Price - Total Cost</div>
+                <div>Margin % = (Profit ÷ Total Cost) × 100</div>
+              </div>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Selling Price:</span>
-              <span className="font-medium">{formatCurrency(costCalculation.sellingPrice)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Profit:</span>
-              <span className={`font-medium ${profitIsPositive ? "text-green-600" : "text-red-600"}`}>
-                {formatCurrency(profit)}
-              </span>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Total Cost:</span>
+                <span className="font-medium">{formatCurrency(costCalculation.totalCost)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Selling Price:</span>
+                <span className="font-medium">{formatCurrency(costCalculation.sellingPrice)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Profit:</span>
+                <span className={`font-medium ${profitIsPositive ? "text-green-600" : "text-red-600"}`}>
+                  {formatCurrency(profit)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Margin:</span>
+                <span className={`font-medium ${profitIsPositive ? "text-green-600" : "text-red-600"}`}>
+                  {costCalculation.totalCost > 0 ? 
+                    `${((profit / costCalculation.totalCost) * 100).toFixed(2)}%` : 
+                    '0.00%'
+                  }
+                </span>
+              </div>
             </div>
           </div>
         )}
