@@ -217,7 +217,8 @@ export function useOrderSubmission({
         console.log("Warning: Using 'Unnamed Company' as company_name was empty and no company_id was provided");
       }
       
-      const orderData = {
+      // Base order data without cost fields
+      const baseOrderData = {
         company_name: companyName, // Always provide a non-null value
         company_id: orderDetails.company_id,
         quantity: parseInt(orderDetails.total_quantity || orderDetails.quantity), // Use total quantity for the order
@@ -225,13 +226,19 @@ export function useOrderSubmission({
         bag_length: parseFloat(orderDetails.bag_length),
         bag_width: parseFloat(orderDetails.bag_width),
         border_dimension: orderDetails.border_dimension ? parseFloat(orderDetails.border_dimension) : null,
-        rate: sellingRate,
         order_date: orderDetails.order_date,
         order_number: orderDetails.order_number || null, // Manual order number entry (null for auto-generation)
         // Use the validated sales_account_id to prevent foreign key constraint errors
         sales_account_id: validatedSalesAccountId,
         catalog_id: orderDetails.catalog_id || null,
-        special_instructions: orderDetails.special_instructions || null,
+        special_instructions: orderDetails.special_instructions || null
+      };
+
+      // For editing, only update non-cost fields to preserve existing cost calculations
+      // For creation, include cost fields
+      const orderData = orderId ? baseOrderData : {
+        ...baseOrderData,
+        rate: sellingRate,
         // Costs multiplied by order quantity: material cost, production costs, and transport charges
         material_cost: materialCost,
         cutting_charge: cuttingCharge,
@@ -244,7 +251,10 @@ export function useOrderSubmission({
         calculated_selling_price: sellingRate
       };
 
-      console.log("Submitting order data:", orderData);
+      console.log(orderId ? "🔄 EDITING order - preserving existing costs:" : "✨ CREATING new order with costs:", orderData);
+      if (orderId) {
+        console.log("🚫 Cost fields EXCLUDED from update to preserve existing values");
+      }
       
       let orderResult = null;
       

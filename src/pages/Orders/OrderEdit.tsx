@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { OrderDetailsForm } from "@/components/orders/OrderDetailsForm";
 import { StandardComponents } from "@/components/orders/StandardComponents";
 import { CustomComponentSection, CustomComponent } from "@/components/orders/CustomComponentSection";
-import { CostCalculationDisplay } from "@/components/orders/CostCalculationDisplay";
 import { useOrderForm } from "@/hooks/use-order-form";
 import { 
   Card, 
@@ -43,8 +42,6 @@ const OrderEdit = () => {
     handleProductSelect,
     validateForm,
     updateConsumptionBasedOnQuantity,
-    costCalculation,
-    updateMargin,
     handleSubmit,
     submitting,
     setDatabaseLoadingState
@@ -174,36 +171,6 @@ const OrderEdit = () => {
           target: {
             name: "order_number",
             value: typedOrderData.order_number || ""
-          }
-        });
-        handleOrderChange({
-          target: {
-            name: "cutting_charge",
-            value: typedOrderData.cutting_charge?.toString() || "0"
-          }
-        });
-        handleOrderChange({
-          target: {
-            name: "printing_charge",
-            value: typedOrderData.printing_charge?.toString() || "0"
-          }
-        });
-        handleOrderChange({
-          target: {
-            name: "stitching_charge",
-            value: typedOrderData.stitching_charge?.toString() || "0"
-          }
-        });
-        handleOrderChange({
-          target: {
-            name: "transport_charge",
-            value: typedOrderData.transport_charge?.toString() || "0"
-          }
-        });
-        handleOrderChange({
-          target: {
-            name: "margin",
-            value: typedOrderData.margin?.toString() || "15"
           }
         });
 
@@ -427,11 +394,6 @@ const OrderEdit = () => {
                   </Button>
             </CardContent>
           </Card>
-                
-          <CostCalculationDisplay
-            costCalculation={costCalculation}
-            onMarginChange={updateMargin}
-                />
           
           <CardFooter className="flex justify-end gap-4">
             <Button 
