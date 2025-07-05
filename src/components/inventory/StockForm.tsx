@@ -8,6 +8,7 @@ import { AlternateUnitFields } from "./form/AlternateUnitFields";
 import { CostTrackingFields } from "./form/CostTrackingFields";
 import { AdditionalInfoFields } from "./form/AdditionalInfoFields";
 import { useStockForm } from "./form/useStockForm";
+import { LastManualEntry } from "./LastManualEntry";
 import { Loader2 } from "lucide-react";
 
 interface StockFormProps {
@@ -52,6 +53,9 @@ export const StockForm = ({ stockId, onSuccess }: StockFormProps) => {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <div className="grid gap-6">
+          {/* Show last manual entry for existing stock items */}
+          {stockId && <LastManualEntry materialId={stockId} />}
+          
           <Card>
             <CardHeader className="pb-3">
               <CardTitle>

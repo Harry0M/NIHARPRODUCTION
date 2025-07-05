@@ -117,6 +117,32 @@ export function useStockForm({ stockId, onSuccess }: UseStockFormProps = {}) {
           .select();
           
         if (error) throw error;
+        
+        // Create a manual transaction log entry for initial stock creation
+        if (data && data[0] && values.quantity > 0) {
+          const { error: transactionError } = await supabase.rpc(
+            'record_manual_inventory_transaction',
+            {
+              p_material_id: data[0].id,
+              p_transaction_type: 'initial-stock-creation',
+              p_quantity: values.quantity,
+              p_previous_quantity: 0,
+              p_new_quantity: values.quantity,
+              p_notes: `Initial stock creation: ${values.material_name}`,
+              p_metadata: JSON.stringify({
+                material_name: values.material_name,
+                unit: values.unit,
+                update_source: 'stock_form_creation'
+              })
+            }
+          );
+          
+          if (transactionError) {
+            console.error("Error creating manual transaction log:", transactionError);
+            // Don't fail the stock creation if transaction log fails
+          }
+        }
+        
         return data;
       } catch (error) {
         console.error("Error creating stock:", error);
@@ -157,6 +183,19 @@ export function useStockForm({ stockId, onSuccess }: UseStockFormProps = {}) {
         throw new Error("Required fields are missing");
       }
 
+      // Get current stock data to check for quantity changes
+      const { data: currentStock, error: fetchError } = await supabase
+        .from("inventory")
+        .select("quantity, material_name, unit")
+        .eq("id", stockId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      const previousQuantity = currentStock?.quantity || 0;
+      const newQuantity = values.quantity;
+      const quantityChanged = previousQuantity !== newQuantity;
+
       // Create a properly typed object for update
       const stockData = {
         material_name: values.material_name,
@@ -179,7 +218,37 @@ export function useStockForm({ stockId, onSuccess }: UseStockFormProps = {}) {
         .update(stockData)
         .eq("id", stockId)
         .select();
+      
       if (error) throw error;
+      
+      // Create a manual transaction log entry if quantity changed
+      if (quantityChanged) {
+        const quantityChange = newQuantity - previousQuantity;
+        const { error: transactionError } = await supabase.rpc(
+          'record_manual_inventory_transaction',
+          {
+            p_material_id: stockId,
+            p_transaction_type: 'manual-stock-adjustment',
+            p_quantity: newQuantity, // Store the actual entered amount, not the difference
+            p_previous_quantity: previousQuantity,
+            p_new_quantity: newQuantity,
+            p_notes: `Manual stock adjustment: ${values.material_name} (quantity set to ${newQuantity})`,
+            p_metadata: JSON.stringify({
+              material_name: values.material_name,
+              unit: values.unit,
+              update_source: 'stock_form_edit',
+              quantity_change: quantityChange, // Store the difference in metadata for reference
+              entered_amount: newQuantity // Store the actual entered amount in metadata too
+            })
+          }
+        );
+        
+        if (transactionError) {
+          console.error("Error creating manual transaction log:", transactionError);
+          // Don't fail the stock update if transaction log fails
+        }
+      }
+      
       return data;
     },
     onSuccess: (data) => {

@@ -42,6 +42,7 @@ export interface OrderFormData {
   bag_width: string;
   border_dimension?: string;
   rate: string;
+  rate_per_unit?: string;
   special_instructions: string;
   order_date: string;
   order_number?: string; // Manual order number entry

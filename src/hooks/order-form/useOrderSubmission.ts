@@ -114,7 +114,20 @@ export function useOrderSubmission({
             stitchingCharge = (catalogData.stitching_charge || 0) * orderQuantity;
             transportCharge = (catalogData.transport_charge || 0) * orderQuantity;
             margin = catalogData.margin || 15;
-            sellingRate = (catalogData.selling_rate || 0) * orderQuantity;
+            
+            // Check if rate_per_unit is provided in the form, otherwise use catalog selling_rate
+            if (orderDetails.rate_per_unit && orderDetails.rate_per_unit.trim() !== '') {
+              const ratePerUnit = parseFloat(orderDetails.rate_per_unit);
+              sellingRate = ratePerUnit * orderQuantity;
+              console.log('Using manual rate_per_unit over catalog selling_rate:', {
+                orderQuantity,
+                ratePerUnit,
+                totalSellingRate: sellingRate
+              });
+            } else {
+              sellingRate = (catalogData.selling_rate || 0) * orderQuantity;
+              console.log('Using catalog selling_rate:', sellingRate);
+            }
             
             console.log('Costs calculated (multiplied by order quantity):', {
               orderQuantity,
@@ -136,9 +149,24 @@ export function useOrderSubmission({
           });
         }
       } else {
-        // No catalog template, use default values
-        console.log('No catalog template selected, using default cost values');
-        sellingRate = parseFloat(orderDetails.rate || '0');
+        // No catalog template, use default values or rate_per_unit if provided
+        console.log('No catalog template selected, using manual rate values');
+        
+        if (orderDetails.rate_per_unit && orderDetails.rate_per_unit.trim() !== '') {
+          // Use rate_per_unit multiplied by order quantity
+          const orderQuantity = parseInt(orderDetails.order_quantity || orderDetails.quantity || '1');
+          const ratePerUnit = parseFloat(orderDetails.rate_per_unit);
+          sellingRate = ratePerUnit * orderQuantity;
+          console.log('Using rate_per_unit for selling rate calculation:', {
+            orderQuantity,
+            ratePerUnit,
+            totalSellingRate: sellingRate
+          });
+        } else {
+          // Fallback to total rate field
+          sellingRate = parseFloat(orderDetails.rate || '0');
+          console.log('Using total rate field:', sellingRate);
+        }
       }
       
       // Prepare data for database insert/update

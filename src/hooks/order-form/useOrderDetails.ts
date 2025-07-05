@@ -13,6 +13,7 @@ export function useOrderDetails() {
     bag_width: "",
     border_dimension: "",
     rate: "",
+    rate_per_unit: "",
     special_instructions: "",
     sales_account_id: null,
     catalog_id: null, // Product catalog ID

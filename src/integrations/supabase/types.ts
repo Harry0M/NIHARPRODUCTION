@@ -711,6 +711,7 @@ export type Database = {
         Row: {
           created_by: string | null
           id: string
+          is_manual_entry: boolean | null
           material_id: string
           metadata: Json | null
           new_quantity: number
@@ -726,6 +727,7 @@ export type Database = {
         Insert: {
           created_by?: string | null
           id?: string
+          is_manual_entry?: boolean | null
           material_id: string
           metadata?: Json | null
           new_quantity: number
@@ -741,6 +743,7 @@ export type Database = {
         Update: {
           created_by?: string | null
           id?: string
+          is_manual_entry?: boolean | null
           material_id?: string
           metadata?: Json | null
           new_quantity?: number
@@ -3131,6 +3134,20 @@ export type Database = {
       preview_inventory_hard_deletion: {
         Args: { input_inventory_id: string }
         Returns: Json
+      }
+      record_manual_inventory_transaction: {
+        Args: {
+          p_material_id: string
+          p_transaction_type: string
+          p_quantity: number
+          p_previous_quantity: number
+          p_new_quantity: number
+          p_notes?: string
+          p_reference_id?: string
+          p_reference_number?: string
+          p_metadata?: Json
+        }
+        Returns: string
       }
       record_material_usage: {
         Args: {
