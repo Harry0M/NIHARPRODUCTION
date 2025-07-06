@@ -18,7 +18,9 @@ export function useOrderDetails() {
     sales_account_id: null,
     catalog_id: null, // Product catalog ID
     order_date: new Date().toISOString().split('T')[0],
-    order_number: "" // Manual order number entry
+    delivery_date: "", // Optional field
+    order_number: "", // Manual order number entry
+    wastage_percentage: "5" // Default 5% wastage
   });
   
   const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 

@@ -14,7 +14,8 @@ export function useCostCalculation() {
     stitchingCharge = 0,
     transportCharge = 0,
     quantity = 0,
-    gstRate = 0
+    gstRate = 0,
+    wastagePercentage = 5
   ) => {
     // Calculate material costs from all components
     const materialCosts = [...Object.values(components), ...customComponents]
@@ -61,11 +62,14 @@ export function useCostCalculation() {
     // Calculate base cost (material + production costs)
     const baseCost = materialCosts + totalCuttingCharge + totalPrintingCharge + totalStitchingCharge;
     
+    // Calculate wastage cost from material cost
+    const wastageCost = (materialCosts * wastagePercentage) / 100;
+    
     // Calculate GST amount
     const gstAmount = (baseCost * gstRate) / 100;
     
-    // Calculate total cost including GST
-    const totalCost = baseCost + totalTransportCharge + gstAmount;
+    // Calculate total cost including GST and wastage
+    const totalCost = baseCost + totalTransportCharge + gstAmount + wastageCost;
     
     // Calculate per unit costs
     const perUnitBaseCost = quantity > 0 ? baseCost / quantity : baseCost;
@@ -80,6 +84,8 @@ export function useCostCalculation() {
       printingCharge: totalPrintingCharge, 
       stitchingCharge: totalStitchingCharge,
       transportCharge: totalTransportCharge,
+      wastagePercentage,
+      wastageCost,
       baseCost,
       gstAmount,
       totalCost,

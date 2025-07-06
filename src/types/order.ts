@@ -15,6 +15,7 @@ export interface Order {
   bag_width: number;
   border_dimension?: number | null;
   order_date: string;
+  delivery_date?: string | null;
   status: OrderStatus;
   rate: number | null;
   created_at: string;
@@ -29,6 +30,8 @@ export interface Order {
   production_cost?: number | null;
   total_cost?: number | null;
   margin?: number | null;
+  wastage_percentage?: number | null;
+  wastage_cost?: number | null;
 }
 
 export interface OrderFormData {
@@ -45,6 +48,7 @@ export interface OrderFormData {
   rate_per_unit?: string;
   special_instructions: string;
   order_date: string;
+  delivery_date?: string;
   order_number?: string; // Manual order number entry
   sales_account_id?: string | null;
   catalog_id?: string | null;
@@ -54,6 +58,7 @@ export interface OrderFormData {
   stitching_charge?: string;
   transport_charge?: string;
   margin?: string;
+  wastage_percentage?: string;
 }
 
 export interface InventoryMaterial {

@@ -35,6 +35,40 @@ export const AdditionalDetailsSection = ({
       </div>
       
       <div className="space-y-2">
+        <Label htmlFor="wastage_percentage">Wastage Percentage (%)</Label>
+        <Input 
+          id="wastage_percentage" 
+          name="wastage_percentage"
+          type="number"
+          step="0.1"
+          min="0"
+          max="100"
+          value={formData.wastage_percentage || '5'}
+          onChange={handleOrderChange}
+          placeholder="Enter wastage percentage (default: 5%)"
+          readOnly={readOnly}
+        />
+        <p className="text-xs text-muted-foreground">
+          Wastage cost will be calculated as a percentage of material cost and added to total cost
+        </p>
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="delivery_date">Delivery Date (optional)</Label>
+        <Input 
+          id="delivery_date" 
+          name="delivery_date"
+          type="date"
+          value={formData.delivery_date || ''}
+          onChange={handleOrderChange}
+          readOnly={readOnly}
+        />
+        <p className="text-xs text-muted-foreground">
+          Expected date when this order should be delivered
+        </p>
+      </div>
+      
+      <div className="space-y-2">
         <Label htmlFor="special_instructions">Special Instructions (optional)</Label>
         <Textarea 
           id="special_instructions" 

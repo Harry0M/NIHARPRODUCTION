@@ -2,19 +2,15 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { formatCurrency, formatAnalysisDate } from "@/utils/analysisUtils";
 import { format, subMonths } from "date-fns";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Search, BarChart as BarChartIcon, AlertCircle, FileText, TrendingUp, DollarSign, ShoppingBag, Building2, Download, FileSpreadsheet, Package } from "lucide-react";
+import { ArrowLeft, AlertCircle, FileText, TrendingUp, DollarSign, ShoppingBag, Building2, Download, FileSpreadsheet, Package } from "lucide-react";
 import { LoadingSpinner } from "@/components/production/LoadingSpinner";
 import { useNavigate } from "react-router-dom";
-import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { Separator } from "@/components/ui/separator";
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, Cell, PieChart as RechartsPieChart, Pie } from "recharts";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CartesianGrid } from "recharts";
 import {
   Table,
   TableBody,
@@ -26,6 +22,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { OrderFilter, type OrderFilters } from "@/components/orders/OrderFilter";
 
 // Order analysis interface
 interface OrderAnalysis {
@@ -50,6 +47,9 @@ interface OrderAnalysis {
   profit_margin: number;
   bag_length: number;
   bag_width: number;
+  wastage_percentage: number;
+  wastage_quantity: number;
+  wastage_cost: number;
   catalog_name?: string;
   components?: Array<{
     id: string;
@@ -66,16 +66,20 @@ interface OrderAnalysis {
 
 const OrderConsumption = () => {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [dateRange, setDateRange] = useState<{from?: Date; to?: Date}>({
-    from: subMonths(new Date(), 6),
-    to: new Date()
+  const [filters, setFilters] = useState<OrderFilters>({
+    searchTerm: "",
+    status: "all",
+    dateRange: {
+      from: format(subMonths(new Date(), 6), 'yyyy-MM-dd'),
+      to: format(new Date(), 'yyyy-MM-dd')
+    },
+    sortBy: "default"
   });
   
   // Fetch orders data for analysis - with order components
   const { data: ordersData, isLoading } = useQuery({
-    queryKey: ['orders-analysis', dateRange],
+    queryKey: ['orders-analysis', filters.dateRange],
     queryFn: async () => {
       let query = supabase
         .from('orders')
@@ -107,11 +111,11 @@ const OrderConsumption = () => {
         `);
       
       // Apply date filters
-      if (dateRange.from) {
-        query = query.gte('order_date', dateRange.from.toISOString());
+      if (filters.dateRange.from) {
+        query = query.gte('order_date', filters.dateRange.from);
       }
-      if (dateRange.to) {
-        query = query.lte('order_date', dateRange.to.toISOString());
+      if (filters.dateRange.to) {
+        query = query.lte('order_date', filters.dateRange.to);
       }
       
       const { data, error } = await query.order('order_date', { ascending: false });
@@ -168,6 +172,9 @@ const OrderConsumption = () => {
           profit_margin: profitMargin,
           bag_length: Number(order.bag_length || 0),
           bag_width: Number(order.bag_width || 0),
+          wastage_percentage: 0, // Will be populated later
+          wastage_quantity: 0, // Will be populated later
+          wastage_cost: 0, // Will be populated later
           catalog_name: 'Unknown Product', // Simplified for now since catalog relation has issues
           components: components // Add components data
         };
@@ -176,13 +183,96 @@ const OrderConsumption = () => {
       return processedData;
     }
   });
+
+  // Fetch wastage data for orders
+  const { data: wastageData } = useQuery({
+    queryKey: ['orders-wastage'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('job_wastage')
+        .select(`
+          order_id,
+          wastage_percentage,
+          wastage_quantity
+        `);
+      
+      if (error) throw error;
+      
+      // Group wastage by order_id and calculate totals
+      const wastageByOrder = (data || []).reduce((acc: Record<string, {wastage_percentage: number, wastage_quantity: number}>, item) => {
+        if (!acc[item.order_id]) {
+          acc[item.order_id] = { wastage_percentage: 0, wastage_quantity: 0 };
+        }
+        // Take the highest wastage percentage and sum quantities
+        acc[item.order_id].wastage_percentage = Math.max(acc[item.order_id].wastage_percentage, Number(item.wastage_percentage || 0));
+        acc[item.order_id].wastage_quantity += Number(item.wastage_quantity || 0);
+        return acc;
+      }, {});
+      
+      return wastageByOrder;
+    }
+  });
   
-  // Filter the data based on search query if needed
-  const filteredData = ordersData?.filter(order => {
-    if (!searchQuery) return true;
-    return order.company_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           order.order_number?.toLowerCase().includes(searchQuery.toLowerCase());
+  // Combine orders data with wastage data
+  const combinedOrdersData = ordersData?.map(order => {
+    const wastageInfo = wastageData?.[order.id] || { wastage_percentage: 0, wastage_quantity: 0 };
+    const wastage_cost = (order.material_cost * wastageInfo.wastage_percentage) / 100;
+    
+    return {
+      ...order,
+      wastage_percentage: wastageInfo.wastage_percentage,
+      wastage_quantity: wastageInfo.wastage_quantity,
+      wastage_cost: wastage_cost
+    };
   }) || [];
+
+  // Filter and sort the data based on filters
+  const processedData = combinedOrdersData?.filter(order => {
+    // Search filter
+    if (filters.searchTerm) {
+      const searchLower = filters.searchTerm.toLowerCase();
+      if (!order.company_name?.toLowerCase().includes(searchLower) &&
+          !order.order_number?.toLowerCase().includes(searchLower)) {
+        return false;
+      }
+    }
+    
+    // Status filter
+    if (filters.status !== 'all' && order.status !== filters.status) {
+      return false;
+    }
+    
+    return true;
+  }) || [];
+
+  // Sort the filtered data
+  const sortedData = [...processedData].sort((a, b) => {
+    const aProfit = (Number(a.calculated_selling_price || 0) - Number(a.total_cost || 0));
+    const bProfit = (Number(b.calculated_selling_price || 0) - Number(b.total_cost || 0));
+    const aMaterialCost = Number(a.material_cost || 0);
+    const bMaterialCost = Number(b.material_cost || 0);
+    const aWastage = Number(a.wastage_cost || 0);
+    const bWastage = Number(b.wastage_cost || 0);
+    
+    switch (filters.sortBy) {
+      case 'highest_profit':
+        return bProfit - aProfit; // Descending order
+      case 'highest_material_cost':
+        return bMaterialCost - aMaterialCost; // Descending order
+      case 'highest_wastage':
+        return bWastage - aWastage; // Descending order
+      case 'latest_date':
+        return new Date(b.order_date).getTime() - new Date(a.order_date).getTime();
+      case 'oldest_date':
+        return new Date(a.order_date).getTime() - new Date(b.order_date).getTime();
+      case 'company_name':
+        return (a.company_name || '').localeCompare(b.company_name || '');
+      default:
+        return new Date(b.order_date).getTime() - new Date(a.order_date).getTime(); // Default: latest first
+    }
+  });
+
+  const filteredData = sortedData;
     
   console.log("Filtered data:", filteredData);
     
@@ -202,6 +292,10 @@ const OrderConsumption = () => {
     profitFormatted: formatCurrency(item.profit),
     profitMargin: item.profit_margin,
     marginPercent: item.margin,
+    wastage_percentage: item.wastage_percentage,
+    wastage_quantity: item.wastage_quantity,
+    wastage_cost: item.wastage_cost,
+    wastage_cost_formatted: formatCurrency(item.wastage_cost),
     productionCosts: {
       cuttingCost: item.cutting_charge,
       printingCost: item.printing_charge,
@@ -221,82 +315,14 @@ const OrderConsumption = () => {
     catalog_name: item.catalog_name
   })) || [];
   
-  // Process the data for analytics
-  
-  // 1. Group orders by month for trend analysis
-  const monthlyOrdersData = orderChartData?.reduce((acc: any, order) => {
-    if (order.date) {
-      const monthKey = `${order.date.getFullYear()}-${String(order.date.getMonth() + 1).padStart(2, '0')}`;
-      if (!acc[monthKey]) {
-        acc[monthKey] = {
-          month: new Date(order.date.getFullYear(), order.date.getMonth(), 1),
-          count: 0,
-          revenue: 0,
-          profit: 0,
-          materialCost: 0
-        };
-      }
-      acc[monthKey].count += 1;
-      acc[monthKey].revenue += order.sellingPrice || 0;
-      acc[monthKey].profit += order.profit || 0;
-      acc[monthKey].materialCost += order.materialCost || 0;
-    }
-    return acc;
-  }, {});
-
-  // Convert to array and sort by month
-  const monthlyOrdersTrend = Object.values(monthlyOrdersData || {}).sort((a: any, b: any) => {
-    return new Date(a.month).getTime() - new Date(b.month).getTime();
-  }).map((item: any) => ({
-    ...item,
-    month: item.month.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-  }));
-
-  // 2. Find highest profit orders
-  const highestProfitOrders = [...(orderChartData || [])]
-    .sort((a, b) => (b.profit || 0) - (a.profit || 0))
-    .slice(0, 5);
-
-  // 3. Find orders with highest material consumption (by value)
-  const highestMaterialConsumption = [...(orderChartData || [])]
-    .sort((a, b) => (b.materialCost || 0) - (a.materialCost || 0))
-    .slice(0, 5);
-
-  // 4. Get details of selected order
+  // Get details of selected order
   const selectedOrder = selectedOrderId 
     ? orderChartData?.find(order => order.order_id === selectedOrderId)
     : null;
-  
-  // Sort materials by value for selected order
+
+  // Sort materials by value for selected order (used in material breakdown tab)
   const sortedMaterials = selectedOrder?.materials?.sort((a: any, b: any) => b.value - a.value) || [];
-  
-  // Prepare data for material distribution chart in selected order
-  const materialDistributionData = sortedMaterials.map((material: any) => ({
-    name: material.material_name,
-    value: material.quantity,
-    unit: material.unit,
-    materialValue: material.value
-  }));
-  
-  // Prepare cost breakdown data for pie chart
-  const getCostBreakdownData = (order: any) => {
-    if (!order) return [];
-    
-    const data = [
-      { name: 'Material', value: order.materialCost },
-      { name: 'Cutting', value: order.productionCosts?.cuttingCost || 0 },
-      { name: 'Printing', value: order.productionCosts?.printingCost || 0 },
-      { name: 'Stitching', value: order.productionCosts?.stitchingCost || 0 },
-      { name: 'Transport', value: order.productionCosts?.transportCost || 0 }
-    ];
-    
-    // Filter out zero-value segments
-    return data.filter(item => item.value > 0);
-  };
-  
-  // Colors for the chart
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ff7300', '#a05195', '#d45087', '#2f4b7c'];
-  
+
   const handleDownloadCSV = () => {
     if (!orderChartData?.length) return;
     const formattedData = orderChartData.map(order => ({
@@ -360,101 +386,12 @@ const OrderConsumption = () => {
           </div>
         </div>
         <p className="text-muted-foreground">
-          Analyze material usage, costs, and profitability by order
+          Analyze material usage, costs, profitability, and wastage by order. Use filters to sort by highest profit, highest material consumption, highest wastage, or other criteria.
         </p>
       </div>
       
       {/* Filters */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex justify-between items-center">
-            <CardTitle className="text-lg">Filters</CardTitle>            <div className="flex space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center"
-                onClick={() => {
-                  if (orderChartData && orderChartData.length > 0) {
-                    const exportData = orderChartData.map(order => ({
-                      'Order Number': order.order_number,
-                      'Company': order.company_name,
-                      'Total Cost': order.totalCost,
-                      'Selling Price': order.sellingPrice,
-                      'Profit': order.profit
-                    }));
-                    console.log('CSV Export Data:', exportData);
-                  }
-                }}
-              >
-                <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Export CSV
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center"
-                onClick={() => {
-                  if (orderChartData && orderChartData.length > 0) {
-                    console.log('PDF Export:', orderChartData);
-                  }
-                }}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Export PDF
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center"
-                onClick={() => {
-                  if (orderChartData && orderChartData.length > 0) {
-                    console.log('Detailed Export:', orderChartData);
-                  }
-                }}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export Details
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col space-y-4 md:flex-row md:space-y-0 md:space-x-4">
-            <div className="flex-1">
-              <Label htmlFor="search">Search</Label>
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="search"
-                  placeholder="Search by order number, company or material..."
-                  className="pl-8"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="w-full md:w-[300px]">
-              <Label>Date Range</Label>
-              <DatePickerWithRange 
-                date={{
-                  from: dateRange.from,
-                  to: dateRange.to
-                }}
-                onChange={(range) => {
-                  if (range) {
-                    setDateRange({
-                      from: range.from,
-                      to: range.to
-                    });
-                  } else {
-                    setDateRange({});
-                  }
-                }}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <OrderFilter filters={filters} setFilters={setFilters} />
       
       {/* Main Content */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -509,6 +446,18 @@ const OrderConsumption = () => {
                 <p className="text-xs text-muted-foreground">Across all orders</p>
               </CardContent>
             </Card>
+            
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Total Wastage Cost</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                  ₹{formatCurrency(orderChartData?.reduce((sum, order) => sum + (order.wastage_cost || 0), 0) || 0)}
+                </div>
+                <p className="text-xs text-muted-foreground">Material wastage across orders</p>
+              </CardContent>
+            </Card>
           </div>
           
           {/* Orders List */}
@@ -543,6 +492,12 @@ const OrderConsumption = () => {
                             <Building2 className="h-3 w-3" />
                             <span className="truncate">{order.company_name}</span>
                           </div>
+                          {order.wastage_cost > 0 && (
+                            <div className="text-xs text-red-600 flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3" />
+                              Wastage: ₹{formatCurrency(order.wastage_cost)} ({order.wastage_percentage.toFixed(1)}%)
+                            </div>
+                          )}
                         </div>
                         <div className="text-right">
                           <div className="font-medium">₹{formatCurrency(order.sellingPrice)}</div>
@@ -561,130 +516,6 @@ const OrderConsumption = () => {
         
         {/* Center-Right Sections - Order Details & Analysis */}
         <div className="md:col-span-2 space-y-6">
-          {/* Monthly Order Trends */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <BarChartIcon className="h-5 w-5 mr-2" />
-                Monthly Order Trends
-              </CardTitle>
-              <CardDescription>Orders per month with revenue and profit</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                {monthlyOrdersTrend && monthlyOrdersTrend.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={monthlyOrdersTrend}
-                      margin={{
-                        top: 20,
-                        right: 30,
-                        left: 20,
-                        bottom: 5,
-                      }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis yAxisId="left" orientation="left" />
-                      <YAxis yAxisId="right" orientation="right" />
-                      <Tooltip 
-                        formatter={(value: any, name: any) => [`₹${formatCurrency(Number(value))}`, name]}
-                        labelFormatter={(value: any) => `${value}`}
-                      />
-                      <Legend />
-                      <Bar yAxisId="left" dataKey="count" name="Order Count" fill="#8884d8" />
-                      <Bar yAxisId="right" dataKey="revenue" name="Revenue" fill="#82ca9d" />
-                      <Bar yAxisId="right" dataKey="profit" name="Profit" fill="#ffc658" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex justify-center items-center h-full">
-                    <p className="text-muted-foreground">No monthly data available</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-          
-          {/* Highest Profit & Material Usage Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Highest Profit Orders */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center text-base">
-                  <TrendingUp className="h-5 w-5 mr-2" />
-                  Highest Profit Orders
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-[250px]">
-                  {highestProfitOrders && highestProfitOrders.length > 0 ? (
-                    <div className="p-0">
-                      {highestProfitOrders.map((order, index) => (
-                        <div 
-                          key={order.order_id}
-                          className={`flex items-center justify-between p-3 border-b cursor-pointer hover:bg-muted/50 transition-colors ${selectedOrderId === order.order_id ? 'bg-muted' : ''}`}
-                          onClick={() => setSelectedOrderId(order.order_id)}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium truncate">{order.order_number}</div>
-                            <div className="text-sm text-muted-foreground">{order.company_name}</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-bold text-green-600 dark:text-green-400">₹{formatCurrency(order.profit)}</div>
-                            <div className="text-xs">Profit Margin: {order.profitMargin.toFixed(1)}%</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="p-4 text-center text-muted-foreground">
-                      No profit data available
-                    </div>
-                  )}
-                </ScrollArea>
-              </CardContent>
-            </Card>
-            
-            {/* Highest Material Consumption */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center text-base">
-                  <Package className="h-5 w-5 mr-2" />
-                  Highest Material Consumption
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-[250px]">
-                  {highestMaterialConsumption && highestMaterialConsumption.length > 0 ? (
-                    <div className="p-0">
-                      {highestMaterialConsumption.map((order, index) => (
-                        <div 
-                          key={order.order_id}
-                          className={`flex items-center justify-between p-3 border-b cursor-pointer hover:bg-muted/50 transition-colors ${selectedOrderId === order.order_id ? 'bg-muted' : ''}`}
-                          onClick={() => setSelectedOrderId(order.order_id)}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium truncate">{order.order_number}</div>
-                            <div className="text-sm text-muted-foreground">{order.company_name}</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-bold">₹{formatCurrency(order.materialCost)}</div>
-                            <div className="text-xs">Material Cost</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="p-4 text-center text-muted-foreground">
-                      No material consumption data available
-                    </div>
-                  )}
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </div>
-
           {selectedOrder ? (
             <>
               {/* Order Detail Card */}
@@ -745,7 +576,7 @@ const OrderConsumption = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     <div className="space-y-1 p-4 bg-muted/30 rounded-lg">
                       <div className="text-sm text-muted-foreground">Order Quantity</div>
                       <div className="text-2xl font-bold">{selectedOrder.quantity}</div>
@@ -759,13 +590,17 @@ const OrderConsumption = () => {
                       <div className="text-2xl font-bold">₹{formatCurrency(selectedOrder.profit)}</div>
                       <div className="text-sm">{selectedOrder.profitMargin.toFixed(1)}% margin</div>
                     </div>
+                    <div className={`space-y-1 p-4 rounded-lg ${selectedOrder.wastage_cost > 0 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-muted/30'}`}>
+                      <div className="text-sm text-muted-foreground">Wastage</div>
+                      <div className="text-2xl font-bold">₹{formatCurrency(selectedOrder.wastage_cost)}</div>
+                      <div className="text-sm">{selectedOrder.wastage_percentage.toFixed(1)}% of material cost</div>
+                    </div>
                   </div>
                   
                   <Tabs defaultValue="materials">
                     <TabsList className="mb-4">
                       <TabsTrigger value="materials">Material Breakdown</TabsTrigger>
                       <TabsTrigger value="costs">Cost Structure</TabsTrigger>
-                      <TabsTrigger value="chart">Visual Analysis</TabsTrigger>
                     </TabsList>
                     
                     <TabsContent value="materials" className="space-y-4">
@@ -919,88 +754,6 @@ const OrderConsumption = () => {
                         </div>
                       </div>
                     </TabsContent>
-                    
-                    <TabsContent value="chart" className="space-y-8">
-                      {/* Material Distribution Pie Chart */}
-                      <div>
-                        <h3 className="text-lg font-medium mb-4">Material Distribution</h3>
-                        <div className="h-[300px]">
-                          {materialDistributionData.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                              <RechartsPieChart>
-                                <Pie
-                                  data={materialDistributionData}
-                                  cx="50%"
-                                  cy="50%"
-                                  labelLine={false}
-                                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                                  outerRadius={120}
-                                  fill="#8884d8"
-                                  dataKey="value"
-                                  nameKey="name"
-                                >
-                                  {materialDistributionData.map((entry: any, index: number) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                  ))}
-                                </Pie>
-                                <Tooltip 
-                                  formatter={(value: any, name: any, props: any) => [
-                                    `${value} ${props.payload.unit} (₹${formatCurrency(props.payload.materialValue)})`,
-                                    props.payload.name
-                                  ]}
-                                />
-                              </RechartsPieChart>
-                            </ResponsiveContainer>
-                          ) : (
-                            <div className="flex items-center justify-center h-full">
-                              <div className="text-center text-muted-foreground">
-                                <AlertCircle className="mx-auto h-8 w-8" />
-                                <h3 className="mt-2">No material data available</h3>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Cost Breakdown Pie Chart */}
-                      <div>
-                        <h3 className="text-lg font-medium mb-4">Cost Structure</h3>
-                        <div className="h-[300px]">
-                          {selectedOrder.totalCost > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                              <RechartsPieChart>
-                                <Pie
-                                  data={getCostBreakdownData(selectedOrder)}
-                                  cx="50%"
-                                  cy="50%"
-                                  labelLine={false}
-                                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                                  outerRadius={120}
-                                  fill="#8884d8"
-                                  dataKey="value"
-                                  nameKey="name"
-                                >
-                                  {getCostBreakdownData(selectedOrder).map((entry: any, index: number) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                  ))}
-                                </Pie>
-                                <Tooltip 
-                                  formatter={(value: any) => [`₹${formatCurrency(value)}`, "Cost"]}
-                                />
-                                <Legend />
-                              </RechartsPieChart>
-                            </ResponsiveContainer>
-                          ) : (
-                            <div className="flex items-center justify-center h-full">
-                              <div className="text-center text-muted-foreground">
-                                <AlertCircle className="mx-auto h-8 w-8" />
-                                <h3 className="mt-2">No cost data available</h3>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </TabsContent>
                   </Tabs>
                 </CardContent>
                 <CardFooter className="flex justify-end border-t pt-4">
@@ -1016,98 +769,24 @@ const OrderConsumption = () => {
             </>
           ) : (
             <>
-              {/* Overview Charts */}
+              {/* Overview section */}
               <div className="grid gap-6 grid-cols-1">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center">
                       <TrendingUp className="h-5 w-5 mr-2" />
-                      Order Profitability Analysis
+                      Order Analysis Overview
                     </CardTitle>
-                    <CardDescription>Revenue, cost and profit margin by order</CardDescription>
+                    <CardDescription>
+                      Select an order from the list above to view detailed cost, profit, and wastage analysis.
+                    </CardDescription>
                   </CardHeader>
-                  <CardContent className="h-[400px]">
-                    {orderChartData && orderChartData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={orderChartData.slice(0, 10)}
-                          margin={{
-                            top: 20, right: 30, left: 20, bottom: 60,
-                          }}
-                          onClick={(data) => data && data.activePayload && setSelectedOrderId(data.activePayload[0].payload.order_id)}
-                          className="cursor-pointer"
-                        >
-                          <XAxis dataKey="name" angle={-45} textAnchor="end" height={50} />
-                          <YAxis />
-                          <Tooltip 
-                            formatter={(value: any, name: any) => [`₹${formatCurrency(Number(value))}`, name]}
-                            labelFormatter={(value: any) => `Order: ${value}`}
-                          />
-                          <Legend />
-                          <Bar dataKey="sellingPrice" name="Revenue" fill="#82ca9d" />
-                          <Bar dataKey="totalCost" name="Cost" fill="#8884d8" />
-                          <Bar dataKey="profit" name="Profit" fill="#ffc658">
-                            {orderChartData.slice(0, 10).map((entry, index) => (
-                              <Cell 
-                                key={`cell-${index}`} 
-                                fill={entry.profit > 0 ? '#4ade80' : '#f87171'}
-                              />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <div className="text-center text-muted-foreground">
-                          <AlertCircle className="mx-auto h-8 w-8" />
-                          <h3 className="mt-2">No order data available</h3>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <DollarSign className="h-5 w-5 mr-2" />
-                      Cost Structure Overview
-                    </CardTitle>
-                    <CardDescription>Breakdown of costs by category across orders</CardDescription>
-                  </CardHeader>
-                  <CardContent className="h-[400px]">
-                    {orderChartData && orderChartData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={orderChartData.slice(0, 10).sort((a, b) => b.totalCost - a.totalCost)}
-                          margin={{
-                            top: 20, right: 30, left: 20, bottom: 60,
-                          }}
-                          onClick={(data) => data && data.activePayload && setSelectedOrderId(data.activePayload[0].payload.order_id)}
-                          className="cursor-pointer"
-                        >
-                          <XAxis dataKey="name" angle={-45} textAnchor="end" height={50} />
-                          <YAxis />
-                          <Tooltip 
-                            formatter={(value: any) => [`₹${formatCurrency(Number(value))}`, "Cost"]}
-                            labelFormatter={(value: any) => `Order: ${value}`}
-                          />
-                          <Legend />
-                          <Bar dataKey="materialCost" name="Material Cost" stackId="a" fill="#8884d8" />
-                          <Bar dataKey="productionCosts.cuttingCost" name="Cutting" stackId="a" fill="#82ca9d" />
-                          <Bar dataKey="productionCosts.printingCost" name="Printing" stackId="a" fill="#ffc658" />
-                          <Bar dataKey="productionCosts.stitchingCost" name="Stitching" stackId="a" fill="#ff8042" />
-                          <Bar dataKey="productionCosts.transportCost" name="Transport" stackId="a" fill="#a4de6c" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <div className="text-center text-muted-foreground">
-                          <AlertCircle className="mx-auto h-8 w-8" />
-                          <h3 className="mt-2">No cost data available</h3>
-                        </div>
-                      </div>
-                    )}
+                  <CardContent className="h-[200px] flex items-center justify-center">
+                    <div className="text-center text-muted-foreground">
+                      <AlertCircle className="mx-auto h-8 w-8 mb-2" />
+                      <h3 className="text-lg font-medium">No Order Selected</h3>
+                      <p className="text-sm">Click on an order above to view its detailed analysis</p>
+                    </div>
                   </CardContent>
                 </Card>
               </div>

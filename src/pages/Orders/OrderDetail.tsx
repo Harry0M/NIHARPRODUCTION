@@ -124,6 +124,8 @@ const OrderDetail = () => {
     printingCharge: number;
     stitchingCharge: number;
     transportCharge: number;
+    wastagePercentage?: number;
+    wastageCost?: number;
     baseCost?: number;
     gstAmount?: number;
     totalCost: number;
@@ -137,6 +139,11 @@ const OrderDetail = () => {
   } | null>(null);
   const [catalogProduct, setCatalogProduct] = useState<{name: string} | null>(null);
   
+  // Expected completion date editing state
+  const [isEditingCompletionDate, setIsEditingCompletionDate] = useState(false);
+  const [editedCompletionDate, setEditedCompletionDate] = useState<string>('');
+  const [savingCompletionDate, setSavingCompletionDate] = useState(false);
+  
   // Cost editing state
   const [isEditingCosts, setIsEditingCosts] = useState(false);
   const [savingCosts, setSavingCosts] = useState(false);
@@ -146,6 +153,8 @@ const OrderDetail = () => {
     printingCharge: number;
     stitchingCharge: number;
     transportCharge: number;
+    wastagePercentage: number;
+    wastageCost: number;
     totalCost: number;
     margin: number;
     sellingPrice: number;
@@ -295,6 +304,12 @@ const OrderDetail = () => {
 
         // Calculate the costs using order form logic if order exists
         if (orderData) {
+          // Cast to include wastage fields (they may not exist in older orders)
+          const orderWithWastage = orderData as typeof orderData & {
+            wastage_percentage?: number;
+            wastage_cost?: number;
+          };
+          
           // Set cost calculation using raw values from the database with all required fields
           const orderQuantity = parseInt(orderData.order_quantity?.toString() || orderData.quantity?.toString() || '1');
           setCostCalculation({
@@ -303,6 +318,8 @@ const OrderDetail = () => {
             printingCharge: orderData.printing_charge || 0,
             stitchingCharge: orderData.stitching_charge || 0,
             transportCharge: orderData.transport_charge || 0,
+            wastagePercentage: orderWithWastage.wastage_percentage || 5,
+            wastageCost: orderWithWastage.wastage_cost || 0,
             baseCost: orderData.total_cost || 0,
             gstAmount: 0,
             totalCost: orderData.total_cost || 0,
@@ -415,6 +432,25 @@ const OrderDetail = () => {
     }));
   };
 
+  const handleWastagePercentageChange = (wastagePercentage: number) => {
+    if (!editedCosts) return;
+    
+    // Calculate new wastage cost based on material cost and new percentage
+    const newWastageCost = (editedCosts.materialCost * wastagePercentage) / 100;
+    
+    // Recalculate total cost with new wastage
+    const baseCost = editedCosts.materialCost + editedCosts.cuttingCharge + 
+                    editedCosts.printingCharge + editedCosts.stitchingCharge;
+    const newTotalCost = baseCost + editedCosts.transportCharge + newWastageCost;
+    
+    setEditedCosts(prev => ({
+      ...prev,
+      wastagePercentage,
+      wastageCost: newWastageCost,
+      totalCost: newTotalCost
+    }));
+  };
+
   const handleSaveCosts = async () => {
     if (!order || !editedCosts) return;
     
@@ -436,6 +472,8 @@ const OrderDetail = () => {
           printing_charge: editedCosts.printingCharge,
           stitching_charge: editedCosts.stitchingCharge,
           transport_charge: editedCosts.transportCharge,
+          wastage_percentage: editedCosts.wastagePercentage,
+          wastage_cost: editedCosts.wastageCost,
           production_cost: editedCosts.cuttingCharge + editedCosts.printingCharge + 
                           editedCosts.stitchingCharge + editedCosts.transportCharge,
           total_cost: newTotalCost,
@@ -492,6 +530,56 @@ const OrderDetail = () => {
     setEditedCosts(null);
   };
 
+  // Expected completion date handlers
+  const handleStartEditCompletionDate = () => {
+    if (!order) return;
+    
+    // Use delivery_date field for expected completion date
+    setEditedCompletionDate(order.delivery_date || '');
+    setIsEditingCompletionDate(true);
+  };
+
+  const handleSaveCompletionDate = async () => {
+    if (!order) return;
+    
+    setSavingCompletionDate(true);
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          delivery_date: editedCompletionDate || null
+        })
+        .eq('id', order.id);
+
+      if (error) throw error;
+
+      // Update local order state
+      setOrder(prev => prev ? {
+        ...prev,
+        delivery_date: editedCompletionDate || null
+      } : null);
+
+      setIsEditingCompletionDate(false);
+      toast({
+        title: "Expected completion date updated",
+        description: "The date has been saved successfully.",
+      });
+    } catch (error: unknown) {
+      toast({
+        title: "Error updating completion date",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingCompletionDate(false);
+    }
+  };
+
+  const handleCancelEditCompletionDate = () => {
+    setIsEditingCompletionDate(false);
+    setEditedCompletionDate('');
+  };
+
   const handleStartEdit = () => {
     if (!costCalculation) return;
     
@@ -501,6 +589,8 @@ const OrderDetail = () => {
       printingCharge: costCalculation.printingCharge,
       stitchingCharge: costCalculation.stitchingCharge,
       transportCharge: costCalculation.transportCharge,
+      wastagePercentage: costCalculation.wastagePercentage || 5,
+      wastageCost: costCalculation.wastageCost || 0,
       margin: costCalculation.margin,
       sellingPrice: costCalculation.sellingPrice,
       totalCost: costCalculation.totalCost
@@ -577,12 +667,51 @@ const OrderDetail = () => {
                   <h3 className="text-sm font-medium text-muted-foreground">Order Date</h3>
                   <p className="text-lg">{formatDate(order.order_date)}</p>
                 </div>
-                {order.delivery_date && (
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground">Expected Delivery Date</h3>
-                    <p className="text-lg">{formatDate(order.delivery_date)}</p>
+                <div>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium text-muted-foreground">Expected Completion Date</h3>
+                    {!isEditingCompletionDate && (
+                      <button
+                        onClick={handleStartEditCompletionDate}
+                        className="text-xs text-blue-600 hover:text-blue-800 underline"
+                      >
+                        {order.delivery_date ? 'Edit' : 'Add'}
+                      </button>
+                    )}
                   </div>
-                )}
+                  {isEditingCompletionDate ? (
+                    <div className="space-y-2">
+                      <input
+                        type="date"
+                        value={editedCompletionDate}
+                        onChange={(e) => setEditedCompletionDate(e.target.value)}
+                        className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleSaveCompletionDate}
+                          disabled={savingCompletionDate}
+                          className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          {savingCompletionDate ? 'Saving...' : 'Save'}
+                        </button>
+                        <button
+                          onClick={handleCancelEditCompletionDate}
+                          className="px-3 py-1 bg-gray-300 text-gray-700 text-xs rounded hover:bg-gray-400"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-lg">
+                      {order.delivery_date ? 
+                        formatDate(order.delivery_date) : (
+                        <span className="text-gray-400 italic">Not set</span>
+                      )}
+                    </p>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
@@ -893,6 +1022,7 @@ const OrderDetail = () => {
               onCostChange={isEditingCosts ? handleCostChange : undefined}
               onTotalCostChange={isEditingCosts ? handleTotalCostChange : undefined}
               onSellingPriceChange={isEditingCosts ? handleSellingPriceChange : undefined}
+              onWastagePercentageChange={isEditingCosts ? handleWastagePercentageChange : undefined}
               orderQuantity={parseInt(order?.order_quantity?.toString() || order?.quantity?.toString() || '1')}
             />
           </CardContent>

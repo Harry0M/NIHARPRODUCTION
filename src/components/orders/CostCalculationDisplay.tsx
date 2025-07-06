@@ -13,6 +13,8 @@ interface CostCalculationDisplayProps {
     transportCharge: number;
     baseCost?: number;
     gstAmount?: number;
+    wastagePercentage?: number;
+    wastageCost?: number;
     totalCost: number;
     margin: number;
     sellingPrice: number;
@@ -26,6 +28,7 @@ interface CostCalculationDisplayProps {
   onTotalCostChange?: (totalCost: number) => void;
   onSellingPriceChange?: (sellingPrice: number) => void;
   onProfitChange?: (profit: number) => void;
+  onWastagePercentageChange?: (wastagePercentage: number) => void;
   orderQuantity?: number;
 }
 
@@ -36,6 +39,7 @@ export const CostCalculationDisplay = ({
   onTotalCostChange,
   onSellingPriceChange,
   onProfitChange,
+  onWastagePercentageChange,
   orderQuantity = 1
 }: CostCalculationDisplayProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -66,6 +70,7 @@ export const CostCalculationDisplay = ({
       totalCost: costCalculation.totalCost.toString(),
       sellingPrice: costCalculation.sellingPrice.toString(),
       sellingPricePerPiece: (costCalculation.sellingPrice / (orderQuantity || 1)).toString(),
+      wastagePercentage: (costCalculation.wastagePercentage || 5).toString(),
     };
 
     // Batch the state updates to prevent multiple re-renders
@@ -74,7 +79,7 @@ export const CostCalculationDisplay = ({
   }, [costCalculation.materialCost, costCalculation.cuttingCharge, costCalculation.printingCharge, 
       costCalculation.stitchingCharge, costCalculation.transportCharge, costCalculation.totalCost, 
       costCalculation.margin, costCalculation.sellingPrice, costCalculation.baseCost, 
-      costCalculation.gstAmount, orderQuantity]);
+      costCalculation.gstAmount, costCalculation.wastagePercentage, orderQuantity]);
   
   const [editableCosts, setEditableCosts] = useState({
     materialCost: costCalculation.materialCost,
@@ -100,6 +105,7 @@ export const CostCalculationDisplay = ({
     totalCost: costCalculation.totalCost.toString(),
     sellingPrice: costCalculation.sellingPrice.toString(),
     sellingPricePerPiece: (costCalculation.sellingPrice / (orderQuantity || 1)).toString(),
+    wastagePercentage: (costCalculation.wastagePercentage || 5).toString(),
   });
   
   const formatCurrency = (value: number) => {
@@ -504,6 +510,64 @@ export const CostCalculationDisplay = ({
                   <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
                     <span>Per unit</span>
                     <span>{formatCurrency(costCalculation.transportCharge / (orderQuantity || 1))}</span>
+                  </div>
+                </div>
+
+                <div className="bg-orange-50 p-3 rounded-md border border-orange-200">
+                  <div className="flex justify-between items-center">
+                    <span>Wastage Cost</span>
+                    <div className="flex items-center gap-2">
+                      {onCostChange ? (
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          className="w-16 h-8 text-right bg-white border border-orange-300 focus:border-orange-500 rounded-md px-2"
+                          value={inputValues.wastagePercentage}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/[^0-9.]/g, '');
+                            
+                            // Update input state immediately to allow editing
+                            setInputValues(prev => ({
+                              ...prev,
+                              wastagePercentage: value
+                            }));
+                            
+                            // Only trigger callback if value is valid or empty (for clearing)
+                            if (value === '') {
+                              // Allow clearing but don't trigger callback yet
+                              return;
+                            }
+                            
+                            const numValue = parseFloat(value);
+                            if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
+                              onWastagePercentageChange?.(numValue);
+                            }
+                          }}
+                          onBlur={(e) => {
+                            // On blur, ensure we have a valid value
+                            const value = e.target.value;
+                            if (value === '' || value === '0' || parseFloat(value) === 0) {
+                              setInputValues(prev => ({
+                                ...prev,
+                                wastagePercentage: '0'
+                              }));
+                              onWastagePercentageChange?.(0);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <span>{costCalculation.wastagePercentage || 0}</span>
+                      )}
+                      <span className="text-xs text-muted-foreground">%</span>
+                      <span className="text-orange-700 font-medium">{formatCurrency(costCalculation.wastageCost || 0)}</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
+                    <span>Per unit</span>
+                    <span>{formatCurrency((costCalculation.wastageCost || 0) / (orderQuantity || 1))}</span>
+                  </div>
+                  <div className="text-xs text-orange-600 mt-1">
+                    Calculated as {costCalculation.wastagePercentage || 0}% of material cost
                   </div>
                 </div>
 

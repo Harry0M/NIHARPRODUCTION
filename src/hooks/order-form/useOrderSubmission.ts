@@ -227,12 +227,17 @@ export function useOrderSubmission({
         bag_width: parseFloat(orderDetails.bag_width),
         border_dimension: orderDetails.border_dimension ? parseFloat(orderDetails.border_dimension) : null,
         order_date: orderDetails.order_date,
+        delivery_date: orderDetails.delivery_date || null,
         order_number: orderDetails.order_number || null, // Manual order number entry (null for auto-generation)
         // Use the validated sales_account_id to prevent foreign key constraint errors
         sales_account_id: validatedSalesAccountId,
         catalog_id: orderDetails.catalog_id || null,
         special_instructions: orderDetails.special_instructions || null
       };
+
+      // Calculate wastage cost from material cost
+      const wastagePercentage = parseFloat(orderDetails.wastage_percentage || '5'); // Default 5%
+      const wastageCost = (materialCost * wastagePercentage) / 100;
 
       // For editing, only update non-cost fields to preserve existing cost calculations
       // For creation, include cost fields
@@ -245,8 +250,10 @@ export function useOrderSubmission({
         printing_charge: printingCharge,
         stitching_charge: stitchingCharge,
         transport_charge: transportCharge,
+        wastage_percentage: wastagePercentage,
+        wastage_cost: wastageCost,
         production_cost: cuttingCharge + printingCharge + stitchingCharge + transportCharge,
-        total_cost: materialCost + cuttingCharge + printingCharge + stitchingCharge + transportCharge,
+        total_cost: materialCost + cuttingCharge + printingCharge + stitchingCharge + transportCharge + wastageCost,
         margin: margin,
         calculated_selling_price: sellingRate
       };

@@ -19,6 +19,7 @@ export interface OrderFilters {
     from: string;
     to: string;
   };
+  sortBy: string; // New field for sorting/filtering options
 }
 
 interface OrderFilterProps {
@@ -31,6 +32,10 @@ export const OrderFilter = ({ filters, setFilters }: OrderFilterProps) => {
   
   const handleStatusChange = (value: string) => {
     setFilters(prev => ({ ...prev, status: value }));
+  };
+
+  const handleSortByChange = (value: string) => {
+    setFilters(prev => ({ ...prev, sortBy: value }));
   };
 
   const handleDateChange = (field: 'from' | 'to', value: string) => {
@@ -57,7 +62,8 @@ export const OrderFilter = ({ filters, setFilters }: OrderFilterProps) => {
     setFilters({
       searchTerm: '',
       status: 'all',
-      dateRange: { from: '', to: '' }
+      dateRange: { from: '', to: '' },
+      sortBy: 'default'
     });
     setTempSearchTerm('');
   };
@@ -65,7 +71,8 @@ export const OrderFilter = ({ filters, setFilters }: OrderFilterProps) => {
   const isFiltersApplied = filters.searchTerm || 
     filters.status !== 'all' || 
     filters.dateRange.from || 
-    filters.dateRange.to;
+    filters.dateRange.to ||
+    filters.sortBy !== 'default';
 
   return (
     <div className="flex flex-wrap gap-4 mb-6">
@@ -98,6 +105,24 @@ export const OrderFilter = ({ filters, setFilters }: OrderFilterProps) => {
           <SelectItem value="completed">Completed</SelectItem>
           <SelectItem value="cancelled">Cancelled</SelectItem>
           <SelectItem value="dispatched">Dispatched</SelectItem>
+        </SelectContent>
+      </Select>
+      
+      <Select
+        value={filters.sortBy}
+        onValueChange={handleSortByChange}
+      >
+        <SelectTrigger className="w-[180px]">
+          <SelectValue placeholder="Sort/Filter By" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="default">Default Order</SelectItem>
+          <SelectItem value="highest_profit">Highest Profit</SelectItem>
+          <SelectItem value="highest_material_cost">Highest Material Cost</SelectItem>
+          <SelectItem value="highest_wastage">Highest Wastage</SelectItem>
+          <SelectItem value="latest_date">Latest Date</SelectItem>
+          <SelectItem value="oldest_date">Oldest Date</SelectItem>
+          <SelectItem value="company_name">Company Name</SelectItem>
         </SelectContent>
       </Select>
       
