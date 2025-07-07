@@ -34,6 +34,7 @@ interface JobCardDetails {
     order_date: string;
     status: OrderStatus;
     components: Component[];
+    catalog_name?: string;
   };
   cutting_jobs: {
     id: string;
@@ -91,7 +92,7 @@ const JobCardDetail = () => {
           id, job_name, job_number, status, created_at,
           order:order_id (
             id, order_number, company_name, quantity, 
-            bag_length, bag_width, order_date, status,
+            bag_length, bag_width, order_date, status, catalog_id,
             components:order_components (id, component_type, size, color, gsm, custom_name)
           ),
           cutting_jobs (id, status, worker_name, created_at, received_quantity),
@@ -114,9 +115,23 @@ const JobCardDetail = () => {
                 ...comp,
                 gsm: comp.gsm !== null ? String(comp.gsm) : null
               }))
-            : []
+            : [],
+          catalog_name: undefined as string | undefined
         }
       };
+
+      // Fetch catalog name if catalog_id exists
+      if (safeData.order.catalog_id) {
+        const { data: catalogData } = await supabase
+          .from('catalog')
+          .select('name')
+          .eq('id', safeData.order.catalog_id)
+          .single();
+        
+        if (catalogData) {
+          safeData.order.catalog_name = catalogData.name;
+        }
+      }
       
       setJobCard(safeData as JobCardDetails);
     } catch (error: any) {
@@ -166,7 +181,7 @@ const JobCardDetail = () => {
 
   const handleDownloadCSV = () => {
     if (!jobCard) return;
-    const formattedData = formatJobCardForDownload(jobCard);
+    const formattedData = formatJobCardForDownload(jobCard as unknown as Record<string, unknown>);
     downloadAsCSV(formattedData, `job-card-${jobCard.job_number || jobCard.job_name}`);
   };
   const handleDownloadPDF = () => {

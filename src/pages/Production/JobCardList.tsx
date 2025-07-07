@@ -24,7 +24,7 @@ const JobCardList = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedJobCards, setSelectedJobCards] = useState<string[]>([]);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState(50);
   
   const { jobCards, setJobCards, loading, totalCount } = useJobCards({ page, pageSize, searchTerm, statusFilter });
   const { getStatusColor, getStatusDisplay } = useJobCardStatus();

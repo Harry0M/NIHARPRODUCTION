@@ -13,6 +13,7 @@ interface Order {
   quantity: number;
   status: string;
   components: Component[];
+  catalog_name?: string;
 }
 
 type BadgeFn = (status: string) => React.ReactNode;
@@ -46,6 +47,12 @@ export const OrderInfoCard = ({
           <p className="text-sm font-medium">Company</p>
           <p>{order.company_name}</p>
         </div>
+        {order.catalog_name && (
+          <div>
+            <p className="text-sm font-medium">Catalog</p>
+            <p>{order.catalog_name}</p>
+          </div>
+        )}
         <div>
           <p className="text-sm font-medium">Order Date</p>
           <p>{formatDate(order.order_date)}</p>
