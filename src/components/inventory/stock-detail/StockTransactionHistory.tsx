@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StockTransaction, TransactionLog } from "@/types/inventory";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, ArrowDownRight, ArrowUpRight, RefreshCcw, History, Info, FileText, Database, Package } from "lucide-react";
+import { AlertCircle, ArrowDownRight, ArrowUpRight, RefreshCcw, History, Info, FileText, Database, Package, ArrowDownCircle, ArrowUpCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { showToast } from "@/components/ui/enhanced-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
+import { TransactionHistoryDeleteDialog } from "@/components/dialogs/TransactionHistoryDeleteDialog";
 
 interface StockTransactionHistoryProps {
   transactions?: StockTransaction[];
@@ -26,8 +29,14 @@ export const StockTransactionHistory = ({
   isLoading = false,
   materialId
 }: StockTransactionHistoryProps) => {
+  const navigate = useNavigate();
   const [localLoading, setLocalLoading] = useState<boolean>(isLoading);
   const [hoveredTransaction, setHoveredTransaction] = useState<string | null>(null);
+  
+  // Transaction selection and deletion state
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
+  const [selectionMode, setSelectionMode] = useState(true); // Enable selection by default
 
   // Format date for display
   const formatDate = (dateString: string) => {
@@ -38,67 +47,127 @@ export const StockTransactionHistory = ({
     }
   };
 
-  // Get label and styling for transaction type
-  const getTransactionTypeLabel = (type: string) => {
-    const typeLower = type?.toLowerCase();
+  // Get transaction type badge color (enhanced from analysis page)
+  const getTransactionTypeColor = (type: string) => {
+    const typeLower = type.toLowerCase();
     
-    if (typeLower?.includes('purchase') || typeLower?.includes('increase')) {
-      return { label: "Addition", variant: "default", icon: ArrowUpRight, color: "bg-green-100 border-green-300 text-green-800 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400" };
-    }
-    else if (typeLower?.includes('order') || typeLower?.includes('consumption')) {
-      return { label: "Consumption", variant: "destructive", icon: ArrowDownRight, color: "bg-red-100 border-red-300 text-red-800 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400" };
-    }
-    else if (typeLower?.includes('sale')) {
-      return { label: "Sale", variant: "secondary", icon: ArrowDownRight, color: "bg-purple-100 border-purple-300 text-purple-800 dark:bg-purple-900/30 dark:border-purple-800 dark:text-purple-400" };
-    }
-    else if (typeLower?.includes('adjustment')) {
-      if (typeLower.includes('decrease')) {
-        return { label: "Decrease", variant: "outline", icon: ArrowDownRight, color: "bg-amber-100 border-amber-300 text-amber-800 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-400" };
-      } else {
-        return { label: "Adjustment", variant: "outline", icon: null, color: "bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400" };
-      }
-    }
-    return { label: type || "Unknown", variant: "outline", icon: null, color: "bg-gray-100 border-gray-300 text-gray-800 dark:bg-gray-800/30 dark:border-gray-700 dark:text-gray-400" };
-  };
-  
-  // Get reference information for display
-  const getReferenceInfo = (transaction: TransactionLog) => {
-    const { reference_type, reference_number, reference_id, metadata } = transaction;
-    
-    if (reference_type?.toLowerCase().includes('order')) {
-      const orderNumber = reference_number || metadata?.order_number;
-      const componentType = metadata?.component_type;
-      
+    if (typeLower.includes('purchase') || typeLower.includes('increase')) {
       return {
-        label: orderNumber ? `Order #${orderNumber}` : 'Order',
-        detail: componentType ? `for ${componentType}` : '',
-        icon: Package
+        bg: "bg-green-100 border-green-300 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400",
+        label: "Addition",
+        icon: ArrowUpCircle
       };
     }
-    
-    if (reference_type?.toLowerCase().includes('purchase')) {
+    else if (typeLower.includes('order') || typeLower.includes('consumption')) {
       return {
-        label: reference_number ? `Purchase #${reference_number}` : 'Purchase',
-        detail: metadata?.company_name ? `from ${metadata.company_name}` : '',
-        icon: ArrowUpRight
+        bg: "bg-red-100 border-red-300 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400",
+        label: "Consumption", 
+        icon: ArrowDownCircle
       };
     }
-    
-    if (reference_type?.toLowerCase().includes('adjustment')) {
+    else if (typeLower.includes('sale')) {
       return {
-        label: 'Adjustment',
-        detail: metadata?.update_source || '',
-        icon: Database
+        bg: "bg-purple-100 border-purple-300 text-purple-800 dark:bg-purple-900/20 dark:border-purple-800 dark:text-purple-400",
+        label: "Sale",
+        icon: ArrowDownCircle
+      };
+    }
+    else if (typeLower.includes('adjustment') || typeLower.includes('decrease')) {
+      return {
+        bg: "bg-orange-100 border-orange-300 text-orange-800 dark:bg-orange-900/20 dark:border-orange-800 dark:text-orange-400",
+        label: "Adjustment",
+        icon: AlertCircle
       };
     }
     
     return {
-      label: reference_type || 'Unknown',
-      detail: reference_number ? `#${reference_number}` : '',
+      bg: "bg-gray-100 border-gray-300 text-gray-800 dark:bg-gray-800/30 dark:border-gray-700 dark:text-gray-400",
+      label: "Unknown",
       icon: Info
     };
   };
 
+  // Get reference type display (from analysis page)
+  const getReferenceTypeDisplay = (type: string | null) => {
+    if (!type) return "Manual Entry";
+    
+    switch (type) {
+      case 'Order':
+        return "Order";
+      case 'JobCard':
+        return "Job Card";  
+      case 'Purchase':
+        return "Purchase";
+      case 'Adjustment':
+        return "Inventory Adjustment";
+      default:
+        return type;
+    }
+  };
+
+  // Navigate to reference (from analysis page)
+  const navigateToReference = (type: string | null, id: string | null) => {
+    if (!type || !id) return;
+    
+    switch (type) {
+      case 'Order':
+      case 'JobCard':
+        navigate(`/orders/${id}`);
+        break;
+      case 'Purchase':
+        navigate(`/purchases/${id}`);
+        break;
+      default:
+        // Do nothing for unknown reference types
+    }
+  };
+
+  // Transaction selection handlers
+  const handleSelectTransaction = (transactionId: string, isSelected: boolean) => {
+    if (isSelected) {
+      setSelectedTransactionIds(prev => [...prev, transactionId]);
+    } else {
+      setSelectedTransactionIds(prev => prev.filter(id => id !== transactionId));
+    }
+  };
+
+  const handleSelectAllTransactions = (isSelected: boolean) => {
+    if (isSelected && transactionLogs.length > 0) {
+      setSelectedTransactionIds(transactionLogs.map(t => t.id));
+    } else {
+      setSelectedTransactionIds([]);
+    }
+  };
+
+  const toggleSelectionMode = () => {
+    setSelectionMode(!selectionMode);
+    if (selectionMode) {
+      // When disabling selection mode, clear selected transactions
+      setSelectedTransactionIds([]);
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedTransactionIds.length === 0) return;
+    setIsDeleteDialogOpen(true);
+  };
+
+  // Handle delete dialog close - refresh data and clear selection
+  const handleDeleteDialogClose = (open: boolean) => {
+    setIsDeleteDialogOpen(open);
+    if (!open && selectedTransactionIds.length > 0) {
+      // When dialog closes after deletion, refresh data and clear selected items
+      setSelectedTransactionIds([]);
+      
+      // Trigger refresh if available
+      if (onRefresh) {
+        onRefresh();
+      } else {
+        handleRefresh();
+      }
+    }
+  };
+  
   // Local refresh function when parent handler not provided
   const handleLocalRefresh = async () => {
     if (!materialId) return;
@@ -266,8 +335,38 @@ export const StockTransactionHistory = ({
           <Badge variant="outline" className="ml-2 bg-primary/10 dark:bg-primary/20 border-primary/20 dark:border-primary/30 text-primary hover:bg-primary/15">
             Transaction Log
           </Badge>
+          {selectedTransactionIds.length > 0 && (
+            <Badge variant="secondary" className="ml-2">
+              {selectedTransactionIds.length} selected
+            </Badge>
+          )}
         </CardTitle>
         <div className="flex items-center gap-2">
+          {transactionLogs.length > 0 && (
+            <>
+              <Button
+                variant={selectionMode ? "default" : "outline"}
+                size="sm"
+                onClick={toggleSelectionMode}
+                className="border-border/60 shadow-sm hover:bg-muted/80 dark:hover:bg-muted/20"
+              >
+                {selectionMode ? "Disable Selection" : "Enable Selection"}
+              </Button>
+              
+              {selectionMode && selectedTransactionIds.length > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDeleteSelected}
+                  className="shadow-sm"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Delete ({selectedTransactionIds.length})
+                </Button>
+              )}
+            </>
+          )}
+          
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -298,314 +397,363 @@ export const StockTransactionHistory = ({
               {transactionLogs.length}
             </span>
           )}
+          
+          {selectionMode && transactionLogs.length > 0 && (
+            <div className="flex items-center gap-2 ml-auto">
+              <Checkbox
+                checked={selectedTransactionIds.length === transactionLogs.length}
+                onCheckedChange={handleSelectAllTransactions}
+                aria-label="Select all transactions"
+              />
+              <span className="text-sm text-muted-foreground">Select All</span>
+            </div>
+          )}
         </div>
         
         <div className="space-y-3">
-              {/* Deduplicate transactions to avoid showing the same transaction with different labels */}
-              {(() => {
-                // Enable this for deep debugging
-                const DEBUG = true;
-                
-                if (DEBUG) {
-                  console.log('===== TRANSACTION DEDUPLICATION DEBUG =====');
-                  console.log(`Starting with ${transactionLogs.length} transaction logs`);
-                  console.log('All transaction logs:', transactionLogs);
-                }
-                
-                // First, group transactions by their numerical characteristics AND time proximity
-                const groupedByQuantity: { [key: string]: TransactionLog[] } = {};
-                
-                // Sort by transaction date to process in chronological order
-                const chronologicalLogs = [...transactionLogs].sort((a, b) => 
-                  new Date(a.transaction_date).getTime() - new Date(b.transaction_date).getTime()
-                );
-                
-                // Create groups of transactions with same numerical values and close timestamps
-                chronologicalLogs.forEach(log => {
-                  let foundGroup = false;
-                  const logTime = new Date(log.transaction_date).getTime();
-                  
-                  // Check existing groups for a match based on quantity and time proximity
-                  Object.keys(groupedByQuantity).forEach(key => {
-                    if (foundGroup) return; // Skip if already found a group
-                    
-                    const group = groupedByQuantity[key];
-                    if (group.length === 0) return;
-                    
-                    // Check first transaction in the group to see if this log belongs with it
-                    const firstLog = group[0];
-                    const firstTime = new Date(firstLog.transaction_date).getTime();
-                    
-                    // If quantities match exactly and time is within 1 minute, add to this group
-                    if (Math.abs(firstLog.quantity - log.quantity) < 0.01 &&
-                        Math.abs(firstLog.previous_quantity - log.previous_quantity) < 0.01 &&
-                        Math.abs(firstLog.new_quantity - log.new_quantity) < 0.01 &&
-                        Math.abs(logTime - firstTime) < 60000) { // 1 minute
-                      
-                      groupedByQuantity[key].push(log);
-                      foundGroup = true;
-                    }
-                  });
-                  
-                  // If no matching group found, create a new one
-                  if (!foundGroup) {
-                    const key = `${log.previous_quantity}-${log.new_quantity}-${log.quantity}-${logTime}`;
-                    groupedByQuantity[key] = [log];
-                  }
-                });
-                
-                if (DEBUG) {
-                  console.log('Grouped transactions by numerical values:');
-                  Object.keys(groupedByQuantity).forEach(key => {
-                    console.log(`Group ${key}:`, groupedByQuantity[key]);
-                  });
-                }
-                
-                // Process each group to eliminate duplicates
-                const deduplicatedLogs: TransactionLog[] = [];
-                
-                Object.values(groupedByQuantity).forEach(group => {
-                  if (group.length === 1) {
-                    // If only one transaction in the group, keep it
-                    deduplicatedLogs.push(group[0]);
-                    if (DEBUG) console.log(`Single transaction in group - keeping:`, group[0]);
-                    return;
-                  }
-                  
-                  // Check for purchase + manual entry duplicate pattern
-                  const hasPurchase = group.some(log => 
-                    log.transaction_type.toLowerCase().includes('purchase'));
-                  const hasManual = group.some(log => 
-                    log.transaction_type.toLowerCase().includes('manual') || 
-                    log.transaction_type.toLowerCase().includes('adjustment'));
-                  
-                  if (hasPurchase && hasManual) {
-                    // Keep only purchase transactions from this group
-                    const purchases = group.filter(log => 
-                      log.transaction_type.toLowerCase().includes('purchase'));
-                    
-                    if (DEBUG) {
-                      console.log('Found purchase + manual entry group:');
-                      console.log('- All logs in group:', group);
-                      console.log('- Keeping only purchases:', purchases);
-                    }
-                    
-                    deduplicatedLogs.push(...purchases);
-                  } else {
-                    // Otherwise keep the most recent transaction from the group
-                    const sortedGroup = [...group].sort(
-                      (a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime()
-                    );
-                    
-                    if (DEBUG) {
-                      console.log('Other duplicate group - keeping most recent:');
-                      console.log('- All logs in group:', group);
-                      console.log('- Keeping:', sortedGroup[0]);
-                    }
-                    
-                    deduplicatedLogs.push(sortedGroup[0]);
-                  }
-                });
-                
-                // Sort by transaction date (newest first)
-                const finalSortedLogs = deduplicatedLogs.sort(
-                  (a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime()
-                );
-                
-                if (DEBUG) {
-                  console.log(`Deduplication complete. Reduced from ${transactionLogs.length} to ${finalSortedLogs.length} logs`);
-                  console.log('Final deduplicated logs:', finalSortedLogs);
-                  console.log('===== END TRANSACTION DEDUPLICATION DEBUG =====');
-                }
-                
-                return finalSortedLogs;
-              })().map((log) => {
-              const typeInfo = getTransactionTypeLabel(log.transaction_type);
-              const { icon: Icon } = typeInfo;
-              const isRecent = new Date(log.transaction_date) > new Date(Date.now() - 3600000 * 24);
-              const isNegative = log.quantity < 0;
-              const referenceInfo = getReferenceInfo(log);
-              const { reference_type, reference_number, reference_id, metadata, transaction_type } = log;
+          {/* Enhanced deduplication logic from analysis page */}
+          {(() => {
+            // Enable debugging
+            const DEBUG = false;
+            
+            if (DEBUG) {
+              console.log('===== ENHANCED TRANSACTION DEDUPLICATION DEBUG =====');
+              console.log(`Starting with ${transactionLogs.length} transaction logs`);
+              console.log('All transaction logs:', transactionLogs);
+            }
+            
+            // Sort by transaction date to process in chronological order
+            const chronologicalTransactions = [...transactionLogs].sort((a, b) => 
+              new Date(a.transaction_date).getTime() - new Date(b.transaction_date).getTime()
+            );
+            
+            // First pass: filter out decrease transactions that represent excess consumption
+            let filteredTransactions = [...chronologicalTransactions];
+            const transactionsToRemove = new Set<string>();
+            
+            // For each material, find and remove excess consumption decrease entries
+            const materialGroups = new Map<string, typeof transactionLogs>();
+            chronologicalTransactions.forEach(tx => {
+              const materialId = tx.material_id;
+              if (!materialGroups.has(materialId)) {
+                materialGroups.set(materialId, []);
+              }
+              materialGroups.get(materialId)!.push(tx);
+            });
+            
+            // Process each material group to identify excess consumption patterns
+            materialGroups.forEach((transactions, materialId) => {
+              if (DEBUG) {
+                console.log(`Processing material ${materialId} with ${transactions.length} transactions`);
+              }
               
-              return (
-                <div 
-                  key={log.id} 
-                  className={`border rounded-lg p-0 overflow-hidden shadow-sm ${hoveredTransaction === log.id ? 'border-primary shadow-md' : 'border-border'} transition-all duration-200`}
-                  onMouseEnter={() => setHoveredTransaction(log.id)}
-                  onMouseLeave={() => setHoveredTransaction(null)}
-                >
-                  {/* Header with transaction type */}
-                  <div className={`py-2 px-4 ${typeInfo.color}`}>
-                    <div className="flex justify-between items-center">
+              // Look for patterns where decrease transactions represent excess consumption  
+              for (let i = transactions.length - 1; i >= 0; i--) {
+                const tx = transactions[i];
+                
+                // Look for decrease transactions that bring quantity to 0 and match previous quantity exactly
+                if (tx.transaction_type.toLowerCase().includes('decrease') && 
+                    tx.new_quantity === 0 && 
+                    Math.abs(tx.previous_quantity - Math.abs(tx.quantity)) < 0.01) {
+                  
+                  if (DEBUG) {
+                    console.log(`Found potential excess consumption decrease: ${JSON.stringify(tx)}`);
+                  }
+                  
+                  // Mark this transaction for removal
+                  transactionsToRemove.add(tx.id);
+                  if (DEBUG) {
+                    console.log(`Marked excess consumption decrease transaction for removal: ${tx.id}`);
+                  }
+                }
+              }
+            });
+            
+            // Apply the filtering
+            filteredTransactions = filteredTransactions.filter(tx => !transactionsToRemove.has(tx.id));
+            
+            if (DEBUG && filteredTransactions.length !== chronologicalTransactions.length) {
+              const removedCount = chronologicalTransactions.length - filteredTransactions.length;
+              console.log(`Filtered out ${removedCount} decrease transactions that represent excess consumption`);
+            }
+            
+            // Group potential duplicates by numerical values and time proximity
+            const groupedByQuantity: { [key: string]: typeof transactionLogs } = {};
+            
+            if (DEBUG && filteredTransactions.length !== chronologicalTransactions.length) {
+              const removedCount = chronologicalTransactions.length - filteredTransactions.length;
+              console.log(`Filtered out ${removedCount} decrease transactions that represent excess consumption`);
+            }
+            
+            // Create groups of transactions with same numerical values and close timestamps
+            filteredTransactions.forEach(transaction => {
+              let foundGroup = false;
+              const transactionTime = new Date(transaction.transaction_date).getTime();
+              
+              // Check existing groups for a match based on quantity and time proximity
+              Object.keys(groupedByQuantity).forEach(key => {
+                if (foundGroup) return; // Skip if already found a group
+                
+                const group = groupedByQuantity[key];
+                if (group.length === 0) return;
+                
+                // Check first transaction in group to see if this transaction belongs with it
+                const firstTransaction = group[0];
+                const firstTime = new Date(firstTransaction.transaction_date).getTime();
+                
+                // If quantities match exactly and time is within 1 minute, add to this group
+                if (Math.abs(firstTransaction.quantity - transaction.quantity) < 0.01 &&
+                    Math.abs(firstTransaction.previous_quantity - transaction.previous_quantity) < 0.01 &&
+                    Math.abs(firstTransaction.new_quantity - transaction.new_quantity) < 0.01 &&
+                    Math.abs(transactionTime - firstTime) < 60000) { // 1 minute
+                  
+                  groupedByQuantity[key].push(transaction);
+                  foundGroup = true;
+                }
+              });
+              
+              // If no matching group found, create a new one
+              if (!foundGroup) {
+                const key = `${transaction.previous_quantity}-${transaction.new_quantity}-${transaction.quantity}-${transactionTime}`;
+                groupedByQuantity[key] = [transaction];
+              }
+            });
+            
+            if (DEBUG) {
+              console.log('Grouped transactions by numerical values:');
+              Object.keys(groupedByQuantity).forEach(key => {
+                console.log(`Group ${key}:`, groupedByQuantity[key]);
+              });
+            }
+            
+            // Process each group to eliminate duplicates
+            const deduplicatedTransactions: typeof transactionLogs = [];
+            
+            Object.values(groupedByQuantity).forEach(group => {
+              if (group.length === 1) {
+                // If only one transaction in the group, keep it
+                deduplicatedTransactions.push(group[0]);
+                if (DEBUG) console.log(`Single transaction in group - keeping:`, group[0]);
+                return;
+              }
+              
+              // Check for purchase + manual entry duplicate pattern
+              const hasPurchase = group.some(transaction => 
+                transaction.transaction_type.toLowerCase().includes('purchase'));
+              const hasManual = group.some(transaction => 
+                !transaction.reference_type || 
+                transaction.transaction_type.toLowerCase().includes('manual') || 
+                transaction.transaction_type.toLowerCase().includes('adjustment'));
+              
+              if (hasPurchase && hasManual) {
+                // Keep only purchase transactions from this group
+                const purchases = group.filter(transaction => 
+                  transaction.transaction_type.toLowerCase().includes('purchase'));
+                
+                if (DEBUG) {
+                  console.log('Found purchase + manual entry group:');
+                  console.log('- All transactions in group:', group);
+                  console.log('- Keeping only purchases:', purchases);
+                }
+                
+                deduplicatedTransactions.push(...purchases);
+              } else {
+                // Check for consumption + decrease duplicate pattern
+                const hasConsumption = group.some(transaction => 
+                  transaction.transaction_type.toLowerCase().includes('consumption'));
+                const hasDecrease = group.some(transaction => 
+                  transaction.transaction_type.toLowerCase().includes('decrease'));
+                
+                if (hasConsumption && hasDecrease) {
+                  // Keep only consumption transactions
+                  const consumptions = group.filter(transaction => 
+                    transaction.transaction_type.toLowerCase().includes('consumption'));
+                  
+                  if (DEBUG) {
+                    console.log('Found consumption + decrease group:');
+                    console.log('- All transactions in group:', group);
+                    console.log('- Keeping only consumptions:', consumptions);
+                  }
+                  
+                  deduplicatedTransactions.push(...consumptions);
+                } else {
+                  // Keep the most recent transaction from other duplicate groups
+                  const sortedGroup = [...group].sort(
+                    (a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime()
+                  );
+                  
+                  if (DEBUG) {
+                    console.log('Other duplicate group - keeping most recent:');
+                    console.log('- All transactions in group:', group);
+                    console.log('- Keeping:', sortedGroup[0]);
+                  }
+                  
+                  deduplicatedTransactions.push(sortedGroup[0]);
+                }
+              }
+            });
+            
+            // Sort by transaction date (newest first)
+            const finalSortedTransactions = deduplicatedTransactions.sort(
+              (a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime()
+            );
+            
+            if (DEBUG) {
+              console.log(`Deduplication complete. Reduced from ${transactionLogs.length} to ${finalSortedTransactions.length} transactions`);
+              console.log('Final deduplicated transactions:', finalSortedTransactions);
+              console.log('===== END ENHANCED TRANSACTION DEDUPLICATION DEBUG =====');
+            }
+            
+            return finalSortedTransactions;
+          })().map((transaction) => {
+            const typeInfo = getTransactionTypeColor(transaction.transaction_type);
+            const { icon: Icon } = typeInfo;
+            const isNegative = transaction.quantity < 0;
+            
+            return (
+              <div 
+                key={transaction.id} 
+                className={`border rounded-lg p-0 overflow-hidden shadow-sm ${hoveredTransaction === transaction.id ? 'border-primary shadow-md' : 'border-border'} ${
+                  selectedTransactionIds.includes(transaction.id) ? 'border-primary bg-primary/5' : ''
+                } transition-all duration-200`}
+                onMouseEnter={() => setHoveredTransaction(transaction.id)}
+                onMouseLeave={() => setHoveredTransaction(null)}
+              >
+                {/* Header with transaction type */}
+                <div className={`py-2 px-4 ${typeInfo.bg}`}>
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      {selectionMode && (
+                        <Checkbox
+                          checked={selectedTransactionIds.includes(transaction.id)}
+                          onCheckedChange={(checked) => 
+                            handleSelectTransaction(transaction.id, !!checked)
+                          }
+                          aria-label={`Select transaction ${transaction.id}`}
+                          className="h-4 w-4"
+                        />
+                      )}
                       <div className="flex items-center gap-2 font-semibold">
                         {Icon && <Icon className="h-4 w-4" />}
                         <span className="text-sm">{typeInfo.label}</span>
                       </div>
-                      <span className="text-xs opacity-80">{formatDate(log.transaction_date)}</span>
+                    </div>
+                    <span className="text-xs opacity-80">{formatDate(transaction.transaction_date)}</span>
+                  </div>
+                </div>
+                
+                {/* Main content */}
+                <div className="p-4 space-y-3">
+                  {/* Material name */}
+                  {transaction.metadata?.material_name && (
+                    <div className="bg-blue-50 dark:bg-blue-950/30 px-3 py-2 rounded-md border border-blue-200 dark:border-blue-800">
+                      <div className="text-sm font-semibold text-blue-800 dark:text-blue-300">
+                        {transaction.metadata.material_name}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Stock changes */}
+                  <div className="bg-slate-50 dark:bg-slate-950/30 px-3 py-2 rounded-md border border-slate-200 dark:border-slate-800">
+                    <div className="flex justify-between items-center">
+                      <div className="text-sm">
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">Opening:</span>{" "}
+                        <span className="font-bold text-orange-600 dark:text-orange-400">{transaction.previous_quantity.toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-lg font-bold px-2 py-1 rounded ${
+                          isNegative 
+                            ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30' 
+                            : 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30'
+                        }`}>
+                          {isNegative ? '' : '+'}{transaction.quantity.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="text-sm">
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">Closing:</span>{" "}
+                        <span className="font-bold text-green-600 dark:text-green-400">{transaction.new_quantity.toFixed(2)}</span>
+                      </div>
                     </div>
                   </div>
-                  
-                  {/* Main content */}
-                  <div className="p-4 space-y-3">
-                    {/* Material Name - Highlighted */}
-                    {log.metadata?.material_name && (
-                      <div className="bg-blue-50 dark:bg-blue-950/30 px-3 py-2 rounded-md border border-blue-200 dark:border-blue-800">
-                        <div className="text-sm font-semibold text-blue-800 dark:text-blue-300">
-                          📦 {log.metadata.material_name}
-                        </div>
-                      </div>
-                    )}
 
-                    {/* Stock changes - Highlighted */}
-                    <div className="bg-slate-50 dark:bg-slate-950/30 px-3 py-2 rounded-md border border-slate-200 dark:border-slate-800">
-                      <div className="flex justify-between items-center">
-                        <div className="text-sm">
-                          <span className="font-semibold text-slate-700 dark:text-slate-300">Opening:</span>{" "}
-                          <span className="font-bold text-orange-600 dark:text-orange-400">{log.previous_quantity.toFixed(2)}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-lg font-bold px-2 py-1 rounded ${isNegative ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30' : 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30'}`}>
-                            {isNegative ? '' : '+'}{log.quantity.toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="text-sm">
-                          <span className="font-semibold text-slate-700 dark:text-slate-300">Closing:</span>{" "}
-                          <span className="font-bold text-green-600 dark:text-green-400">{log.new_quantity.toFixed(2)}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Transaction Date - Non-highlighted */}
-                    <div className="text-sm text-muted-foreground">
-                      <span>Transaction Date: {formatDate(log.transaction_date)}</span>
-                    </div>
-
-                    {/* Purchase Entry Date - Highlighted for purchases */}
-                    {log.metadata?.purchase_date && (
-                      <div className="bg-purple-50 dark:bg-purple-950/30 px-3 py-2 rounded-md border border-purple-200 dark:border-purple-800">
-                        <div className="text-sm">
-                          <span className="font-semibold text-purple-700 dark:text-purple-300">Purchase Entry Date:</span>{" "}
-                          <span className="font-bold text-purple-800 dark:text-purple-400">
-                            {new Date(log.metadata.purchase_date).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Purchase Reference - Highlighted with Link */}
-                    {reference_type?.toLowerCase().includes('purchase') && (
-                      <div className="bg-green-50 dark:bg-green-950/30 px-3 py-2 rounded-md border border-green-200 dark:border-green-800">
-                        <div className="flex items-center justify-between">
-                          <div className="text-sm">
-                            <span className="font-semibold text-green-700 dark:text-green-300">Purchase Number:</span>{" "}
-                            <span className="font-bold text-green-800 dark:text-green-400">
-                              {reference_number || 'N/A'}
-                            </span>
-                          </div>
-                          {reference_id && (
-                            <button
-                              onClick={() => window.open(`/purchases/${reference_id}`, '_blank')}
-                              className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded-md transition-colors"
-                            >
-                              View Purchase
-                            </button>
-                          )}
-                        </div>
-                        {metadata?.company_name && (
-                          <div className="text-sm mt-1">
-                            <span className="font-semibold text-green-700 dark:text-green-300">Supplier:</span>{" "}
-                            <span className="font-bold text-green-800 dark:text-green-400">{metadata.company_name}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Order Reference - Highlighted with Link */}
-                    {reference_type?.toLowerCase().includes('order') && (
-                      <div className="bg-indigo-50 dark:bg-indigo-950/30 px-3 py-2 rounded-md border border-indigo-200 dark:border-indigo-800">
-                        <div className="flex items-center justify-between">
-                          <div className="text-sm">
-                            <span className="font-semibold text-indigo-700 dark:text-indigo-300">Order ID:</span>{" "}
-                            <span className="font-bold text-indigo-800 dark:text-indigo-400">
-                              {metadata?.order_number || reference_number || 'N/A'}
-                            </span>
-                          </div>
-                          {metadata?.order_id && (
-                            <button
-                              onClick={() => window.open(`/orders/${metadata.order_id}`, '_blank')}
-                              className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded-md transition-colors"
-                            >
-                              View Order
-                            </button>
-                          )}
-                        </div>
-                        {metadata?.company_name && (
-                          <div className="text-sm mt-1">
-                            <span className="font-semibold text-indigo-700 dark:text-indigo-300">Company:</span>{" "}
-                            <span className="font-bold text-indigo-800 dark:text-indigo-400">{metadata.company_name}</span>
-                          </div>
-                        )}
-                        {metadata?.component_type && (
-                          <div className="text-sm mt-1">
-                            <span className="font-semibold text-indigo-700 dark:text-indigo-300">Component:</span>{" "}
-                            <span className="font-bold text-indigo-800 dark:text-indigo-400">{metadata.component_type}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Manual Adjustment - Highlighted */}
-                    {(transaction_type?.toLowerCase().includes('manual') || transaction_type?.toLowerCase().includes('adjustment')) && (
-                      <div className="bg-yellow-50 dark:bg-yellow-950/30 px-3 py-2 rounded-md border border-yellow-200 dark:border-yellow-800">
-                        <div className="text-sm">
-                          <span className="font-semibold text-yellow-700 dark:text-yellow-300">Manual Adjustment</span>
-                          {metadata?.update_source && (
-                            <span className="font-bold text-yellow-800 dark:text-yellow-400 ml-2">
-                              ({metadata.update_source})
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Notes if available */}
-                    {log.notes && (
-                      <div className="bg-gray-50 dark:bg-gray-950/30 px-3 py-2 rounded-md border border-gray-200 dark:border-gray-800">
-                        <div className="text-sm text-gray-700 dark:text-gray-300 italic">
-                          💬 "{log.notes}"
-                        </div>
-                      </div>
-                    )}
+                  {/* Transaction date */}
+                  <div className="text-sm text-muted-foreground">
+                    <span>Transaction Date: {formatDate(transaction.transaction_date)}</span>
                   </div>
-                  
-                  {/* Additional information on hover */}
-                  {hoveredTransaction === log.id && log.metadata && Object.keys(log.metadata).length > 0 && (
-                    <div className="border-t border-border p-2 bg-muted/30 text-xs">
-                      <div className="grid grid-cols-2 gap-1">
-                        {Object.entries(log.metadata).filter(([key]) => 
-                          !['material_name', 'unit'].includes(key) && 
-                          typeof key === 'string' && 
-                          key.trim() !== ''
-                        ).map(([key, value], index) => (
-                          <React.Fragment key={index}>
-                            <span className="text-muted-foreground">{key.replace(/_/g, ' ')}:</span>
-                            <span>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
-                          </React.Fragment>
-                        ))}
+
+                  {/* Purchase Entry Date - Highlighted for purchases */}
+                  {(transaction.metadata as { purchase_date?: string })?.purchase_date && (
+                    <div className="bg-purple-50 dark:bg-purple-950/30 px-3 py-2 rounded-md border border-purple-200 dark:border-purple-800">
+                      <div className="text-sm">
+                        <span className="font-semibold text-purple-700 dark:text-purple-300">Purchase Entry Date:</span>{" "}
+                        <span className="font-bold text-purple-800 dark:text-purple-400">
+                          {format(new Date((transaction.metadata as { purchase_date: string }).purchase_date), "dd MMM yyyy")}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Order Creation Date - Highlighted for job card transactions */}
+                  {transaction.reference_type === "JobCard" && (transaction.metadata as { order_date?: string })?.order_date && (
+                    <div className="bg-blue-50 dark:bg-blue-950/30 px-3 py-2 rounded-md border border-blue-200 dark:border-blue-800">
+                      <div className="text-sm">
+                        <span className="font-semibold text-blue-700 dark:text-blue-300">Order Creation Date:</span>{" "}
+                        <span className="font-bold text-blue-800 dark:text-blue-400">
+                          {format(new Date((transaction.metadata as { order_date: string }).order_date), "dd MMM yyyy")}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reference information */}
+                  {transaction.reference_type && (
+                    <div className="bg-green-50 dark:bg-green-950/30 px-3 py-2 rounded-md border border-green-200 dark:border-green-800">
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm">
+                          <span className="font-semibold text-green-700 dark:text-green-300">
+                            {getReferenceTypeDisplay(transaction.reference_type)}:
+                          </span>{" "}
+                          <span className="font-bold text-green-800 dark:text-green-400">
+                            {transaction.reference_number}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => navigateToReference(transaction.reference_type, transaction.reference_id)}
+                          className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded-md transition-colors"
+                        >
+                          View {getReferenceTypeDisplay(transaction.reference_type)}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Notes if available */}
+                  {transaction.notes && (
+                    <div className="bg-gray-50 dark:bg-gray-950/30 px-3 py-2 rounded-md border border-gray-200 dark:border-gray-800">
+                      <div className="text-sm text-gray-700 dark:text-gray-300 italic">
+                        💬 "{transaction.notes}"
                       </div>
                     </div>
                   )}
                 </div>
-              );
-            })}
-            
-            {transactionLogs.length === 0 && (
-              <div className="text-center py-6 text-muted-foreground">
-                No transaction logs found for this material
               </div>
-            )}
-          </div>
+            );
+          })}
+          
+          {transactionLogs.length === 0 && (
+            <div className="text-center py-6 text-muted-foreground">
+              No transaction logs found for this material
+            </div>
+          )}
+        </div>
       </CardContent>
+
+      {/* Transaction History Delete Dialog */}
+      <TransactionHistoryDeleteDialog 
+        open={isDeleteDialogOpen}
+        onOpenChange={handleDeleteDialogClose}
+        selectedTransactionIds={selectedTransactionIds}
+      />
     </Card>
   );
 };
