@@ -15,7 +15,6 @@ import { AlertCircle, Users, Package, TrendingUp, ArrowUpDown, DollarSign, Targe
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -192,18 +191,27 @@ const CompanyOrderAnalysis = () => {
             <CardTitle>Top 5 Companies by Order Count</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={top5Companies}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="totalOrders" fill="#8884d8" name="Total Orders" />
-                <Bar dataKey="asCompany" fill="#82ca9d" name="As Main Company" />
-                <Bar dataKey="asSalesAccount" fill="#ffc658" name="As Sales Account" />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="space-y-3">
+              {top5Companies.map((company, index) => (
+                <div key={company.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 bg-blue-500 rounded-full text-white text-sm flex items-center justify-center font-medium">
+                      {index + 1}
+                    </span>
+                    <div>
+                      <span className="font-medium">{company.name}</span>
+                      <div className="text-xs text-muted-foreground">
+                        Main: {company.asCompany} | Sales: {company.asSalesAccount}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-lg">{company.totalOrders}</div>
+                    <div className="text-xs text-muted-foreground">orders</div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
 
@@ -212,17 +220,27 @@ const CompanyOrderAnalysis = () => {
             <CardTitle>Top 5 Companies by Profit</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={top5ProfitableCompanies}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip formatter={(value: number) => [formatCurrency(Number(value)), 'Amount']} />
-                <Legend />
-                <Bar dataKey="totalRevenue" fill="#8884d8" name="Revenue" />
-                <Bar dataKey="totalProfit" fill="#82ca9d" name="Profit" />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="space-y-3">
+              {top5ProfitableCompanies.map((company, index) => (
+                <div key={company.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 bg-green-500 rounded-full text-white text-sm flex items-center justify-center font-medium">
+                      {index + 1}
+                    </span>
+                    <div>
+                      <span className="font-medium">{company.name}</span>
+                      <div className="text-xs text-muted-foreground">
+                        {company.profitMargin.toFixed(1)}% profit margin
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-lg text-green-600">{formatCurrency(company.totalProfit)}</div>
+                    <div className="text-xs text-muted-foreground">Revenue: {formatCurrency(company.totalRevenue)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>

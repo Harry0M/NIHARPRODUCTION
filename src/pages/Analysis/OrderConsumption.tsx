@@ -48,7 +48,6 @@ interface OrderAnalysis {
   bag_length: number;
   bag_width: number;
   wastage_percentage: number;
-  wastage_quantity: number;
   wastage_cost: number;
   catalog_name?: string;
   components?: Array<{
@@ -62,6 +61,16 @@ interface OrderAnalysis {
     unit: string;
     material_rate: number;
   }>;
+}
+
+interface MaterialBreakdown {
+  material_id: string;
+  material_name: string;
+  quantity: number;
+  unit: string;
+  value: number;
+  component_type: string;
+  custom_name?: string;
 }
 
 const OrderConsumption = () => {
@@ -132,6 +141,8 @@ const OrderConsumption = () => {
         const totalCost = Number(order.total_cost || 0);
         const sellingPrice = Number(order.calculated_selling_price || 0);
         const margin = Number(order.margin || 0);
+        const wastagePercentage = 5.0; // Default wastage percentage
+        const wastageCost = (materialCost * wastagePercentage) / 100; // Calculate default wastage cost
         
         // Process order components for material breakdown
         const components = (order.order_components || []).map(component => ({
@@ -172,9 +183,8 @@ const OrderConsumption = () => {
           profit_margin: profitMargin,
           bag_length: Number(order.bag_length || 0),
           bag_width: Number(order.bag_width || 0),
-          wastage_percentage: 0, // Will be populated later
-          wastage_quantity: 0, // Will be populated later
-          wastage_cost: 0, // Will be populated later
+          wastage_percentage: wastagePercentage,
+          wastage_cost: wastageCost,
           catalog_name: 'Unknown Product', // Simplified for now since catalog relation has issues
           components: components // Add components data
         };
@@ -184,47 +194,8 @@ const OrderConsumption = () => {
     }
   });
 
-  // Fetch wastage data for orders
-  const { data: wastageData } = useQuery({
-    queryKey: ['orders-wastage'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('job_wastage')
-        .select(`
-          order_id,
-          wastage_percentage,
-          wastage_quantity
-        `);
-      
-      if (error) throw error;
-      
-      // Group wastage by order_id and calculate totals
-      const wastageByOrder = (data || []).reduce((acc: Record<string, {wastage_percentage: number, wastage_quantity: number}>, item) => {
-        if (!acc[item.order_id]) {
-          acc[item.order_id] = { wastage_percentage: 0, wastage_quantity: 0 };
-        }
-        // Take the highest wastage percentage and sum quantities
-        acc[item.order_id].wastage_percentage = Math.max(acc[item.order_id].wastage_percentage, Number(item.wastage_percentage || 0));
-        acc[item.order_id].wastage_quantity += Number(item.wastage_quantity || 0);
-        return acc;
-      }, {});
-      
-      return wastageByOrder;
-    }
-  });
-  
-  // Combine orders data with wastage data
-  const combinedOrdersData = ordersData?.map(order => {
-    const wastageInfo = wastageData?.[order.id] || { wastage_percentage: 0, wastage_quantity: 0 };
-    const wastage_cost = (order.material_cost * wastageInfo.wastage_percentage) / 100;
-    
-    return {
-      ...order,
-      wastage_percentage: wastageInfo.wastage_percentage,
-      wastage_quantity: wastageInfo.wastage_quantity,
-      wastage_cost: wastage_cost
-    };
-  }) || [];
+  // Use orders data directly
+  const combinedOrdersData = ordersData;
 
   // Filter and sort the data based on filters
   const processedData = combinedOrdersData?.filter(order => {
@@ -251,16 +222,12 @@ const OrderConsumption = () => {
     const bProfit = (Number(b.calculated_selling_price || 0) - Number(b.total_cost || 0));
     const aMaterialCost = Number(a.material_cost || 0);
     const bMaterialCost = Number(b.material_cost || 0);
-    const aWastage = Number(a.wastage_cost || 0);
-    const bWastage = Number(b.wastage_cost || 0);
     
     switch (filters.sortBy) {
       case 'highest_profit':
         return bProfit - aProfit; // Descending order
       case 'highest_material_cost':
         return bMaterialCost - aMaterialCost; // Descending order
-      case 'highest_wastage':
-        return bWastage - aWastage; // Descending order
       case 'latest_date':
         return new Date(b.order_date).getTime() - new Date(a.order_date).getTime();
       case 'oldest_date':
@@ -292,10 +259,8 @@ const OrderConsumption = () => {
     profitFormatted: formatCurrency(item.profit),
     profitMargin: item.profit_margin,
     marginPercent: item.margin,
-    wastage_percentage: item.wastage_percentage,
-    wastage_quantity: item.wastage_quantity,
-    wastage_cost: item.wastage_cost,
-    wastage_cost_formatted: formatCurrency(item.wastage_cost),
+    wastagePercentage: item.wastage_percentage,
+    wastageCost: item.wastage_cost,
     productionCosts: {
       cuttingCost: item.cutting_charge,
       printingCost: item.printing_charge,
@@ -320,8 +285,10 @@ const OrderConsumption = () => {
     ? orderChartData?.find(order => order.order_id === selectedOrderId)
     : null;
 
-  // Sort materials by value for selected order (used in material breakdown tab)
-  const sortedMaterials = selectedOrder?.materials?.sort((a: any, b: any) => b.value - a.value) || [];
+  // Sort materials by value for selected order (used in material breakdown tab) and filter out zero consumption
+  const sortedMaterials = selectedOrder?.materials
+    ?.filter((material: MaterialBreakdown) => material.quantity > 0.001) // Filter out materials with zero or near-zero consumption
+    ?.sort((a: MaterialBreakdown, b: MaterialBreakdown) => b.value - a.value) || [];
 
   const handleDownloadCSV = () => {
     if (!orderChartData?.length) return;
@@ -335,6 +302,8 @@ const OrderConsumption = () => {
       'Profit': order.profit,
       'Profit Margin %': order.profitMargin,
       'Material Cost': order.materialCost,
+      'Wastage Percentage %': order.wastagePercentage,
+      'Wastage Cost': order.wastageCost,
       'Production Cost': Object.values(order.productionCosts).reduce((sum: number, cost: number) => sum + cost, 0)
     }));
     
@@ -352,7 +321,9 @@ const OrderConsumption = () => {
       'Total Cost': order.totalCost,
       'Selling Price': order.sellingPrice,
       'Profit': order.profit,
-      'Profit Margin %': order.profitMargin
+      'Profit Margin %': order.profitMargin,
+      'Wastage Percentage %': order.wastagePercentage,
+      'Wastage Cost': order.wastageCost
     }));
     
     // Simple PDF download (you may want to implement a proper PDF export function)
@@ -386,7 +357,7 @@ const OrderConsumption = () => {
           </div>
         </div>
         <p className="text-muted-foreground">
-          Analyze material usage, costs, profitability, and wastage by order. Use filters to sort by highest profit, highest material consumption, highest wastage, or other criteria.
+          Analyze material usage, costs, and profitability by order. Use filters to sort by highest profit, highest material consumption, or other criteria.
         </p>
       </div>
       
@@ -398,7 +369,7 @@ const OrderConsumption = () => {
         {/* Left Side - Orders List */}
         <div className="md:col-span-1 space-y-6">
           {/* Overview Cards */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-1 gap-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">Orders Analyzed</CardTitle>
@@ -449,15 +420,19 @@ const OrderConsumption = () => {
             
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total Wastage Cost</CardTitle>
+                <CardTitle className="text-sm font-medium">Total Wastage</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-                  ₹{formatCurrency(orderChartData?.reduce((sum, order) => sum + (order.wastage_cost || 0), 0) || 0)}
+                <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                  ₹{formatCurrency(orderChartData?.reduce((sum, order) => sum + (order.wastageCost || 0), 0) || 0)}
                 </div>
-                <p className="text-xs text-muted-foreground">Material wastage across orders</p>
+                <p className="text-xs text-muted-foreground">
+                  Avg {orderChartData?.length ? (orderChartData.reduce((sum, order) => sum + (order.wastagePercentage || 0), 0) / orderChartData.length).toFixed(1) : "0.0"}% wastage
+                </p>
               </CardContent>
             </Card>
+            
+
           </div>
           
           {/* Orders List */}
@@ -480,24 +455,25 @@ const OrderConsumption = () => {
                         onClick={() => setSelectedOrderId(order.order_id)}
                       >
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium truncate flex items-center gap-2">
+                          <div className="font-medium truncate">
                             {order.order_number}
+                          </div>
+                          <div className="text-sm text-muted-foreground flex items-center gap-1 mb-1">
+                            <Building2 className="h-3 w-3" />
+                            <span className="truncate">{order.company_name}</span>
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
                             {order.profit > 0 ? (
                               <Badge className="text-xs bg-green-500 hover:bg-green-600">+{order.profitMargin.toFixed(1)}%</Badge>
                             ) : (
                               <Badge variant="destructive" className="text-xs bg-red-500 hover:bg-red-600">{order.profitMargin.toFixed(1)}%</Badge>
                             )}
+                            {(order.wastagePercentage || 0) > 0 && (
+                              <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100">
+                                W: {order.wastagePercentage?.toFixed(1) || "0.0"}%
+                              </Badge>
+                            )}
                           </div>
-                          <div className="text-sm text-muted-foreground flex items-center gap-1">
-                            <Building2 className="h-3 w-3" />
-                            <span className="truncate">{order.company_name}</span>
-                          </div>
-                          {order.wastage_cost > 0 && (
-                            <div className="text-xs text-red-600 flex items-center gap-1">
-                              <AlertCircle className="h-3 w-3" />
-                              Wastage: ₹{formatCurrency(order.wastage_cost)} ({order.wastage_percentage.toFixed(1)}%)
-                            </div>
-                          )}
                         </div>
                         <div className="text-right">
                           <div className="font-medium">₹{formatCurrency(order.sellingPrice)}</div>
@@ -542,7 +518,9 @@ const OrderConsumption = () => {
                               'Company': selectedOrder.company_name,
                               'Total Cost': selectedOrder.totalCost,
                               'Selling Price': selectedOrder.sellingPrice,
-                              'Profit': selectedOrder.profit
+                              'Profit': selectedOrder.profit,
+                              'Wastage Percentage %': selectedOrder.wastagePercentage,
+                              'Wastage Cost': selectedOrder.wastageCost
                             }];
                             console.log('Single Order Export:', summaryData);
                           }
@@ -585,15 +563,17 @@ const OrderConsumption = () => {
                       <div className="text-sm text-muted-foreground">Total Revenue</div>
                       <div className="text-2xl font-bold">₹{formatCurrency(selectedOrder.sellingPrice)}</div>
                     </div>
+                    <div className="space-y-1 p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                      <div className="text-sm text-muted-foreground">Wastage</div>
+                      <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                        {selectedOrder.wastagePercentage?.toFixed(1) || "0.0"}%
+                      </div>
+                      <div className="text-sm text-orange-600 dark:text-orange-400">₹{formatCurrency(selectedOrder.wastageCost || 0)}</div>
+                    </div>
                     <div className={`space-y-1 p-4 rounded-lg ${selectedOrder.profit > 0 ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
                       <div className="text-sm text-muted-foreground">Profit</div>
                       <div className="text-2xl font-bold">₹{formatCurrency(selectedOrder.profit)}</div>
                       <div className="text-sm">{selectedOrder.profitMargin.toFixed(1)}% margin</div>
-                    </div>
-                    <div className={`space-y-1 p-4 rounded-lg ${selectedOrder.wastage_cost > 0 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-muted/30'}`}>
-                      <div className="text-sm text-muted-foreground">Wastage</div>
-                      <div className="text-2xl font-bold">₹{formatCurrency(selectedOrder.wastage_cost)}</div>
-                      <div className="text-sm">{selectedOrder.wastage_percentage.toFixed(1)}% of material cost</div>
                     </div>
                   </div>
                   
@@ -617,7 +597,7 @@ const OrderConsumption = () => {
                           </TableHeader>
                           <TableBody>
                             {sortedMaterials.length > 0 ? (
-                              sortedMaterials.map((material: any) => (
+                              sortedMaterials.map((material: MaterialBreakdown) => (
                                 <TableRow key={material.material_id}>
                                   <TableCell className="font-medium">{material.material_name}</TableCell>
                                   <TableCell className="text-right">{material.quantity.toFixed(2)}</TableCell>
@@ -652,7 +632,7 @@ const OrderConsumption = () => {
                         <div className="space-y-3">
                           {sortedMaterials.length > 0 ? (
                             <>
-                              {sortedMaterials.map((material: any) => (
+                              {sortedMaterials.map((material: MaterialBreakdown) => (
                                 <div key={material.material_id} className="flex justify-between items-center">
                                   <span className="flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-primary inline-block"></span>
@@ -672,6 +652,26 @@ const OrderConsumption = () => {
                               No material data available
                             </div>
                           )}
+                        </div>
+                      </div>
+
+                      {/* Wastage Cost Section */}
+                      <div className="p-4 rounded-md bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
+                        <h3 className="font-medium mb-2 text-orange-700 dark:text-orange-300">Wastage Costs</h3>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <span>Wastage Percentage</span>
+                            <span className="font-medium">{selectedOrder.wastagePercentage?.toFixed(1) || "0.0"}%</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span>Wastage Cost</span>
+                            <span className="font-medium">₹{formatCurrency(selectedOrder.wastageCost || 0)}</span>
+                          </div>
+                          <Separator />
+                          <div className="flex justify-between items-center text-sm text-muted-foreground">
+                            <span>Calculated as: {selectedOrder.wastagePercentage?.toFixed(1) || "0.0"}% of material cost</span>
+                            <span>₹{formatCurrency((selectedOrder.materialCost * (selectedOrder.wastagePercentage || 0)) / 100)}</span>
+                          </div>
                         </div>
                       </div>
 
@@ -728,6 +728,10 @@ const OrderConsumption = () => {
                             <span className="font-medium">₹{formatCurrency(selectedOrder.materialCost)}</span>
                           </div>
                           <div className="flex justify-between items-center">
+                            <span>Wastage Cost ({selectedOrder.wastagePercentage?.toFixed(1) || "0.0"}%)</span>
+                            <span className="font-medium">₹{formatCurrency(selectedOrder.wastageCost || 0)}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
                             <span>Total Production Cost</span>
                             <span className="font-medium">₹{formatCurrency((selectedOrder.productionCosts?.cuttingCost || 0) + (selectedOrder.productionCosts?.printingCost || 0) + (selectedOrder.productionCosts?.stitchingCost || 0) + (selectedOrder.productionCosts?.transportCost || 0))}</span>
                           </div>
@@ -778,7 +782,7 @@ const OrderConsumption = () => {
                       Order Analysis Overview
                     </CardTitle>
                     <CardDescription>
-                      Select an order from the list above to view detailed cost, profit, and wastage analysis.
+                      Select an order from the list above to view detailed cost and profit analysis.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="h-[200px] flex items-center justify-center">

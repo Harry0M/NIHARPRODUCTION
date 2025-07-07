@@ -41,12 +41,13 @@ const MaterialConsumption = () => {
   // Colors for charts
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ff7300', '#a05195', '#d45087', '#2f4b7c'];
   
-  // Filter data based on search
+  // Filter data based on search and exclude materials with zero consumption
   const filteredData = searchQuery 
     ? consumptionData?.filter(item => 
-        item.material_name?.toLowerCase().includes(searchQuery.toLowerCase())
+        item.material_name?.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        Number(item.total_usage || 0) > 0.001 // Filter out materials with zero or near-zero consumption
       )
-    : consumptionData;
+    : consumptionData?.filter(item => Number(item.total_usage || 0) > 0.001); // Filter out materials with zero or near-zero consumption
 
   // Get detailed data for selected material
   const selectedMaterial = selectedMaterialId 
