@@ -70,7 +70,7 @@ export const CostCalculationDisplay = ({
       totalCost: costCalculation.totalCost.toString(),
       sellingPrice: costCalculation.sellingPrice.toString(),
       sellingPricePerPiece: (costCalculation.sellingPrice / (orderQuantity || 1)).toString(),
-      wastagePercentage: (costCalculation.wastagePercentage || 5).toString(),
+      wastagePercentage: (costCalculation.wastagePercentage || 0).toString(),
     };
 
     // Batch the state updates to prevent multiple re-renders
@@ -105,7 +105,7 @@ export const CostCalculationDisplay = ({
     totalCost: costCalculation.totalCost.toString(),
     sellingPrice: costCalculation.sellingPrice.toString(),
     sellingPricePerPiece: (costCalculation.sellingPrice / (orderQuantity || 1)).toString(),
-    wastagePercentage: (costCalculation.wastagePercentage || 5).toString(),
+    wastagePercentage: (costCalculation.wastagePercentage || 0).toString(),
   });
   
   const formatCurrency = (value: number) => {

@@ -66,7 +66,7 @@ console.log('• Include wastage alerts for high percentages');
 console.log('');
 
 // Default wastage calculation for orders without database columns
-function calculateDefaultWastage(materialCost, wastagePercentage = 5.0) {
+function calculateDefaultWastage(materialCost, wastagePercentage = 0.0) {
   return (materialCost * wastagePercentage) / 100;
 }
 

@@ -11,7 +11,7 @@ BEGIN
         WHERE table_name='orders' AND column_name='wastage_percentage'
     ) THEN
         ALTER TABLE public.orders 
-        ADD COLUMN wastage_percentage NUMERIC(5,2) DEFAULT 5.0 
+        ADD COLUMN wastage_percentage NUMERIC(5,2) DEFAULT 0.0 
         CHECK (wastage_percentage >= 0 AND wastage_percentage <= 100);
         
         COMMENT ON COLUMN public.orders.wastage_percentage 
@@ -38,12 +38,12 @@ END $$;
 UPDATE public.orders 
 SET 
     wastage_percentage = CASE 
-        WHEN wastage_percentage IS NULL THEN 5.0 
+        WHEN wastage_percentage IS NULL THEN 0.0 
         ELSE wastage_percentage 
     END,
     wastage_cost = CASE 
         WHEN wastage_cost IS NULL OR wastage_cost = 0 THEN 
-            (COALESCE(material_cost, 0) * COALESCE(wastage_percentage, 5.0) / 100)
+            (COALESCE(material_cost, 0) * COALESCE(wastage_percentage, 0.0) / 100)
         ELSE wastage_cost 
     END
 WHERE wastage_percentage IS NULL OR wastage_cost IS NULL OR wastage_cost = 0;

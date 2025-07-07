@@ -43,9 +43,9 @@ export const AdditionalDetailsSection = ({
           step="0.1"
           min="0"
           max="100"
-          value={formData.wastage_percentage || '5'}
+          value={formData.wastage_percentage || '0'}
           onChange={handleOrderChange}
-          placeholder="Enter wastage percentage (default: 5%)"
+          placeholder="Enter wastage percentage (default: 0%)"
           readOnly={readOnly}
         />
         <p className="text-xs text-muted-foreground">

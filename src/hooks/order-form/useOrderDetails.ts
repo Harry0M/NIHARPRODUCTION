@@ -20,7 +20,7 @@ export function useOrderDetails() {
     order_date: new Date().toISOString().split('T')[0],
     delivery_date: "", // Optional field
     order_number: "", // Manual order number entry
-    wastage_percentage: "5" // Default 5% wastage
+    wastage_percentage: "0" // Default 0% wastage
   });
   
   const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { 

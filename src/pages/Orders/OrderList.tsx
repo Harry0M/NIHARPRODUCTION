@@ -35,7 +35,7 @@ const OrderList = () => {
   });
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState(50);
   const [totalCount, setTotalCount] = useState(0);
   
   const handleOrderDeleted = (deletedOrderId: string) => {
@@ -308,7 +308,7 @@ const OrderList = () => {
               setPageSize(newSize);
               setPage(1); // Reset to first page when page size changes
             }}
-            pageSizeOptions={[3, 5, 10, 20, 50]}
+            pageSizeOptions={[5, 10, 20, 50, 100]}
             showPageSizeSelector={true}
             totalCount={totalCount}
           />

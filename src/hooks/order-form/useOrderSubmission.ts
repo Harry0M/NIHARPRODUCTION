@@ -236,7 +236,7 @@ export function useOrderSubmission({
       };
 
       // Calculate wastage cost from material cost
-      const wastagePercentage = parseFloat(orderDetails.wastage_percentage || '5'); // Default 5%
+      const wastagePercentage = parseFloat(orderDetails.wastage_percentage || '0'); // Default 0%
       const wastageCost = (materialCost * wastagePercentage) / 100;
 
       // For editing, only update non-cost fields to preserve existing cost calculations
