@@ -9,6 +9,7 @@ import { SkeletonTable } from "@/components/ui/skeleton-table";
 import { StatusBadge, StatusType } from "@/components/ui/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { DueOrdersModal } from "@/components/dashboard/DueOrdersModal";
 
 type Stats = {
   activeOrders: number;
@@ -38,6 +39,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
+  const [showDueOrdersModal, setShowDueOrdersModal] = useState(false);
 
   // Fetch all dashboard data in a single query using React Query
   const { data: dashboardData, isLoading } = useQuery({
@@ -103,13 +105,15 @@ const Dashboard = () => {
               stitching_jobs!left(status)
             `),
           
-          // Orders due this week
+          // Orders due this week (using delivery_date)
           supabase
             .from('orders')
             .select('id', { count: 'exact', head: true })
-            .lt('order_date', new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString())
-            .gt('order_date', new Date().toISOString())
-            .not('status', 'eq', 'completed'),
+            .not('delivery_date', 'is', null)
+            .gte('delivery_date', new Date().toISOString().split('T')[0])
+            .lte('delivery_date', new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+            .not('status', 'eq', 'completed')
+            .not('status', 'eq', 'cancelled'),
           
           // Jobs in progress
           supabase
@@ -130,15 +134,15 @@ const Dashboard = () => {
         jobCards.forEach(card => {
           if (card.cutting_jobs && card.cutting_jobs.length > 0) {
             stages.cutting.total += card.cutting_jobs.length;
-            stages.cutting.completed += card.cutting_jobs.filter((j: any) => j.status === 'completed').length;
+            stages.cutting.completed += card.cutting_jobs.filter((j: { status: string }) => j.status === 'completed').length;
           }
           if (card.printing_jobs && card.printing_jobs.length > 0) {
             stages.printing.total += card.printing_jobs.length;
-            stages.printing.completed += card.printing_jobs.filter((j: any) => j.status === 'completed').length;
+            stages.printing.completed += card.printing_jobs.filter((j: { status: string }) => j.status === 'completed').length;
           }
           if (card.stitching_jobs && card.stitching_jobs.length > 0) {
             stages.stitching.total += card.stitching_jobs.length;
-            stages.stitching.completed += card.stitching_jobs.filter((j: any) => j.status === 'completed').length;
+            stages.stitching.completed += card.stitching_jobs.filter((j: { status: string }) => j.status === 'completed').length;
           }
         });
         
@@ -189,11 +193,11 @@ const Dashboard = () => {
           productionStages,
           recentOrders: formattedOrders
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error fetching dashboard data:', error);
         toast({
           title: "Failed to load dashboard data",
-          description: error.message,
+          description: error instanceof Error ? error.message : "Unknown error occurred",
           variant: "destructive"
         });
         throw error;
@@ -265,7 +269,8 @@ const Dashboard = () => {
       change: "",
       positive: null,
       linkTo: "/orders?status=in_production",
-      className: "bg-blue-50"
+      className: "bg-blue-50",
+      clickable: false
     },
     {
       title: "In Production",
@@ -274,7 +279,8 @@ const Dashboard = () => {
       change: "",
       positive: null,
       linkTo: "/production",
-      className: "bg-amber-50"
+      className: "bg-amber-50",
+      clickable: false
     },
     {
       title: "Ready for Dispatch",
@@ -283,7 +289,8 @@ const Dashboard = () => {
       change: "",
       positive: null,
       linkTo: "/orders?status=ready_for_dispatch",
-      className: "bg-green-50"
+      className: "bg-green-50",
+      clickable: false
     },
     {
       title: "Active Partners",
@@ -292,7 +299,8 @@ const Dashboard = () => {
       change: "",
       positive: null,
       linkTo: "/partners",
-      className: "bg-purple-50"
+      className: "bg-purple-50",
+      clickable: false
     },
     {
       title: "Due This Week",
@@ -301,7 +309,8 @@ const Dashboard = () => {
       change: "",
       positive: null,
       linkTo: "/orders?due=week",
-      className: stats.dueThisWeek > 0 ? "bg-yellow-50" : "bg-gray-50"
+      className: stats.dueThisWeek > 0 ? "bg-yellow-50" : "bg-gray-50",
+      clickable: true
     },
     {
       title: "Jobs in Progress",
@@ -310,7 +319,8 @@ const Dashboard = () => {
       change: "",
       positive: null,
       linkTo: "/production/job-cards?status=in_progress",
-      className: "bg-blue-50"
+      className: "bg-blue-50",
+      clickable: false
     }
   ];
 
@@ -342,30 +352,71 @@ const Dashboard = () => {
     <div className="space-y-8 p-4 md:p-6 fade-in">
       <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {statsCards.map((stat, i) => (
-          <Link key={i} to={stat.linkTo} className="slide-up" style={{animationDelay: `${i * 0.05}s`}}>
-            <Card 
-              className={`h-full overflow-hidden hover:shadow-elevated transition-all duration-200 border-border/60 hover:translate-y-[-2px] ${stat.className} dark:bg-card/95 dark:border-border/30 dark:hover:border-primary/20`}
+          stat.clickable ? (
+            <div 
+              key={i} 
+              className="slide-up cursor-pointer" 
+              style={{animationDelay: `${i * 0.05}s`}}
+              onClick={() => {
+                if (stat.title === "Due This Week") {
+                  setShowDueOrdersModal(true);
+                }
+              }}
             >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {stat.title}
-                </CardTitle>
-                <div className={`${stat.className} dark:bg-background/30 p-2 rounded-full dark:text-primary`}>
-                  <stat.icon className="h-4 w-4" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {stat.change && (
-                    <span className={stat.positive ? "text-green-500" : "text-red-500"}>
-                      {stat.positive ? "↗" : "↘"} {stat.change}
-                    </span>
-                  )}
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
+              <Card 
+                className={`h-full overflow-hidden hover:shadow-elevated transition-all duration-200 border-border/60 hover:translate-y-[-2px] ${stat.className} dark:bg-card/95 dark:border-border/30 dark:hover:border-primary/20`}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    {stat.title}
+                  </CardTitle>
+                  <div className={`${stat.className} dark:bg-background/30 p-2 rounded-full dark:text-primary`}>
+                    <stat.icon className="h-4 w-4" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stat.value}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {stat.change && (
+                      <span className={stat.positive ? "text-green-500" : "text-red-500"}>
+                        {stat.positive ? "↗" : "↘"} {stat.change}
+                      </span>
+                    )}
+                    {stat.title === "Due This Week" && parseInt(stat.value) > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        Click to view details
+                      </span>
+                    )}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <Link key={i} to={stat.linkTo} className="slide-up" style={{animationDelay: `${i * 0.05}s`}}>
+              <Card 
+                className={`h-full overflow-hidden hover:shadow-elevated transition-all duration-200 border-border/60 hover:translate-y-[-2px] ${stat.className} dark:bg-card/95 dark:border-border/30 dark:hover:border-primary/20`}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    {stat.title}
+                  </CardTitle>
+                  <div className={`${stat.className} dark:bg-background/30 p-2 rounded-full dark:text-primary`}>
+                    <stat.icon className="h-4 w-4" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stat.value}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {stat.change && (
+                      <span className={stat.positive ? "text-green-500" : "text-red-500"}>
+                        {stat.positive ? "↗" : "↘"} {stat.change}
+                      </span>
+                    )}
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+          )
         ))}
       </div>
 
@@ -489,6 +540,12 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+      
+      {/* Due Orders Modal */}
+      <DueOrdersModal 
+        open={showDueOrdersModal} 
+        onOpenChange={setShowDueOrdersModal} 
+      />
     </div>
   );
 };
