@@ -1,12 +1,13 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft, FileText, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { recordJobCardMaterialUsage } from "@/utils/allowNegativeInventory";
@@ -22,6 +23,14 @@ interface Order {
   status: string;
 }
 
+interface ExistingJobCard {
+  id: string;
+  job_name: string;
+  job_number: string;
+  status: string;
+  created_at: string;
+}
+
 const JobCardNew = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -31,6 +40,9 @@ const JobCardNew = () => {
   const [notes, setNotes] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [existingJobCards, setExistingJobCards] = useState<ExistingJobCard[]>([]);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -61,14 +73,39 @@ const JobCardNew = () => {
       
       if (order) {
         setJobName(`${order.company_name} - ${order.order_number}`);
+        checkExistingJobCards(selectedOrderId);
       } else {
         setJobName("");
+        setExistingJobCards([]);
+        setShowDuplicateWarning(false);
       }
     } else {
       setSelectedOrder(null);
       setJobName("");
+      setExistingJobCards([]);
+      setShowDuplicateWarning(false);
     }
   }, [selectedOrderId, orders]);
+
+  const checkExistingJobCards = async (orderId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("job_cards")
+        .select("id, job_name, job_number, status, created_at")
+        .eq("order_id", orderId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error checking existing job cards:", error);
+        return;
+      }
+
+      setExistingJobCards(data || []);
+      setShowDuplicateWarning((data || []).length > 0);
+    } catch (error) {
+      console.error("Error checking existing job cards:", error);
+    }
+  };
 
   const handleCreateJobCard = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,8 +118,19 @@ const JobCardNew = () => {
       });
       return;
     }
-    
+
+    // Check for existing job cards and show confirmation if duplicates exist
+    if (existingJobCards.length > 0 && !showConfirmDialog) {
+      setShowConfirmDialog(true);
+      return;
+    }
+
+    await createJobCard();
+  };
+
+  const createJobCard = async () => {
     setSubmitting(true);
+    setShowConfirmDialog(false);
     
     try {
       // Implement retry logic for job card creation
@@ -283,6 +331,7 @@ const JobCardNew = () => {
         description: error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive",
       });
+    } finally {
       setSubmitting(false);
     }
   };
@@ -386,6 +435,57 @@ const JobCardNew = () => {
           </CardContent>
         </Card>
 
+        {showDuplicateWarning && existingJobCards.length > 0 && (
+          <Alert className="border-orange-200 bg-orange-50">
+            <AlertTriangle className="h-4 w-4 text-orange-600" />
+            <AlertDescription className="text-orange-800">
+              <div className="space-y-2">
+                <p className="font-medium">
+                  ⚠️ Warning: Job card(s) already exist for this order
+                </p>
+                <p className="text-sm">
+                  Creating duplicate job cards will cause additional inventory transactions and material consumption. 
+                  This may lead to inventory discrepancies.
+                </p>
+                <div className="mt-3">
+                  <p className="text-sm font-medium mb-2">Existing job cards for this order:</p>
+                  <div className="space-y-1">
+                    {existingJobCards.map((jobCard) => (
+                      <div key={jobCard.id} className="flex items-center justify-between bg-white p-2 rounded border text-sm">
+                        <div>
+                          <span className="font-medium">{jobCard.job_number || jobCard.job_name}</span>
+                          <span className="ml-2 text-gray-600">({jobCard.status})</span>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(jobCard.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/production/job-cards/${existingJobCards[0].id}`)}
+                  >
+                    View Existing Job Card
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate("/production/job-cards")}
+                  >
+                    View All Job Cards
+                  </Button>
+                </div>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {selectedOrder && (
           <Card>
             <CardHeader>
@@ -440,6 +540,76 @@ const JobCardNew = () => {
           </Button>
         </div>
       </div>
+
+      {/* Confirmation Dialog for Duplicate Job Cards */}
+      {showConfirmDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-md mx-4">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-orange-600">
+                <AlertTriangle className="h-5 w-5" />
+                Duplicate Job Card Warning
+              </CardTitle>
+              <CardDescription>
+                You are about to create a duplicate job card for this order.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-orange-50 p-3 rounded-md border border-orange-200">
+                <p className="text-sm text-orange-800">
+                  <strong>Warning:</strong> Creating duplicate job cards will:
+                </p>
+                <ul className="mt-2 text-sm text-orange-700 space-y-1">
+                  <li>• Consume additional inventory materials</li>
+                  <li>• Create duplicate inventory transactions</li>
+                  <li>• Potentially cause inventory discrepancies</li>
+                  <li>• Complicate production tracking</li>
+                </ul>
+              </div>
+              
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Existing job cards:</p>
+                {existingJobCards.map((jobCard) => (
+                  <div key={jobCard.id} className="text-sm p-2 bg-gray-50 rounded border">
+                    <div className="font-medium">{jobCard.job_number || jobCard.job_name}</div>
+                    <div className="text-gray-600">Status: {jobCard.status}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowConfirmDialog(false)}
+                  disabled={submitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowConfirmDialog(false);
+                    navigate(`/production/job-cards/${existingJobCards[0].id}`);
+                  }}
+                  disabled={submitting}
+                >
+                  View Existing
+                </Button>
+                <Button
+                  type="button"
+                  onClick={createJobCard}
+                  disabled={submitting}
+                  className="bg-orange-600 hover:bg-orange-700"
+                >
+                  {submitting ? "Creating..." : "Create Anyway"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
