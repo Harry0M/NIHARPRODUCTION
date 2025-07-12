@@ -23,6 +23,7 @@ interface OrderFilters {
     from: string;
     to: string;
   };
+  sortBy: string;
 }
 
 const OrderList = () => {
@@ -31,7 +32,8 @@ const OrderList = () => {
   const [filters, setFilters] = useState<OrderFilters>({
     searchTerm: "",
     status: "all",
-    dateRange: { from: "", to: "" }
+    dateRange: { from: "", to: "" },
+    sortBy: "default"
   });
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const [page, setPage] = useState(1);
@@ -151,8 +153,40 @@ const OrderList = () => {
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
       
+      // Apply sorting based on sortBy filter
+      let orderBy: string;
+      let ascending: boolean;
+      
+      switch (filters.sortBy) {
+        case 'highest_material_cost':
+          orderBy = 'material_cost';
+          ascending = false;
+          break;
+        case 'highest_wastage':
+          orderBy = 'wastage_percentage';
+          ascending = false;
+          break;
+        case 'latest_date':
+          orderBy = 'order_date';
+          ascending = false;
+          break;
+        case 'oldest_date':
+          orderBy = 'order_date';
+          ascending = true;
+          break;
+        case 'company_name':
+          orderBy = 'company_name';
+          ascending = true;
+          break;
+        case 'default':
+        default:
+          orderBy = 'created_at';
+          ascending = false;
+          break;
+      }
+      
       const { data, error } = await query
-        .order('created_at', { ascending: false })
+        .order(orderBy, { ascending })
         .range(from, to);
       
       if (error) throw error;
@@ -178,7 +212,7 @@ const OrderList = () => {
       return;
     }
     
-    const formattedOrders = formatOrdersForDownload(orders);
+    const formattedOrders = formatOrdersForDownload(orders as unknown as Record<string, unknown>[]);
     downloadAsCSV(formattedOrders, 'orders-list');
   };
     const handleDownloadPDF = () => {
@@ -192,7 +226,7 @@ const OrderList = () => {
     }
     
     // Use the professional bulk orders PDF generation
-    const formattedOrders = formatOrdersForDownload(orders);
+    const formattedOrders = formatOrdersForDownload(orders as unknown as Record<string, unknown>[]);
     generateBulkOrdersPDF(formattedOrders, 'orders-list');
   };
 

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   Select, 
   SelectContent, 
@@ -11,6 +11,17 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, X } from "lucide-react";
 import { type OrderStatus } from "@/types/order";
+
+// Simple debounce utility function
+function debounce<T extends (...args: any[]) => void>(func: T, delay: number) {
+  let timeoutId: NodeJS.Timeout;
+  const debouncedFunction = (...args: Parameters<T>) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func(...args), delay);
+  };
+  debouncedFunction.cancel = () => clearTimeout(timeoutId);
+  return debouncedFunction;
+}
 
 export interface OrderFilters {
   searchTerm: string;
@@ -30,6 +41,35 @@ interface OrderFilterProps {
 export const OrderFilter = ({ filters, setFilters }: OrderFilterProps) => {
   const [tempSearchTerm, setTempSearchTerm] = useState(filters.searchTerm);
   
+  // Create a stable debounced function using useRef to avoid infinite re-renders
+  const debouncedSearchRef = useRef(
+    debounce((searchTerm: string) => {
+      setFilters(prev => ({ ...prev, searchTerm }));
+    }, 300)
+  );
+
+  // Update the debounced function when setFilters changes
+  useEffect(() => {
+    debouncedSearchRef.current = debounce((searchTerm: string) => {
+      setFilters(prev => ({ ...prev, searchTerm }));
+    }, 300);
+  }, [setFilters]);
+
+  // Handle real-time search as user types
+  useEffect(() => {
+    debouncedSearchRef.current(tempSearchTerm);
+    
+    // Cleanup function to cancel pending debounced calls
+    return () => {
+      debouncedSearchRef.current.cancel?.();
+    };
+  }, [tempSearchTerm]);
+
+  // Update temp search term when filters change externally (e.g., clear filters)
+  useEffect(() => {
+    setTempSearchTerm(filters.searchTerm);
+  }, [filters.searchTerm]);
+  
   const handleStatusChange = (value: string) => {
     setFilters(prev => ({ ...prev, status: value }));
   };
@@ -46,16 +86,6 @@ export const OrderFilter = ({ filters, setFilters }: OrderFilterProps) => {
         [field]: value
       }
     }));
-  };
-
-  const handleSearch = () => {
-    setFilters(prev => ({ ...prev, searchTerm: tempSearchTerm }));
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
   };
 
   const clearFilters = () => {
@@ -79,11 +109,10 @@ export const OrderFilter = ({ filters, setFilters }: OrderFilterProps) => {
       <div className="flex-1 min-w-[200px] relative">
         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search by order number, company..."
+          placeholder="Search by order number, company... (real-time)"
           className="pl-8"
           value={tempSearchTerm}
           onChange={(e) => setTempSearchTerm(e.target.value)}
-          onKeyDown={handleKeyDown}
         />
       </div>
       
@@ -117,7 +146,6 @@ export const OrderFilter = ({ filters, setFilters }: OrderFilterProps) => {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="default">Default Order</SelectItem>
-          <SelectItem value="highest_profit">Highest Profit</SelectItem>
           <SelectItem value="highest_material_cost">Highest Material Cost</SelectItem>
           <SelectItem value="highest_wastage">Highest Wastage</SelectItem>
           <SelectItem value="latest_date">Latest Date</SelectItem>
@@ -148,19 +176,12 @@ export const OrderFilter = ({ filters, setFilters }: OrderFilterProps) => {
         </div>
       </div>
       
-      <div className="flex gap-2">
-        <Button variant="default" onClick={handleSearch} className="whitespace-nowrap">
-          <Search className="mr-1 h-4 w-4" />
-          Search
+      {isFiltersApplied && (
+        <Button variant="outline" onClick={clearFilters} className="whitespace-nowrap">
+          <X className="mr-1 h-4 w-4" />
+          Clear Filters
         </Button>
-        
-        {isFiltersApplied && (
-          <Button variant="outline" onClick={clearFilters} className="whitespace-nowrap">
-            <X className="mr-1 h-4 w-4" />
-            Clear
-          </Button>
-        )}
-      </div>
+      )}
     </div>
   );
 };
