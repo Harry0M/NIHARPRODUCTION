@@ -44,6 +44,9 @@ import { Component, InventoryMaterial } from "@/types/order";
 import { getStatusColor, getStatusDisplay } from "@/utils/orderUtils";
 import { useCostCalculation } from "@/hooks/order-form/useCostCalculation";
 import { CostCalculationDisplay } from "@/components/orders/CostCalculationDisplay";
+import { useOrderDetailEditing } from "@/hooks/order-form/useOrderDetailEditing";
+import { OrderInfoEditForm } from "@/components/orders/OrderInfoEditForm";
+import { ComponentsEditForm } from "@/components/orders/ComponentsEditForm";
 
 interface Order {
   id: string;
@@ -163,6 +166,17 @@ const OrderDetail = () => {
   // Get cost calculation functions
   const { calculateTotalCost, calculateSellingPrice } = useCostCalculation();
   
+  // Materials state for component editing
+  const [materials, setMaterials] = useState<{
+    id: string;
+    material_name: string;
+    unit: string;
+    color?: string;
+    gsm?: string;
+    purchase_rate?: number;
+  }[]>([]);
+  const [materialsLoading, setMaterialsLoading] = useState(true);
+  
   useEffect(() => {
     const fetchOrderData = async () => {
       setLoading(true);
@@ -272,6 +286,9 @@ const OrderDetail = () => {
 
           const summaries = Array.from(materialMap.values());
           
+          // Sort by consumption (highest first)
+          summaries.sort((a, b) => b.total_consumption - a.total_consumption);
+          
           // Calculate total cost
           totalCost = summaries.reduce((sum, item) => sum + item.total_cost, 0);
           
@@ -301,6 +318,44 @@ const OrderDetail = () => {
             setCatalogProduct({ name: catalogData.name });
           }
         }
+
+        // Fetch all materials for component editing dropdown
+        setMaterialsLoading(true);
+        const { data: materialsData, error: materialsError } = await supabase
+          .from("inventory")
+          .select(`
+            id,
+            material_name,
+            unit,
+            color,
+            gsm,
+            purchase_rate
+          `)
+          .order("material_name");
+
+        if (!materialsError) {
+          if (materialsData && materialsData.length > 0) {
+            console.log("ORDER DETAIL - Successfully loaded materials:", materialsData.length);
+            setMaterials(materialsData);
+          } else {
+            console.log("ORDER DETAIL - No materials found in inventory table");
+            setMaterials([]); // Set empty array if no materials found
+            toast({
+              title: "Warning",
+              description: "No materials found in inventory. Please add materials to enable component editing.",
+              variant: "destructive"
+            });
+          }
+        } else {
+          console.error("ORDER DETAIL - Error fetching materials:", materialsError);
+          setMaterials([]); // Set empty array on error
+          toast({
+            title: "Error",
+            description: "Could not load materials for component editing",
+            variant: "destructive"
+          });
+        }
+        setMaterialsLoading(false);
 
         // Calculate the costs using order form logic if order exists
         if (orderData) {
@@ -367,6 +422,88 @@ const OrderDetail = () => {
   const getComponentTypeDisplay = (type: string) => {
     return type.charAt(0).toUpperCase() + type.slice(1);
   };
+  
+  // Order detail editing functionality - defined after fetchOrderData is available
+  const editingHook = useOrderDetailEditing({
+    orderId: id!,
+    onOrderUpdated: () => {
+      // Refresh order data when updated
+      const fetchOrderData = async () => {
+        setLoading(true);
+        try {
+          // Re-fetch order details
+          const { data: orderData, error: orderError } = await supabase
+            .from("orders")
+            .select("*")
+            .eq("id", id)
+            .single();
+            
+          if (orderError) throw orderError;
+          setOrder(orderData);
+        } catch (error) {
+          console.error("Error refetching order:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchOrderData();
+    },
+    onComponentsUpdated: () => {
+      // Refresh components and order data when components are updated
+      const refreshData = async () => {
+        try {
+          // Fetch updated components
+          const { data: componentsData, error: componentsError } = await supabase
+            .from("order_components")
+            .select(`
+              *,
+              inventory:material_id (
+                id,
+                material_name,
+                unit,
+                color,
+                gsm,
+                purchase_rate
+              )
+            `)
+            .eq("order_id", id);
+            
+          if (componentsError) throw componentsError;
+          
+          const typeSafeComponents: Component[] = (componentsData?.map(comp => ({
+            ...comp,
+            gsm: comp.gsm !== null ? String(comp.gsm) : null,
+            inventory: comp.inventory && typeof comp.inventory === 'object' ? 
+              comp.inventory as InventoryMaterial : null,
+            materialRate: comp.inventory && typeof comp.inventory === 'object' 
+              ? (comp.inventory as InventoryMaterial).purchase_rate
+              : null,
+            component_cost_breakdown: comp.component_cost_breakdown ? 
+              (typeof comp.component_cost_breakdown === 'string' ? 
+                JSON.parse(comp.component_cost_breakdown) : 
+                comp.component_cost_breakdown) as { material_cost: number; material_rate: number; consumption: number; }
+              : { material_cost: 0, material_rate: 0, consumption: 0 }
+          })) || []) as Component[];
+          
+          setComponents(typeSafeComponents);
+
+          // Also refresh the order data to get updated costs
+          const { data: orderData, error: orderError } = await supabase
+            .from("orders")
+            .select("*")
+            .eq("id", id)
+            .single();
+            
+          if (orderError) throw orderError;
+          setOrder(orderData);
+          
+        } catch (error) {
+          console.error("Error refreshing data after component update:", error);
+        }
+      };
+      refreshData();
+    }
+  });
   
   if (loading) {
     return (
@@ -620,15 +757,6 @@ const OrderDetail = () => {
             </p>
           </div>
         </div>
-        
-        <div className="flex items-center gap-2">
-          <Button variant="outline" asChild>
-            <Link to={`/orders/${id}/edit`}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </Link>
-          </Button>
-        </div>
       </div>
       
       <div className="flex items-center gap-4">
@@ -642,198 +770,30 @@ const OrderDetail = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        {/* Order Information Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package size={18} />
-              Order Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 gap-y-4">
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Company Name</h3>
-                <p className="text-lg">{order.company_name}</p>
-              </div>
-              {catalogProduct && (
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Catalog Product</h3>
-                  <p className="text-lg">{catalogProduct.name}</p>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Order Date</h3>
-                  <p className="text-lg">{formatDate(order.order_date)}</p>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-medium text-muted-foreground">Expected Completion Date</h3>
-                    {!isEditingCompletionDate && (
-                      <button
-                        onClick={handleStartEditCompletionDate}
-                        className="text-xs text-blue-600 hover:text-blue-800 underline"
-                      >
-                        {order.delivery_date ? 'Edit' : 'Add'}
-                      </button>
-                    )}
-                  </div>
-                  {isEditingCompletionDate ? (
-                    <div className="space-y-2">
-                      <input
-                        type="date"
-                        value={editedCompletionDate}
-                        onChange={(e) => setEditedCompletionDate(e.target.value)}
-                        className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          onClick={handleSaveCompletionDate}
-                          disabled={savingCompletionDate}
-                          className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
-                        >
-                          {savingCompletionDate ? 'Saving...' : 'Save'}
-                        </button>
-                        <button
-                          onClick={handleCancelEditCompletionDate}
-                          className="px-3 py-1 bg-gray-300 text-gray-700 text-xs rounded hover:bg-gray-400"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-lg">
-                      {order.delivery_date ? 
-                        formatDate(order.delivery_date) : (
-                        <span className="text-gray-400 italic">Not set</span>
-                      )}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Product Quantity</h3>
-                  <p className="text-lg">
-                    {order.product_quantity !== undefined && order.product_quantity !== null 
-                      ? Number(order.product_quantity).toLocaleString() 
-                      : 1} units/product
-                  </p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Order Quantity</h3>
-                  <p className="text-lg">{Number(order.order_quantity || order.quantity).toLocaleString()} products</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Total Quantity</h3>
-                  <p className="text-lg">
-                    {order.total_quantity !== undefined && order.total_quantity !== null 
-                      ? Number(order.total_quantity).toLocaleString() 
-                      : Number(order.quantity).toLocaleString()} units
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Bag Size</h3>
-                  <p className="text-lg">{order.bag_length} × {order.bag_width} inches</p>
-                </div>
-                {order.border_dimension && (
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground">Border Dimension</h3>
-                    <p className="text-lg">{order.border_dimension} inches</p>
-                  </div>
-                )}
-              </div>
-              {order.rate && (
-                <div className="space-y-2">
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground">Total Selling Price</h3>
-                    <p className="text-lg">{formatCurrency(order.rate)}</p>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground">Rate per Piece</h3>
-                    <p className="text-lg font-medium text-primary">
-                      {formatCurrency(order.rate / parseInt(order?.order_quantity?.toString() || order?.quantity?.toString() || '1'))}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Based on quantity: {parseInt(order?.order_quantity?.toString() || order?.quantity?.toString() || '1')} pieces
-                    </p>
-                  </div>
-                </div>
-              )}
-              {order.special_instructions && (
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground">Special Instructions</h3>
-                  <p className="text-lg whitespace-pre-line">{order.special_instructions}</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Order Information Editing */}
+        <OrderInfoEditForm
+          order={order}
+          companies={companies}
+          isEditing={editingHook.isEditingOrderInfo}
+          onToggleEdit={() => editingHook.setIsEditingOrderInfo(!editingHook.isEditingOrderInfo)}
+          onSave={editingHook.updateOrderInfo}
+          loading={editingHook.submitting}
+        />
 
       </div>
 
-      {/* Component List Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ClipboardList size={18} />
-            Bag Components
-          </CardTitle>
-          <CardDescription>Details of all components for this order</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {components.length > 0 ? (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Size</TableHead>
-                    <TableHead>Material</TableHead>
-                    <TableHead>Color</TableHead>
-                    <TableHead>GSM</TableHead>
-                    <TableHead>Consumption</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {components.map((component) => (
-                    <TableRow key={component.id}>
-                      <TableCell className="font-medium">
-                        {component.component_type === 'custom' && component.custom_name 
-                          ? component.custom_name 
-                          : getComponentTypeDisplay(component.component_type)}
-                      </TableCell>
-                      <TableCell>{component.size || "-"}</TableCell>
-                      <TableCell>
-                        {component.inventory?.material_name || "-"}
-                      </TableCell>
-                      <TableCell>{component.color || "-"}</TableCell>
-                      <TableCell>{component.gsm || "-"}</TableCell>
-                      <TableCell>
-                        {component.consumption 
-                          ? `${parseFloat(component.consumption.toString()).toFixed(2)} ${component.inventory?.unit || 'units'}`
-                          : "-"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground mb-2">No components found for this order</p>
-              <p className="text-sm text-red-500">
-                If you just created this order and added components, please try refreshing the page.
-                If the issue persists, check the browser console for any errors.
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Components Editing */}
+      <ComponentsEditForm
+        components={components}
+        materials={materials}
+        materialsLoading={materialsLoading}
+        isEditing={editingHook.isEditingComponents}
+        onToggleEdit={() => editingHook.setIsEditingComponents(!editingHook.isEditingComponents)}
+        onUpdateComponents={(comps) => editingHook.updateOrderComponents(comps)}
+        onAddComponent={(comp) => editingHook.addComponent(comp)}
+        onDeleteComponent={editingHook.deleteComponent}
+        loading={editingHook.submitting}
+      />
 
       {/* Material Summary Table */}
       {materialSummary.length > 0 && (

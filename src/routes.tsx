@@ -7,7 +7,6 @@ import NotFound from "@/pages/NotFound";
 import OrderList from "@/pages/Orders/OrderList";
 import OrderNew from "@/pages/Orders/OrderNew";
 import OrderDetail from "@/pages/Orders/OrderDetail";
-import OrderEdit from "@/pages/Orders/OrderEdit";
 import InventoryLayout from "@/pages/Inventory/InventoryLayout";
 import StockList from "@/pages/Inventory/StockList";
 import StockNew from "@/pages/Inventory/StockNew";
@@ -80,7 +79,6 @@ const routes = [
               { path: "", element: <OrderList /> },
               { path: "new", element: <OrderNew /> },
               { path: ":id", element: <OrderDetail /> },
-              { path: ":id/edit", element: <OrderEdit /> },
             ],
           },
           {

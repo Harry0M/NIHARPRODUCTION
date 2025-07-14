@@ -118,14 +118,14 @@ export const OrderTable = ({
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       className="cursor-pointer"
-                      onClick={() => window.location.href = `/orders/${order.id}/edit`}
+                      onClick={() => window.location.href = `/orders/${order.id}`}
                     >
                       <Edit className="mr-2 h-4 w-4 text-amber-500" /> 
                       <span>Edit Order</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       className="cursor-pointer"
-                      onClick={() => generateIndividualOrderPDF(order, `order-${order.order_number}`)}
+                      onClick={() => generateIndividualOrderPDF(order as unknown as Record<string, unknown>, `order-${order.order_number}`)}
                     >
                       <Download className="mr-2 h-4 w-4 text-blue-600" /> 
                       <span>Download PDF</span>

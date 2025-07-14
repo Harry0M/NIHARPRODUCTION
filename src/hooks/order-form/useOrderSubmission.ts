@@ -4,12 +4,31 @@ import { showToast } from "@/components/ui/enhanced-toast";
 import { OrderFormData } from "@/types/order";
 import { validateComponentData, convertStringToNumeric, debugAllComponents } from "@/utils/orderFormUtils";
 
+interface ComponentData {
+  type?: string;
+  fetchedConsumption?: string | number;
+  formula?: string;
+  is_manual_consumption?: boolean;
+  consumption?: string | number;
+  material_id?: string;
+  color?: string;
+  gsm?: string | number;
+  roll_width?: string | number;
+  length?: string | number;
+  width?: string | number;
+  customName?: string;
+  materialRate?: string | number;
+  materialCost?: string | number;
+  componentCostBreakdown?: unknown;
+  [key: string]: unknown;
+}
+
 interface UseOrderSubmissionProps {
   orderDetails: OrderFormData;
-  components: Record<string, any>;
-  customComponents: any[];
+  components: Record<string, ComponentData>;
+  customComponents: ComponentData[];
   validateForm: () => boolean;
-  costCalculation: any;
+  costCalculation: Record<string, unknown>;
 }
 
 /**
@@ -24,7 +43,7 @@ export function useOrderSubmission({
 }: UseOrderSubmissionProps) {
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent, orderId?: string): Promise<string | undefined> => {
+  const handleSubmit = async (e: React.FormEvent): Promise<string | undefined> => {
     if (e) e.preventDefault();
     
     if (!validateForm()) {
@@ -216,9 +235,13 @@ export function useOrderSubmission({
         companyName = "Unnamed Company";
         console.log("Warning: Using 'Unnamed Company' as company_name was empty and no company_id was provided");
       }
-      
-      // Base order data without cost fields
-      const baseOrderData = {
+
+      // Calculate wastage cost from material cost
+      const wastagePercentage = parseFloat(orderDetails.wastage_percentage || '0'); // Default 0%
+      const wastageCost = (materialCost * wastagePercentage) / 100;
+
+      // Prepare order data for creation
+      const orderData = {
         company_name: companyName, // Always provide a non-null value
         company_id: orderDetails.company_id,
         quantity: parseInt(orderDetails.total_quantity || orderDetails.quantity), // Use total quantity for the order
@@ -232,17 +255,7 @@ export function useOrderSubmission({
         // Use the validated sales_account_id to prevent foreign key constraint errors
         sales_account_id: validatedSalesAccountId,
         catalog_id: orderDetails.catalog_id || null,
-        special_instructions: orderDetails.special_instructions || null
-      };
-
-      // Calculate wastage cost from material cost
-      const wastagePercentage = parseFloat(orderDetails.wastage_percentage || '0'); // Default 0%
-      const wastageCost = (materialCost * wastagePercentage) / 100;
-
-      // For editing, only update non-cost fields to preserve existing cost calculations
-      // For creation, include cost fields
-      const orderData = orderId ? baseOrderData : {
-        ...baseOrderData,
+        special_instructions: orderDetails.special_instructions || null,
         rate: sellingRate,
         // Costs multiplied by order quantity: material cost, production costs, and transport charges
         material_cost: materialCost,
@@ -258,71 +271,46 @@ export function useOrderSubmission({
         calculated_selling_price: sellingRate
       };
 
-      console.log(orderId ? "🔄 EDITING order - preserving existing costs:" : "✨ CREATING new order with costs:", orderData);
-      if (orderId) {
-        console.log("🚫 Cost fields EXCLUDED from update to preserve existing values");
-      }
+      console.log("✨ CREATING new order with costs:", orderData);
       
+      // Create new order
       let orderResult = null;
+      let attempts = 0;
+      const maxAttempts = 3;
       
-      if (orderId) {
-        // Update existing order
-        const { data, error } = await supabase
-          .from("orders")
-          .update(orderData)
-          .eq("id", orderId)
-          .select('id, order_number')
-          .single();
-          
-        if (error) throw error;
-        orderResult = data;
+      while (attempts < maxAttempts && !orderResult) {
+        attempts++;
         
-        // Delete existing components
-        const { error: deleteError } = await supabase
-          .from("order_components")
-          .delete()
-          .eq("order_id", orderId);
+        try {
+          const { data, error } = await supabase
+            .from("orders")
+            .insert(orderData)
+            .select('id, order_number')
+            .single();
           
-        if (deleteError) throw deleteError;
-      } else {
-        // Create new order
-        let attempts = 0;
-        const maxAttempts = 3;
-        
-        while (attempts < maxAttempts && !orderResult) {
-          attempts++;
-          
-          try {
-            const { data, error } = await supabase
-              .from("orders")
-              .insert(orderData as any)
-              .select('id, order_number')
-              .single();
+          if (error) {
+            console.error(`Order insertion attempt ${attempts} error:`, error);
             
-            if (error) {
-              console.error(`Order insertion attempt ${attempts} error:`, error);
-              
-              // If it's not a duplicate key error or we've reached max attempts, throw the error
-              if (error.code !== '23505' || attempts >= maxAttempts) {
-                throw error;
-              }
-              
-              // For duplicate key errors, wait briefly and retry
-              await new Promise(resolve => setTimeout(resolve, 100 * attempts));
-            } else {
-              orderResult = data;
-              break;
+            // If it's not a duplicate key error or we've reached max attempts, throw the error
+            if (error.code !== '23505' || attempts >= maxAttempts) {
+              throw error;
             }
-          } catch (insertError) {
-            if (attempts >= maxAttempts) {
-              throw insertError;
-            }
+            
+            // For duplicate key errors, wait briefly and retry
+            await new Promise(resolve => setTimeout(resolve, 100 * attempts));
+          } else {
+            orderResult = data;
+            break;
+          }
+        } catch (insertError) {
+          if (attempts >= maxAttempts) {
+            throw insertError;
           }
         }
-        
-        if (!orderResult) {
-          throw new Error("Failed to create order after multiple attempts");
-        }
+      }
+      
+      if (!orderResult) {
+        throw new Error("Failed to create order after multiple attempts");
       }
       
       console.log("Order saved successfully:", orderResult);
@@ -344,7 +332,7 @@ export function useOrderSubmission({
       // For each component, multiply consumption and costs by order quantity
       const processedComponents = allComponents.map(comp => {
         // Fetch the original per-unit consumption from the product template (fetchedConsumption)
-        const perUnitConsumption = parseFloat(comp.fetchedConsumption) || 0;
+        const perUnitConsumption = parseFloat(String(comp.fetchedConsumption)) || 0;
         const totalConsumption = perUnitConsumption * orderQuantity;
         console.log(`%c DB SAVE: ${comp.type} (formula: ${comp.formula}, is_manual_consumption: ${comp.is_manual_consumption}) - Saving: fetchedConsumption=${perUnitConsumption}, totalConsumption=${totalConsumption}`,
           'background: #4CAF50; color: white; padding: 2px 5px; font-weight: bold;');
@@ -414,8 +402,8 @@ export function useOrderSubmission({
             const customName = comp.type === 'custom' ? comp.customName : null;
             
             // Convert string values to numbers where appropriate
-            const gsmValue = convertStringToNumeric(comp.gsm);
-            const rollWidthValue = convertStringToNumeric(comp.roll_width);
+            const gsmValue = convertStringToNumeric(String(comp.gsm || ''));
+            const rollWidthValue = convertStringToNumeric(String(comp.roll_width || ''));
             
             // CORRECTED CONSUMPTION LOGIC: Use the already-processed consumption value
             // The processedComponents array now contains the correct per-unit values
@@ -428,7 +416,7 @@ export function useOrderSubmission({
             const finalConsumption = perUnitConsumption;
             
             console.log(`💰 MATERIAL RATE: ${comp.materialRate}`);
-            console.log(`💵 PER-UNIT COST: ${finalConsumption} × ${comp.materialRate} = ${finalConsumption * (comp.materialRate || 0)}`);
+            console.log(`💵 PER-UNIT COST: ${finalConsumption} × ${comp.materialRate} = ${finalConsumption * (Number(comp.materialRate) || 0)}`);
             console.log('---');
             
             const materialCost = convertStringToNumeric(
@@ -469,7 +457,7 @@ export function useOrderSubmission({
         if (componentsToInsert.length > 0) {
           const { data: insertedComponents, error: componentsError } = await supabase
             .from("order_components")
-            .insert(componentsToInsert)
+            .insert(componentsToInsert as never[])
             .select();
           
           if (componentsError) {
@@ -526,28 +514,32 @@ export function useOrderSubmission({
       
       // Show success toast
       showToast({
-        title: orderId ? "Order Updated" : "Order Created",
-        description: `Order #${orderResult.order_number} has been ${orderId ? 'updated' : 'created'} successfully`,
+        title: "Order Created",
+        description: `Order #${orderResult.order_number} has been created successfully`,
         type: "success"
       });
       
       // Return the order id for navigation
       return orderResult.id;
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("===== ORDER SUBMISSION ERROR =====");
       console.error(error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      const errorCode = error && typeof error === 'object' && 'code' in error ? error.code : undefined;
+      const errorDetails = error && typeof error === 'object' && 'details' in error ? error.details : 'No details available';
+      
       console.error("Error details:", {
-        message: error.message,
-        code: error.code,
-        details: error.details || 'No details available'
+        message: errorMessage,
+        code: errorCode,
+        details: errorDetails
       });
       console.error("===== END ERROR DETAILS =====");
       
       // Show error toast
       showToast({
-        title: orderId ? "Error updating order" : "Error creating order",
-        description: error.message,
+        title: "Error creating order",
+        description: errorMessage,
         type: "error"
       });
       
@@ -558,7 +550,7 @@ export function useOrderSubmission({
   };
 
   // Function to perform final verification of component data before database insertion
-  function verifyComponent(component: any): any {
+  function verifyComponent(component: Record<string, unknown>): Record<string, unknown> {
     // Strictly verify component_type is one of the allowed values
     const validTypes = ['part', 'border', 'handle', 'chain', 'runner', 'custom', 'piping'];
     
@@ -570,7 +562,7 @@ export function useOrderSubmission({
       // Normalize the component_type to ensure it exactly matches the constraint
       component.component_type = component.component_type.toLowerCase().trim();
       
-      if (!validTypes.includes(component.component_type)) {
+      if (!validTypes.includes(component.component_type as string)) {
         console.error(`CRITICAL ERROR: Invalid component_type "${component.component_type}" - forcing to "part"`);
         component.component_type = 'part';
       }
@@ -595,7 +587,7 @@ export function useOrderSubmission({
 }
 
 // Function to test component types directly
-function testComponentTypes(components: any[]) {
+function testComponentTypes(components: Record<string, unknown>[]) {
   console.log("======== COMPONENT TYPE CONSTRAINT TEST ========");
   
   // Test each component against the exact constraint pattern
@@ -609,16 +601,16 @@ function testComponentTypes(components: any[]) {
     
     // Check if it's exactly one of the allowed values
     const validTypes = ['part', 'border', 'handle', 'chain', 'runner', 'custom', 'piping'];
-    const isExactMatch = validTypes.includes(type);
+    const isExactMatch = validTypes.includes(type as string);
     
     // Check for case issues
-    const hasUppercase = /[A-Z]/.test(type);
+    const hasUppercase = /[A-Z]/.test(type as string);
     
     // Check for whitespace
-    const hasWhitespace = /\s/.test(type);
+    const hasWhitespace = /\s/.test(type as string);
     
     // Check for special characters
-    const hasSpecialChars = /[^a-zA-Z]/.test(type);
+    const hasSpecialChars = /[^a-zA-Z]/.test(type as string);
     
     // Log the test results
     console.log(`Component ${index} - Type: "${type}"`);

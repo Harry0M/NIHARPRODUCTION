@@ -48,6 +48,13 @@ export const ComponentsTable = ({
     return <p className="text-muted-foreground text-sm my-4">No components have been added to this product.</p>;
   }
 
+  // Sort components by consumption (highest first)
+  const sortedComponents = [...components].sort((a, b) => {
+    const consumptionA = a.consumption || 0;
+    const consumptionB = b.consumption || 0;
+    return consumptionB - consumptionA;
+  });
+
   // Function to get component display name based on component_type
   const getComponentTypeName = (componentType: string) => {
     const componentTypeLabels: Record<string, string> = {
@@ -103,7 +110,7 @@ export const ComponentsTable = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {components.map((component) => {
+          {sortedComponents.map((component) => {
             const displayConsumption = calculateDisplayConsumption(component);
             
             return (
