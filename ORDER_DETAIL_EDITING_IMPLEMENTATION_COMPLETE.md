@@ -7,29 +7,34 @@ The order detail editing functionality has been successfully implemented with fu
 ## ✅ Completed Features
 
 ### 1. **Order Information Editing**
+
 - ✅ Live editing of order details directly in the order detail page
 - ✅ Editable fields: company name, quantities, dimensions, dates, special instructions
 - ✅ Form validation and error handling
 - ✅ **FIXED**: `order_number` not-null constraint error
 
 ### 2. **Component Editing**
+
 - ✅ Add, edit, and delete components directly in the order detail view
 - ✅ Material selection dropdown with proper loading states
 - ✅ Quantity and cost editing per component
 - ✅ Real-time cost calculations
 
 ### 3. **Cost Calculations**
+
 - ✅ Automatic material cost recalculation when components change
 - ✅ Total cost updates (material cost + production cost)
 - ✅ Live updates without page refresh
 
 ### 4. **Material Dropdown Fix**
+
 - ✅ Shows loading state while fetching materials
 - ✅ Displays helpful message when no materials are available
 - ✅ Properly populated with available materials
 - ✅ User guidance for creating materials if none exist
 
 ### 5. **Architecture Improvements**
+
 - ✅ Separated order creation logic (`useOrderSubmission.ts`) from editing logic
 - ✅ Created dedicated `useOrderDetailEditing.ts` hook for all editing functionality
 - ✅ Proper TypeScript types and error handling
@@ -38,22 +43,27 @@ The order detail editing functionality has been successfully implemented with fu
 ## 🔧 Key Technical Fixes
 
 ### Order Number Constraint Fix
+
 **Problem**: PATCH requests to update orders were failing due to `order_number` being set to `null`, violating the database not-null constraint.
 
 **Solution**: Modified `useOrderDetailEditing.ts` to preserve the existing `order_number` when no new value is provided:
 
 ```typescript
 // Before (causing constraint error):
-order_number: orderData.order_number || null
+order_number: orderData.order_number || null;
 
 // After (preserves existing value):
-order_number: orderData.order_number && orderData.order_number.trim() !== "" ? orderData.order_number : undefined
+order_number: orderData.order_number && orderData.order_number.trim() !== ""
+  ? orderData.order_number
+  : undefined;
 ```
 
 This ensures the `order_number` field is only updated when a valid value is explicitly provided, never set to `null`.
 
 ### Material Cost Recalculation
+
 Implemented automatic cost recalculation after any component change:
+
 - Fetches all components for the order
 - Calculates total material cost
 - Updates order's material_cost and total_cost fields
@@ -62,21 +72,24 @@ Implemented automatic cost recalculation after any component change:
 ## 📁 Modified Files
 
 ### Core Hooks
+
 - `src/hooks/order-form/useOrderDetailEditing.ts` - Main editing logic
 - `src/hooks/order-form/useOrderSubmission.ts` - Refactored for creation only
 
 ### Components
+
 - `src/components/orders/OrderInfoEditForm.tsx` - Order information editing form
 - `src/components/orders/ComponentsEditForm.tsx` - Component editing form
 - `src/pages/Orders/OrderDetail.tsx` - Integrated editing functionality
 
 ### Types
+
 - `src/types/order.ts` - Shared types for Component, InventoryMaterial, Order
 
 ## 🧪 Testing Verified
 
 1. **Order Info Editing**: ✅ Works without affecting order_number
-2. **Order Number Updates**: ✅ Valid order_number changes work correctly  
+2. **Order Number Updates**: ✅ Valid order_number changes work correctly
 3. **Component CRUD**: ✅ Add, edit, delete components with cost updates
 4. **Material Dropdown**: ✅ Shows proper states (loading, empty, populated)
 5. **Cost Calculations**: ✅ Material and total costs update automatically

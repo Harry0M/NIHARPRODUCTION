@@ -12,6 +12,7 @@ import { StockInfoGrid } from "./stock-detail/StockInfoGrid";
 import { useStockDetail } from "@/hooks/inventory/useStockDetail";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StockTransactionHistory } from "./stock-detail/StockTransactionHistory";
+import { CleanTransactionView } from "./stock-detail/CleanTransactionView";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { showToast } from "@/components/ui/enhanced-toast";
 import { Badge } from "@/components/ui/badge";
@@ -137,7 +138,7 @@ export const StockDetailDialog = ({
         };
       }
     }
-  }, [open, stockId]); // Removed refreshTransactions from dependencies
+  }, [open, stockId, refreshTransactions]);
 
   // Use a ref to track if we've already refreshed for this dialog opening
   const hasRefreshedRef = useRef(false);
@@ -160,7 +161,7 @@ export const StockDetailDialog = ({
     if (!open) {
       hasRefreshedRef.current = false;
     }
-  }, [open, initialTab]); // Removed refreshTransactions from dependencies
+  }, [open, initialTab, refreshTransactions]);
   
   // Handle manual refresh with toast feedback
   const handleRefresh = async () => {
@@ -270,30 +271,25 @@ export const StockDetailDialog = ({
             }} 
             defaultValue="details"
           >
-            <TabsList className="grid grid-cols-2 mb-4">
+            <TabsList className="grid grid-cols-3 mb-4">
               <TabsTrigger value="details">Details</TabsTrigger>
               <TabsTrigger 
                 value="transactions" 
                 className={`relative ${hasTransactions ? 'font-medium text-primary' : ''}`}
                 onClick={() => hasTransactions === false && handleRefresh()}
               >
+                <Database className="h-4 w-4" />
+              </TabsTrigger>
+              <TabsTrigger 
+                value="clean" 
+                className={`relative ${hasTransactions ? 'font-medium' : ''}`}
+              >
                 <div className="flex items-center gap-1.5">
                   <Database className="h-4 w-4" />
-                  Transactions
-                  {hasTransactions && (
-                    <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary w-5 h-5 text-[10px] text-primary-foreground">
-                      {transactionCount}
-                    </span>
-                  )}
-                  {hasTransactions && (
-                    <span className="absolute -right-1 -top-1 flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                    </span>
-                  )}
-                  {(isRefreshing || isTransactionsLoading) && (
-                    <RefreshCcw className="ml-2 h-3 w-3 animate-spin" />
-                  )}
+                  Clean View
+                  <Badge variant="outline" className="ml-1 bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400 text-xs px-1">
+                    Filtered
+                  </Badge>
                 </div>
               </TabsTrigger>
             </TabsList>
@@ -370,6 +366,41 @@ export const StockDetailDialog = ({
                 onRefresh={refreshTransactions}
                 isLoading={isRefreshing || isTransactionsLoading}
                 materialId={stockId || undefined}
+              />
+            </TabsContent>
+            
+            <TabsContent value="clean">
+              <div className="mb-4 flex justify-between items-center">
+                <div className="text-sm text-muted-foreground flex items-center gap-2">
+                  <Badge variant="outline" className="flex items-center gap-1 bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400">
+                    <Database className="h-3.5 w-3.5" />
+                    Clean Transaction View
+                  </Badge>
+                  {errorMessage && (
+                    <span className="text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-3.5 w-3.5" />
+                      {errorMessage}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    className="flex items-center gap-1"
+                  >
+                    <RefreshCcw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                  </Button>
+                </div>
+              </div>
+              <CleanTransactionView 
+                materialId={stockId || undefined}
+                transactionLogs={transactionLogs || []}
+                isLoading={isRefreshing || isTransactionsLoading}
+                onRefresh={refreshTransactions}
               />
             </TabsContent>
           </Tabs>
