@@ -64,7 +64,7 @@ export const CleanTransactionView = ({
     };
   };
 
-  // Filter transactions to show only purchases and valid job consumptions
+  // Filter transactions to show only purchases, valid job consumptions, and manual consumptions
   const filterTransactions = async (transactions: TransactionLog[]) => {
     if (transactions.length === 0) {
       setFilteredTransactions([]);
@@ -73,17 +73,24 @@ export const CleanTransactionView = ({
 
     try {
       const filtered: TransactionLog[] = [];
-      
+
       for (const transaction of transactions) {
         const type = transaction.transaction_type.toLowerCase();
         const refType = transaction.reference_type?.toLowerCase();
-        
+        const notes = transaction.notes?.toLowerCase() || "";
+
         // Include all purchase transactions
         if (type.includes('purchase') || refType === 'purchase') {
           filtered.push(transaction);
           continue;
         }
-        
+
+        // Include manual consumption transactions (by type, refType, or notes)
+        if (type.includes('manual') || refType === 'manual' || notes.includes('manual')) {
+          filtered.push(transaction);
+          continue;
+        }
+
         // For job consumption transactions, check if job card still exists
         if ((type.includes('consumption') || refType === 'jobcard') && transaction.reference_id) {
           try {
@@ -92,7 +99,7 @@ export const CleanTransactionView = ({
               .select('id')
               .eq('id', transaction.reference_id)
               .single();
-            
+
             // If job card exists (not deleted), include the transaction
             if (!error && jobCard) {
               filtered.push(transaction);
@@ -104,10 +111,10 @@ export const CleanTransactionView = ({
           }
         }
       }
-      
+
       // Sort by transaction date (newest first)
       filtered.sort((a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime());
-      
+
       setFilteredTransactions(filtered);
     } catch (error) {
       console.error("Error filtering transactions:", error);
@@ -310,7 +317,7 @@ export const CleanTransactionView = ({
                 <div className={`p-2 rounded-full ${typeDisplay.bg} flex-shrink-0`}>
                   <IconComponent className="h-4 w-4" />
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <div className="flex items-center gap-2">
@@ -321,6 +328,14 @@ export const CleanTransactionView = ({
                         <span className="text-xs text-muted-foreground">
                           #{transaction.reference_number}
                         </span>
+                      )}
+                      {/* Manual consumption indicator */}
+                      {(transaction.transaction_type?.toLowerCase().includes('manual') ||
+                        transaction.reference_type?.toLowerCase() === 'manual' ||
+                        transaction.notes?.toLowerCase().includes('manual')) && (
+                        <Badge variant="outline" className="ml-2 bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-900/20 dark:border-orange-800 dark:text-orange-400">
+                          Manual
+                        </Badge>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
@@ -339,14 +354,34 @@ export const CleanTransactionView = ({
                       </span>
                     </div>
                   </div>
-                  
+
                   <div className="text-sm text-muted-foreground">
                     <p>{typeDisplay.description}</p>
                     {transaction.notes && (
                       <p className="text-xs mt-1 italic">{transaction.notes}</p>
                     )}
+                    {/* Manual consumption view button */}
+                    {(transaction.transaction_type?.toLowerCase().includes('manual') ||
+                      transaction.reference_type?.toLowerCase() === 'manual' ||
+                      transaction.notes?.toLowerCase().includes('manual')) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="mt-2"
+                        onClick={() => {
+                          // Replace with your manual view logic
+                          showToast({
+                            title: 'Manual Consumption',
+                            description: transaction.notes || 'Manual transaction',
+                            type: 'info',
+                          });
+                        }}
+                      >
+                        View Manual
+                      </Button>
+                    )}
                   </div>
-                  
+
                   <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
                     <span>New Qty: {transaction.new_quantity}</span>
                     <span>Previous: {transaction.previous_quantity}</span>
