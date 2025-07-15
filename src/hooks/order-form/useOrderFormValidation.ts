@@ -22,8 +22,15 @@ export function useOrderFormValidation() {
       isValid = false;
     }
 
-    // Validate quantity
-    if (!orderDetails.quantity || parseFloat(orderDetails.quantity) <= 0) {
+    // Validate order quantity (main editable field)
+    if (!orderDetails.order_quantity || parseFloat(orderDetails.order_quantity) <= 0) {
+      errors.order_quantity = "Valid order quantity is required";
+      isValid = false;
+    }
+
+    // Validate quantity (hidden field - use order_quantity if quantity is not set)
+    const quantityToValidate = orderDetails.quantity || orderDetails.order_quantity;
+    if (!quantityToValidate || parseFloat(quantityToValidate) <= 0) {
       errors.quantity = "Valid quantity is required";
       isValid = false;
     }

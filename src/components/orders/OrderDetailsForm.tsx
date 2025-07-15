@@ -20,6 +20,7 @@ interface OrderDetailsFormProps {
   formErrors: {
     company?: string;
     quantity?: string;
+    order_quantity?: string;
     product_quantity?: string;
     total_quantity?: string;
     bag_length?: string;

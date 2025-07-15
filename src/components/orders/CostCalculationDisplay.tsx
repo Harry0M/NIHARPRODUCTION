@@ -44,6 +44,9 @@ export const CostCalculationDisplay = ({
 }: CostCalculationDisplayProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   
+  // Track calculated wastage cost based on current material cost and percentage
+  const [calculatedWastageCost, setCalculatedWastageCost] = useState(costCalculation.wastageCost || 0);
+  
   // Make sure we always update state when the props change
   useEffect(() => {
     // Only update if values have actually changed to prevent unnecessary re-renders
@@ -93,6 +96,12 @@ export const CostCalculationDisplay = ({
     margin: costCalculation.margin,
     sellingPrice: costCalculation.sellingPrice,
   });
+  
+  // Update calculated wastage cost when material cost or percentage changes
+  useEffect(() => {
+    const newWastageCost = (editableCosts.materialCost || 0) * (costCalculation.wastagePercentage || 0) / 100;
+    setCalculatedWastageCost(newWastageCost);
+  }, [editableCosts.materialCost, costCalculation.wastagePercentage]);
   
   // For direct editing
   const [inputValues, setInputValues] = useState({
@@ -262,12 +271,25 @@ export const CostCalculationDisplay = ({
     
     setEditableCosts(updatedCosts);
     
-    // Calculate new total cost as PURE SUM of all components
-    const newTotalCost = (updatedCosts.materialCost || 0) + 
-                        (updatedCosts.cuttingCharge || 0) + 
-                        (updatedCosts.printingCharge || 0) + 
-                        (updatedCosts.stitchingCharge || 0) + 
-                        (updatedCosts.transportCharge || 0);
+    // If material cost changed, recalculate wastage cost
+    let newWastageCost = costCalculation.wastageCost || 0;
+    if (type === 'materialCost' && (costCalculation.wastagePercentage || 0) > 0) {
+      newWastageCost = (totalValue * (costCalculation.wastagePercentage || 0)) / 100;
+      
+      // Trigger wastage percentage change to update parent component
+      if (onWastagePercentageChange) {
+        onWastagePercentageChange(costCalculation.wastagePercentage || 0);
+      }
+    }
+    
+    // Calculate new total cost as PURE SUM of all components plus wastage
+    const baseCost = (updatedCosts.materialCost || 0) + 
+                    (updatedCosts.cuttingCharge || 0) + 
+                    (updatedCosts.printingCharge || 0) + 
+                    (updatedCosts.stitchingCharge || 0) + 
+                    (updatedCosts.transportCharge || 0);
+    
+    const newTotalCost = baseCost + newWastageCost;
     
     // Debug logging - simplified
     console.log('Pure Sum Calculation:', {
@@ -276,6 +298,7 @@ export const CostCalculationDisplay = ({
       printingCharge: updatedCosts.printingCharge || 0,
       stitchingCharge: updatedCosts.stitchingCharge || 0,
       transportCharge: updatedCosts.transportCharge || 0,
+      wastageCost: newWastageCost,
       pureSum: newTotalCost,
       changedComponent: type,
       changedValue: totalValue
@@ -559,12 +582,12 @@ export const CostCalculationDisplay = ({
                         <span>{costCalculation.wastagePercentage || 0}</span>
                       )}
                       <span className="text-xs text-muted-foreground">%</span>
-                      <span className="text-orange-700 font-medium">{formatCurrency(costCalculation.wastageCost || 0)}</span>
+                      <span className="text-orange-700 font-medium">{formatCurrency(calculatedWastageCost)}</span>
                     </div>
                   </div>
                   <div className="flex justify-between items-center mt-1 text-sm text-muted-foreground">
                     <span>Per unit</span>
-                    <span>{formatCurrency((costCalculation.wastageCost || 0) / (orderQuantity || 1))}</span>
+                    <span>{formatCurrency(calculatedWastageCost / (orderQuantity || 1))}</span>
                   </div>
                   <div className="text-xs text-orange-600 mt-1">
                     Calculated as {costCalculation.wastagePercentage || 0}% of material cost

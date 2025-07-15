@@ -30,6 +30,7 @@ export interface Component {
 export interface FormErrors {
   company?: string;
   quantity?: string;
+  order_quantity?: string;
   bag_length?: string;
   bag_width?: string;
   order_date?: string;

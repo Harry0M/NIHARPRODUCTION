@@ -536,10 +536,23 @@ const OrderDetail = () => {
   const handleCostChange = (type: string, value: number) => {
     if (!editedCosts) return;
     
-    setEditedCosts(prev => ({
-      ...prev,
+    // Special handling for material cost to auto-update wastage
+    if (type === 'materialCost') {
+      recalculateWastageForMaterialCost(value);
+      return;
+    }
+    
+    const updatedCosts = {
+      ...editedCosts,
       [type]: value
-    }));
+    };
+    
+    // Recalculate total cost including current wastage
+    const baseCost = updatedCosts.materialCost + updatedCosts.cuttingCharge + 
+                    updatedCosts.printingCharge + updatedCosts.stitchingCharge;
+    updatedCosts.totalCost = baseCost + updatedCosts.transportCharge + (updatedCosts.wastageCost || 0);
+    
+    setEditedCosts(updatedCosts);
   };
 
   const handleMarginChange = (margin: number) => {
@@ -572,7 +585,7 @@ const OrderDetail = () => {
   const handleWastagePercentageChange = (wastagePercentage: number) => {
     if (!editedCosts) return;
     
-    // Calculate new wastage cost based on material cost and new percentage
+    // Calculate new wastage cost based on current material cost and new percentage
     const newWastageCost = (editedCosts.materialCost * wastagePercentage) / 100;
     
     // Recalculate total cost with new wastage
@@ -586,6 +599,28 @@ const OrderDetail = () => {
       wastageCost: newWastageCost,
       totalCost: newTotalCost
     }));
+  };
+
+  // Helper function to recalculate wastage when material cost changes
+  const recalculateWastageForMaterialCost = (newMaterialCost: number) => {
+    if (!editedCosts) return;
+    
+    const currentWastagePercentage = editedCosts.wastagePercentage || 0;
+    if (currentWastagePercentage > 0) {
+      const newWastageCost = (newMaterialCost * currentWastagePercentage) / 100;
+      
+      // Update wastage cost and total cost
+      const baseCost = newMaterialCost + editedCosts.cuttingCharge + 
+                      editedCosts.printingCharge + editedCosts.stitchingCharge;
+      const newTotalCost = baseCost + editedCosts.transportCharge + newWastageCost;
+      
+      setEditedCosts(prev => ({
+        ...prev,
+        materialCost: newMaterialCost,
+        wastageCost: newWastageCost,
+        totalCost: newTotalCost
+      }));
+    }
   };
 
   const handleSaveCosts = async () => {
@@ -770,14 +805,9 @@ const OrderDetail = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        {/* Order Information Editing */}
+        {/* Order Information - Read-only view */}
         <OrderInfoEditForm
           order={order}
-          companies={companies}
-          isEditing={editingHook.isEditingOrderInfo}
-          onToggleEdit={() => editingHook.setIsEditingOrderInfo(!editingHook.isEditingOrderInfo)}
-          onSave={editingHook.updateOrderInfo}
-          loading={editingHook.submitting}
         />
 
       </div>

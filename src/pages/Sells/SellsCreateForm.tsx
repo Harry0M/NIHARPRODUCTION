@@ -61,12 +61,17 @@ const SellsCreateForm = () => {
       setOrder(data);
       
       // Auto-populate form with order data
+      // Calculate rate per unit from total selling price divided by order quantity
+      const calculatedRate = data.calculated_selling_price && data.order_quantity 
+        ? data.calculated_selling_price / data.order_quantity 
+        : (data.rate || 0);
+      
       setFormData(prev => ({
         ...prev,
         companyName: data.company_name,
         productName: data.description || `Order ${data.order_number}`,
-        quantity: data.quantity,
-        rate: data.rate || data.calculated_selling_price || 0,
+        quantity: data.order_quantity || 1, // Show order quantity, not total quantity
+        rate: calculatedRate, // Show calculated rate per unit
         transportCharge: data.transport_charge || 0,
         transportIncluded: Boolean(data.transport_charge),
       }));
@@ -264,7 +269,7 @@ const SellsCreateForm = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="quantity">Quantity</Label>
+                    <Label htmlFor="quantity">Order Quantity</Label>
                     <Input
                       id="quantity"
                       type="number"

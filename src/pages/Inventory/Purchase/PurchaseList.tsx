@@ -48,46 +48,126 @@ interface Purchase {
 const PurchaseList = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
+
+  // Debounce search term to avoid too many API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      // Reset to page 1 when search term changes
+      if (searchTerm !== debouncedSearchTerm) {
+        setPage(1);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, debouncedSearchTerm]);
   
   // Main purchases query with pagination
   const { data: purchasesData, isLoading, refetch } = useQuery({
-    queryKey: ['purchases', page, pageSize, searchTerm],
+    queryKey: ['purchases', page, pageSize, debouncedSearchTerm],
     queryFn: async () => {
+      console.log(`🔍 Inventory Purchase search: "${debouncedSearchTerm}", page: ${page}, pageSize: ${pageSize}`);
+      
+      try {
       // First get the total count for pagination
-      const countQuery = supabase
-        .from('purchases')
-        .select('id', { count: 'exact', head: true });
+      let countQuery;
       
-      if (searchTerm) {
-        countQuery.or(
-          `purchase_number.ilike.%${searchTerm}%,suppliers.name.ilike.%${searchTerm}%`
-        ).not('id', 'is', null);
+      if (debouncedSearchTerm.trim()) {
+        // For search, we'll use two separate queries and combine results
+        // This avoids the complex OR with joins that PostgREST struggles with
+        console.log(`🔍 Inventory - Applying search filter: "${searchTerm}"`);
+        
+        // Search by purchase number
+        const { data: purchaseNumberResults, error: pnError } = await supabase
+          .from('purchases')
+          .select('id, purchase_number, suppliers(name)')
+          .ilike('purchase_number', `%${searchTerm}%`);
+        
+        // Search by supplier name
+        const { data: supplierNameResults, error: snError } = await supabase
+          .from('purchases')
+          .select('id, purchase_number, suppliers!inner(name)')
+          .filter('suppliers.name', 'ilike', `%${searchTerm}%`);
+        
+        if (pnError && snError) {
+          console.error("Error fetching purchases count:", pnError || snError);
+          throw pnError || snError;
+        }
+        
+        // Combine results and remove duplicates
+        const allResults = [...(purchaseNumberResults || []), ...(supplierNameResults || [])];
+        const uniqueResults = allResults.filter((item, index, self) => 
+          index === self.findIndex(t => t.id === item.id)
+        );
+        
+        const count = uniqueResults.length;
+        console.log(`📊 Inventory - Found ${count} total purchases matching criteria`);
+        setTotalCount(count);
+      } else {
+        console.log(`📋 Inventory - Loading all purchases (no search filter)`);
+        
+        const { count, error: countError } = await supabase
+          .from('purchases')
+          .select('*', { count: 'exact', head: true });
+        
+        if (countError) {
+          console.error("Error fetching purchases count:", countError);
+          throw countError;
+        }
+        
+        console.log(`📊 Inventory - Found ${count || 0} total purchases matching criteria`);
+        setTotalCount(count || 0);
       }
-      
-      const { count, error: countError } = await countQuery;
-      
-      if (countError) {
-        console.error("Error fetching purchases count:", countError);
-        throw countError;
-      }
-      
-      setTotalCount(count || 0);
       
       // Then fetch the paginated data
       let query = supabase
         .from('purchases')
         .select('*, suppliers(name), purchase_items(id, material_id, quantity, unit_price, line_total)');
       
-      if (searchTerm) {
-        query = query.or(
-          `purchase_number.ilike.%${searchTerm}%,suppliers.name.ilike.%${searchTerm}%`
+      if (debouncedSearchTerm.trim()) {
+        const searchTerm = debouncedSearchTerm.trim();
+        console.log(`🔍 Inventory - Applying data search filter: "${searchTerm}"`);
+        
+        // Use the same two-query approach for data consistency
+        // Search by purchase number
+        const { data: pnData, error: pnDataError } = await supabase
+          .from('purchases')
+          .select('*, suppliers(name), purchase_items(id, material_id, quantity, unit_price, line_total)')
+          .ilike('purchase_number', `%${searchTerm}%`)
+          .order('purchase_date', { ascending: false });
+        
+        // Search by supplier name  
+        const { data: snData, error: snDataError } = await supabase
+          .from('purchases')
+          .select('*, suppliers!inner(name), purchase_items(id, material_id, quantity, unit_price, line_total)')
+          .filter('suppliers.name', 'ilike', `%${searchTerm}%`)
+          .order('purchase_date', { ascending: false });
+        
+        if (pnDataError && snDataError) {
+          console.error("Error fetching purchases data:", pnDataError || snDataError);
+          throw pnDataError || snDataError;
+        }
+        
+        // Combine and deduplicate results
+        const allData = [...(pnData || []), ...(snData || [])];
+        const uniqueData = allData.filter((item, index, self) => 
+          index === self.findIndex(t => t.id === item.id)
         );
+        
+        // Apply pagination to combined results
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+        const paginatedData = uniqueData.slice(from, to + 1);
+        
+        console.log(`✅ Inventory Purchase search completed: found ${paginatedData.length} results`);
+        return paginatedData as Purchase[];
       }
       
-      // Add pagination
+      // Add pagination for non-search queries
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
       
@@ -102,9 +182,14 @@ const PurchaseList = () => {
         throw error;
       }
       
+      console.log(`✅ Inventory Purchase search completed: found ${data?.length || 0} results`);
       return data as Purchase[];
+      } catch (searchError) {
+        console.error("Error in inventory purchase search:", searchError);
+        throw searchError;
+      }
     },
-    keepPreviousData: true,
+    placeholderData: (previousData) => previousData,
   });
 
   const getStatusBadgeClass = (status: string) => {
@@ -140,7 +225,7 @@ const PurchaseList = () => {
 
     // Calculate which page links to show
     let startPage = Math.max(1, page - 2);
-    let endPage = Math.min(totalPages, startPage + 4);
+    const endPage = Math.min(totalPages, startPage + 4);
     
     if (endPage - startPage < 4) {
       startPage = Math.max(1, endPage - 4);
