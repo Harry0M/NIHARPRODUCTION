@@ -66,7 +66,11 @@ export function ComponentsEditForm({
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newComponent, setNewComponent] = useState<Partial<Component>>({
     component_type: 'part',
-    is_custom: false
+    is_custom: false,
+    length: '',
+    width: '',
+    roll_width: '',
+    size: ''
   });
 
   const componentTypes = ['part', 'border', 'handle', 'chain', 'runner', 'custom', 'piping'];
@@ -115,6 +119,8 @@ export function ComponentsEditForm({
       gsm: newComponent.gsm ? String(newComponent.gsm) : null,
       custom_name: newComponent.component_type === 'custom' ? newComponent.custom_name : null,
       material_id: newComponent.material_id || null,
+      length: newComponent.length || null,
+      width: newComponent.width || null,
       roll_width: newComponent.roll_width || null,
       consumption: newComponent.consumption || null,
       component_cost: newComponent.component_cost || null
@@ -124,7 +130,11 @@ export function ComponentsEditForm({
     if (success) {
       setNewComponent({
         component_type: 'part',
-        is_custom: false
+        is_custom: false,
+        length: '',
+        width: '',
+        roll_width: '',
+        size: ''
       });
       setShowAddDialog(false);
     }
@@ -230,6 +240,59 @@ export function ComponentsEditForm({
                       </SelectContent>
                     </Select>
                   </div>
+                  
+                  {/* Dimensions Section */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-gray-700">Dimensions</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="length" className="text-xs text-gray-600">Length (inches)</Label>
+                        <Input
+                          id="length"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={newComponent.length || ''}
+                          onChange={(e) => setNewComponent(prev => ({ ...prev, length: e.target.value }))}
+                          placeholder="Length"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="width" className="text-xs text-gray-600">Width (inches)</Label>
+                        <Input
+                          id="width"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={newComponent.width || ''}
+                          onChange={(e) => setNewComponent(prev => ({ ...prev, width: e.target.value }))}
+                          placeholder="Width"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="roll_width" className="text-xs text-gray-600">Roll Width (inches)</Label>
+                        <Input
+                          id="roll_width"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={newComponent.roll_width || ''}
+                          onChange={(e) => setNewComponent(prev => ({ ...prev, roll_width: e.target.value }))}
+                          placeholder="Roll Width"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="size" className="text-xs text-gray-600">Size</Label>
+                        <Input
+                          id="size"
+                          value={newComponent.size || ''}
+                          onChange={(e) => setNewComponent(prev => ({ ...prev, size: e.target.value }))}
+                          placeholder="e.g., 10x20"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <Label htmlFor="consumption">Consumption</Label>
@@ -380,100 +443,165 @@ export function ComponentsEditForm({
           <div className="space-y-4">
             {editingComponents.map((component, index) => (
               <Card key={component.id || index} className="p-4">
-                <div className="grid grid-cols-4 gap-4">
-                  <div>
-                    <Label>Component Type</Label>
-                    <Select 
-                      value={component.component_type} 
-                      onValueChange={(value) => updateComponent(index, 'component_type', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {componentTypes.map(type => (
-                          <SelectItem key={type} value={type}>
-                            {type.charAt(0).toUpperCase() + type.slice(1)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {component.component_type === 'custom' && (
+                <div className="space-y-4">
+                  {/* Component Type and Basic Info */}
+                  <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <Label>Custom Name</Label>
+                      <Label>Component Type</Label>
+                      <Select 
+                        value={component.component_type} 
+                        onValueChange={(value) => updateComponent(index, 'component_type', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {componentTypes.map(type => (
+                            <SelectItem key={type} value={type}>
+                              {type.charAt(0).toUpperCase() + type.slice(1)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {component.component_type === 'custom' && (
+                      <div>
+                        <Label>Custom Name</Label>
+                        <Input
+                          value={component.custom_name || ''}
+                          onChange={(e) => updateComponent(index, 'custom_name', e.target.value)}
+                          placeholder="Enter custom name"
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <Label>Material</Label>
+                      {materials.length === 0 && !materialsLoading && (
+                        <p className="text-sm text-orange-600 mb-2">
+                          ⚠️ No materials available. Please add materials to the inventory first.
+                        </p>
+                      )}
+                      <Select 
+                        key={`edit-material-${index}-${materials.length}`} // Force re-render when materials change
+                        value={component.material_id || ''} 
+                        onValueChange={(value) => updateComponent(index, 'material_id', value)}
+                        disabled={materialsLoading || materials.length === 0}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={
+                            materialsLoading 
+                              ? "Loading materials..." 
+                              : materials.length === 0 
+                                ? "No materials available" 
+                                : "Select material"
+                          } />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {materialsLoading ? (
+                            <SelectItem value="loading" disabled>Loading materials...</SelectItem>
+                          ) : materials.length === 0 ? (
+                            <SelectItem value="no-materials" disabled>No materials available</SelectItem>
+                          ) : (
+                            materials.map(material => (
+                              <SelectItem key={material.id} value={material.id}>
+                                {material.material_name} {material.color && `- ${material.color}`}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Dimensions Section */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-gray-700">Dimensions</Label>
+                    <div className="grid grid-cols-4 gap-3">
+                      <div>
+                        <Label htmlFor={`length-${index}`} className="text-xs text-gray-600">Length (inches)</Label>
+                        <Input
+                          id={`length-${index}`}
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={component.length || ''}
+                          onChange={(e) => updateComponent(index, 'length', e.target.value)}
+                          placeholder="Length"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`width-${index}`} className="text-xs text-gray-600">Width (inches)</Label>
+                        <Input
+                          id={`width-${index}`}
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={component.width || ''}
+                          onChange={(e) => updateComponent(index, 'width', e.target.value)}
+                          placeholder="Width"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`roll_width-${index}`} className="text-xs text-gray-600">Roll Width (inches)</Label>
+                        <Input
+                          id={`roll_width-${index}`}
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={component.roll_width || ''}
+                          onChange={(e) => updateComponent(index, 'roll_width', e.target.value)}
+                          placeholder="Roll Width"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`size-${index}`} className="text-xs text-gray-600">Size</Label>
+                        <Input
+                          id={`size-${index}`}
+                          value={component.size || ''}
+                          onChange={(e) => updateComponent(index, 'size', e.target.value)}
+                          placeholder="e.g., 10x20"
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Consumption and Cost Section */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label>Consumption</Label>
                       <Input
-                        value={component.custom_name || ''}
-                        onChange={(e) => updateComponent(index, 'custom_name', e.target.value)}
-                        placeholder="Enter custom name"
+                        type="number"
+                        step="0.01"
+                        value={component.consumption || ''}
+                        onChange={(e) => updateComponent(index, 'consumption', parseFloat(e.target.value))}
+                        placeholder="0.00"
                       />
                     </div>
-                  )}
-                  <div>
-                    <Label>Material</Label>
-                    {materials.length === 0 && !materialsLoading && (
-                      <p className="text-sm text-orange-600 mb-2">
-                        ⚠️ No materials available. Please add materials to the inventory first.
-                      </p>
-                    )}
-                    <Select 
-                      key={`edit-material-${index}-${materials.length}`} // Force re-render when materials change
-                      value={component.material_id || ''} 
-                      onValueChange={(value) => updateComponent(index, 'material_id', value)}
-                      disabled={materialsLoading || materials.length === 0}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={
-                          materialsLoading 
-                            ? "Loading materials..." 
-                            : materials.length === 0 
-                              ? "No materials available" 
-                              : "Select material"
-                        } />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {materialsLoading ? (
-                          <SelectItem value="loading" disabled>Loading materials...</SelectItem>
-                        ) : materials.length === 0 ? (
-                          <SelectItem value="no-materials" disabled>No materials available</SelectItem>
-                        ) : (
-                          materials.map(material => (
-                            <SelectItem key={material.id} value={material.id}>
-                              {material.material_name} {material.color && `- ${material.color}`}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Consumption</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={component.consumption || ''}
-                      onChange={(e) => updateComponent(index, 'consumption', parseFloat(e.target.value))}
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <div>
-                    <Label>Cost</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={component.component_cost || ''}
-                      onChange={(e) => updateComponent(index, 'component_cost', parseFloat(e.target.value))}
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeComponent(index)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div>
+                      <Label>Cost</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={component.component_cost || ''}
+                        onChange={(e) => updateComponent(index, 'component_cost', parseFloat(e.target.value))}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeComponent(index)}
+                        className="w-full"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Remove
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </Card>
