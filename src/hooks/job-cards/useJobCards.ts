@@ -27,6 +27,17 @@ export const useJobCards = (options: JobCardsOptions = {}) => {
   const fetchJobCards = async () => {
     setLoading(true);
     try {
+      let orderIds: string[] = [];
+      if (searchTerm) {
+        // Step 1: Search orders table for matching order_number or company_name
+        const { data: orders, error: ordersError } = await supabase
+          .from('orders')
+          .select('id')
+          .or(`order_number.ilike.*${searchTerm}*,company_name.ilike.*${searchTerm}*`);
+        if (ordersError) throw ordersError;
+        orderIds = (orders || []).map(order => order.id);
+      }
+
       // First get total count for pagination
       let countQuery = supabase
         .from('job_cards')
@@ -34,7 +45,11 @@ export const useJobCards = (options: JobCardsOptions = {}) => {
       
       // Apply filters to count query if provided
       if (searchTerm) {
-        countQuery = countQuery.or(`job_name.ilike.%${searchTerm}%,orders(order_number.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%)`);
+        if (orderIds.length > 0) {
+          countQuery = countQuery.or(`job_name.ilike.*${searchTerm}*,order_id.in.(${orderIds.join(',')})`);
+        } else {
+          countQuery = countQuery.or(`job_name.ilike.*${searchTerm}*`);
+        }
       }
       
       // Get the count
@@ -74,7 +89,11 @@ export const useJobCards = (options: JobCardsOptions = {}) => {
       
       // Apply search filter if provided
       if (searchTerm) {
-        query = query.or(`job_name.ilike.%${searchTerm}%,orders(order_number.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%)`);
+        if (orderIds.length > 0) {
+          query = query.or(`job_name.ilike.*${searchTerm}*,order_id.in.(${orderIds.join(',')})`);
+        } else {
+          query = query.or(`job_name.ilike.*${searchTerm}*`);
+        }
       }
       
       // Apply pagination
