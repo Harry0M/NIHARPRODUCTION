@@ -1,8 +1,8 @@
 // Test database connection and check vendor_id functionality
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = "https://jsvsnidbgvxhriwtthfw.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impzdnzuaweriqpfawxoacdhdadfaqbx2p1InJvbGUiOiJhbm9uIiwiaWF0IjoxNzM1NzMzNDAyLCJleHAiOjIwNTEzMDk0MDJ9.tDZ6rFWOOsT1_-VQpCOhRPTOdxiA-uZ4_rUYfCqKONE";
+const SUPABASE_URL = "https://trvwcetavifpeorkwixo.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRydndjZXRhdmlmcGVvcmt3aXhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI3NTM3ODEsImV4cCI6MjA2ODMyOTc4MX0.IH7vsTXK-QbH4Fv8HzFe38vTFvuAbV-WrpIkrZ0JGEw";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
