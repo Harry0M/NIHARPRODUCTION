@@ -1,13 +1,15 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, FileText, AlertTriangle } from "lucide-react";
+import { ArrowLeft, FileText, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { recordJobCardMaterialUsage } from "@/utils/allowNegativeInventory";
@@ -43,27 +45,108 @@ const JobCardNew = () => {
   const [existingJobCards, setExistingJobCards] = useState<ExistingJobCard[]>([]);
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const pageSize = 50;
+
+  const fetchOrders = useCallback(async () => {
+    setLoading(true);
+    try {
+      const offset = (currentPage - 1) * pageSize;
+      
+      // Build the query with search filter
+      let query = supabase
+        .from("orders")
+        .select("id, order_number, company_name, quantity, bag_length, bag_width, status", { count: 'exact' });
+      
+      // Apply search filter if search term exists
+      if (debouncedSearchTerm.trim()) {
+        query = query.or(`order_number.ilike.%${debouncedSearchTerm}%,company_name.ilike.%${debouncedSearchTerm}%`);
+      }
+      
+      // Apply pagination and ordering
+      query = query
+        .order("created_at", { ascending: false })
+        .range(offset, offset + pageSize - 1);
+      
+      const { data, error, count } = await query;
+        
+      if (error) throw error;
+      
+      setOrders(data || []);
+      setTotalCount(count || 0);
+    } catch (error: unknown) {
+      toast({
+        title: "Error fetching orders",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, debouncedSearchTerm, pageSize]);
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("orders")
-          .select("id, order_number, company_name, quantity, bag_length, bag_width, status")
-          .order("created_at", { ascending: false });        if (error) throw error;
-        setOrders(data || []);
-      } catch (error: unknown) {
-        toast({
-          title: "Error fetching orders",
-          description: error instanceof Error ? error.message : "Unknown error occurred",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchOrders();
+  }, [currentPage, debouncedSearchTerm, fetchOrders]);
+
+  // Debounce search term to avoid too many API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      // Reset to first page when search term changes
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+      }
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, currentPage]);
+
+  // Pagination helpers
+  const totalPages = Math.ceil(totalCount / pageSize);
+  const startRecord = (currentPage - 1) * pageSize + 1;
+  const endRecord = Math.min(currentPage * pageSize, totalCount);
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handlePageSelect = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const fetchSelectedOrder = useCallback(async (orderId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id, order_number, company_name, quantity, bag_length, bag_width, status")
+        .eq("id", orderId)
+        .single();
+
+      if (error) throw error;
+      
+      if (data) {
+        setSelectedOrder(data);
+        setJobName(`${data.company_name} - ${data.order_number}`);
+        checkExistingJobCards(orderId);
+      }
+    } catch (error) {
+      console.error("Error fetching selected order:", error);
+      setSelectedOrderId("");
+    }
   }, []);
 
   useEffect(() => {
@@ -75,9 +158,10 @@ const JobCardNew = () => {
         setJobName(`${order.company_name} - ${order.order_number}`);
         checkExistingJobCards(selectedOrderId);
       } else {
-        setJobName("");
-        setExistingJobCards([]);
-        setShowDuplicateWarning(false);
+        // If selected order is not in current page, fetch it specifically
+        if (selectedOrderId) {
+          fetchSelectedOrder(selectedOrderId);
+        }
       }
     } else {
       setSelectedOrder(null);
@@ -85,7 +169,7 @@ const JobCardNew = () => {
       setExistingJobCards([]);
       setShowDuplicateWarning(false);
     }
-  }, [selectedOrderId, orders]);
+  }, [selectedOrderId, orders, fetchSelectedOrder]);
 
   const checkExistingJobCards = async (orderId: string) => {
     try {
@@ -357,11 +441,27 @@ const JobCardNew = () => {
       </div>
 
       <div className="grid gap-6">
+        {/* Search Input - Only show when no order is selected */}
+        {!selectedOrder && (
+          <div className="space-y-2">
+            <Label htmlFor="search">Search Orders</Label>
+            <Input
+              id="search"
+              placeholder="Search by order number or company name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        )}
+
         <Card>
           <CardHeader>
-            <CardTitle>Select Order</CardTitle>
+            <CardTitle>{selectedOrder ? "Selected Order" : "Select Order"}</CardTitle>
             <CardDescription>
-              Choose an order to create a job card for
+              {selectedOrder 
+                ? `Order ${selectedOrder.order_number} - ${selectedOrder.company_name}` 
+                : `Choose an order to create a job card for ${loading ? "" : ` (${totalCount} total orders${debouncedSearchTerm ? ` matching "${debouncedSearchTerm}"` : ""})`}`
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -369,71 +469,196 @@ const JobCardNew = () => {
               <div className="flex justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
-            ) : orders.length === 0 ? (
-              <div className="text-center py-8">
-                <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-                <h3 className="mt-2 text-sm font-medium">No orders found</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Create an order first to generate a job card
-                </p>
-                <Button 
-                  className="mt-4" 
-                  onClick={() => navigate("/orders/new")}
-                >
-                  Create Order
-                </Button>
+            ) : selectedOrder ? (
+              /* Show selected order with change option */
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                  <div className="space-y-1">
+                    <h3 className="font-medium">Selected Order: {selectedOrder.order_number}</h3>
+                    <p className="text-sm text-muted-foreground">{selectedOrder.company_name}</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedOrderId("");
+                      setSelectedOrder(null);
+                    }}
+                  >
+                    Change Order
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="order">Order</Label>
-                  <Select
-                    value={selectedOrderId}
-                    onValueChange={setSelectedOrderId}
-                  >
-                    <SelectTrigger id="order">
-                      <SelectValue placeholder="Select an order" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {orders.map((order) => (
-                        <SelectItem key={order.id} value={order.id}>
-                          {order.order_number} - {order.company_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {selectedOrder && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">
-                        Company
-                      </h3>
-                      <p className="text-lg">{selectedOrder.company_name}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">
-                        Quantity
-                      </h3>
-                      <p className="text-lg">
-                        {selectedOrder.quantity.toLocaleString()} bags
-                      </p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">
-                        Bag Size
-                      </h3>
-                      <p className="text-lg">
-                        {selectedOrder.bag_length} × {selectedOrder.bag_width} inches
-                      </p>
-                    </div>
+                {/* Orders Table */}
+                {orders.length === 0 ? (
+                  <div className="text-center py-8">
+                    <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+                    <h3 className="mt-2 text-sm font-medium">No orders found</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {debouncedSearchTerm ? "Try adjusting your search terms" : "Create an order first to generate a job card"}
+                    </p>
+                    {!debouncedSearchTerm && (
+                      <Button 
+                        className="mt-4" 
+                        onClick={() => navigate("/orders/new")}
+                      >
+                        Create Order
+                      </Button>
+                    )}
                   </div>
+                ) : (
+                  <>
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Order Number</TableHead>
+                            <TableHead>Company</TableHead>
+                            <TableHead>Quantity</TableHead>
+                            <TableHead>Bag Size</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="w-[100px]">Action</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {orders.map((order) => (
+                            <TableRow 
+                              key={order.id}
+                              className={selectedOrderId === order.id ? "bg-muted" : ""}
+                            >
+                              <TableCell className="font-medium">{order.order_number}</TableCell>
+                              <TableCell>{order.company_name}</TableCell>
+                              <TableCell>{order.quantity.toLocaleString()} bags</TableCell>
+                              <TableCell>{order.bag_length} × {order.bag_width} inches</TableCell>
+                              <TableCell>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  order.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                  order.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                                  order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {order.status.replace('_', ' ')}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  size="sm"
+                                  variant={selectedOrderId === order.id ? "default" : "outline"}
+                                  onClick={() => {
+                                    setSelectedOrderId(order.id);
+                                    setSelectedOrder(order);
+                                  }}
+                                >
+                                  {selectedOrderId === order.id ? "Selected" : "Select"}
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {/* Pagination Controls */}
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-muted-foreground">
+                        Showing {startRecord} to {endRecord} of {totalCount} orders
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handlePreviousPage}
+                          disabled={currentPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                          Previous
+                        </Button>
+                        
+                        {/* Page numbers */}
+                        <div className="flex items-center space-x-1">
+                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                            let pageNum;
+                            if (totalPages <= 5) {
+                              pageNum = i + 1;
+                            } else if (currentPage <= 3) {
+                              pageNum = i + 1;
+                            } else if (currentPage >= totalPages - 2) {
+                              pageNum = totalPages - 4 + i;
+                            } else {
+                              pageNum = currentPage - 2 + i;
+                            }
+                            
+                            return (
+                              <Button
+                                key={pageNum}
+                                variant={currentPage === pageNum ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => handlePageSelect(pageNum)}
+                                className="w-8 h-8 p-0"
+                              >
+                                {pageNum}
+                              </Button>
+                            );
+                          })}
+                        </div>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleNextPage}
+                          disabled={currentPage === totalPages}
+                        >
+                          Next
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             )}
           </CardContent>
         </Card>
+
+        {/* Selected Order Details */}
+        {selectedOrder && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Selected Order Details</CardTitle>
+              <CardDescription>
+                Order {selectedOrder.order_number} - {selectedOrder.company_name}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Company
+                  </h3>
+                  <p className="text-lg">{selectedOrder.company_name}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Quantity
+                  </h3>
+                  <p className="text-lg">
+                    {selectedOrder.quantity.toLocaleString()} bags
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Bag Size
+                  </h3>
+                  <p className="text-lg">
+                    {selectedOrder.bag_length} × {selectedOrder.bag_width} inches
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {showDuplicateWarning && existingJobCards.length > 0 && (
           <Alert className="border-orange-200 bg-orange-50">
