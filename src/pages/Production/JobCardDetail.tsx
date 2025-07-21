@@ -231,7 +231,7 @@ const JobCardDetail = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate(`/orders/${jobCard?.order.id}/edit`)}
+            onClick={() => navigate(`/orders/${jobCard?.order.id}`)}
             disabled={loading || !jobCard}
           >
             <File size={16} className="mr-1" />
