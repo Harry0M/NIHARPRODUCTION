@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { Pencil, Plus, Trash2, Save, X } from "lucide-react";
 import { Component } from "@/types/order";
+import { MaterialSelectionPopup } from "./MaterialSelectionPopup";
 
 interface Material {
   id: string;
@@ -212,35 +213,14 @@ export function ComponentsEditForm({
                         ⚠️ No materials available. Please add materials to the inventory first.
                       </p>
                     )}
-                    <Select 
-                      key={`add-material-${materials.length}`} // Force re-render when materials change
-                      value={newComponent.material_id || ''} 
-                      onValueChange={(value) => setNewComponent(prev => ({ ...prev, material_id: value }))}
+                    <MaterialSelectionPopup
+                      materials={materials}
+                      selectedMaterialId={newComponent.material_id || ''}
+                      onSelectMaterial={(materialId) => setNewComponent(prev => ({ ...prev, material_id: materialId }))}
                       disabled={materialsLoading || materials.length === 0}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={
-                          materialsLoading 
-                            ? "Loading materials..." 
-                            : materials.length === 0 
-                              ? "No materials available" 
-                              : "Select material"
-                        } />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {materialsLoading ? (
-                          <SelectItem value="loading" disabled>Loading materials...</SelectItem>
-                        ) : materials.length === 0 ? (
-                          <SelectItem value="no-materials" disabled>No materials available</SelectItem>
-                        ) : (
-                          materials.map(material => (
-                            <SelectItem key={material.id} value={material.id}>
-                              {material.material_name} {material.color && `- ${material.color}`}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
+                      materialsLoading={materialsLoading}
+                      placeholder="Select material"
+                    />
                   </div>
                   
                   {/* Dimensions Section */}
@@ -483,35 +463,14 @@ export function ComponentsEditForm({
                           ⚠️ No materials available. Please add materials to the inventory first.
                         </p>
                       )}
-                      <Select 
-                        key={`edit-material-${index}-${materials.length}`} // Force re-render when materials change
-                        value={component.material_id || ''} 
-                        onValueChange={(value) => updateComponent(index, 'material_id', value)}
+                      <MaterialSelectionPopup
+                        materials={materials}
+                        selectedMaterialId={component.material_id || ''}
+                        onSelectMaterial={(materialId) => updateComponent(index, 'material_id', materialId)}
                         disabled={materialsLoading || materials.length === 0}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={
-                            materialsLoading 
-                              ? "Loading materials..." 
-                              : materials.length === 0 
-                                ? "No materials available" 
-                                : "Select material"
-                          } />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {materialsLoading ? (
-                            <SelectItem value="loading" disabled>Loading materials...</SelectItem>
-                          ) : materials.length === 0 ? (
-                            <SelectItem value="no-materials" disabled>No materials available</SelectItem>
-                          ) : (
-                            materials.map(material => (
-                              <SelectItem key={material.id} value={material.id}>
-                                {material.material_name} {material.color && `- ${material.color}`}
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
+                        materialsLoading={materialsLoading}
+                        placeholder="Select material"
+                      />
                     </div>
                   </div>
 
