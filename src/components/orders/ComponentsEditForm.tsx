@@ -137,6 +137,8 @@ export function ComponentsEditForm({
         size: ''
       });
       setShowAddDialog(false);
+      // Master refresh to reload all data
+      window.location.reload();
     }
   };
 
