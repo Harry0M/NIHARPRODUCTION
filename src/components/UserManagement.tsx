@@ -144,7 +144,8 @@ export const UserManagement: React.FC = () => {
     setIsInviting(true);
     try {
       // Create a simple invitation link that includes the role information
-      const inviteLink = `${window.location.origin}/#/auth?invite=true&role=${inviteRole}&email=${encodeURIComponent(inviteEmail)}`;
+      // Always use production domain for invitation links so they work from anywhere
+      const inviteLink = `https://niharbag.fusenet.me/#/auth?invite=true&role=${inviteRole}&email=${encodeURIComponent(inviteEmail)}`;
       
       // Copy to clipboard for now (in a real app, you'd send via email)
       await navigator.clipboard.writeText(inviteLink);
