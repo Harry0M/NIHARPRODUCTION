@@ -17,6 +17,7 @@ import {
 import { useEffect, useRef } from "react";
 import { toast } from "@/hooks/use-toast";
 import { KeyboardShortcut } from "@/components/ui/keyboard-shortcut";
+import DatabaseSwitcher from "@/components/database/DatabaseSwitcher";
 
 const Header = () => {
   const { user } = useAuth();
@@ -220,6 +221,7 @@ const Header = () => {
       </div>
       <div className="flex items-center gap-3">
         {getActionButton()}
+        <DatabaseSwitcher />
         <Button 
           variant="ghost" 
           size="icon" 

@@ -1,9 +1,29 @@
 
+import React from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
+import { UserPermissions } from "@/types/permissions";
 
-const ProtectedRoute = () => {
+interface ProtectedRouteProps {
+  children?: React.ReactNode;
+  requiredPermission?: keyof UserPermissions;
+  requiredPermissions?: (keyof UserPermissions)[];
+  requireAny?: boolean; // If true, user needs any of the permissions; if false, needs all
+  adminOnly?: boolean;
+  fallbackPath?: string;
+}
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  children,
+  requiredPermission,
+  requiredPermissions = [],
+  requireAny = false,
+  adminOnly = false,
+  fallbackPath = '/dashboard'
+}) => {
   const { user, loading } = useAuth();
+  const { hasPermission, hasAllPermissions, hasAnyPermission, isAdmin } = usePermissions();
 
   // Show loading state if still checking authentication
   if (loading) {
@@ -19,8 +39,29 @@ const ProtectedRoute = () => {
     return <Navigate to="/auth" replace />;
   }
 
-  // Render children if authenticated
-  return <Outlet />;
+  // Check admin access
+  if (adminOnly && !isAdmin()) {
+    return <Navigate to={fallbackPath} replace />;
+  }
+
+  // Check single permission
+  if (requiredPermission && !hasPermission(requiredPermission)) {
+    return <Navigate to={fallbackPath} replace />;
+  }
+
+  // Check multiple permissions
+  if (requiredPermissions.length > 0) {
+    const hasAccess = requireAny 
+      ? hasAnyPermission(requiredPermissions)
+      : hasAllPermissions(requiredPermissions);
+    
+    if (!hasAccess) {
+      return <Navigate to={fallbackPath} replace />;
+    }
+  }
+
+  // Render children if provided, otherwise render Outlet for nested routes
+  return children ? <>{children}</> : <Outlet />;
 };
 
 export default ProtectedRoute;

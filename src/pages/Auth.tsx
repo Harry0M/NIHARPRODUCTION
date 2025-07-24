@@ -1,6 +1,6 @@
 
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,12 +8,25 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { UserRole, roleLabels } from "@/types/permissions";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  
+  // Check for invitation parameters
+  const isInvite = searchParams.get('invite') === 'true';
+  const inviteRole = searchParams.get('role') as UserRole;
+  const inviteEmail = searchParams.get('email');
+
+  useEffect(() => {
+    if (isInvite && inviteEmail) {
+      setEmail(decodeURIComponent(inviteEmail));
+    }
+  }, [isInvite, inviteEmail]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,16 +62,32 @@ const Auth = () => {
     setLoading(true);
     
     try {
-      const { error } = await supabase.auth.signUp({
+      // Sign up with role metadata if this is an invitation
+      const signUpData: any = {
         email,
-        password
-      });
+        password,
+      };
+
+      // Add role to user metadata if this is an invitation signup
+      if (isInvite && inviteRole) {
+        signUpData.options = {
+          data: {
+            role: inviteRole
+          }
+        };
+      }
+
+      const { error } = await supabase.auth.signUp(signUpData);
       
       if (error) throw error;
       
+      const successMessage = isInvite 
+        ? `Account created with ${roleLabels[inviteRole]} role. Please check your email for confirmation.`
+        : "Please check your email for confirmation instructions.";
+      
       toast({
         title: "Account created",
-        description: "Please check your email for confirmation instructions."
+        description: successMessage
       });
     } catch (error: any) {
       toast({
@@ -80,15 +109,33 @@ const Auth = () => {
         </div>
         
         <Card>
+          {isInvite && inviteRole && (
+            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+              <div className="flex">
+                <div className="ml-3">
+                  <p className="text-sm text-blue-700">
+                    <strong>You've been invited!</strong> You're signing up with {roleLabels[inviteRole]} role.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           <CardHeader>
-            <CardTitle>Account Access</CardTitle>
-            <CardDescription>Sign in to your account or create a new one</CardDescription>
+            <CardTitle>{isInvite ? 'Complete Your Invitation' : 'Account Access'}</CardTitle>
+            <CardDescription>
+              {isInvite 
+                ? 'Create your account to join the team' 
+                : 'Sign in to your account or create a new one'
+              }
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="signin">
+            <Tabs defaultValue={isInvite ? "signup" : "signin"}>
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Create Account</TabsTrigger>
+                <TabsTrigger value="signup">
+                  {isInvite ? 'Complete Invitation' : 'Create Account'}
+                </TabsTrigger>
               </TabsList>
               
               <TabsContent value="signin">

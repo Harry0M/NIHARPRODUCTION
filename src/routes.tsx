@@ -48,6 +48,9 @@ import InventoryValue from "@/pages/Analysis/InventoryValue";
 import RefillAnalysis from "@/pages/Analysis/RefillAnalysis";
 import TransactionHistory from "@/pages/Analysis/TransactionHistory";
 import PartnersAnalysis from "@/pages/Analysis/PartnersAnalysis";
+import Settings from "@/pages/Settings/Settings";
+import { UserManagement } from "@/components/UserManagement";
+import { RoleAssignment } from "@/components/RoleAssignment";
 import WastageAnalysis from "@/pages/Analysis/WastageAnalysis";
 import PriceTrendAnalysis from "@/pages/Analysis/PriceTrendAnalysis";
 import PurchaseAnalysis from "@/pages/Analysis/PurchaseAnalysis";
@@ -104,12 +107,54 @@ const routes = [
               { path: "job-cards", element: <JobCardList /> },
               { path: "job-cards/new", element: <JobCardNew /> },
               { path: "job-cards/:id", element: <JobCardDetail /> },
-              { path: "cutting", element: <CuttingJob /> },
-              { path: "cutting/:id", element: <CuttingJob /> },
-              { path: "printing", element: <PrintingJob /> },
-              { path: "printing/:id", element: <PrintingJob /> },
-              { path: "stitching", element: <StitchingJob /> },
-              { path: "stitching/:id", element: <StitchingJob /> },
+              { 
+                path: "cutting", 
+                element: (
+                  <ProtectedRoute requiredPermissions={['canAccessJobCards', 'canAccessCuttingJobs']}>
+                    <CuttingJob />
+                  </ProtectedRoute>
+                )
+              },
+              { 
+                path: "cutting/:id", 
+                element: (
+                  <ProtectedRoute requiredPermissions={['canAccessJobCards', 'canAccessCuttingJobs']}>
+                    <CuttingJob />
+                  </ProtectedRoute>
+                )
+              },
+              { 
+                path: "printing", 
+                element: (
+                  <ProtectedRoute requiredPermissions={['canAccessJobCards', 'canAccessPrintingJobs']}>
+                    <PrintingJob />
+                  </ProtectedRoute>
+                )
+              },
+              { 
+                path: "printing/:id", 
+                element: (
+                  <ProtectedRoute requiredPermissions={['canAccessJobCards', 'canAccessPrintingJobs']}>
+                    <PrintingJob />
+                  </ProtectedRoute>
+                )
+              },
+              { 
+                path: "stitching", 
+                element: (
+                  <ProtectedRoute requiredPermissions={['canAccessJobCards', 'canAccessStitchingJobs']}>
+                    <StitchingJob />
+                  </ProtectedRoute>
+                )
+              },
+              { 
+                path: "stitching/:id", 
+                element: (
+                  <ProtectedRoute requiredPermissions={['canAccessJobCards', 'canAccessStitchingJobs']}>
+                    <StitchingJob />
+                  </ProtectedRoute>
+                )
+              },
               { path: "dispatch", element: <Dispatch /> },
             ],
           },
@@ -180,6 +225,24 @@ const routes = [
               { path: "vendor-bills/create/:jobType/:jobId", element: <VendorBillCreateForm /> },
               { path: "vendor-bills/:billId", element: <VendorBillDetail /> },
               { path: "vendor-bills/:billId/edit", element: <VendorBillEdit /> },
+            ],
+          },
+          {
+            path: "settings",
+            children: [
+              { path: "", element: <Settings /> },
+              { 
+                path: "users", 
+                element: (
+                  <ProtectedRoute adminOnly>
+                    <UserManagement />
+                  </ProtectedRoute>
+                )
+              },
+              { 
+                path: "role", 
+                element: <RoleAssignment />
+              },
             ],
           },
           // Redirects from old routes

@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Link } from "react-router-dom";
 import { 
   Settings as SettingsIcon, 
   Database, 
@@ -10,10 +11,13 @@ import {
   Shield, 
   AlertTriangle,
   History,
-  Info 
+  Info,
+  UserCog
 } from "lucide-react";
 import { TransactionHistoryDeleteDialog } from "@/components/dialogs/TransactionHistoryDeleteDialog";
 import { useTransactionHistoryDeletion } from "@/hooks/useTransactionHistoryDeletion";
+import { usePermissions } from "@/hooks/usePermissions";
+import { RoleDisplay } from "@/components/RoleDisplay";
 
 const Settings = () => {
   const {
@@ -23,6 +27,8 @@ const Settings = () => {
     isLoadingStats,
   } = useTransactionHistoryDeletion();
 
+  const { isAdmin } = usePermissions();
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex items-center space-x-2">
@@ -31,6 +37,70 @@ const Settings = () => {
       </div>
       
       <div className="grid gap-6">
+        {/* User Management Section - Admin Only */}
+        {isAdmin() && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserCog className="h-5 w-5" />
+                User Management
+              </CardTitle>
+              <CardDescription>
+                Manage user accounts, roles, and permissions
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                <div className="space-y-1">
+                  <h3 className="font-medium">Team Access Control</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Invite new users, assign roles, and manage team member permissions.
+                  </p>
+                </div>
+                <Link to="/settings/users">
+                  <Button>
+                    Manage Users
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* User Role Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Your Access Level
+            </CardTitle>
+            <CardDescription>
+              Current role and permissions information
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center space-x-4">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Current Role:</p>
+                <RoleDisplay />
+              </div>
+            </div>
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <p className="text-sm text-muted-foreground mb-3">
+                {isAdmin() 
+                  ? 'You have full administrative access to all features and can manage other users.'
+                  : 'Your access is role-based. Contact an administrator to modify your permissions.'
+                }
+              </p>
+              <Link to="/settings/role">
+                <Button variant="outline" size="sm">
+                  Change Your Role
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Database Management Section */}
         <Card>
           <CardHeader>

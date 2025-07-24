@@ -16,29 +16,38 @@ import {
   ShoppingCart,
   Building,
   BarChart,
-  TrendingUp
+  TrendingUp,
+  UserCog
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
+import { RoleDisplay } from "@/components/RoleDisplay";
 
 const navItems = [
-  { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-  { name: "Orders", path: "/orders", icon: Package },
-  { name: "Job Cards", path: "/production/job-cards", icon: FileText },
-  { name: "Vendor/Supplier", path: "/partners", icon: Users },
-  { name: "Sells Party", path: "/companies", icon: Building },
-  { name: "Purchases", path: "/purchases", icon: ShoppingCart },
-  { name: "Sells", path: "/sells", icon: TrendingUp },
-  { name: "Inventory", path: "/inventory", icon: Database },
-  { name: "Production", path: "/production", icon: Factory },
-  { name: "Analysis", path: "/analysis", icon: BarChart },
-  { name: "Dispatch", path: "/dispatch", icon: Truck },
-  { name: "Settings", path: "/settings", icon: Settings },
+  { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, permission: "canAccessDashboard" },
+  { name: "Orders", path: "/orders", icon: Package, permission: "canAccessOrders" },
+  { name: "Job Cards", path: "/production/job-cards", icon: FileText, permission: "canAccessJobCards" },
+  { name: "Vendor/Supplier", path: "/partners", icon: Users, permission: "canAccessPartners" },
+  { name: "Sells Party", path: "/companies", icon: Building, permission: "canAccessCompanies" },
+  { name: "Purchases", path: "/purchases", icon: ShoppingCart, permission: "canAccessPurchases" },
+  { name: "Sells", path: "/sells", icon: TrendingUp, permission: "canAccessSells" },
+  { name: "Inventory", path: "/inventory", icon: Database, permission: "canAccessInventory" },
+  { name: "Production", path: "/production", icon: Factory, permission: "canAccessJobCards", subItems: [
+    { name: "Printing", path: "/production/printing", permission: "canAccessPrintingJobs" },
+    { name: "Cutting", path: "/production/cutting", permission: "canAccessCuttingJobs" },
+    { name: "Stitching", path: "/production/stitching", permission: "canAccessStitchingJobs" }
+  ]},
+  { name: "Analysis", path: "/analysis", icon: BarChart, permission: "canAccessAnalysis" },
+  { name: "Dispatch", path: "/dispatch", icon: Truck, permission: "canAccessJobCards" },
+  { name: "User Management", path: "/settings/users", icon: UserCog, permission: "canManageUsers", adminOnly: true },
+  { name: "Settings", path: "/settings", icon: Settings, permission: "canAccessDashboard" },
 ];
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const { signOut } = useAuth();
+  const { hasPermission, isAdmin } = usePermissions();
   const location = useLocation();
 
   return (
@@ -64,6 +73,15 @@ const Sidebar = () => {
           {navItems.map((item) => {
             // Check if current path matches this navigation item using react-router's location
             const isActive = location.pathname.startsWith(item.path);
+            
+            // Check if user has permission for this nav item
+            const hasRequiredPermission = hasPermission(item.permission as any);
+            const isAdminOnlyItem = item.adminOnly && !isAdmin();
+            
+            // Hide nav item if user doesn't have permission or it's admin-only and user isn't admin
+            if (!hasRequiredPermission || isAdminOnlyItem) {
+              return null;
+            }
             
             return (
               <li key={item.name}>
@@ -109,20 +127,27 @@ const Sidebar = () => {
       </nav>
 
       <div className="p-4 border-t border-border/50">
-        <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-between")}>
-          <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center ring-2 ring-primary/20">
-            <span className="font-medium text-sm">BM</span>
-          </div>
+        <div className={cn("flex flex-col space-y-3", collapsed ? "items-center" : "")}>
           {!collapsed && (
-            <div className="ml-3">
-              <button 
-                onClick={signOut}
-                className="text-sm text-sidebar-foreground/80 hover:text-primary transition-colors"
-              >
-                Sign Out
-              </button>
+            <div className="flex items-center justify-center">
+              <RoleDisplay />
             </div>
           )}
+          <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-between")}>
+            <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center ring-2 ring-primary/20">
+              <span className="font-medium text-sm">BM</span>
+            </div>
+            {!collapsed && (
+              <div className="ml-3">
+                <button 
+                  onClick={signOut}
+                  className="text-sm text-sidebar-foreground/80 hover:text-primary transition-colors"
+                >
+                  Sign Out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
