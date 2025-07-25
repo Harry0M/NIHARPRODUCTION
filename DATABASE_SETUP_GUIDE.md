@@ -45,8 +45,8 @@ Your Nihar Business Manager now supports multiple database connections! When you
 
 ## Security Features
 
-- Database credentials are stored locally on your machine
-- Connection testing is handled securely through Electron's IPC
+- Database credentials are stored locally in your browser
+- Connection testing is handled securely in the browser environment
 - Passwords are not visible by default (click the eye icon to show/hide)
 - No database credentials are sent to external servers
 

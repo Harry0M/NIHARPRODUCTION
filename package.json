@@ -5,8 +5,6 @@
   "description": "Nihar Business Management Application",
   "author": "Your Name",
   "type": "module",
-  "main": "electron/main.cjs",
-  "homepage": "./",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -14,11 +12,7 @@
     "build:analyze": "vite build --mode analyze",
     "dev:perf": "VITE_DISABLE_HMR=true vite --mode performance",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:8080 && cross-env NODE_ENV=development electron .\"",
-    "electron:pack": "npm run build && electron-builder",
-    "electron:dist": "npm run build && electron-builder --publish=never",
-    "electron:build": "npm run build && electron-builder --win --x64"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@devexpress/dx-react-chart": "^4.0.11",
@@ -98,10 +92,6 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react-swc": "^3.5.0",
     "autoprefixer": "^10.4.20",
-    "concurrently": "^9.2.0",
-    "cross-env": "^7.0.3",
-    "electron": "^37.2.3",
-    "electron-builder": "^26.0.12",
     "eslint": "^9.9.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.9",
@@ -111,53 +101,6 @@
     "tailwindcss": "^3.4.11",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1",
-    "vite": "^5.4.1",
-    "wait-on": "^8.0.3"
-  },
-  "build": {
-    "appId": "com.nihar.app",
-    "productName": "Nihar Business Manager",
-    "directories": {
-      "output": "dist-electron"
-    },
-    "files": [
-      "dist/**/*",
-      "electron/**/*",
-      "node_modules/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "public",
-        "to": "public",
-        "filter": [
-          "**/*"
-        ]
-      }
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ]
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Nihar Business Manager"
-    },
-    "mac": {
-      "target": "dmg",
-      "icon": "public/icon.icns"
-    },
-    "linux": {
-      "target": "AppImage",
-      "icon": "public/icon.png"
-    }
+    "vite": "^5.4.1"
   }
 }

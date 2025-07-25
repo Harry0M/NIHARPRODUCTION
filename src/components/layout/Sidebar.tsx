@@ -85,41 +85,20 @@ const Sidebar = () => {
             
             return (
               <li key={item.name}>
-                {item.path.startsWith('/orders') ? (
-                  <a
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      window.location.href = item.path;
-                    }}
-                    className={cn(
-                      "flex items-center px-3 py-2 rounded-md transition-all duration-200",
-                      isActive
-                        ? "bg-sidebar-accent/80 text-sidebar-accent-foreground font-medium shadow-sm"
-                        : "hover:bg-sidebar-accent/50 text-sidebar-foreground/80 hover:shadow-sm"
-                    )}
-                  >
-                    <item.icon size={20} className={cn("flex-shrink-0", collapsed ? "mr-0" : "mr-3")} />
-                    <span className={cn("transition-opacity", collapsed ? "opacity-0 w-0" : "opacity-100")}>
-                      {item.name}
-                    </span>
-                  </a>
-                ) : (
-                  <Link
-                    to={item.path}
-                    className={cn(
-                      "flex items-center px-3 py-2 rounded-md transition-all duration-200",
-                      isActive
-                        ? "bg-sidebar-accent/80 text-sidebar-accent-foreground font-medium shadow-sm"
-                        : "hover:bg-sidebar-accent/50 text-sidebar-foreground/80 hover:shadow-sm"
-                    )}
-                  >
-                    <item.icon size={20} className={cn("flex-shrink-0", collapsed ? "mr-0" : "mr-3")} />
-                    <span className={cn("transition-opacity", collapsed ? "opacity-0 w-0" : "opacity-100")}>
-                      {item.name}
-                    </span>
-                  </Link>
-                )}
+                <Link
+                  to={item.path}
+                  className={cn(
+                    "flex items-center px-3 py-2 rounded-md transition-all duration-200",
+                    isActive
+                      ? "bg-sidebar-accent/80 text-sidebar-accent-foreground font-medium shadow-sm"
+                      : "hover:bg-sidebar-accent/50 text-sidebar-foreground/80 hover:shadow-sm"
+                  )}
+                >
+                  <item.icon size={20} className={cn("flex-shrink-0", collapsed ? "mr-0" : "mr-3")} />
+                  <span className={cn("transition-opacity", collapsed ? "opacity-0 w-0" : "opacity-100")}>
+                    {item.name}
+                  </span>
+                </Link>
               </li>
             );
           })}

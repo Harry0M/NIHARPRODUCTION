@@ -55,25 +55,15 @@ const DatabaseSelector: React.FC<DatabaseSelectorProps> = ({ onDatabaseSelected 
     setTestResult(null);
     
     try {
-      // Check if we're running in Electron
-      if (window.electronAPI) {
-        // Use Electron IPC for secure database testing
-        const result = await window.electronAPI.testDatabaseConnection({
-          id: 'test',
-          ...newDatabase
-        });
-        setTestResult(result);
-      } else {
-        // Fallback for web version - simulate the test
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Mock validation
-        if (!newDatabase.host || !newDatabase.database || !newDatabase.username) {
-          throw new Error('Missing required fields');
-        }
-        
-        setTestResult({ success: true, message: 'Connection successful! (Web simulation)' });
+      // Simulate connection test for web version
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Mock validation
+      if (!newDatabase.host || !newDatabase.database || !newDatabase.username) {
+        throw new Error('Missing required fields');
       }
+      
+      setTestResult({ success: true, message: 'Connection successful! (Web simulation)' });
     } catch (error) {
       setTestResult({ 
         success: false, 
