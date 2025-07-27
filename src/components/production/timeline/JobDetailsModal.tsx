@@ -575,7 +575,7 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
                   <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100">Total Quantity</h4>
                 </div>
                 <p className="text-xl font-bold text-blue-800 dark:text-blue-200">
-                  {jobDetails.total_quantity || "Not specified"}
+                  {jobDetails.provided_quantity || "Not specified"}
                 </p>
               </div>
               <div className="p-4 bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/50 dark:to-green-900/30 rounded-lg border border-green-200/50">
