@@ -1,5 +1,5 @@
 
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -17,6 +17,8 @@ interface OrderCardProps {
 }
 
 export const OrderCard = ({ order, onDeleteClick, isSelected = false, onSelectChange }: OrderCardProps) => {
+  const navigate = useNavigate();
+  
   return (
     <Card className={`mb-4 border-border/60 shadow-sm hover:shadow transition-all ${isSelected ? "border-primary/70 bg-primary/5 dark:bg-primary/10" : "hover:border-border/80"}`}>
       <CardHeader className="pb-2 pt-4">
@@ -44,17 +46,13 @@ export const OrderCard = ({ order, onDeleteClick, isSelected = false, onSelectCh
                 <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded text-xs">
                   {order.order_number}
                 </span>
-                <a 
-                  href="#" 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.location.href = `/orders/${order.id}`;
-                  }} 
+                <button 
+                  onClick={() => navigate(`/orders/${order.id}`)}
                   className="text-primary hover:text-primary/80 hover:underline flex items-center gap-1 transition-colors text-sm"
                 >
                   View details
                   <ChevronRight className="h-3 w-3 opacity-70" />
-                </a>
+                </button>
               </CardTitle>
               <CardDescription className="mt-1 flex items-center gap-1">
                 <Package className="h-3 w-3 text-muted-foreground/70" />
@@ -75,14 +73,14 @@ export const OrderCard = ({ order, onDeleteClick, isSelected = false, onSelectCh
             <DropdownMenuContent align="end" className="w-56 border-border/60 shadow-md">
               <DropdownMenuItem 
                 className="cursor-pointer"
-                onClick={() => window.location.href = `/orders/${order.id}`}
+                onClick={() => navigate(`/orders/${order.id}`)}
               >
                 <Eye className="mr-2 h-4 w-4 text-blue-500" /> 
                 <span>View Details</span>
               </DropdownMenuItem>
               <DropdownMenuItem 
                 className="cursor-pointer"
-                onClick={() => window.location.href = `/orders/${order.id}/edit`}
+                onClick={() => navigate(`/orders/${order.id}`)}
               >
                 <Edit className="mr-2 h-4 w-4 text-amber-500" /> 
                 <span>Edit Order</span>
@@ -90,7 +88,7 @@ export const OrderCard = ({ order, onDeleteClick, isSelected = false, onSelectCh
               <DropdownMenuSeparator />
               <DropdownMenuItem 
                 className="cursor-pointer"
-                onClick={() => window.location.href = `/production/job-cards/new?orderId=${order.id}`}
+                onClick={() => navigate(`/production/job-cards/new?orderId=${order.id}`)}
               >
                 <FileText className="mr-2 h-4 w-4 text-green-500" /> 
                 <span>Create Job Card</span>
