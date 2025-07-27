@@ -93,7 +93,27 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
             .select(`
               *,
               job_card:job_cards (
-                job_name, job_number
+                job_name, 
+                job_number,
+                order:orders (
+                  id,
+                  order_number,
+                  components:order_components (
+                    id,
+                    component_type,
+                    custom_name,
+                    size,
+                    color,
+                    gsm,
+                    inventory:material_id (
+                      id,
+                      material_name,
+                      color,
+                      gsm,
+                      unit
+                    )
+                  )
+                )
               )
             `)
             .eq('id', jobId)

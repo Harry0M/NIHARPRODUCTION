@@ -1980,14 +1980,8 @@ export function generateDetailedPrintingJobPDF(jobData: any, filename: string): 
     pdf.setTextColor(...PDF_STYLES.colors.black);
     let material = 'N/A';
     
-    // First try to get material from job data
-    if (jobData.material) {
-      material = formatString(jobData.material);
-    } else if (jobData.job_card?.material) {
-      material = formatString(jobData.job_card.material);
-    } 
-    // Then try to get from order components (part component)
-    else if (jobData.job_card?.order?.components && Array.isArray(jobData.job_card.order.components)) {
+    // Get material from order components - same logic as cutting job
+    if (jobData.job_card?.order?.components && Array.isArray(jobData.job_card.order.components)) {
       const partComponent = jobData.job_card.order.components.find((c: any) => 
         c.component_type === 'part' && c.inventory?.material_name
       );
@@ -1995,14 +1989,11 @@ export function generateDetailedPrintingJobPDF(jobData: any, filename: string): 
         material = formatString(partComponent.inventory.material_name);
       }
     }
-    // Finally try to get from job card components
-    else if (jobData.job_card?.components && Array.isArray(jobData.job_card.components)) {
-      const partComponent = jobData.job_card.components.find((c: any) => 
-        c.component_type === 'part' && c.inventory?.material_name
-      );
-      if (partComponent) {
-        material = formatString(partComponent.inventory.material_name);
-      }
+    // Fallback to direct material fields
+    else if (jobData.material) {
+      material = formatString(jobData.material);
+    } else if (jobData.job_card?.material) {
+      material = formatString(jobData.job_card.material);
     }
     
     pdf.text(material, 60, currentY);
