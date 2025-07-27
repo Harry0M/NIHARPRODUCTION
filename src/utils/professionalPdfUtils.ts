@@ -88,21 +88,45 @@ interface JobCardData extends PDFDataItem {
   order?: {
     order_number?: string;
     company_name?: string;
+    quantity?: number;
+    bag_length?: number;
+    bag_width?: number;
+    order_date?: string | Date;
+    status?: string;
+    components?: Array<{
+      id?: string;
+      component_type?: string;
+      size?: string;
+      color?: string;
+      gsm?: string;
+      custom_name?: string;
+      inventory?: {
+        material_name?: string;
+        color?: string;
+        gsm?: string;
+      };
+    }>;
   };
   cutting_jobs?: Array<{
+    id?: string;
     status?: string;
     worker_name?: string;
     received_quantity?: number;
+    created_at?: string | Date;
   }>;
   printing_jobs?: Array<{
+    id?: string;
     status?: string;
     worker_name?: string;
     received_quantity?: number;
+    created_at?: string | Date;
   }>;
   stitching_jobs?: Array<{
+    id?: string;
     status?: string;
     worker_name?: string;
     received_quantity?: number;
+    created_at?: string | Date;
   }>;
 }
 
@@ -326,21 +350,19 @@ export function generateJobCardPDF(jobCardData: JobCardData, filename: string): 
   const pdf = new jsPDF();
   
   // Header
-  const startY = addCompanyHeader(pdf, 'Job Card', `${jobCardData.job_name || 'N/A'}`);
+  const startY = addCompanyHeader(pdf, 'Job Card Details', `${jobCardData.job_name || 'N/A'}`);
   
   let currentY = startY + 10;
   
-  // Basic job information
+  // Job Card Information
   pdf.setFontSize(PDF_STYLES.fonts.heading);
   pdf.setTextColor(...PDF_STYLES.colors.secondary);
-  pdf.text('Job Information', 15, currentY);
+  pdf.text('Job Card Information', 15, currentY);
   currentY += 10;
   
   const jobInfo = [
     ['Job Name:', formatString(jobCardData.job_name)],
     ['Job Number:', formatString(jobCardData.job_number)],
-    ['Order Number:', formatString(jobCardData.order?.order_number)],
-    ['Company:', formatString(jobCardData.order?.company_name)],
     ['Status:', formatString(jobCardData.status?.replace(/_/g, ' ').toUpperCase())],
     ['Created Date:', formatDate(jobCardData.created_at)]
   ];
@@ -350,8 +372,8 @@ export function generateJobCardPDF(jobCardData: JobCardData, filename: string): 
     startY: currentY,
     theme: 'plain',
     columnStyles: {
-      0: { fontStyle: 'bold', cellWidth: 60 },
-      1: { cellWidth: 120 }
+      0: { fontStyle: 'bold', cellWidth: 50 },
+      1: { cellWidth: 100 }
     },
     styles: {
       fontSize: PDF_STYLES.fonts.body,
@@ -361,66 +383,221 @@ export function generateJobCardPDF(jobCardData: JobCardData, filename: string): 
   
   currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 15;
   
-  // Production stages summary (if available)
-  if (jobCardData.cutting_jobs || jobCardData.printing_jobs || jobCardData.stitching_jobs) {
+  // Order Information Section
+  if (jobCardData.order) {
     pdf.setFontSize(PDF_STYLES.fonts.heading);
     pdf.setTextColor(...PDF_STYLES.colors.secondary);
-    pdf.text('Production Summary', 15, currentY);
+    pdf.text('Order Information', 15, currentY);
     currentY += 10;
     
-    const productionData: string[][] = [];
+    const orderInfo = [
+      ['Order Number:', formatString(jobCardData.order.order_number)],
+      ['Company:', formatString(jobCardData.order.company_name)],
+      ['Quantity:', formatNumber(jobCardData.order.quantity)],
+      ['Bag Dimensions:', `${formatNumber(jobCardData.order.bag_length)} × ${formatNumber(jobCardData.order.bag_width)}`],
+      ['Order Date:', formatDate(jobCardData.order.order_date)],
+      ['Order Status:', formatString(jobCardData.order.status?.replace(/_/g, ' ').toUpperCase())]
+    ];
     
-    // Cutting jobs
-    if (jobCardData.cutting_jobs?.length && jobCardData.cutting_jobs.length > 0) {
-      const cuttingJob = jobCardData.cutting_jobs[0];
-      productionData.push([
-        'Cutting',
-        formatString(cuttingJob.status?.toUpperCase()),
-        formatString(cuttingJob.worker_name),
-        formatNumber(cuttingJob.received_quantity)
-      ]);
-    }
+    autoTable(pdf, {
+      body: orderInfo,
+      startY: currentY,
+      theme: 'plain',
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 50 },
+        1: { cellWidth: 100 }
+      },
+      styles: {
+        fontSize: PDF_STYLES.fonts.body,
+        cellPadding: 3
+      }
+    });
     
-    // Printing jobs
-    if (jobCardData.printing_jobs?.length && jobCardData.printing_jobs.length > 0) {
-      const printingJob = jobCardData.printing_jobs[0];
-      productionData.push([
-        'Printing',
-        formatString(printingJob.status?.toUpperCase()),
-        formatString(printingJob.worker_name),
-        formatNumber(printingJob.received_quantity)
-      ]);
-    }
-    
-    // Stitching jobs
-    if (jobCardData.stitching_jobs?.length && jobCardData.stitching_jobs.length > 0) {
-      const stitchingJob = jobCardData.stitching_jobs[0];
-      productionData.push([
-        'Stitching',
-        formatString(stitchingJob.status?.toUpperCase()),
-        formatString(stitchingJob.worker_name),
-        formatNumber(stitchingJob.received_quantity)
-      ]);
-    }
-    
-    if (productionData.length > 0) {
-      autoTable(pdf, {
-        head: [['Stage', 'Status', 'Worker', 'Quantity']],
-        body: productionData,
-        startY: currentY,
-        theme: 'striped',
-        headStyles: {
-          fillColor: PDF_STYLES.colors.primary,
-          textColor: PDF_STYLES.colors.white,
-          fontStyle: 'bold'
-        },
-        styles: {
-          fontSize: PDF_STYLES.fonts.body,
-          cellPadding: 4
-        }
-      });
-    }
+    currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 15;
   }
+  
+  // Order Components/Materials Section
+  if (jobCardData.order?.components && jobCardData.order.components.length > 0) {
+    pdf.setFontSize(PDF_STYLES.fonts.heading);
+    pdf.setTextColor(...PDF_STYLES.colors.secondary);
+    pdf.text('Order Components & Materials', 15, currentY);
+    currentY += 10;
+    
+    const componentHeaders = ['Component Type', 'Specifications', 'Material Details'];
+    const componentData = jobCardData.order.components.map((component: JobCardData['order']['components'][0]) => [
+      formatString(component.component_type?.toUpperCase()),
+      [
+        component.size ? `Size: ${component.size}` : null,
+        component.color ? `Color: ${component.color}` : null,
+        component.gsm ? `GSM: ${component.gsm}` : null,
+        component.custom_name ? `Name: ${component.custom_name}` : null
+      ].filter(Boolean).join('\n') || '-',
+      component.inventory ? 
+        `${component.inventory.material_name}\n${component.inventory.color ? `Color: ${component.inventory.color}` : ''}\n${component.inventory.gsm ? `GSM: ${component.inventory.gsm}` : ''}`.trim() 
+        : '-'
+    ]);
+    
+    autoTable(pdf, {
+      head: [componentHeaders],
+      body: componentData,
+      startY: currentY,
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { 
+        fillColor: PDF_STYLES.colors.secondary,
+        textColor: PDF_STYLES.colors.white,
+        fontStyle: 'bold'
+      },
+      columnStyles: {
+        0: { cellWidth: 40 },
+        1: { cellWidth: 60 },
+        2: { cellWidth: 75 }
+      }
+    });
+    
+    currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 15;
+  }
+  
+  // Production Jobs Section
+  pdf.setFontSize(PDF_STYLES.fonts.heading);
+  pdf.setTextColor(...PDF_STYLES.colors.secondary);
+  pdf.text('Production Jobs Details', 15, currentY);
+  currentY += 10;
+  
+  // Cutting Jobs
+  if (jobCardData.cutting_jobs && jobCardData.cutting_jobs.length > 0) {
+    pdf.setFontSize(PDF_STYLES.fonts.body + 1);
+    pdf.setTextColor(...PDF_STYLES.colors.primary);
+    pdf.text('Cutting Jobs', 15, currentY);
+    currentY += 8;
+    
+    const cuttingHeaders = ['Worker', 'Status', 'Quantity', 'Created Date'];
+    const cuttingData = jobCardData.cutting_jobs.map(job => [
+      formatString(job.worker_name),
+      formatString(job.status?.toUpperCase()),
+      formatNumber(job.received_quantity),
+      formatDate(job.created_at)
+    ]);
+    
+    autoTable(pdf, {
+      head: [cuttingHeaders],
+      body: cuttingData,
+      startY: currentY,
+      styles: { fontSize: 9, cellPadding: 2 },
+      headStyles: { 
+        fillColor: PDF_STYLES.colors.primary,
+        textColor: PDF_STYLES.colors.white,
+        fontStyle: 'bold'
+      },
+      columnStyles: {
+        0: { cellWidth: 45 },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 25 },
+        3: { cellWidth: 40 }
+      }
+    });
+    
+    currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 10;
+  }
+  
+  // Printing Jobs
+  if (jobCardData.printing_jobs && jobCardData.printing_jobs.length > 0) {
+    pdf.setFontSize(PDF_STYLES.fonts.body + 1);
+    pdf.setTextColor(...PDF_STYLES.colors.primary);
+    pdf.text('Printing Jobs', 15, currentY);
+    currentY += 8;
+    
+    const printingHeaders = ['Worker', 'Status', 'Quantity', 'Created Date'];
+    const printingData = jobCardData.printing_jobs.map(job => [
+      formatString(job.worker_name),
+      formatString(job.status?.toUpperCase()),
+      formatNumber(job.received_quantity),
+      formatDate(job.created_at)
+    ]);
+    
+    autoTable(pdf, {
+      head: [printingHeaders],
+      body: printingData,
+      startY: currentY,
+      styles: { fontSize: 9, cellPadding: 2 },
+      headStyles: { 
+        fillColor: PDF_STYLES.colors.primary,
+        textColor: PDF_STYLES.colors.white,
+        fontStyle: 'bold'
+      },
+      columnStyles: {
+        0: { cellWidth: 45 },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 25 },
+        3: { cellWidth: 40 }
+      }
+    });
+    
+    currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 10;
+  }
+  
+  // Stitching Jobs
+  if (jobCardData.stitching_jobs && jobCardData.stitching_jobs.length > 0) {
+    pdf.setFontSize(PDF_STYLES.fonts.body + 1);
+    pdf.setTextColor(...PDF_STYLES.colors.primary);
+    pdf.text('Stitching Jobs', 15, currentY);
+    currentY += 8;
+    
+    const stitchingHeaders = ['Worker', 'Status', 'Quantity', 'Created Date'];
+    const stitchingData = jobCardData.stitching_jobs.map(job => [
+      formatString(job.worker_name),
+      formatString(job.status?.toUpperCase()),
+      formatNumber(job.received_quantity),
+      formatDate(job.created_at)
+    ]);
+    
+    autoTable(pdf, {
+      head: [stitchingHeaders],
+      body: stitchingData,
+      startY: currentY,
+      styles: { fontSize: 9, cellPadding: 2 },
+      headStyles: { 
+        fillColor: PDF_STYLES.colors.primary,
+        textColor: PDF_STYLES.colors.white,
+        fontStyle: 'bold'
+      },
+      columnStyles: {
+        0: { cellWidth: 45 },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 25 },
+        3: { cellWidth: 40 }
+      }
+    });
+    
+    currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 10;
+  }
+  
+  // Production Summary
+  currentY += 5;
+  pdf.setFontSize(PDF_STYLES.fonts.heading);
+  pdf.setTextColor(...PDF_STYLES.colors.secondary);
+  pdf.text('Production Summary', 15, currentY);
+  currentY += 10;
+  
+  const summaryData = [
+    ['Total Cutting Jobs:', formatNumber(jobCardData.cutting_jobs?.length || 0)],
+    ['Total Printing Jobs:', formatNumber(jobCardData.printing_jobs?.length || 0)],
+    ['Total Stitching Jobs:', formatNumber(jobCardData.stitching_jobs?.length || 0)],
+    ['Overall Status:', formatString(jobCardData.status?.replace(/_/g, ' ').toUpperCase())]
+  ];
+  
+  autoTable(pdf, {
+    body: summaryData,
+    startY: currentY,
+    theme: 'plain',
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 70 },
+      1: { cellWidth: 50 }
+    },
+    styles: {
+      fontSize: PDF_STYLES.fonts.body,
+      cellPadding: 3
+    }
+  });
   
   // Add footer
   addFooter(pdf, 1, 1);
