@@ -1979,16 +1979,32 @@ export function generateDetailedPrintingJobPDF(jobData: any, filename: string): 
     pdf.setFontSize(PDF_STYLES.fonts.body);
     pdf.setTextColor(...PDF_STYLES.colors.black);
     let material = 'N/A';
+    
+    // First try to get material from job data
     if (jobData.material) {
       material = formatString(jobData.material);
     } else if (jobData.job_card?.material) {
       material = formatString(jobData.job_card.material);
-    } else if (jobData.job_card?.components && Array.isArray(jobData.job_card.components)) {
-      const part = jobData.job_card.components.find((c: any) => c.component_type === 'part' && c.inventory?.material_name);
-      if (part) {
-        material = formatString(part.inventory.material_name);
+    } 
+    // Then try to get from order components (part component)
+    else if (jobData.job_card?.order?.components && Array.isArray(jobData.job_card.order.components)) {
+      const partComponent = jobData.job_card.order.components.find((c: any) => 
+        c.component_type === 'part' && c.inventory?.material_name
+      );
+      if (partComponent) {
+        material = formatString(partComponent.inventory.material_name);
       }
     }
+    // Finally try to get from job card components
+    else if (jobData.job_card?.components && Array.isArray(jobData.job_card.components)) {
+      const partComponent = jobData.job_card.components.find((c: any) => 
+        c.component_type === 'part' && c.inventory?.material_name
+      );
+      if (partComponent) {
+        material = formatString(partComponent.inventory.material_name);
+      }
+    }
+    
     pdf.text(material, 60, currentY);
     currentY += 10;
 
@@ -2056,7 +2072,7 @@ export function generateDetailedPrintingJobPDF(jobData: any, filename: string): 
       pdf.text('Expected Completion', 15, currentY);
       pdf.setFontSize(PDF_STYLES.fonts.body);
       pdf.setTextColor(...PDF_STYLES.colors.black);
-      pdf.text(formatDate(jobData.expected_completion_date), 60, currentY);
+      pdf.text(formatDate(jobData.expected_completion_date), 75, currentY);
       currentY += 15;
     }
 
