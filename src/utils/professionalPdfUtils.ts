@@ -1442,10 +1442,12 @@ export function generateIndividualOrderPDF(orderData: Record<string, unknown>, f
   // Product details table
   const productHeaders = ['Property', 'Value'];
   
-  // Determine the correct rate to use
-  const ratePerUnit = orderData.calculated_selling_price || orderData.rate || 0;
+  // Get the correct values from cost calculation data if available
   const quantity = orderData.order_quantity || orderData.quantity || 0;
-  const totalAmount = Number(ratePerUnit) * Number(quantity);
+  
+  // Use selling price from cost calculation if available, otherwise fall back to calculated_selling_price or rate
+  const totalSellingPrice = orderData.sellingPrice || orderData.calculated_selling_price || (Number(orderData.rate || 0) * Number(quantity));
+  const sellingPricePerPiece = Number(quantity) > 0 ? Number(totalSellingPrice) / Number(quantity) : 0;
   
   const productData = [
     ['Catalog Product', formatString(orderData.catalog_product_name, 'N/A')],
@@ -1453,8 +1455,8 @@ export function generateIndividualOrderPDF(orderData: Record<string, unknown>, f
     ['Bag Length', `${formatNumber(orderData.bag_length)} units`],
     ['Bag Width', `${formatNumber(orderData.bag_width)} units`],
     ['Border Dimension', formatNumber(orderData.border_dimension) + ' units'],
-    ['Rate per Unit', formatCurrency(ratePerUnit)],
-    ['Total Amount', formatCurrency(totalAmount)]
+    ['Selling Price per Piece', formatCurrency(sellingPricePerPiece)],
+    ['Total Selling Price', formatCurrency(totalSellingPrice)]
   ];
   
   autoTable(pdf, {

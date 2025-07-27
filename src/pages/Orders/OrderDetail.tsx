@@ -860,7 +860,11 @@ const OrderDetail = () => {
       ...order,
       catalog_product_name: catalogProduct?.name,
       material_summary: materialSummary,
-      order_quantity: order.order_quantity || order.quantity
+      order_quantity: order.order_quantity || order.quantity,
+      // Include cost calculation data for proper pricing display
+      sellingPrice: costCalculation?.sellingPrice,
+      totalCost: costCalculation?.totalCost,
+      margin: costCalculation?.margin
     };
     
     generateIndividualOrderPDF(pdfOrderData, `order-${order.order_number}`);
