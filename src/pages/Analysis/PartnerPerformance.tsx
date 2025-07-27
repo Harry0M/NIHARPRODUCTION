@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { DateRange } from "react-day-picker"
 import { 
   ArrowLeft, Users, BadgeCheck, BarChart3, Calendar, 
-  DollarSign, TrendingUp, AlertCircle, PackageCheck, FileText
+  DollarSign, TrendingUp, AlertCircle, PackageCheck, FileText, ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -1237,12 +1237,20 @@ const PartnerPerformance = () => {
                           <TableHead>Total Amount</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Date</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {vendorBills.map((bill) => (
                           <TableRow key={bill.id}>
-                            <TableCell className="font-medium">{bill.bill_number}</TableCell>
+                            <TableCell className="font-medium">
+                              <button
+                                onClick={() => navigate(`/sells/vendor-bills/${bill.id}`)}
+                                className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                              >
+                                {bill.bill_number}
+                              </button>
+                            </TableCell>
                             <TableCell>{bill.job_number}</TableCell>
                             <TableCell className="capitalize">{bill.job_type}</TableCell>
                             <TableCell>{bill.company_name}</TableCell>
@@ -1263,6 +1271,17 @@ const PartnerPerformance = () => {
                               </span>
                             </TableCell>
                             <TableCell>{formatDate(bill.created_at)}</TableCell>
+                            <TableCell>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate(`/sells/vendor-bills/${bill.id}`)}
+                                className="flex items-center gap-1"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                View
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
