@@ -241,6 +241,12 @@ const PartnersList = () => {
           <p className="text-muted-foreground mt-1">Manage your suppliers and vendors in one place</p>
         </div>
         <div className="flex flex-wrap gap-2 slide-up" style={{animationDelay: '0.2s'}}>
+          <Link to="/analysis/partners">
+            <Button variant="secondary" className="flex items-center gap-1 shadow-subtle">
+              <BarChart3 size={16} />
+              Partner Analysis
+            </Button>
+          </Link>
           <Link to="/partners/new?type=supplier">
             <Button variant="outline" className="flex items-center gap-1 shadow-subtle">
               <Plus size={16} />
