@@ -1,5 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Pencil, Save, X } from "lucide-react";
 
 interface OrderInfoEditFormProps {
   order: {
@@ -18,11 +21,25 @@ interface OrderInfoEditFormProps {
     catalog_id?: string | null;
     special_instructions?: string | null;
   };
-  // Removed unused props since editing is disabled
+  // Order quantity editing props
+  isEditingOrderQuantity?: boolean;
+  editedOrderQuantity?: string;
+  savingOrderQuantity?: boolean;
+  onStartEditOrderQuantity?: () => void;
+  onSaveOrderQuantity?: () => Promise<void>;
+  onCancelEditOrderQuantity?: () => void;
+  onOrderQuantityChange?: (value: string) => void;
 }
 
 export function OrderInfoEditForm({
-  order
+  order,
+  isEditingOrderQuantity,
+  editedOrderQuantity,
+  savingOrderQuantity,
+  onStartEditOrderQuantity,
+  onSaveOrderQuantity,
+  onCancelEditOrderQuantity,
+  onOrderQuantityChange
 }: OrderInfoEditFormProps) {
   // Editing functionality removed - always show read-only view
   
@@ -44,8 +61,52 @@ export function OrderInfoEditForm({
           </div>
           {/* Quantity field removed - only showing Order Quantity */}
           <div>
-            <Label className="text-sm font-medium text-gray-500">Order Quantity</Label>
-            <p className="text-sm">{order.order_quantity || 'N/A'}</p>
+            <div className="flex items-center justify-between mb-1">
+              <Label className="text-sm font-medium text-gray-500">Order Quantity</Label>
+              {!isEditingOrderQuantity && onStartEditOrderQuantity && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onStartEditOrderQuantity}
+                  className="h-6 px-2 text-xs gap-1"
+                >
+                  <Pencil size={12} />
+                  Edit
+                </Button>
+              )}
+            </div>
+            {isEditingOrderQuantity && onOrderQuantityChange && onSaveOrderQuantity && onCancelEditOrderQuantity ? (
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  value={editedOrderQuantity}
+                  onChange={(e) => onOrderQuantityChange(e.target.value)}
+                  placeholder="Enter quantity"
+                  className="h-8"
+                  min="1"
+                />
+                <Button
+                  size="sm"
+                  onClick={onSaveOrderQuantity}
+                  disabled={savingOrderQuantity}
+                  className="h-8 px-2 gap-1"
+                >
+                  <Save size={12} />
+                  {savingOrderQuantity ? "Saving..." : "Save"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onCancelEditOrderQuantity}
+                  disabled={savingOrderQuantity}
+                  className="h-8 px-2"
+                >
+                  <X size={12} />
+                </Button>
+              </div>
+            ) : (
+              <p className="text-sm">{order.order_quantity || order.quantity || 'N/A'}</p>
+            )}
           </div>
           <div>
             <Label className="text-sm font-medium text-gray-500">Bag Dimensions</Label>

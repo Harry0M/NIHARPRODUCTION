@@ -147,6 +147,11 @@ const OrderDetail = () => {
   const [editedCompletionDate, setEditedCompletionDate] = useState<string>('');
   const [savingCompletionDate, setSavingCompletionDate] = useState(false);
   
+  // Order quantity editing state
+  const [isEditingOrderQuantity, setIsEditingOrderQuantity] = useState(false);
+  const [editedOrderQuantity, setEditedOrderQuantity] = useState<string>('');
+  const [savingOrderQuantity, setSavingOrderQuantity] = useState(false);
+  
   // Cost editing state
   const [isEditingCosts, setIsEditingCosts] = useState(false);
   const [savingCosts, setSavingCosts] = useState(false);
@@ -752,6 +757,81 @@ const OrderDetail = () => {
     setEditedCompletionDate('');
   };
 
+  // Order quantity editing handlers
+  const handleStartEditOrderQuantity = () => {
+    if (!order) return;
+    
+    // Use order_quantity field primarily, fallback to quantity
+    const currentQuantity = order.order_quantity || order.quantity || '';
+    setEditedOrderQuantity(currentQuantity.toString());
+    setIsEditingOrderQuantity(true);
+  };
+
+  const handleSaveOrderQuantity = async () => {
+    if (!order) return;
+    
+    const quantityValue = parseInt(editedOrderQuantity);
+    if (isNaN(quantityValue) || quantityValue <= 0) {
+      toast({
+        title: "Invalid quantity",
+        description: "Please enter a valid positive number for quantity.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setSavingOrderQuantity(true);
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          order_quantity: quantityValue,
+          // Also update the legacy quantity field for compatibility
+          quantity: quantityValue
+        })
+        .eq('id', order.id);
+
+      if (error) throw error;
+
+      // Update local order state
+      setOrder(prev => prev ? {
+        ...prev,
+        order_quantity: quantityValue,
+        quantity: quantityValue
+      } : null);
+
+      // Recalculate cost calculation with new quantity
+      if (costCalculation) {
+        setCostCalculation(prev => prev ? {
+          ...prev,
+          perUnitBaseCost: (prev.totalCost || 0) / quantityValue,
+          perUnitTransportCost: (prev.transportCharge || 0) / quantityValue,
+          perUnitGstCost: 0,
+          perUnitCost: (prev.totalCost || 0) / quantityValue
+        } : null);
+      }
+
+      setIsEditingOrderQuantity(false);
+      toast({
+        title: "Order quantity updated",
+        description: "The quantity has been saved successfully.",
+      });
+    } catch (error: unknown) {
+      toast({
+        title: "Error updating order quantity",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingOrderQuantity(false);
+    }
+  };
+
+  const handleCancelEditOrderQuantity = () => {
+    setIsEditingOrderQuantity(false);
+    setEditedOrderQuantity('');
+  };
+
   const handleStartEdit = () => {
     if (!costCalculation) return;
     
@@ -808,6 +888,13 @@ const OrderDetail = () => {
         {/* Order Information - Read-only view */}
         <OrderInfoEditForm
           order={order}
+          isEditingOrderQuantity={isEditingOrderQuantity}
+          editedOrderQuantity={editedOrderQuantity}
+          savingOrderQuantity={savingOrderQuantity}
+          onStartEditOrderQuantity={handleStartEditOrderQuantity}
+          onSaveOrderQuantity={handleSaveOrderQuantity}
+          onCancelEditOrderQuantity={handleCancelEditOrderQuantity}
+          onOrderQuantityChange={setEditedOrderQuantity}
         />
 
       </div>
