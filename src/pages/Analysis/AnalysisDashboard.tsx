@@ -61,7 +61,7 @@ const AnalysisDashboard = () => {
         </div>
         
         {/* Analysis Navigation Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
           {/* Material Consumption */}
           <Card className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate('/analysis/materials')}>
             <CardHeader className="pb-2">
