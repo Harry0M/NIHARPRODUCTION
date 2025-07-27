@@ -1743,8 +1743,6 @@ export function generateDetailedJobPDF(jobData: any, filename: string): void {
     const overviewData = [
       ['Job Name:', formatString(jobData.job_card?.job_name)],
       ['Job Number:', formatString(jobData.job_card?.job_number)],
-      ['Job ID:', formatString(jobData.id)],
-      ['Status:', formatString(jobData.status?.toUpperCase())],
       ['Created:', formatDate(jobData.created_at)],
       ['Worker:', formatString(jobData.worker_name)],
       ['Type:', formatString(jobData.is_internal ? 'Internal' : 'External')]
@@ -1809,7 +1807,6 @@ export function generateDetailedJobPDF(jobData: any, filename: string): void {
             ['Rewinding:', formatString(component.rewinding)],
             ['Roll Width:', formatNumber(component.roll_width)],
             ['Rate:', formatString(component.rate)],
-            ['Status:', formatString(component.status?.toUpperCase())],
             ['Consumption:', formatNumber(component.consumption)]
           ];
           
@@ -1854,12 +1851,11 @@ export function generateDetailedJobPDF(jobData: any, filename: string): void {
         const smallComponentsData = smallComponents.map((component: any) => [
           formatString(component.order_component?.component_type?.toUpperCase()),
           formatString(component.order_component?.inventory?.material_name || 'No material linked'),
-          formatString(component.status?.toUpperCase()),
           formatNumber(component.consumption || 0)
         ]);
         
         autoTable(pdf, {
-          head: [['Component', 'Material', 'Status', 'Consumption']],
+          head: [['Component', 'Material', 'Consumption']],
           body: smallComponentsData,
           startY: currentY,
           theme: 'striped',
