@@ -2174,7 +2174,7 @@ export function generateDetailedStitchingJobPDF(jobData: any, filename: string):
       ['Start Date:', formatDate(jobData.start_date)],
       ['Expected Completion:', formatDate(jobData.expected_completion_date)],
       ['Rate:', formatString(jobData.rate)],
-      ['Total Quantity:', formatNumber(jobData.total_quantity)]
+      ['Total Quantity:', formatNumber(jobData.provided_quantity)]
     ];
     
     autoTable(pdf, {
@@ -2270,7 +2270,7 @@ export function generateDetailedStitchingJobPDF(jobData: any, filename: string):
     const totalComponents = componentQuantities.length;
     const summaryData = [
       ['Total Components:', formatNumber(totalComponents)],
-      ['Total Quantity:', formatNumber(jobData.total_quantity)],
+      ['Total Quantity:', formatNumber(jobData.provided_quantity)],
       ['Job Status:', formatString(jobData.status?.toUpperCase())],
       ['Worker Assigned:', formatString(jobData.worker_name)],
       ['Job Type:', formatString(jobData.is_internal ? 'Internal' : 'External')]
