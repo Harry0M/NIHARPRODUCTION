@@ -106,6 +106,17 @@ interface JobCardData extends PDFDataItem {
   }>;
 }
 
+interface MaterialSummary {
+  material_id: string;
+  material_name: string;
+  color: string | null;
+  gsm: string | null;
+  total_consumption: number;
+  unit: string;
+  purchase_rate: number | null;
+  total_cost: number;
+}
+
 interface VendorBillData extends PDFDataItem {
   bill_number?: string;
   vendor_name?: string;
@@ -1430,14 +1441,20 @@ export function generateIndividualOrderPDF(orderData: Record<string, unknown>, f
   
   // Product details table
   const productHeaders = ['Property', 'Value'];
+  
+  // Determine the correct rate to use
+  const ratePerUnit = orderData.calculated_selling_price || orderData.rate || 0;
+  const quantity = orderData.order_quantity || orderData.quantity || 0;
+  const totalAmount = Number(ratePerUnit) * Number(quantity);
+  
   const productData = [
-    ['Product Type', formatString(orderData.catalog_name || orderData.product_name, 'Standard Bag')],
-    ['Quantity', formatNumber(orderData.quantity)],
+    ['Catalog Product', formatString(orderData.catalog_product_name, 'N/A')],
+    ['Quantity', formatNumber(quantity)],
     ['Bag Length', `${formatNumber(orderData.bag_length)} units`],
     ['Bag Width', `${formatNumber(orderData.bag_width)} units`],
     ['Border Dimension', formatNumber(orderData.border_dimension) + ' units'],
-    ['Rate per Unit', formatCurrency(orderData.rate)],
-    ['Total Amount', formatCurrency(Number(orderData.rate || 0) * Number(orderData.quantity || 0))]
+    ['Rate per Unit', formatCurrency(ratePerUnit)],
+    ['Total Amount', formatCurrency(totalAmount)]
   ];
   
   autoTable(pdf, {
@@ -1458,43 +1475,43 @@ export function generateIndividualOrderPDF(orderData: Record<string, unknown>, f
   
   currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 20;
   
-  // Cost breakdown if available
-  if (orderData.material_cost || orderData.cutting_charge || orderData.printing_charge) {
+  // Material consumption table if available
+  if (orderData.material_summary && Array.isArray(orderData.material_summary) && orderData.material_summary.length > 0) {
     pdf.setFontSize(PDF_STYLES.fonts.heading);
     pdf.setTextColor(...PDF_STYLES.colors.primary);
-    pdf.text('Cost Breakdown', leftColumnX, currentY);
+    pdf.text('Material Consumption', leftColumnX, currentY);
     currentY += 15;
     
-    const costHeaders = ['Cost Type', 'Amount'];
-    const costData = [];
+    const materialHeaders = ['Material', 'Specifications', 'Consumption'];
+    const materialData = (orderData.material_summary as MaterialSummary[]).map((material: MaterialSummary) => [
+      formatString(material.material_name),
+      [
+        material.color ? `Color: ${material.color}` : null,
+        material.gsm ? `GSM: ${material.gsm}` : null
+      ].filter(Boolean).join(', ') || '-',
+      `${formatNumber(material.total_consumption)} ${formatString(material.unit)}`
+    ]);
     
-    if (orderData.material_cost) costData.push(['Material Cost', formatCurrency(orderData.material_cost)]);
-    if (orderData.cutting_charge) costData.push(['Cutting Charge', formatCurrency(orderData.cutting_charge)]);
-    if (orderData.printing_charge) costData.push(['Printing Charge', formatCurrency(orderData.printing_charge)]);
-    if (orderData.stitching_charge) costData.push(['Stitching Charge', formatCurrency(orderData.stitching_charge)]);
-    if (orderData.transport_charge) costData.push(['Transport Charge', formatCurrency(orderData.transport_charge)]);
-    if (orderData.total_cost) costData.push(['Total Cost', formatCurrency(orderData.total_cost)]);
-    if (orderData.margin) costData.push(['Margin', formatCurrency(orderData.margin)]);
+    autoTable(pdf, {
+      head: [materialHeaders],
+      body: materialData,
+      startY: currentY,
+      styles: { fontSize: 9, cellPadding: 2 },
+      headStyles: { 
+        fillColor: PDF_STYLES.colors.secondary,
+        textColor: PDF_STYLES.colors.white,
+        fontStyle: 'bold'
+      },
+      columnStyles: {
+        0: { cellWidth: 60 },
+        1: { cellWidth: 70 },
+        2: { cellWidth: 55 }
+      }
+    });
     
-    if (costData.length > 0) {
-      autoTable(pdf, {
-        head: [costHeaders],
-        body: costData,
-        startY: currentY,
-        styles: { fontSize: 10, cellPadding: 3 },
-        headStyles: { 
-          fillColor: PDF_STYLES.colors.secondary,
-          textColor: PDF_STYLES.colors.white,
-          fontStyle: 'bold'
-        },
-        columnStyles: {
-          0: { cellWidth: 80, fontStyle: 'bold' },
-          1: { cellWidth: 60, halign: 'right' }
-        }
-      });
-      
-      currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 10;
-    }
+    currentY = (pdf as jsPDFWithAutoTable).lastAutoTable.finalY + 10;
+    
+    // Remove the total material cost section since we're not showing costs anymore
   }
   
   // Special instructions

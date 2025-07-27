@@ -36,7 +36,8 @@ import {
   Plus,
   Calculator,
   Layers,
-  Save
+  Save,
+  Download
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +48,7 @@ import { CostCalculationDisplay } from "@/components/orders/CostCalculationDispl
 import { useOrderDetailEditing } from "@/hooks/order-form/useOrderDetailEditing";
 import { OrderInfoEditForm } from "@/components/orders/OrderInfoEditForm";
 import { ComponentsEditForm } from "@/components/orders/ComponentsEditForm";
+import { generateIndividualOrderPDF } from "@/utils/professionalPdfUtils";
 
 interface Order {
   id: string;
@@ -850,6 +852,20 @@ const OrderDetail = () => {
     setIsEditingCosts(true);
   };
 
+  const handleDownloadPDF = () => {
+    if (!order) return;
+    
+    // Prepare order data for PDF generation
+    const pdfOrderData = {
+      ...order,
+      catalog_product_name: catalogProduct?.name,
+      material_summary: materialSummary,
+      order_quantity: order.order_quantity || order.quantity
+    };
+    
+    generateIndividualOrderPDF(pdfOrderData, `order-${order.order_number}`);
+  };
+
   return (
     <div className="space-y-6 max-w-[1400px] mx-auto">
       <div className="flex items-center justify-between">
@@ -872,6 +888,13 @@ const OrderDetail = () => {
             </p>
           </div>
         </div>
+        <Button 
+          onClick={handleDownloadPDF}
+          className="gap-2"
+        >
+          <Download size={16} />
+          Download PDF
+        </Button>
       </div>
       
       <div className="flex items-center gap-4">
