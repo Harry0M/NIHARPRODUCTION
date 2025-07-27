@@ -13,6 +13,7 @@ interface CuttingDetailsFormProps {
     is_internal: boolean;
     status: JobStatus;
     received_quantity: string;
+    rate: string;
     vendor_id?: string | null;
   };
   validationError?: string | null;
@@ -54,6 +55,19 @@ export function CuttingDetailsForm({
               type="text"
               placeholder="Final quantity after cutting"
               value={cuttingData.received_quantity}
+              onChange={onInputChange}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="rate">Rate</Label>
+            <Input 
+              id="rate" 
+              name="rate"
+              type="number"
+              step="0.01"
+              placeholder="Rate per unit (₹)"
+              value={cuttingData.rate}
               onChange={onInputChange}
             />
           </div>

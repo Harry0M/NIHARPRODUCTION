@@ -84,6 +84,7 @@ export interface CuttingJobData {
   is_internal: boolean;
   status: JobStatus;
   received_quantity: number | null;
+  rate: number | null;
   created_at: string;
   updated_at: string;
   created_by: string | null;

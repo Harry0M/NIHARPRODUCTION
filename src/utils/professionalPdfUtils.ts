@@ -1745,7 +1745,8 @@ export function generateDetailedJobPDF(jobData: any, filename: string): void {
       ['Job Number:', formatString(jobData.job_card?.job_number)],
       ['Created:', formatDate(jobData.created_at)],
       ['Worker:', formatString(jobData.worker_name)],
-      ['Type:', formatString(jobData.is_internal ? 'Internal' : 'External')]
+      ['Type:', formatString(jobData.is_internal ? 'Internal' : 'External')],
+      ['Rate:', formatString(jobData.rate ? `₹${jobData.rate}` : 'N/A')]
     ];
     
     autoTable(pdf, {

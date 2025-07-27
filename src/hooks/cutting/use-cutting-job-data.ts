@@ -78,7 +78,8 @@ export const useCuttingJobData = (id: string) => {
         ...job,
         roll_width: job.roll_width?.toString() || "",
         consumption_meters: job.consumption_meters?.toString() || "",
-        received_quantity: job.received_quantity?.toString() || ""
+        received_quantity: job.received_quantity?.toString() || "",
+        rate: job.rate?.toString() || ""
       }));
       
       setExistingJobs(formattedJobs);

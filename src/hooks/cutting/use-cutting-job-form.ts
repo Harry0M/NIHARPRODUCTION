@@ -8,6 +8,7 @@ interface CuttingData {
   is_internal: boolean;
   status: JobStatus;
   received_quantity: string;
+  rate: string;
   vendor_id?: string | null;
 }
 
@@ -17,6 +18,7 @@ export const useCuttingJobForm = (components: any[]) => {
     is_internal: true,
     status: "pending",
     received_quantity: "",
+    rate: "",
     vendor_id: null
   });
 
@@ -28,6 +30,7 @@ export const useCuttingJobForm = (components: any[]) => {
       is_internal: true,
       status: "pending",
       received_quantity: "",
+      rate: "",
       vendor_id: null
     });
 
@@ -56,6 +59,7 @@ export const useCuttingJobForm = (components: any[]) => {
         is_internal: selectedJob.is_internal,
         status: selectedJob.status,
         received_quantity: selectedJob.received_quantity?.toString() || "",
+        rate: selectedJob.rate?.toString() || "",
         vendor_id: selectedJob.vendor_id || null
       });
 

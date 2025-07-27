@@ -35,7 +35,8 @@ export const useCuttingJobSubmit = () => {
       // Sanitize the cutting data numeric fields
       const sanitizedCuttingData = {
         ...cuttingData,
-        received_quantity: cuttingData.received_quantity === '' ? null : cuttingData.received_quantity
+        received_quantity: cuttingData.received_quantity === '' ? null : cuttingData.received_quantity,
+        rate: cuttingData.rate === '' ? null : cuttingData.rate
       };      const { data: cuttingJob, error: cuttingError } = await supabase
         .from('cutting_jobs')
         .insert({
@@ -93,6 +94,7 @@ export const useCuttingJobSubmit = () => {
       const sanitizedCuttingData = {
         ...cuttingData,
         received_quantity: cuttingData.received_quantity === '' ? null : cuttingData.received_quantity,
+        rate: cuttingData.rate === '' ? null : cuttingData.rate,
         vendor_id: cuttingData.vendor_id || null
       };
 
