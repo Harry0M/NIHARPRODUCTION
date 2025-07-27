@@ -1,6 +1,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Truck, Edit2, Package } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { FileText, Truck, Edit2, Package, Save, X } from "lucide-react";
 import type { DispatchData } from "@/types/dispatch";
 import type { DispatchBatch } from "@/types/dispatch";
 import { downloadAsCSV } from "@/utils/downloadUtils";
@@ -9,6 +13,8 @@ import { DownloadButton } from "@/components/DownloadButton";
 import { EditableDispatchBatches } from "./EditableDispatchBatches";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface DispatchDetailsProps {
   dispatch: DispatchData;
@@ -20,7 +26,70 @@ interface DispatchDetailsProps {
 
 export const DispatchDetails = ({ dispatch, batches, orderNumber, companyName, onBatchesUpdated }: DispatchDetailsProps) => {
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    recipient_name: dispatch.recipient_name,
+    delivery_address: dispatch.delivery_address,
+    tracking_number: dispatch.tracking_number || '',
+    notes: dispatch.notes || '',
+    quality_checked: dispatch.quality_checked,
+    quantity_checked: dispatch.quantity_checked
+  });
   const navigate = useNavigate();
+
+  // Handle saving dispatch details
+  const handleSaveDetails = async () => {
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from("order_dispatches")
+        .update({
+          recipient_name: editFormData.recipient_name,
+          delivery_address: editFormData.delivery_address,
+          tracking_number: editFormData.tracking_number || null,
+          notes: editFormData.notes || null,
+          quality_checked: editFormData.quality_checked,
+          quantity_checked: editFormData.quantity_checked
+        })
+        .eq("id", dispatch.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Dispatch details updated",
+        description: "The dispatch details have been saved successfully.",
+      });
+
+      setIsEditingDetails(false);
+      
+      // Refresh the data
+      if (onBatchesUpdated) {
+        onBatchesUpdated();
+      }
+    } catch (error: unknown) {
+      toast({
+        title: "Error updating dispatch details",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle canceling edit
+  const handleCancelEdit = () => {
+    setEditFormData({
+      recipient_name: dispatch.recipient_name,
+      delivery_address: dispatch.delivery_address,
+      tracking_number: dispatch.tracking_number || '',
+      notes: dispatch.notes || '',
+      quality_checked: dispatch.quality_checked,
+      quantity_checked: dispatch.quantity_checked
+    });
+    setIsEditingDetails(false);
+  };
   // Handler for CSV download - Enhanced with comprehensive data
   const handleDownloadCSV = () => {
     const totalQuantity = batches.reduce((sum, batch) => sum + batch.quantity, 0);
@@ -89,7 +158,6 @@ export const DispatchDetails = ({ dispatch, batches, orderNumber, companyName, o
         batch_number: batch.batch_number,
         quantity: batch.quantity,
         delivery_date: batch.delivery_date,
-        quality_status: batch.quality_status || 'approved',
         status: batch.status || 'pending',
         notes: batch.notes || ''
       })),
@@ -110,26 +178,138 @@ export const DispatchDetails = ({ dispatch, batches, orderNumber, companyName, o
               This order was dispatched on {new Date(dispatch.created_at || '').toLocaleDateString()} to {dispatch.recipient_name}
             </CardDescription>
           </div>
-          <DownloadButton 
-            onCsvClick={handleDownloadCSV}
-            onPdfClick={handleDownloadPDF}
-            label="Download Complete Details"
-          />
+          <div className="flex items-center gap-2">
+            <DownloadButton 
+              onCsvClick={handleDownloadCSV}
+              onPdfClick={handleDownloadPDF}
+              label="Download Complete Details"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditingDetails(!isEditingDetails)}
+              disabled={isSaving}
+            >
+              <Edit2 className="h-4 w-4 mr-2" />
+              {isEditingDetails ? 'Cancel Edit' : 'Edit Details'}
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-md">
-          <div className="space-y-2">
-            <div><strong>Recipient Name:</strong> {dispatch.recipient_name}</div>
-            <div><strong>Delivery Address:</strong> {dispatch.delivery_address}</div>
-            <div><strong>Tracking Number:</strong> {dispatch.tracking_number || "—"}</div>
+        {isEditingDetails ? (
+          // Edit form for dispatch details
+          <div className="space-y-4 p-4 border rounded-md bg-muted/20">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="recipient_name">Recipient Name</Label>
+                <Input
+                  id="recipient_name"
+                  value={editFormData.recipient_name}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, recipient_name: e.target.value }))}
+                  disabled={isSaving}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tracking_number">Tracking Number</Label>
+                <Input
+                  id="tracking_number"
+                  value={editFormData.tracking_number}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, tracking_number: e.target.value }))}
+                  placeholder="Enter tracking number"
+                  disabled={isSaving}
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="delivery_address">Delivery Address</Label>
+              <Textarea
+                id="delivery_address"
+                value={editFormData.delivery_address}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, delivery_address: e.target.value }))}
+                rows={3}
+                disabled={isSaving}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                value={editFormData.notes}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="Additional notes"
+                rows={2}
+                disabled={isSaving}
+              />
+            </div>
+            
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="quality_checked"
+                  checked={editFormData.quality_checked}
+                  onCheckedChange={(checked) => setEditFormData(prev => ({ ...prev, quality_checked: !!checked }))}
+                  disabled={isSaving}
+                />
+                <Label htmlFor="quality_checked">Quality Check Completed</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="quantity_checked"
+                  checked={editFormData.quantity_checked}
+                  onCheckedChange={(checked) => setEditFormData(prev => ({ ...prev, quantity_checked: !!checked }))}
+                  disabled={isSaving}
+                />
+                <Label htmlFor="quantity_checked">Quantity Check Completed</Label>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2 pt-4 border-t">
+              <Button
+                onClick={handleSaveDetails}
+                disabled={isSaving}
+                size="sm"
+              >
+                {isSaving ? (
+                  <>
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleCancelEdit}
+                disabled={isSaving}
+                size="sm"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+            </div>
           </div>
-          <div className="space-y-2">
-            <div><strong>Quality Check:</strong> {dispatch.quality_checked ? "Yes" : "No"}</div>
-            <div><strong>Quantity Check:</strong> {dispatch.quantity_checked ? "Yes" : "No"}</div>
-            <div><strong>Notes:</strong> {dispatch.notes || "—"}</div>
+        ) : (
+          // Display mode for dispatch details
+          <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-md">
+            <div className="space-y-2">
+              <div><strong>Recipient Name:</strong> {dispatch.recipient_name}</div>
+              <div><strong>Delivery Address:</strong> {dispatch.delivery_address}</div>
+              <div><strong>Tracking Number:</strong> {dispatch.tracking_number || "—"}</div>
+            </div>
+            <div className="space-y-2">
+              <div><strong>Quality Check:</strong> {dispatch.quality_checked ? "Yes" : "No"}</div>
+              <div><strong>Quantity Check:</strong> {dispatch.quantity_checked ? "Yes" : "No"}</div>
+              <div><strong>Notes:</strong> {dispatch.notes || "—"}</div>
+            </div>
           </div>
-        </div>        <div className="space-y-4">          <div className="flex items-center justify-between">
+        )}        <div className="space-y-4">          <div className="flex items-center justify-between">
             <h3 className="font-medium">Dispatch Batches</h3>
             <div className="flex items-center gap-2">
               <div className="text-sm text-muted-foreground">
