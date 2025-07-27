@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
-import { Component } from "@/types/order";
+import { Component, InventoryMaterial } from "@/types/order";
 import { TimelineJob } from "@/types/production";
 import { OrderInfoCard } from "./JobCardDetail/OrderInfoCard";
 import { ProductionTimelineCard } from "./JobCardDetail/ProductionTimelineCard";
@@ -93,7 +93,17 @@ const JobCardDetail = () => {
           order:order_id (
             id, order_number, company_name, quantity, 
             bag_length, bag_width, order_date, status, catalog_id,
-            components:order_components (id, component_type, size, color, gsm, custom_name)
+            components:order_components (
+              id, component_type, size, color, gsm, custom_name,
+              inventory:material_id (
+                id,
+                material_name,
+                unit,
+                color,
+                gsm,
+                purchase_rate
+              )
+            )
           ),
           cutting_jobs (id, status, worker_name, created_at, received_quantity),
           printing_jobs (id, status, worker_name, created_at, received_quantity),
@@ -104,6 +114,9 @@ const JobCardDetail = () => {
 
       if (error) throw error;
       
+      console.log("JOB CARD DETAIL - Raw data:", data);
+      console.log("JOB CARD DETAIL - Components:", data.order?.components);
+      
       // Handle the case where components might not be an array
       const safeData = {
         ...data,
@@ -113,7 +126,10 @@ const JobCardDetail = () => {
           components: Array.isArray(data.order.components) 
             ? data.order.components.map((comp: any) => ({
                 ...comp,
-                gsm: comp.gsm !== null ? String(comp.gsm) : null
+                gsm: comp.gsm !== null ? String(comp.gsm) : null,
+                // Preserve inventory data from the join
+                inventory: comp.inventory && typeof comp.inventory === 'object' ? 
+                  comp.inventory as InventoryMaterial : null
               }))
             : [],
           catalog_name: undefined as string | undefined

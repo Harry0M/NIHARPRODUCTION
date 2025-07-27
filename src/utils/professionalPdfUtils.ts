@@ -347,6 +347,9 @@ export function generateOrderPDF(orderData: OrderData, filename: string): void {
  * Create a professional job card PDF
  */
 export function generateJobCardPDF(jobCardData: JobCardData, filename: string): void {
+  console.log("PDF GENERATION - Job Card Data:", jobCardData);
+  console.log("PDF GENERATION - Order Components:", jobCardData.order?.components);
+  
   const pdf = new jsPDF();
   
   // Header
