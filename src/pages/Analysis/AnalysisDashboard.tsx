@@ -211,6 +211,21 @@ const AnalysisDashboard = () => {
               </p>
             </CardContent>
           </Card>
+
+          {/* Sales Analysis */}
+          <Card className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate('/analysis/sales')}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center">
+                <TrendingUp className="h-5 w-5 mr-2" />
+                Sales Analysis
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Comprehensive sales performance and invoice analytics
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
 

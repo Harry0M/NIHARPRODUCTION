@@ -55,6 +55,7 @@ import WastageAnalysis from "@/pages/Analysis/WastageAnalysis";
 import PriceTrendAnalysis from "@/pages/Analysis/PriceTrendAnalysis";
 import PurchaseAnalysis from "@/pages/Analysis/PurchaseAnalysis";
 import CompanyOrderAnalysis from "@/pages/Analysis/CompanyOrderAnalysis";
+import SalesAnalysis from "@/pages/Analysis/SalesAnalysis";
 import SellsList from "@/pages/Sells/SellsList";
 import SellsCreateForm from "@/pages/Sells/SellsCreateForm";
 import SalesInvoiceDetail from "@/pages/Sells/SalesInvoiceDetail";
@@ -181,6 +182,7 @@ const routes = [
               { path: "price-trends", element: <PriceTrendAnalysis /> },
               { path: "purchases", element: <PurchaseAnalysis /> },
               { path: "company-orders", element: <CompanyOrderAnalysis /> },
+              { path: "sales", element: <SalesAnalysis /> },
             ],
           },
           {
