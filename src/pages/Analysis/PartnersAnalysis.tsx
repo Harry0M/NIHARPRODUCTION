@@ -196,7 +196,7 @@ const PartnersAnalysis = () => {
   );
 
   const viewPartnerPerformance = (partner: Partner) => {
-    window.location.href = `/analysis/partner/${partner.id}/${partner.partnerType}`;
+    navigate(`/partners/${partner.id}/performance?type=${partner.partnerType}`);
   };
 
   return (

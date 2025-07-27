@@ -229,7 +229,7 @@ const PartnerDetails = () => {
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => navigate(`/partners/${partnerType}/${partner.id}/performance`)}
+                onClick={() => navigate(`/partners/${partner.id}/performance?type=${partnerType}`)}
               >
                 <BarChart3 className="h-4 w-4 mr-2" />
                 View Performance

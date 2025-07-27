@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { DateRange } from "react-day-picker"
 import { 
   ArrowLeft, Users, BadgeCheck, BarChart3, Calendar, 
-  DollarSign, TrendingUp, AlertCircle, PackageCheck
+  DollarSign, TrendingUp, AlertCircle, PackageCheck, FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +14,9 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { JobStatus, PrintingJobData, CuttingJobData } from '@/types/production';
 import { DatePickerWithRange } from '@/components/ui/date-range-picker';
+import { Database } from '@/integrations/supabase/types';
+
+type VendorBill = Database["public"]["Tables"]["vendor_bills"]["Row"];
 
 interface PartnerData {
   id: string;
@@ -43,6 +46,16 @@ interface JobAnalysis {
   printing: JobSummary;
   stitching: JobSummary;
   overall: JobSummary;
+}
+
+interface VendorBillSummary {
+  totalBills: number;
+  totalAmount: number;
+  paidAmount: number;
+  pendingAmount: number;
+  averageBillAmount: number;
+  pendingBills: number;
+  paidBills: number;
 }
 
 interface JobRecord {
@@ -77,6 +90,16 @@ const PartnerPerformance = () => {
     cutting: [],
     printing: [],
     stitching: []
+  });
+  const [vendorBills, setVendorBills] = useState<VendorBill[]>([]);
+  const [vendorBillSummary, setVendorBillSummary] = useState<VendorBillSummary>({
+    totalBills: 0,
+    totalAmount: 0,
+    paidAmount: 0,
+    pendingAmount: 0,
+    averageBillAmount: 0,
+    pendingBills: 0,
+    paidBills: 0
   });
   const [jobAnalysis, setJobAnalysis] = useState<JobAnalysis>({
     cutting: {
@@ -132,6 +155,7 @@ const PartnerPerformance = () => {
     if (id && type) {
       fetchPartnerData();
       fetchJobs();
+      fetchVendorBills();
     } else if (id && !type) {
       // If we have an ID but no type, redirect to partners list
       toast({
@@ -178,6 +202,49 @@ const PartnerPerformance = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchVendorBills = async () => {
+    if (type !== 'vendor' || !id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('vendor_bills')
+        .select('*')
+        .eq('vendor_id', id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      setVendorBills(data || []);
+      
+      // Calculate vendor bill summary
+      const totalBills = data?.length || 0;
+      const totalAmount = data?.reduce((sum, bill) => sum + (bill.total_amount || 0), 0) || 0;
+      const paidBills = data?.filter(bill => bill.status === 'paid').length || 0;
+      const pendingBills = totalBills - paidBills;
+      const paidAmount = data?.filter(bill => bill.status === 'paid')
+        .reduce((sum, bill) => sum + (bill.total_amount || 0), 0) || 0;
+      const pendingAmount = totalAmount - paidAmount;
+      const averageBillAmount = totalBills > 0 ? totalAmount / totalBills : 0;
+      
+      setVendorBillSummary({
+        totalBills,
+        totalAmount,
+        paidAmount,
+        pendingAmount,
+        averageBillAmount,
+        pendingBills,
+        paidBills
+      });
+    } catch (error: any) {
+      console.error('Error fetching vendor bills:', error);
+      toast({
+        title: 'Error fetching vendor bills',
+        description: error.message,
+        variant: 'destructive'
+      });
     }
   };
 
@@ -627,6 +694,68 @@ const PartnerPerformance = () => {
         </Card>
       </div>
 
+      {/* Vendor Bills Metrics (Only for vendors) */}
+      {type === 'vendor' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Bills</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{vendorBillSummary.totalBills}</div>
+              <div className="mt-1 flex items-baseline text-sm">
+                <div className="flex space-x-1 text-muted-foreground">
+                  <span className="font-medium text-green-600">{vendorBillSummary.paidBills}</span> paid,
+                  <span className="font-medium text-amber-600">{vendorBillSummary.pendingBills}</span> pending
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Amount</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatCurrency(vendorBillSummary.totalAmount)}</div>
+              <div className="mt-1 text-sm text-muted-foreground">
+                Average: {formatCurrency(vendorBillSummary.averageBillAmount)} per bill
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Paid Amount</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{formatCurrency(vendorBillSummary.paidAmount)}</div>
+              <div className="mt-1 text-sm text-muted-foreground">
+                {vendorBillSummary.totalAmount > 0 ? 
+                  `${((vendorBillSummary.paidAmount / vendorBillSummary.totalAmount) * 100).toFixed(1)}% of total` : 
+                  '0% of total'
+                }
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Pending Amount</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-amber-600">{formatCurrency(vendorBillSummary.pendingAmount)}</div>
+              <div className="mt-1 text-sm text-muted-foreground">
+                {vendorBillSummary.totalAmount > 0 ? 
+                  `${((vendorBillSummary.pendingAmount / vendorBillSummary.totalAmount) * 100).toFixed(1)}% of total` : 
+                  '0% of total'
+                }
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="w-full sm:w-64">
@@ -674,6 +803,7 @@ const PartnerPerformance = () => {
           <TabsTrigger value="cutting">Cutting Jobs</TabsTrigger>
           <TabsTrigger value="printing">Printing Jobs</TabsTrigger>
           <TabsTrigger value="stitching">Stitching Jobs</TabsTrigger>
+          {type === 'vendor' && <TabsTrigger value="bills">Vendor Bills</TabsTrigger>}
         </TabsList>
         
         <TabsContent value="all" className="space-y-4">
@@ -1081,6 +1211,76 @@ const PartnerPerformance = () => {
             </div>
           )}
         </TabsContent>
+
+        {/* Vendor Bills Tab */}
+        {type === 'vendor' && (
+          <TabsContent value="bills" className="space-y-4">
+            {vendorBills.length > 0 ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Vendor Bills</CardTitle>
+                  <CardDescription>All bills for this vendor</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Bill #</TableHead>
+                          <TableHead>Job #</TableHead>
+                          <TableHead>Job Type</TableHead>
+                          <TableHead>Company</TableHead>
+                          <TableHead>Product</TableHead>
+                          <TableHead>Quantity</TableHead>
+                          <TableHead>Rate</TableHead>
+                          <TableHead>GST</TableHead>
+                          <TableHead>Total Amount</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Date</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {vendorBills.map((bill) => (
+                          <TableRow key={bill.id}>
+                            <TableCell className="font-medium">{bill.bill_number}</TableCell>
+                            <TableCell>{bill.job_number}</TableCell>
+                            <TableCell className="capitalize">{bill.job_type}</TableCell>
+                            <TableCell>{bill.company_name}</TableCell>
+                            <TableCell>{bill.product_name}</TableCell>
+                            <TableCell>{bill.quantity}</TableCell>
+                            <TableCell>{formatCurrency(bill.rate)}</TableCell>
+                            <TableCell>{formatCurrency(bill.gst_amount)}</TableCell>
+                            <TableCell className="font-medium">{formatCurrency(bill.total_amount)}</TableCell>
+                            <TableCell>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                bill.status === 'paid' 
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                                  : bill.status === 'pending'
+                                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+                                  : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
+                              }`}>
+                                {bill.status?.charAt(0).toUpperCase() + bill.status?.slice(1) || 'Unknown'}
+                              </span>
+                            </TableCell>
+                            <TableCell>{formatDate(bill.created_at)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium">No vendor bills found</h3>
+                <p className="text-muted-foreground max-w-md mt-2">
+                  There are no vendor bills for this vendor. Bills will appear here once they are created.
+                </p>
+              </div>
+            )}
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
