@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Calendar, TrendingUp, TrendingDown, DollarSign, Package, Users, BarChart3, FileText, Download, Eye, ArrowLeft } from "lucide-react";
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ScatterChart, Scatter } from "recharts";
+import { Calendar, TrendingUp, TrendingDown, DollarSign, Package, Users, BarChart3, FileText, Download, Eye, ArrowLeft, ExternalLink } from "lucide-react";
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { formatCurrency } from "@/utils/formatters";
 import type { DateRange as ReactDayPickerDateRange } from "react-day-picker";
@@ -59,6 +60,7 @@ interface DateRange {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
 const SalesAnalysis = () => {
+  const navigate = useNavigate();
   const [salesData, setSalesData] = useState<SalesInvoice[]>([]);
   const [metrics, setMetrics] = useState<SalesMetrics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -281,6 +283,10 @@ const SalesAnalysis = () => {
     setShowCompanyDialog(true);
   };
 
+  const handleViewInvoiceDetail = (invoiceId: string) => {
+    navigate(`/sells/invoice/${invoiceId}`);
+  };
+
   const exportCompanyInvoices = () => {
     if (!companyInvoices.length) return;
 
@@ -446,33 +452,6 @@ const SalesAnalysis = () => {
 
       {/* Charts */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Monthly Revenue Trend */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Monthly Revenue Trend</CardTitle>
-            <CardDescription>Revenue and invoice count over time</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={metrics.monthlyTrends}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis yAxisId="left" />
-                <YAxis yAxisId="right" orientation="right" />
-                <Tooltip 
-                  formatter={(value, name) => [
-                    name === 'revenue' ? formatCurrency(Number(value)) : value,
-                    name === 'revenue' ? 'Revenue' : name === 'invoices' ? 'Invoices' : 'Quantity'
-                  ]}
-                />
-                <Legend />
-                <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#8884d8" strokeWidth={2} name="Revenue" />
-                <Line yAxisId="right" type="monotone" dataKey="invoices" stroke="#82ca9d" strokeWidth={2} name="Invoices" />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
         {/* Revenue Breakdown */}
         <Card>
           <CardHeader>
@@ -515,37 +494,6 @@ const SalesAnalysis = () => {
                 <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                 <Bar dataKey="revenue" fill="#8884d8" />
               </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Product Performance */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Product Performance</CardTitle>
-            <CardDescription>Revenue vs quantity by product</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <ScatterChart data={metrics.productPerformance.slice(0, 10)}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="quantity" name="Quantity" />
-                <YAxis dataKey="revenue" name="Revenue" />
-                <Tooltip 
-                  cursor={{ strokeDasharray: '3 3' }}
-                  formatter={(value, name) => [
-                    name === 'revenue' ? formatCurrency(Number(value)) : value,
-                    name === 'revenue' ? 'Revenue' : 'Quantity'
-                  ]}
-                  labelFormatter={(label, payload) => {
-                    if (payload && payload[0]) {
-                      return `Product: ${payload[0].payload.product}`;
-                    }
-                    return label;
-                  }}
-                />
-                <Scatter dataKey="revenue" fill="#8884d8" />
-              </ScatterChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
@@ -702,18 +650,37 @@ const SalesAnalysis = () => {
                     <TableHead>Rate</TableHead>
                     <TableHead>GST</TableHead>
                     <TableHead>Total</TableHead>
+                    <TableHead className="text-center">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {companyInvoices.map((invoice) => (
                     <TableRow key={`${invoice.invoice_number}-${invoice.product_name}`}>
-                      <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
+                      <TableCell className="font-medium">
+                        <button
+                          onClick={() => handleViewInvoiceDetail(invoice.id)}
+                          className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                        >
+                          {invoice.invoice_number}
+                        </button>
+                      </TableCell>
                       <TableCell>{new Date(invoice.created_at).toLocaleDateString()}</TableCell>
                       <TableCell>{invoice.product_name}</TableCell>
                       <TableCell>{invoice.quantity}</TableCell>
                       <TableCell>{formatCurrency(invoice.rate)}</TableCell>
                       <TableCell>{formatCurrency(invoice.gst_amount || 0)}</TableCell>
                       <TableCell className="font-medium">{formatCurrency(invoice.total_amount)}</TableCell>
+                      <TableCell className="text-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewInvoiceDetail(invoice.id)}
+                          className="h-7 px-2"
+                        >
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          View
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
