@@ -29,9 +29,9 @@ export const RoleAssignment: React.FC = () => {
       setTimeout(() => {
         window.location.reload();
       }, 1500);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating role:', error);
-      toast.error(`Failed to update role: ${error.message}`);
+      toast.error(`Failed to update role: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsUpdating(false);
     }
@@ -62,6 +62,12 @@ export const RoleAssignment: React.FC = () => {
                 <div className="flex flex-col">
                   <span>Admin</span>
                   <span className="text-xs text-muted-foreground">Full access to all features</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="staff">
+                <div className="flex flex-col">
+                  <span>Staff</span>
+                  <span className="text-xs text-muted-foreground">All features except analysis</span>
                 </div>
               </SelectItem>
               <SelectItem value="printer">

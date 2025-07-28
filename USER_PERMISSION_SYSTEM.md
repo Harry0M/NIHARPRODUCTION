@@ -4,8 +4,9 @@ This document describes the role-based permission system implemented in the appl
 
 ## Overview
 
-The permission system provides role-based access control with four distinct user roles:
+The permission system provides role-based access control with five distinct user roles:
 - **Admin**: Full access to all features
+- **Staff**: All features except analysis
 - **Printer**: Access to job cards and printing operations
 - **Cutting**: Access to job cards and cutting operations  
 - **Stitching**: Access to job cards and stitching operations
@@ -24,27 +25,27 @@ The permission system provides role-based access control with four distinct user
 ### User Roles
 
 ```typescript
-type UserRole = 'admin' | 'printer' | 'cutting' | 'stitching';
+type UserRole = 'admin' | 'staff' | 'printer' | 'cutting' | 'stitching';
 ```
 
 ### Permissions Matrix
 
-| Permission | Admin | Printer | Cutting | Stitching |
-|------------|-------|---------|---------|-----------|
-| Dashboard | ✅ | ✅ | ✅ | ✅ |
-| Orders | ✅ | ❌ | ❌ | ❌ |
-| Inventory | ✅ | ❌ | ❌ | ❌ |
-| Job Cards | ✅ | ✅ | ✅ | ✅ |
-| Printing Jobs | ✅ | ✅ | ❌ | ❌ |
-| Cutting Jobs | ✅ | ❌ | ✅ | ❌ |
-| Stitching Jobs | ✅ | ❌ | ❌ | ✅ |
-| Purchases | ✅ | ❌ | ❌ | ❌ |
-| Partners | ✅ | ❌ | ❌ | ❌ |
-| Analysis | ✅ | ❌ | ❌ | ❌ |
-| Companies | ✅ | ❌ | ❌ | ❌ |
-| Sells | ✅ | ❌ | ❌ | ❌ |
-| Create Users | ✅ | ❌ | ❌ | ❌ |
-| Manage Users | ✅ | ❌ | ❌ | ❌ |
+| Permission | Admin | Staff | Printer | Cutting | Stitching |
+|------------|-------|-------|---------|---------|-----------|
+| Dashboard | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Orders | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Inventory | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Job Cards | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Printing Jobs | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Cutting Jobs | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Stitching Jobs | ✅ | ✅ | ❌ | ❌ | ✅ |
+| Purchases | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Partners | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Analysis | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Companies | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Sells | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Create Users | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Manage Users | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ## Usage Examples
 

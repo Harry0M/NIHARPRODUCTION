@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'printer' | 'cutting' | 'stitching';
+export type UserRole = 'admin' | 'staff' | 'printer' | 'cutting' | 'stitching';
 
 export interface UserPermissions {
   canAccessDashboard: boolean;
@@ -35,6 +35,23 @@ export const getPermissionsForRole = (role: UserRole): UserPermissions => {
         canAccessSells: true,
         canCreateUsers: true,
         canManageUsers: true,
+      };
+    case 'staff':
+      return {
+        canAccessDashboard: true,
+        canAccessOrders: true,
+        canAccessInventory: true,
+        canAccessJobCards: true,
+        canAccessPrintingJobs: true,
+        canAccessCuttingJobs: true,
+        canAccessStitchingJobs: true,
+        canAccessPurchases: true,
+        canAccessPartners: true,
+        canAccessAnalysis: false,
+        canAccessCompanies: true,
+        canAccessSells: true,
+        canCreateUsers: false,
+        canManageUsers: false,
       };
     case 'printer':
       return {
@@ -109,6 +126,7 @@ export const getPermissionsForRole = (role: UserRole): UserPermissions => {
 
 export const roleLabels: Record<UserRole, string> = {
   admin: 'Administrator',
+  staff: 'Staff Member',
   printer: 'Printer Operator',
   cutting: 'Cutting Operator',
   stitching: 'Stitching Operator',

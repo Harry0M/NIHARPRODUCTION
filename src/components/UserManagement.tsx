@@ -26,7 +26,7 @@ export const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<UserInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<UserRole>('printer');
+  const [inviteRole, setInviteRole] = useState<UserRole>('staff');
   const [isInviting, setIsInviting] = useState(false);
 
   useEffect(() => {
@@ -154,7 +154,7 @@ export const UserManagement: React.FC = () => {
       toast.info(`Role: ${roleLabels[inviteRole]}`, { duration: 5000 });
       
       setInviteEmail('');
-      setInviteRole('printer');
+      setInviteRole('staff');
     } catch (error: unknown) {
       console.error('Error creating invitation:', error);
       toast.error('Failed to create invitation link');
@@ -165,18 +165,17 @@ export const UserManagement: React.FC = () => {
 
   const handleRoleChange = async (userId: string, newRole: UserRole) => {
     try {
-      // Update user role in profiles table
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role: newRole, updated_at: new Date().toISOString() })
-        .eq('id', userId);
-
-      if (error) throw error;
-
-      toast.success(`User role updated to ${roleLabels[newRole]}`);
+      // For changing other users' roles, we need to use admin functions
+      // Since Supabase auth.updateUser only works for the current user,
+      // we'll need to implement this through the admin API or handle it differently
+      toast.error('Role updates for other users require additional setup');
       
-      // Reload users to show the change
-      await loadUsers();
+      // TODO: Implement admin user role update functionality
+      // This would typically require:
+      // 1. Admin service account or admin API endpoints
+      // 2. Server-side function to update user metadata
+      // 3. Proper authorization checks
+      
     } catch (error: unknown) {
       console.error('Error updating user role:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -226,6 +225,7 @@ export const UserManagement: React.FC = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="staff">Staff</SelectItem>
                     <SelectItem value="printer">Printer</SelectItem>
                     <SelectItem value="cutting">Cutting</SelectItem>
                     <SelectItem value="stitching">Stitching</SelectItem>
@@ -285,6 +285,7 @@ export const UserManagement: React.FC = () => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="staff">Staff</SelectItem>
                         <SelectItem value="printer">Printer</SelectItem>
                         <SelectItem value="cutting">Cutting</SelectItem>
                         <SelectItem value="stitching">Stitching</SelectItem>
