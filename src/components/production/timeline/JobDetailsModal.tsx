@@ -161,7 +161,10 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
   const handleUpdate = () => {
     if (!jobDetails || !job) return;
 
-    // Directly navigate to the edit page based on job type
+    // Close the modal first
+    onOpenChange(false);
+
+    // Navigate to the edit page based on job type using React Router
     const jobCardId = jobDetails.job_card_id;
     let editUrl = '';
 
@@ -180,8 +183,8 @@ export const JobDetailsModal = ({ job, open, onOpenChange }: JobDetailsModalProp
         editUrl = `/production/job-cards/${jobCardId}`;
     }
 
-    // Use direct navigation to ensure full page refresh
-    window.location.href = editUrl;
+    // Use React Router navigation instead of window.location.href
+    navigate(editUrl);
   };
 
   const handleDownload = async () => {
