@@ -6,6 +6,8 @@ import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { KeyboardShortcutsDialog } from "@/components/keyboard/KeyboardShortcutsDialog";
 import { useState } from "react";
 import { KeyboardShortcutsHelp } from "@/components/keyboard/KeyboardShortcutsHelp";
+import { NavigationHistory } from "@/components/navigation/NavigationHistory";
+import { useNavigationHistory } from "@/hooks/useNavigationHistory";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +28,7 @@ const Header = () => {
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [gstCopied, setGstCopied] = useState(false);
   const [addressCopied, setAddressCopied] = useState(false);
+  const { goBack, goForward, canGoBack, canGoForward } = useNavigationHistory();
   
   const copyToClipboard = async (text: string, setCopied: (value: boolean) => void) => {
     try {
@@ -68,6 +71,28 @@ const Header = () => {
         setShowKeyboardShortcuts(true);
       }
       
+      // Navigation history shortcuts
+      if ((e.ctrlKey || e.metaKey) && e.key === "ArrowLeft" && canGoBack) {
+        e.preventDefault();
+        goBack();
+      }
+      
+      if ((e.ctrlKey || e.metaKey) && e.key === "ArrowRight" && canGoForward) {
+        e.preventDefault();
+        goForward();
+      }
+      
+      // Alt + Left/Right for back/forward (like browsers)
+      if (e.altKey && e.key === "ArrowLeft" && canGoBack) {
+        e.preventDefault();
+        goBack();
+      }
+      
+      if (e.altKey && e.key === "ArrowRight" && canGoForward) {
+        e.preventDefault();
+        goForward();
+      }
+      
       // Navigation shortcuts (g + key)
       if (e.key === "g") {
         const handleSecondKey = (e2: KeyboardEvent) => {
@@ -99,7 +124,7 @@ const Header = () => {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [canGoBack, canGoForward, goBack, goForward]);
 
   const getActionButton = () => {
     // Removed the duplicate "New Job Card" button from the production/job-cards page
@@ -221,6 +246,7 @@ const Header = () => {
       </div>
       <div className="flex items-center gap-3">
         {getActionButton()}
+        <NavigationHistory />
         <DatabaseSwitcher />
         <Button 
           variant="ghost" 
