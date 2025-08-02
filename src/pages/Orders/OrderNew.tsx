@@ -20,10 +20,17 @@ const OrderNew = () => {
   } = useOrderForm();
   
   const onSubmit = async (e: React.FormEvent) => {
+    console.log("Order submission started...");
     const orderId = await handleSubmit(e);
+    console.log("Order submission completed, returned orderId:", orderId);
+    
     if (orderId) {
-      // Use window.location.href instead of navigate for reliable page refresh
-      window.location.href = `/orders/${orderId}`;
+      // Navigate to the order detail page instead of dashboard
+      console.log("Navigating to order detail page:", `/orders/${orderId}`);
+      navigate(`/orders/${orderId}`);
+    } else {
+      // If order creation failed, stay on the form page
+      console.error("Order creation failed - no order ID returned");
     }
   };
   
