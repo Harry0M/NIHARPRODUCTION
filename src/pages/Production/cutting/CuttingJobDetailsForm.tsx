@@ -86,7 +86,7 @@ export function CuttingJobDetailsForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="received_quantity">Received Quantity</Label>
+            <Label htmlFor="received_quantity" className="text-red-600 font-medium">Received Quantity</Label>
             <Input 
               id="received_quantity"
               name="received_quantity"
@@ -94,7 +94,7 @@ export function CuttingJobDetailsForm({
               placeholder="Final quantity after cutting"
               value={cuttingData.received_quantity}
               onChange={onInputChange}
-              className="border-input"
+              className="border-red-500 focus:border-red-600 focus:ring-red-500"
             />
           </div>          <div className="space-y-2">
             <Label>Worker Name</Label>

@@ -102,7 +102,9 @@ export const QuantityFields = ({
             name={field.name}
             render={({ field: formField }) => (
               <FormItem>
-                <FormLabel>{field.label}</FormLabel>
+                <FormLabel className={field.name === "received_quantity" ? "text-red-600 font-medium" : ""}>
+                  {field.label}
+                </FormLabel>
                 <FormControl>
                   <Input
                     type="number"
@@ -113,7 +115,13 @@ export const QuantityFields = ({
                       const value = e.target.value === '' ? null : Number(e.target.value);
                       formField.onChange(value);
                     }}
-                    className={field.name === "provided_quantity" && localRemainingQuantity < 0 ? "border-red-500" : ""}
+                    className={
+                      field.name === "provided_quantity" && localRemainingQuantity < 0 
+                        ? "border-red-500" 
+                        : field.name === "received_quantity" 
+                        ? "border-red-500 focus:border-red-600 focus:ring-red-500" 
+                        : ""
+                    }
                   />
                 </FormControl>
                 <FormMessage />

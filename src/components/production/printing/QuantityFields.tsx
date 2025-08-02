@@ -93,13 +93,14 @@ export const QuantityFields = ({
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="received_quantity">Received Quantity</Label>
+          <Label htmlFor="received_quantity" className="text-red-600 font-medium">Received Quantity</Label>
           <Input
             id="received_quantity"
             type="number"
             value={receivedQuantity}
             onChange={(e) => onReceivedQuantityChange(e.target.value)}
             placeholder="Enter received quantity"
+            className="border-red-500 focus:border-red-600 focus:ring-red-500"
           />
           <p className="text-sm text-muted-foreground">
             Final quantity produced from this printing job
