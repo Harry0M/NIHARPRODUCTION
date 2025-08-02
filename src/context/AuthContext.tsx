@@ -35,7 +35,7 @@ export const AuthProvider = ({ children, initialUser }: AuthProviderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Load user role from metadata or default to admin for existing users
+  // Load user role from profiles table or metadata, default to admin for existing users
   const loadUserRole = async (currentUser: User | null) => {
     if (!currentUser) {
       setUserRole('admin');
@@ -43,10 +43,39 @@ export const AuthProvider = ({ children, initialUser }: AuthProviderProps) => {
       return;
     }
 
-    // Check user metadata for role
-    const role = currentUser.user_metadata?.role as UserRole || 'admin';
-    setUserRole(role);
-    setPermissions(getPermissionsForRole(role));
+    try {
+      // First try to get role from profiles table
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', currentUser.id)
+        .single();
+
+      let role: UserRole = 'admin'; // Default fallback
+
+      if (!error && profile?.role) {
+        // Use role from profiles table
+        role = profile.role as UserRole;
+      } else {
+        // Fallback to user metadata
+        role = currentUser.user_metadata?.role as UserRole || 'admin';
+        
+        // If we got the role from metadata, sync it to profiles table
+        // TODO: Re-enable after database schema is updated
+        // if (currentUser.user_metadata?.role) {
+        //   await supabase.from('profiles').upsert({...})
+        // }
+      }
+
+      setUserRole(role);
+      setPermissions(getPermissionsForRole(role));
+    } catch (error) {
+      console.error('Error loading user role:', error);
+      // Fallback to default
+      const role = currentUser.user_metadata?.role as UserRole || 'admin';
+      setUserRole(role);
+      setPermissions(getPermissionsForRole(role));
+    }
   };
 
   // Update user role (admin only function)

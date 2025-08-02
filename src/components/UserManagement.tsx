@@ -165,16 +165,27 @@ export const UserManagement: React.FC = () => {
 
   const handleRoleChange = async (userId: string, newRole: UserRole) => {
     try {
-      // For changing other users' roles, we need to use admin functions
-      // Since Supabase auth.updateUser only works for the current user,
-      // we'll need to implement this through the admin API or handle it differently
-      toast.error('Role updates for other users require additional setup');
-      
-      // TODO: Implement admin user role update functionality
-      // This would typically require:
-      // 1. Admin service account or admin API endpoints
-      // 2. Server-side function to update user metadata
-      // 3. Proper authorization checks
+      // Update the user's role in the profiles table
+      const { error } = await supabase
+        .rpc('update_user_role', {
+          target_user_id: userId,
+          new_role: newRole
+        });
+
+      if (error) {
+        console.error('Error updating user role:', error);
+        toast.error(`Failed to update role: ${error.message}`);
+        return;
+      }
+
+      // Update local state
+      setUsers(users.map(user => 
+        user.id === userId 
+          ? { ...user, role: newRole }
+          : user
+      ));
+
+      toast.success(`Role updated to ${roleLabels[newRole]} successfully!`);
       
     } catch (error: unknown) {
       console.error('Error updating user role:', error);
