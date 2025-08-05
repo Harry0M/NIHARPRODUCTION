@@ -775,8 +775,8 @@ const CatalogNew = () => {
         variant: "default"
       });
 
-      // Navigate to inventory/catalog
-      window.location.href = "/inventory/catalog";
+      // Navigate to the newly created catalog detail page
+      navigate(`/inventory/catalog/${productResult.id}`);
       
     } catch (error: any) {
       // Show error toast
