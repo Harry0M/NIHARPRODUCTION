@@ -38,35 +38,51 @@ const CatalogList = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  // Debounce search term to prevent excessive API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      setPage(1); // Reset to first page when search changes
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   const { data: catalogData, isLoading, refetch, error } = useQuery({
-    queryKey: ['catalog', page, pageSize, searchTerm],
+    queryKey: ['catalog', page, pageSize, debouncedSearchTerm],
     queryFn: async () => {
+      console.log(`Fetching catalog data - page: ${page}, pageSize: ${pageSize}, searchTerm: "${debouncedSearchTerm}"`);
+      
       // First get the total count for pagination
       let countQuery = supabase
         .from('catalog')
         .select('id', { count: 'exact', head: true });
       
-      if (searchTerm) {
+      if (debouncedSearchTerm) {
         countQuery = countQuery.or(
-          `name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`
+          `name.ilike.%${debouncedSearchTerm}%,description.ilike.%${debouncedSearchTerm}%`
         );
       }
       
       const { count, error: countError } = await countQuery;
       
-      if (countError) throw countError;
+      if (countError) {
+        console.error("Error fetching catalog count:", countError);
+        throw countError;
+      }
       
       // Then fetch the paginated data
       let query = supabase
         .from('catalog')
         .select('*');
       
-      if (searchTerm) {
+      if (debouncedSearchTerm) {
         query = query.or(
-          `name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`
+          `name.ilike.%${debouncedSearchTerm}%,description.ilike.%${debouncedSearchTerm}%`
         );
       }
       
@@ -78,13 +94,23 @@ const CatalogList = () => {
         .order('created_at', { ascending: false })
         .range(from, to);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching catalog data:", error);
+        throw error;
+      }
       
+      console.log(`Successfully fetched ${data?.length || 0} catalog items`);
       return {
         products: data || [],
         totalCount: count || 0
       };
     },
+    // Add these options to prevent data loading issues
+    staleTime: 5000, // Keep data fresh for 5 seconds
+    refetchOnMount: true, // Always refetch when component mounts
+    refetchOnWindowFocus: false, // Don't refetch on window focus to prevent unnecessary calls
+    retry: 3, // Retry failed requests up to 3 times
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
   });
 
   const products = catalogData?.products || [];
@@ -102,56 +128,52 @@ const CatalogList = () => {
     }
   }, [error]);
 
-  // Force refresh on initial mount and location changes
+  // Handle URL parameters and initial mount
   useEffect(() => {
-    console.log("CatalogList mounted or location changed - refreshing data");
-    setIsRefreshing(true);
+    // Check URL parameters for any refresh flags
+    const urlParams = new URLSearchParams(window.location.search);
+    const refreshTrigger = urlParams.get('refresh');
     
-    refetch()
-      .then(() => {
-        console.log("Catalog data refreshed successfully");
-        
-        // Check URL parameters for any refresh flags
-        const urlParams = new URLSearchParams(window.location.search);
-        const refreshTrigger = urlParams.get('refresh');
-        
-        // Show welcome toast when product created flag is present
-        if (refreshTrigger === 'product-created') {
-          showToast({
-            title: "Product Created Successfully",
-            description: "Your new product has been added to the catalog.",
-            type: "success"
-          });
-          
-          // Clean URL by removing the query parameter
-          window.history.replaceState({}, '', location.pathname);
-        }
-      })
-      .catch((err) => {
-        console.error("Error refreshing catalog data:", err);
-      })
-      .finally(() => {
-        setIsRefreshing(false);
+    // Show welcome toast when product created flag is present
+    if (refreshTrigger === 'product-created') {
+      showToast({
+        title: "Product Created Successfully",
+        description: "Your new product has been added to the catalog.",
+        type: "success"
       });
-  }, [refetch, location.key]); // Add location.key as a dependency to detect navigation
+      
+      // Clean URL by removing the query parameter
+      window.history.replaceState({}, '', location.pathname);
+      
+      // Invalidate queries to force refresh
+      queryClient.invalidateQueries({ queryKey: ['catalog'] });
+    }
+  }, [location.search, location.pathname, queryClient]); // Only depend on search params, not location.key
 
-  const handleManualRefresh = () => {
+  const handleManualRefresh = async () => {
     setIsRefreshing(true);
-    queryClient.invalidateQueries({ queryKey: ['catalog'] });
-    refetch()
-      .then(() => {
-        showToast({
-          title: "Data Refreshed",
-          description: "The catalog list has been refreshed.",
-          type: "info"
-        });
-      })
-      .catch((error) => {
-        console.error("Manual refresh error:", error);
-      })
-      .finally(() => {
-        setIsRefreshing(false);
+    try {
+      // Invalidate queries first to clear cache
+      await queryClient.invalidateQueries({ queryKey: ['catalog'] });
+      
+      // Then explicitly refetch
+      await refetch();
+      
+      showToast({
+        title: "Data Refreshed",
+        description: "The catalog list has been refreshed.",
+        type: "info"
       });
+    } catch (error) {
+      console.error("Manual refresh error:", error);
+      showToast({
+        title: "Refresh Failed",
+        description: "Could not refresh the catalog. Please try again.",
+        type: "error"
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const handleDeleteProduct = async () => {
@@ -179,11 +201,11 @@ const CatalogList = () => {
       // Invalidate the catalog query to force a refresh
       queryClient.invalidateQueries({ queryKey: ['catalog'] });
       await refetch();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error in handleDeleteProduct:', error);
       showToast({
         title: "Failed to delete product",
-        description: error.message || "An unexpected error occurred",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
         type: "error"
       });
     } finally {
