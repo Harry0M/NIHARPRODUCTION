@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import PaginationControls from "@/components/ui/pagination-controls";
+import { QueryDebugger } from "@/components/debug/QueryDebugger";
 
 const CatalogList = () => {
   const navigate = useNavigate();
@@ -42,6 +43,44 @@ const CatalogList = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  // Component lifecycle logging
+  useEffect(() => {
+    console.log("[CatalogList] Component mounted", {
+      initialPage: page,
+      initialPageSize: pageSize,
+      initialSearchTerm: searchTerm,
+      locationPathname: location.pathname,
+      timestamp: new Date().toISOString()
+    });
+
+    // Test Supabase connection
+    const testConnection = async () => {
+      try {
+        console.log("[CatalogList] Testing Supabase connection...");
+        const { data, error } = await supabase
+          .from('catalog')
+          .select('count')
+          .limit(1);
+        
+        if (error) {
+          console.error("[CatalogList] Supabase connection test failed:", error);
+        } else {
+          console.log("[CatalogList] Supabase connection test successful");
+        }
+      } catch (err) {
+        console.error("[CatalogList] Supabase connection test error:", err);
+      }
+    };
+
+    testConnection();
+
+    return () => {
+      console.log("[CatalogList] Component unmounting", {
+        timestamp: new Date().toISOString()
+      });
+    };
+  }, []); // Empty dependency array for mount/unmount only
+
   // Debounce search term to prevent excessive API calls
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -52,74 +91,127 @@ const CatalogList = () => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const { data: catalogData, isLoading, refetch, error } = useQuery({
+  const { data: catalogData, isLoading, isFetching, refetch, error, status } = useQuery({
     queryKey: ['catalog', page, pageSize, debouncedSearchTerm],
     queryFn: async () => {
-      console.log(`Fetching catalog data - page: ${page}, pageSize: ${pageSize}, searchTerm: "${debouncedSearchTerm}"`);
+      console.log(`[CatalogList] Starting query - page: ${page}, pageSize: ${pageSize}, searchTerm: "${debouncedSearchTerm}"`);
+      console.log(`[CatalogList] Query status: fetching data...`);
       
-      // First get the total count for pagination
-      let countQuery = supabase
-        .from('catalog')
-        .select('id', { count: 'exact', head: true });
-      
-      if (debouncedSearchTerm) {
-        countQuery = countQuery.or(
-          `name.ilike.%${debouncedSearchTerm}%,description.ilike.%${debouncedSearchTerm}%`
-        );
-      }
-      
-      const { count, error: countError } = await countQuery;
-      
-      if (countError) {
-        console.error("Error fetching catalog count:", countError);
-        throw countError;
-      }
-      
-      // Then fetch the paginated data
-      let query = supabase
-        .from('catalog')
-        .select('*');
-      
-      if (debouncedSearchTerm) {
-        query = query.or(
-          `name.ilike.%${debouncedSearchTerm}%,description.ilike.%${debouncedSearchTerm}%`
-        );
-      }
-      
-      // Add pagination
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-      
-      const { data, error } = await query
-        .order('created_at', { ascending: false })
-        .range(from, to);
-      
-      if (error) {
-        console.error("Error fetching catalog data:", error);
+      try {
+        // First get the total count for pagination
+        let countQuery = supabase
+          .from('catalog')
+          .select('id', { count: 'exact', head: true });
+        
+        if (debouncedSearchTerm) {
+          countQuery = countQuery.or(
+            `name.ilike.%${debouncedSearchTerm}%,description.ilike.%${debouncedSearchTerm}%`
+          );
+        }
+        
+        console.log(`[CatalogList] Executing count query...`);
+        const { count, error: countError } = await countQuery;
+        
+        if (countError) {
+          console.error("[CatalogList] Error fetching catalog count:", countError);
+          throw countError;
+        }
+        
+        console.log(`[CatalogList] Count query successful: ${count} total items`);
+        
+        // Then fetch the paginated data
+        let query = supabase
+          .from('catalog')
+          .select('*');
+        
+        if (debouncedSearchTerm) {
+          query = query.or(
+            `name.ilike.%${debouncedSearchTerm}%,description.ilike.%${debouncedSearchTerm}%`
+          );
+        }
+        
+        // Add pagination
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+        
+        console.log(`[CatalogList] Executing data query with range ${from}-${to}...`);
+        const { data, error } = await query
+          .order('created_at', { ascending: false })
+          .range(from, to);
+        
+        if (error) {
+          console.error("[CatalogList] Error fetching catalog data:", error);
+          throw error;
+        }
+        
+        console.log(`[CatalogList] Data query successful: fetched ${data?.length || 0} items`);
+        
+        const result = {
+          products: data || [],
+          totalCount: count || 0
+        };
+        
+        console.log(`[CatalogList] Query completed successfully:`, result);
+        return result;
+        
+      } catch (error) {
+        console.error("[CatalogList] Query failed with error:", error);
         throw error;
       }
-      
-      console.log(`Successfully fetched ${data?.length || 0} catalog items`);
-      return {
-        products: data || [],
-        totalCount: count || 0
-      };
     },
-    // Add these options to prevent data loading issues
-    staleTime: 5000, // Keep data fresh for 5 seconds
+    // Enhanced query options to prevent loading issues
+    enabled: true, // Always enable the query
+    staleTime: 30000, // Data is fresh for 30 seconds
+    gcTime: 300000, // Keep in cache for 5 minutes (renamed from cacheTime)
     refetchOnMount: true, // Always refetch when component mounts
-    refetchOnWindowFocus: false, // Don't refetch on window focus to prevent unnecessary calls
-    retry: 3, // Retry failed requests up to 3 times
-    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchOnReconnect: true, // Refetch when network reconnects
+    retry: (failureCount, error) => {
+      console.log(`[CatalogList] Retry attempt ${failureCount} for error:`, error);
+      return failureCount < 3;
+    },
+    retryDelay: attemptIndex => {
+      const delay = Math.min(1000 * 2 ** attemptIndex, 30000);
+      console.log(`[CatalogList] Retrying in ${delay}ms...`);
+      return delay;
+    },
+    // Add error boundary
+    throwOnError: false,
+    // Add network mode to handle offline scenarios
+    networkMode: 'online'
   });
 
   const products = catalogData?.products || [];
   const totalCount = catalogData?.totalCount || 0;
 
+  // Debug logging for React Query state
+  useEffect(() => {
+    console.log(`[CatalogList] Query state changed:`, {
+      status,
+      isLoading,
+      isFetching,
+      hasData: !!catalogData,
+      dataLength: products.length,
+      totalCount,
+      error: !!error
+    });
+  }, [status, isLoading, isFetching, catalogData, products.length, totalCount, error]);
+
+  // Component lifecycle debugging
+  useEffect(() => {
+    console.log(`[CatalogList] Component mounted or key props changed:`, {
+      page,
+      pageSize,
+      searchTerm,
+      debouncedSearchTerm,
+      pathname: location.pathname
+    });
+  }, [page, pageSize, searchTerm, debouncedSearchTerm, location.pathname]);
+
   // Handle any errors in fetching the catalog
   useEffect(() => {
     if (error) {
-      console.error("Error fetching catalog:", error);
+      console.error("[CatalogList] Query error detected:", error);
       showToast({
         title: "Error loading products",
         description: "Could not load product catalog. Please try again.",
@@ -127,6 +219,18 @@ const CatalogList = () => {
       });
     }
   }, [error]);
+
+  // Fallback mechanism: if component has been mounted for a while and we have no data and no loading state, force a refetch
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!isLoading && !isFetching && !catalogData && !error) {
+        console.warn("[CatalogList] No data after 3 seconds, forcing refetch...");
+        refetch();
+      }
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [isLoading, isFetching, catalogData, error, refetch]);
 
   // Handle URL parameters and initial mount
   useEffect(() => {
@@ -151,21 +255,28 @@ const CatalogList = () => {
   }, [location.search, location.pathname, queryClient]); // Only depend on search params, not location.key
 
   const handleManualRefresh = async () => {
+    console.log("[CatalogList] Manual refresh initiated");
     setIsRefreshing(true);
     try {
-      // Invalidate queries first to clear cache
-      await queryClient.invalidateQueries({ queryKey: ['catalog'] });
+      // First remove all catalog queries from cache
+      console.log("[CatalogList] Removing queries from cache...");
+      queryClient.removeQueries({ queryKey: ['catalog'] });
+      
+      // Wait a bit for cache to clear
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       // Then explicitly refetch
+      console.log("[CatalogList] Triggering refetch...");
       await refetch();
       
+      console.log("[CatalogList] Manual refresh completed successfully");
       showToast({
         title: "Data Refreshed",
         description: "The catalog list has been refreshed.",
         type: "info"
       });
     } catch (error) {
-      console.error("Manual refresh error:", error);
+      console.error("[CatalogList] Manual refresh error:", error);
       showToast({
         title: "Refresh Failed",
         description: "Could not refresh the catalog. Please try again.",
@@ -255,7 +366,7 @@ const CatalogList = () => {
           <CardTitle className="flex items-center gap-2 text-xl">
             <span className="h-5 w-1 rounded-full bg-primary inline-block"></span>
             All Products
-            {!isLoading && !isRefreshing && (
+            {!isLoading && !isFetching && !isRefreshing && (
               <Badge 
                 variant="outline" 
                 className="ml-2 bg-muted/50 text-foreground/80 hover:bg-muted transition-colors border-border/40 shadow-sm"
@@ -304,10 +415,14 @@ const CatalogList = () => {
         </CardHeader>
 
         <CardContent className="p-0">
-          {isLoading || isRefreshing ? (
+          {(isLoading || isFetching || isRefreshing) ? (
             <div className="flex flex-col justify-center items-center p-16 slide-up" style={{animationDelay: '0.2s'}}>
               <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent mb-4"></div>
-              <p className="text-muted-foreground">{isRefreshing ? 'Refreshing catalog...' : 'Loading catalog...'}</p>
+              <p className="text-muted-foreground">
+                {isRefreshing ? 'Refreshing catalog...' : 
+                 isFetching ? 'Fetching catalog...' : 
+                 'Loading catalog...'}
+              </p>
             </div>
           ) : products.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-16 text-center bg-muted/20 dark:bg-muted/10 rounded-b-xl slide-up" style={{animationDelay: '0.2s'}}>
@@ -323,13 +438,41 @@ const CatalogList = () => {
                   : 'You haven\'t added any products to your catalog yet. Add your first product to get started.'}
               </p>
               {searchTerm && (
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setSearchTerm('')} 
+                    className="text-primary hover:bg-primary/5"
+                  >
+                    <FileCheck className="h-4 w-4 mr-2" />
+                    Clear search
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      console.log("[CatalogList] Force reload triggered by user");
+                      queryClient.removeQueries({ queryKey: ['catalog'] });
+                      refetch();
+                    }} 
+                    className="text-orange-600 hover:bg-orange-50 border-orange-200"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Force Reload
+                  </Button>
+                </div>
+              )}
+              {!searchTerm && (
                 <Button 
                   variant="outline" 
-                  onClick={() => setSearchTerm('')} 
-                  className="text-primary hover:bg-primary/5"
+                  onClick={() => {
+                    console.log("[CatalogList] Force reload triggered by user - no search term");
+                    queryClient.removeQueries({ queryKey: ['catalog'] });
+                    refetch();
+                  }} 
+                  className="text-orange-600 hover:bg-orange-50 border-orange-200"
                 >
-                  <FileCheck className="h-4 w-4 mr-2" />
-                  Clear search
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Force Reload Data
                 </Button>
               )}
             </div>
@@ -423,7 +566,7 @@ const CatalogList = () => {
           )}
           
           {/* Pagination UI */}
-          {!isLoading && !isRefreshing && totalPages > 1 && (
+          {!isLoading && !isFetching && !isRefreshing && totalPages > 1 && (
             <div className="py-4 border-t border-border/40">
               <PaginationControls
                 currentPage={page}
@@ -484,6 +627,12 @@ const CatalogList = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Debug component for development */}
+      <QueryDebugger 
+        queryKey={['catalog', page, pageSize, debouncedSearchTerm]}
+        enabled={process.env.NODE_ENV === 'development'}
+      />
     </div>
   );
 };
