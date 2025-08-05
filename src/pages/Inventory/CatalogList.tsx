@@ -75,7 +75,7 @@ const CatalogList = () => {
       const to = from + pageSize - 1;
       
       const { data, error } = await query
-        .order('name')
+        .order('created_at', { ascending: false })
         .range(from, to);
       
       if (error) throw error;
