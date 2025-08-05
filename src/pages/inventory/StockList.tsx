@@ -173,7 +173,7 @@ const StockList = () => {
       const to = from + pageSize - 1;
       
       query = query
-        .order('material_name')
+        .order('created_at', { ascending: false })
         .range(from, to);
       
       const { data, error } = await query;
