@@ -1,6 +1,6 @@
 import { Bell, Search, Plus, Keyboard, Building, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { KeyboardShortcutsDialog } from "@/components/keyboard/KeyboardShortcutsDialog";
