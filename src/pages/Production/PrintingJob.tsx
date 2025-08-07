@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useLocation } from "react-router-dom";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Printer, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
@@ -30,6 +30,7 @@ interface PrintingFormData {
 export default function PrintingJob() {
   const { id } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { submitting, createPrintingJob, updatePrintingJob } = usePrintingJob();
   const [showNewJobForm, setShowNewJobForm] = useState(false);
@@ -242,7 +243,7 @@ export default function PrintingJob() {
       <div className="text-center py-8">
         <h2 className="text-2xl font-bold mb-2">Job Card Not Found</h2>
         <p className="mb-4">The job card you're looking for doesn't exist or has been deleted.</p>
-        <Button onClick={() => window.location.href = "/production/job-cards"}>
+        <Button onClick={() => navigate("/production/job-cards")}>
           Return to Job Cards
         </Button>
       </div>
@@ -256,7 +257,7 @@ export default function PrintingJob() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => window.location.href = `/production/job-cards/${id}`}
+            onClick={() => navigate(`/production/job-cards/${id}`)}
             className="gap-1"
           >
             <ArrowLeft size={16} />

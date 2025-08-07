@@ -185,7 +185,7 @@ const CatalogNew = () => {
       });
 
       // Navigate to the newly created catalog item's detail page
-      window.location.href = `${window.location.origin}/#/inventory/catalog/${productResult.id}`;
+      navigate(`/inventory/catalog/${productResult.id}`);
       
     } catch (error: any) {
       // Clear the loading toast
@@ -212,10 +212,10 @@ const CatalogNew = () => {
     return () => {
       if (submitting) {
         // Fallback navigation to catalog list
-        window.location.href = `${window.location.origin}/#/inventory/catalog`;
+        navigate('/inventory/catalog');
       }
     };
-  }, [submitting]);
+  }, [submitting, navigate]);
 
   return (    <ComponentProvider 
       value={{

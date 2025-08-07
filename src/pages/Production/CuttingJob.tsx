@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { useParams, useLocation } from "react-router-dom";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Scissors, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CuttingJobOrderInfo } from "./CuttingJobOrderInfo";
@@ -12,6 +12,7 @@ import { useCuttingJob } from "@/hooks/use-cutting-job";
 export default function CuttingJob() {
   const { id } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   
   const {
     jobCard,
@@ -81,7 +82,7 @@ export default function CuttingJob() {
   };
 
   const handleGoBack = () => {
-    window.location.href = `/production/job-cards/${id}`;
+    navigate(`/production/job-cards/${id}`);
   };
 
   if (loading) {
@@ -97,7 +98,7 @@ export default function CuttingJob() {
       <div className="text-center py-8">
         <h2 className="text-2xl font-bold mb-2">Job Card Not Found</h2>
         <p className="mb-4">The job card you're looking for doesn't exist or has been deleted.</p>
-        <Button onClick={() => window.location.href = "/production/job-cards"}>
+        <Button onClick={() => navigate("/production/job-cards")}>
           Return to Job Cards
         </Button>
       </div>

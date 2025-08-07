@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Scissors } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
@@ -13,6 +13,7 @@ import { JobStatus } from "@/types/production";
 
 export default function CuttingJobForm() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const {
@@ -70,7 +71,7 @@ export default function CuttingJobForm() {
   };
 
   const handleGoBack = () => {
-    window.location.href = `/production/job-cards/${id}`;
+    navigate(`/production/job-cards/${id}`);
   };
 
   if (loading) {
@@ -86,7 +87,7 @@ export default function CuttingJobForm() {
       <div className="text-center py-8">
         <h2 className="text-2xl font-bold mb-2">Job Card Not Found</h2>
         <p className="mb-4">The job card you're looking for doesn't exist or has been deleted.</p>
-        <Button onClick={() => window.location.href = "/production/job-cards"}>
+        <Button onClick={() => navigate("/production/job-cards")}>
           Return to Job Cards
         </Button>
       </div>

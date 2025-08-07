@@ -200,8 +200,8 @@ const PartnerNew = () => {
           : `New ${partnerType} has been added successfully`,
       });
       
-      // Use window.location.href instead of navigate for reliable page refresh
-      window.location.href = "/partners";
+      // Navigate back to partners page using React Router
+      navigate("/partners");
     } catch (error: any) {
       toast({
         title: `Error ${isEditMode ? 'updating' : 'creating'} ${partnerType}`,

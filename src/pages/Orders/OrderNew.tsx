@@ -42,7 +42,7 @@ const OrderNew = () => {
           <Button 
             variant="ghost"
             size="sm"
-            onClick={() => window.location.href = "/orders"}
+            onClick={() => navigate("/orders")}
             className="gap-1"
           >
             <ArrowLeft size={16} />

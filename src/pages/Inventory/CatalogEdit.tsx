@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { 
   Card, 
   CardContent, 
@@ -62,6 +62,7 @@ interface DatabaseComponent {
 
 const CatalogEdit = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const testManualFormulas = createManualFormulaTest();
@@ -689,8 +690,8 @@ const CatalogEdit = () => {
         variant: "default"
       });
 
-      // Navigate to the catalog detail page - same method as CatalogNew
-      window.location.href = `${window.location.origin}/#/inventory/catalog/${id}`;
+      // Navigate to the catalog detail page
+      navigate(`/inventory/catalog/${id}`);
       
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
@@ -721,7 +722,7 @@ const CatalogEdit = () => {
             type="button"
             variant="ghost" 
             size="sm"
-            onClick={() => window.location.href = `${window.location.origin}/#/inventory/catalog/${id}`}
+            onClick={() => navigate(`/inventory/catalog/${id}`)}
             className="gap-1"
           >
             <ArrowLeft size={16} />

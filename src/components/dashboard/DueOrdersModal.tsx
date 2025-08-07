@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   Dialog, 
   DialogContent, 
@@ -40,6 +41,7 @@ interface DueOrdersModalProps {
 }
 
 export const DueOrdersModal = ({ open, onOpenChange }: DueOrdersModalProps) => {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<DueOrder[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -96,7 +98,7 @@ export const DueOrdersModal = ({ open, onOpenChange }: DueOrdersModalProps) => {
   }, [open]);
 
   const handleViewOrder = (orderId: string) => {
-    window.location.href = `/orders/${orderId}`;
+    navigate(`/orders/${orderId}`);
   };
 
   const formatDeliveryDate = (dateString: string) => {
@@ -245,7 +247,7 @@ export const DueOrdersModal = ({ open, onOpenChange }: DueOrdersModalProps) => {
             </p>
             <Button
               onClick={() => {
-                window.location.href = '/orders';
+                navigate('/orders');
                 onOpenChange(false);
               }}
               variant="outline"

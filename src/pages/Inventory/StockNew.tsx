@@ -1,10 +1,13 @@
 
+import { useNavigate } from "react-router-dom";
 import { StockForm } from "@/components/inventory/StockForm";
 
 const StockNew = () => {
+  const navigate = useNavigate();
+  
   const handleStockCreated = (stockId: string) => {
-    // Navigate to stock list using the same technique as catalog
-    window.location.href = `${window.location.origin}/#/inventory/stock`;
+    // Navigate to stock list using React Router
+    navigate('/inventory/stock');
   };
 
   return (

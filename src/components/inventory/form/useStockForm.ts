@@ -162,11 +162,11 @@ export function useStockForm({ stockId, onSuccess }: UseStockFormProps = {}) {
         return; // Don't navigate automatically when callback is provided
       }
 
-      // Navigate to the newly created stock item's detail page using hash routing (only when no callback)
+      // Navigate to the newly created stock item's detail page using React Router (only when no callback)
       if (data && data[0]) {
-        window.location.href = `${window.location.origin}/#/inventory/stock/${data[0].id}`;
+        navigate(`/inventory/stock/${data[0].id}`);
       } else {
-        window.location.href = `${window.location.origin}/#/inventory/stock`;
+        navigate('/inventory/stock');
       }
     },
     onError: (error) => {
@@ -268,8 +268,8 @@ export function useStockForm({ stockId, onSuccess }: UseStockFormProps = {}) {
       if (onSuccess && data && data[0]) {
         onSuccess(data[0].id);
       } else {
-        // Navigate to the updated stock item's detail page using hash routing
-        window.location.href = `${window.location.origin}/#/inventory/stock/${stockId}`;
+        // Navigate to the updated stock item's detail page using React Router
+        navigate(`/inventory/stock/${stockId}`);
       }
     },
     onError: (error) => {
