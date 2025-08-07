@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instanciate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "12.2.3 (519615d)"
+  }
   public: {
     Tables: {
       catalog: {
@@ -406,6 +411,7 @@ export type Database = {
           id: string
           is_internal: boolean | null
           job_card_id: string
+          rate: number | null
           received_quantity: number | null
           roll_width: number | null
           status: Database["public"]["Enums"]["job_status"] | null
@@ -420,6 +426,7 @@ export type Database = {
           id?: string
           is_internal?: boolean | null
           job_card_id: string
+          rate?: number | null
           received_quantity?: number | null
           roll_width?: number | null
           status?: Database["public"]["Enums"]["job_status"] | null
@@ -434,6 +441,7 @@ export type Database = {
           id?: string
           is_internal?: boolean | null
           job_card_id?: string
+          rate?: number | null
           received_quantity?: number | null
           roll_width?: number | null
           status?: Database["public"]["Enums"]["job_status"] | null
@@ -1641,6 +1649,8 @@ export type Database = {
           total_cost: number | null
           transport_charge: number | null
           updated_at: string
+          wastage_cost: number | null
+          wastage_percentage: number | null
         }
         Insert: {
           bag_length: number
@@ -1678,6 +1688,8 @@ export type Database = {
           total_cost?: number | null
           transport_charge?: number | null
           updated_at?: string
+          wastage_cost?: number | null
+          wastage_percentage?: number | null
         }
         Update: {
           bag_length?: number
@@ -1715,6 +1727,8 @@ export type Database = {
           total_cost?: number | null
           transport_charge?: number | null
           updated_at?: string
+          wastage_cost?: number | null
+          wastage_percentage?: number | null
         }
         Relationships: [
           {
@@ -2020,34 +2034,25 @@ export type Database = {
       }
       profiles: {
         Row: {
-          company_name: string | null
-          created_at: string
-          first_name: string | null
+          created_at: string | null
+          email: string | null
           id: string
-          last_name: string | null
-          phone: string | null
-          role: Database["public"]["Enums"]["user_role"] | null
-          updated_at: string
+          role: string | null
+          updated_at: string | null
         }
         Insert: {
-          company_name?: string | null
-          created_at?: string
-          first_name?: string | null
+          created_at?: string | null
+          email?: string | null
           id: string
-          last_name?: string | null
-          phone?: string | null
-          role?: Database["public"]["Enums"]["user_role"] | null
-          updated_at?: string
+          role?: string | null
+          updated_at?: string | null
         }
         Update: {
-          company_name?: string | null
-          created_at?: string
-          first_name?: string | null
+          created_at?: string | null
+          email?: string | null
           id?: string
-          last_name?: string | null
-          phone?: string | null
-          role?: Database["public"]["Enums"]["user_role"] | null
-          updated_at?: string
+          role?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -2950,19 +2955,19 @@ export type Database = {
       }
       calculate_consumption: {
         Args: {
-          p_length: number
           p_width: number
-          p_roll_width: number
           p_quantity?: number
+          p_length: number
+          p_roll_width: number
         }
         Returns: number
       }
       calculate_material_consumption: {
         Args: {
-          p_length: number
           p_width: number
-          p_roll_width: number
           p_quantity?: number
+          p_length: number
+          p_roll_width: number
         }
         Returns: number
       }
@@ -2970,8 +2975,8 @@ export type Database = {
         Args: { confirmation_text?: string }
         Returns: {
           deleted_transaction_logs: number
-          deleted_transactions: number
           status: string
+          deleted_transactions: number
         }[]
       }
       clear_transaction_history_by_date: {
@@ -2982,8 +2987,8 @@ export type Database = {
         }
         Returns: {
           deleted_transaction_logs: number
-          deleted_transactions: number
           status: string
+          deleted_transactions: number
         }[]
       }
       clear_transaction_history_by_material: {
@@ -3009,19 +3014,19 @@ export type Database = {
       delete_selected_transaction_logs: {
         Args: { transaction_log_ids: string[]; confirmation_text?: string }
         Returns: {
-          deleted_transaction_logs: number
           deleted_transactions: number
-          status: string
+          deleted_transaction_logs: number
           processed_count: number
+          status: string
         }[]
       }
       delete_single_transaction_log: {
         Args: { transaction_log_id: string; confirmation_text?: string }
         Returns: {
+          transaction_details: Json
           deleted_transaction_logs: number
           deleted_transactions: number
           status: string
-          transaction_details: Json
         }[]
       }
       emergency_delete_order: {
@@ -3047,24 +3052,24 @@ export type Database = {
       get_catalog_cost_data: {
         Args: { catalog_id: string }
         Returns: {
-          total_cost: number
-          material_cost: number
+          selling_rate: number
           cutting_charge: number
           printing_charge: number
           stitching_charge: number
           transport_charge: number
           margin: number
-          selling_rate: number
+          total_cost: number
+          material_cost: number
         }[]
       }
       get_company_order_counts: {
         Args: Record<PropertyKey, never>
         Returns: {
-          company_id: string
-          company_name: string
-          as_company_count: number
           as_sales_account_count: number
+          company_name: string
+          company_id: string
           total_orders: number
+          as_company_count: number
         }[]
       }
       get_deduplicated_order_consumption: {
@@ -3075,6 +3080,7 @@ export type Database = {
           p_end_date?: string
         }
         Returns: {
+          unit: string
           order_id: string
           order_number: string
           company_name: string
@@ -3082,7 +3088,6 @@ export type Database = {
           material_id: string
           material_name: string
           total_material_used: number
-          unit: string
           purchase_price: number
           component_type: string
         }[]
@@ -3090,6 +3095,9 @@ export type Database = {
       get_production_wastage: {
         Args: Record<PropertyKey, never>
         Returns: {
+          wastage_percentage: number
+          created_at: string
+          notes: string
           id: string
           order_id: string
           order_number: string
@@ -3100,9 +3108,6 @@ export type Database = {
           provided_quantity: number
           received_quantity: number
           wastage_quantity: number
-          wastage_percentage: number
-          notes: string
-          created_at: string
         }[]
       }
       get_system_config: {
@@ -3112,11 +3117,11 @@ export type Database = {
       get_transaction_history_stats: {
         Args: Record<PropertyKey, never>
         Returns: {
-          total_transaction_logs: number
-          total_transactions: number
+          materials_with_transactions: number
           oldest_log_date: string
           newest_log_date: string
-          materials_with_transactions: number
+          total_transaction_logs: number
+          total_transactions: number
         }[]
       }
       hard_delete_inventory_with_consumption_preserve: {
@@ -3137,15 +3142,15 @@ export type Database = {
       }
       record_manual_inventory_transaction: {
         Args: {
+          p_reference_id?: string
+          p_metadata?: Json
           p_material_id: string
           p_transaction_type: string
           p_quantity: number
           p_previous_quantity: number
           p_new_quantity: number
           p_notes?: string
-          p_reference_id?: string
           p_reference_number?: string
-          p_metadata?: Json
         }
         Returns: string
       }
@@ -3163,16 +3168,16 @@ export type Database = {
       }
       record_order_material_usage: {
         Args: {
-          p_order_id: string
           p_order_number: string
           p_material_id: string
-          p_quantity: number
           p_notes?: string
+          p_quantity: number
+          p_order_id: string
         }
         Returns: boolean
       }
       set_config_value: {
-        Args: { key: string; value: string }
+        Args: { value: string; key: string }
         Returns: undefined
       }
       set_default_material_supplier: {
@@ -3185,18 +3190,18 @@ export type Database = {
       }
       update_catalog_from_order_values: {
         Args: {
+          p_border_dimension: number
+          p_printing_charge: number
+          p_stitching_charge: number
+          p_transport_charge: number
+          p_height: number
+          p_material_cost: number
           p_template_id: string
           p_bag_length: number
           p_bag_width: number
           p_default_quantity: number
           p_default_rate: number
           p_cutting_charge: number
-          p_printing_charge: number
-          p_stitching_charge: number
-          p_transport_charge: number
-          p_height: number
-          p_border_dimension: number
-          p_material_cost: number
         }
         Returns: boolean
       }
@@ -3207,6 +3212,10 @@ export type Database = {
       update_orders_from_template: {
         Args: { template_id: string }
         Returns: undefined
+      }
+      update_user_role: {
+        Args: { target_user_id: string; new_role: string }
+        Returns: boolean
       }
     }
     Enums: {
@@ -3236,21 +3245,25 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
@@ -3268,14 +3281,16 @@ export type Tables<
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
@@ -3291,14 +3306,16 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
@@ -3314,14 +3331,16 @@ export type TablesUpdate<
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
@@ -3329,14 +3348,16 @@ export type Enums<
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
