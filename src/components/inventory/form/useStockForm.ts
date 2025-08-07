@@ -159,10 +159,15 @@ export function useStockForm({ stockId, onSuccess }: UseStockFormProps = {}) {
       // Call the onSuccess callback if provided
       if (onSuccess && data && data[0]) {
         onSuccess(data[0].id);
+        return; // Don't navigate automatically when callback is provided
       }
 
-      // Navigate to stock home page
-      window.location.href = "/inventory/stock";
+      // Navigate to the newly created stock item's detail page using hash routing (only when no callback)
+      if (data && data[0]) {
+        window.location.href = `${window.location.origin}/#/inventory/stock/${data[0].id}`;
+      } else {
+        window.location.href = `${window.location.origin}/#/inventory/stock`;
+      }
     },
     onError: (error) => {
       console.error("Error creating stock:", error);
@@ -263,8 +268,8 @@ export function useStockForm({ stockId, onSuccess }: UseStockFormProps = {}) {
       if (onSuccess && data && data[0]) {
         onSuccess(data[0].id);
       } else {
-        // Use window.location.href instead of navigate for reliable page refresh
-        window.location.href = "/inventory/stock";
+        // Navigate to the updated stock item's detail page using hash routing
+        window.location.href = `${window.location.origin}/#/inventory/stock/${stockId}`;
       }
     },
     onError: (error) => {
