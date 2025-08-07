@@ -385,7 +385,7 @@ const PurchaseDetail = () => {
               The requested purchase could not be found or an error occurred.
             </p>
             <Button
-              onClick={() => window.location.href = "/purchases"}
+              onClick={() => navigate("/purchases")}
               className="mt-4"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -402,7 +402,7 @@ const PurchaseDetail = () => {
       <div className="flex items-center justify-between">
         <Button
           variant="outline"
-          onClick={() => window.location.href = "/purchases"}
+          onClick={() => navigate("/purchases")}
           className="flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" />

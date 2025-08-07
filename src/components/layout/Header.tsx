@@ -1,7 +1,7 @@
 import { Bell, Search, Plus, Keyboard, Building, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { KeyboardShortcutsDialog } from "@/components/keyboard/KeyboardShortcutsDialog";
 import { useState } from "react";
@@ -24,6 +24,7 @@ import DatabaseSwitcher from "@/components/database/DatabaseSwitcher";
 const Header = () => {
   const { user } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const searchRef = useRef<HTMLInputElement>(null);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [gstCopied, setGstCopied] = useState(false);
@@ -96,10 +97,10 @@ const Header = () => {
       // Navigation shortcuts (g + key)
       if (e.key === "g") {
         const handleSecondKey = (e2: KeyboardEvent) => {
-          if (e2.key === "d") window.location.href = "/dashboard";
-          if (e2.key === "o") window.location.href = "/orders";
-          if (e2.key === "p") window.location.href = "/production";
-          if (e2.key === "j") window.location.href = "/production/job-cards";
+          if (e2.key === "d") navigate("/dashboard");
+          if (e2.key === "o") navigate("/orders");
+          if (e2.key === "p") navigate("/production");
+          if (e2.key === "j") navigate("/production/job-cards");
           
           document.removeEventListener("keydown", handleSecondKey);
         };
@@ -111,8 +112,8 @@ const Header = () => {
       // Create new shortcuts (n + key)
       if (e.key === "n") {
         const handleSecondKey = (e2: KeyboardEvent) => {
-          if (e2.key === "o") window.location.href = "/orders/new";
-          if (e2.key === "j") window.location.href = "/production/job-cards/new";
+          if (e2.key === "o") navigate("/orders/new");
+          if (e2.key === "j") navigate("/production/job-cards/new");
           
           document.removeEventListener("keydown", handleSecondKey);
         };
@@ -124,7 +125,7 @@ const Header = () => {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [canGoBack, canGoForward, goBack, goForward]);
+  }, [canGoBack, canGoForward, goBack, goForward, navigate]);
 
   const getActionButton = () => {
     // Removed the duplicate "New Job Card" button from the production/job-cards page
@@ -135,7 +136,7 @@ const Header = () => {
         <Button 
           size="sm" 
           className="gap-1"
-          onClick={() => { window.location.href = '/vendors/new'; }}
+          onClick={() => { navigate('/vendors/new'); }}
         >
           <Plus size={16} />
           New Vendor
@@ -148,7 +149,7 @@ const Header = () => {
         <Button 
           size="sm" 
           className="gap-1"
-          onClick={() => { window.location.href = '/suppliers/new'; }}
+          onClick={() => { navigate('/suppliers/new'); }}
         >
           <Plus size={16} />
           New Supplier
@@ -161,7 +162,7 @@ const Header = () => {
         <Button 
           size="sm" 
           className="gap-1"
-          onClick={() => { window.location.href = '/inventory/new'; }}
+          onClick={() => { navigate('/inventory/new'); }}
         >
           <Plus size={16} />
           New Item

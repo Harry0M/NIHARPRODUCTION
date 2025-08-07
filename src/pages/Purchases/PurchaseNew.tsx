@@ -509,7 +509,7 @@ const PurchaseNew = () => {
       <div className="flex items-center justify-between">
         <Button
           variant="outline"
-          onClick={() => window.location.href = "/purchases"}
+          onClick={() => navigate("/purchases")}
           className="flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
