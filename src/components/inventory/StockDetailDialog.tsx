@@ -140,14 +140,16 @@ export const StockDetailDialog = ({
     }
   }, [open, stockId, refreshTransactions]);
 
-  // Use a ref to track if we've already refreshed for this dialog opening
+  // Use refs to track dialog state
   const hasRefreshedRef = useRef(false);
+  const hasHandledInitialTabRef = useRef(false);
   
   useEffect(() => {
-    // Auto-switch to transactions tab when this dialog opens if that tab was specified
-    if (open && initialTab === "transactions") {
+    // Only auto-switch to transactions tab on the very first load and only if specified
+    if (open && initialTab === "transactions" && !hasHandledInitialTabRef.current) {
       console.log("Auto-switching to transactions tab based on initialTab prop");
       setActiveTab("transactions");
+      userSelectedTabRef.current = "transactions"; // Mark this as a handled selection
       
       // Only refresh once when the dialog opens
       if (!hasRefreshedRef.current) {
@@ -155,11 +157,15 @@ export const StockDetailDialog = ({
         refreshTransactions();
         hasRefreshedRef.current = true;
       }
+      
+      hasHandledInitialTabRef.current = true;
     }
     
-    // Reset the ref when dialog closes
+    // Reset the refs when dialog closes
     if (!open) {
       hasRefreshedRef.current = false;
+      hasHandledInitialTabRef.current = false;
+      userSelectedTabRef.current = null; // Reset user selection when dialog closes
     }
   }, [open, initialTab, refreshTransactions]);
   
@@ -202,14 +208,23 @@ export const StockDetailDialog = ({
   // Store user's manually selected tab
   const userSelectedTabRef = useRef<string | null>(null);
 
-  // Auto-switch to transactions tab only on initial load if transactions exist
+  // Auto-switch to transactions tab only on initial load if transactions exist and no manual selection
   useEffect(() => {
-    // Only auto-switch if user hasn't manually selected a tab yet
-    if (hasTransactions && isRefreshing === false && userSelectedTabRef.current === null) {
-      console.log("Auto-switching to transactions tab on initial load");
+    // Only auto-switch if:
+    // 1. User hasn't manually selected a tab yet
+    // 2. We haven't handled the initial tab setup yet
+    // 3. We have transactions and aren't currently refreshing
+    // 4. No specific initialTab was provided (to avoid conflicts)
+    if (hasTransactions && 
+        isRefreshing === false && 
+        userSelectedTabRef.current === null && 
+        !hasHandledInitialTabRef.current &&
+        initialTab !== "transactions") {
+      console.log("Auto-switching to transactions tab on initial load (no user selection)");
       setActiveTab("transactions");
+      hasHandledInitialTabRef.current = true;
     }
-  }, [hasTransactions, isRefreshing]);
+  }, [hasTransactions, isRefreshing, initialTab]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

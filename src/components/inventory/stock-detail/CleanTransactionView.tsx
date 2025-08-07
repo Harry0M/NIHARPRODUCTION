@@ -3,11 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TransactionLog } from "@/types/inventory";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUpCircle, ArrowDownCircle, History, RefreshCcw, Package, ShoppingCart, Wrench, Edit, AlertCircle } from "lucide-react";
+import { ArrowUpCircle, ArrowDownCircle, History, RefreshCcw, Package, ShoppingCart, Wrench, Edit, AlertCircle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { showToast } from "@/components/ui/enhanced-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Link } from "react-router-dom";
 
 // Extended transaction log type to include update information
 interface ExtendedTransactionLog extends TransactionLog {
@@ -280,7 +281,6 @@ export const CleanTransactionView = ({
   useEffect(() => {
     const runFilter = async () => {
       try {
-        console.log("🚀 CleanTransactionView: Starting transaction filtering...");
         setHasError(false);
         setErrorMessage("");
         await filterTransactions(transactionLogs);
@@ -625,6 +625,36 @@ export const CleanTransactionView = ({
                         >
                           View Manual
                         </Button>
+                      )}
+                      
+                      {/* Job Card link button */}
+                      {transaction.reference_type?.toLowerCase() === 'jobcard' && transaction.reference_id && (
+                        <Link to={`/production/job-cards/${transaction.reference_id}`}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="mt-2 gap-1"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            View Job Card
+                          </Button>
+                        </Link>
+                      )}
+                      
+                      {/* Purchase link button */}
+                      {(transaction.reference_type?.toLowerCase() === 'purchase' || 
+                        transaction.transaction_type?.toLowerCase().includes('purchase')) && 
+                        transaction.reference_id && (
+                        <Link to={`/purchases/${transaction.reference_id}`}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="mt-2 gap-1"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            View Purchase
+                          </Button>
+                        </Link>
                       )}
                     </div>
 
