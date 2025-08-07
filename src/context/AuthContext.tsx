@@ -36,6 +36,7 @@ export const AuthProvider = ({ children, initialUser }: AuthProviderProps) => {
   const [permissions, setPermissions] = useState<UserPermissions>(getPermissionsForRole('admin'));
   const [loading, setLoading] = useState(!initialUser);
   const [isTokenExpired, setIsTokenExpired] = useState(false);
+  const [roleLoaded, setRoleLoaded] = useState(false);
   
   // Get location and navigate within router context
   const navigate = useNavigate();
@@ -78,10 +79,16 @@ export const AuthProvider = ({ children, initialUser }: AuthProviderProps) => {
   }, [checkTokenExpiry]);
 
   // Load user role from profiles table or metadata, with better error handling
-  const loadUserRole = useCallback(async (currentUser: User | null) => {
+  const loadUserRole = useCallback(async (currentUser: User | null, forceReload = false) => {
     if (!currentUser) {
       setUserRole('admin');
       setPermissions(getPermissionsForRole('admin'));
+      setRoleLoaded(true);
+      return;
+    }
+
+    // Skip if role already loaded and not forcing reload
+    if (roleLoaded && !forceReload) {
       return;
     }
 
@@ -93,9 +100,9 @@ export const AuthProvider = ({ children, initialUser }: AuthProviderProps) => {
         .eq('id', currentUser.id)
         .single();
 
-      // Set a timeout for the database query
+      // Set a timeout for the database query (reduced to 3 seconds for better UX)
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Profile query timeout')), 5000);
+        setTimeout(() => reject(new Error('Profile query timeout')), 3000);
       });
 
       let profile = null;
@@ -106,49 +113,86 @@ export const AuthProvider = ({ children, initialUser }: AuthProviderProps) => {
         profile = result.data;
         profileError = result.error;
       } catch (error) {
-        console.warn('Profile query timed out or failed:', error);
+        console.debug('Profile query timed out or failed:', error);
         profileError = error;
       }
 
       let role: UserRole = 'admin'; // Default fallback
 
       if (!profileError && profile?.role) {
-        // Use role from profiles table
-        role = profile.role as UserRole;
-        console.log('Role loaded from profiles table:', role);
+        // Map database enum values back to frontend roles
+        // Prioritize database role over metadata since DB is the source of truth
+        const dbRole = profile.role;
+        const metadataRole = currentUser.user_metadata?.role as UserRole;
+        
+        if (dbRole === 'admin') {
+          role = 'admin';
+        } else if (dbRole === 'staff') {
+          role = 'staff'; // Staff in DB = Staff in frontend (direct mapping)
+        } else if (dbRole === 'production') {
+          // For production, prefer metadata role only if it's a production type
+          // Otherwise default to printer
+          if (metadataRole && ['printer', 'cutting', 'stitching'].includes(metadataRole)) {
+            role = metadataRole;
+          } else {
+            role = 'printer'; // Default production role
+          }
+        } else if (dbRole === 'vendor') {
+          role = 'admin'; // Fallback for vendor
+        } else {
+          role = 'admin'; // Unknown role fallback
+        }
+        
+        console.debug('Role loaded from profiles table:', dbRole, '→', role, '(metadata:', metadataRole, ')');
       } else {
         // Fallback to user metadata
-        role = currentUser.user_metadata?.role as UserRole || 'admin';
-        console.log('Role loaded from metadata or default:', role);
+        const metadataRole = currentUser.user_metadata?.role as UserRole;
+        role = metadataRole || 'admin';
+        console.debug('Role loaded from metadata or default:', role, '(metadata:', metadataRole, ')');
         
         // If we have a role from metadata but profiles table failed, 
         // try to sync it in the background (don't wait for it)
-        if (currentUser.user_metadata?.role && profileError) {
-          supabase.from('profiles').upsert({
-            id: currentUser.id,
-            email: currentUser.email,
-            role: currentUser.user_metadata.role,
-            updated_at: new Date().toISOString()
-          }).then(({ error }) => {
-            if (error) {
-              console.warn('Failed to sync role to profiles table:', error);
-            } else {
-              console.log('Role synced to profiles table');
-            }
-          });
+        if (metadataRole && profileError) {
+          // Map frontend roles to database enum values for sync
+          const dbRoleMapping: Record<UserRole, string> = {
+            'admin': 'admin',
+            'staff': 'staff', // Map staff to staff in database (direct mapping)
+            'printer': 'production',
+            'cutting': 'production', 
+            'stitching': 'production',
+          };
+
+          const dbRole = dbRoleMapping[metadataRole];
+          
+          if (dbRole) {
+            supabase.from('profiles').upsert({
+              id: currentUser.id,
+              email: currentUser.email,
+              role: dbRole as Database["public"]["Enums"]["user_role"],
+              updated_at: new Date().toISOString()
+            }).then(({ error }) => {
+              if (error) {
+                console.debug('Failed to sync role to profiles table:', error);
+              } else {
+                console.debug('Role synced to profiles table:', metadataRole, '→', dbRole);
+              }
+            });
+          }
         }
       }
 
       setUserRole(role);
       setPermissions(getPermissionsForRole(role));
+      setRoleLoaded(true);
     } catch (error) {
       console.error('Error loading user role:', error);
       // Fallback to default with metadata check
       const role = currentUser.user_metadata?.role as UserRole || 'admin';
       setUserRole(role);
       setPermissions(getPermissionsForRole(role));
+      setRoleLoaded(true);
     }
-  }, []);
+  }, [roleLoaded]);
 
   // Update user role (admin only function) with better sync
   const updateUserRole = async (role: UserRole) => {
@@ -167,7 +211,7 @@ export const AuthProvider = ({ children, initialUser }: AuthProviderProps) => {
       // Map frontend roles to database enum values
       const dbRoleMapping: Record<UserRole, string> = {
         'admin': 'admin',
-        'staff': 'manager', // Map staff to manager in database
+        'staff': 'staff', // Map staff to staff in database (direct mapping)
         'printer': 'production',
         'cutting': 'production', 
         'stitching': 'production',
@@ -202,7 +246,7 @@ export const AuthProvider = ({ children, initialUser }: AuthProviderProps) => {
     // Setup the auth subscription with enhanced token refresh handling
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
-        console.log('Auth state change:', event);
+        console.debug('Auth state change:', event);
         
         // Handle different auth events
         if (event === 'SIGNED_OUT') {
@@ -211,6 +255,7 @@ export const AuthProvider = ({ children, initialUser }: AuthProviderProps) => {
           setUserRole('admin');
           setPermissions(getPermissionsForRole('admin'));
           setIsTokenExpired(false);
+          setRoleLoaded(false);
           
           setTimeout(() => {
             navigate("/auth");
@@ -218,7 +263,7 @@ export const AuthProvider = ({ children, initialUser }: AuthProviderProps) => {
           return;
         }
         
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
           setSession(currentSession);
           const currentUser = currentSession?.user ?? null;
           setUser(currentUser);
@@ -226,24 +271,29 @@ export const AuthProvider = ({ children, initialUser }: AuthProviderProps) => {
           // Check token expiry
           checkTokenExpiry(currentSession);
           
-          // Load user role and permissions
-          await loadUserRole(currentUser);
+          // Load user role and permissions (force reload for SIGNED_IN to ensure fresh data)
+          const shouldForceReload = event === 'SIGNED_IN';
+          await loadUserRole(currentUser, shouldForceReload);
           
           setLoading(false);
           
-          // Navigate to dashboard on sign in
+          // Navigate to dashboard on sign in (but not on initial session load)
           if (event === 'SIGNED_IN' && location.pathname === "/auth") {
             setTimeout(() => {
               navigate("/dashboard");
             }, 0);
           }
+          
+          return; // Exit early to avoid duplicate processing
         }
         
-        // Handle session updates for all events
-        setSession(currentSession);
-        const currentUser = currentSession?.user ?? null;
-        setUser(currentUser);
-        checkTokenExpiry(currentSession);
+        // Handle any other session updates
+        if (currentSession) {
+          setSession(currentSession);
+          const currentUser = currentSession?.user ?? null;
+          setUser(currentUser);
+          checkTokenExpiry(currentSession);
+        }
       }
     );
 
@@ -257,8 +307,8 @@ export const AuthProvider = ({ children, initialUser }: AuthProviderProps) => {
       // Check token expiry
       checkTokenExpiry(currentSession);
       
-      // Load user role and permissions
-      await loadUserRole(currentUser);
+      // Load user role and permissions (force reload during initialization)
+      await loadUserRole(currentUser, true);
       
       setLoading(false);
     };
