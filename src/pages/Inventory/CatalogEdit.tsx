@@ -689,8 +689,8 @@ const CatalogEdit = () => {
         variant: "default"
       });
 
-      // Navigate using window.location.href for reliable redirection
-      window.location.href = `/inventory/catalog/${id}`;
+      // Navigate to the catalog detail page - same method as CatalogNew
+      window.location.href = `${window.location.origin}/#/inventory/catalog/${id}`;
       
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
@@ -721,7 +721,7 @@ const CatalogEdit = () => {
             type="button"
             variant="ghost" 
             size="sm"
-            onClick={() => window.location.href = `/inventory/catalog/${id}`}
+            onClick={() => window.location.href = `${window.location.origin}/#/inventory/catalog/${id}`}
             className="gap-1"
           >
             <ArrowLeft size={16} />
@@ -1048,7 +1048,7 @@ const CatalogEdit = () => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => window.location.href = `/inventory/catalog/${id}`}
+              onClick={() => window.location.href = `${window.location.origin}/#/inventory/catalog/${id}`}
             >
               Cancel
             </Button>
