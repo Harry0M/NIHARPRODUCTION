@@ -184,8 +184,8 @@ const CatalogNew = () => {
         type: "success"
       });
 
-      // SIMPLIFIED: Direct navigation to inventory/catalog
-      window.location.href = "/inventory/catalog";
+      // Navigate to the newly created catalog item's detail page
+      window.location.href = `${window.location.origin}/#/inventory/catalog/${productResult.id}`;
       
     } catch (error: any) {
       // Clear the loading toast
@@ -211,8 +211,8 @@ const CatalogNew = () => {
   useEffect(() => {
     return () => {
       if (submitting) {
-        // SIMPLIFIED: Direct navigation for cleanup scenario too
-        window.location.href = "/inventory/catalog";
+        // Fallback navigation to catalog list
+        window.location.href = `${window.location.origin}/#/inventory/catalog`;
       }
     };
   }, [submitting]);
