@@ -461,8 +461,8 @@ const PurchaseNew = () => {
         type: "success"
       });
       
-      // Use window.location.href instead of navigate to ensure full page refresh
-      window.location.href = `/purchases/${purchaseId}`;
+      // Navigate to the purchase detail page
+      navigate(`/purchases/${purchaseId}`);
     } catch (error: unknown) {
       console.error("Error creating purchase:", error);
       showToast({
