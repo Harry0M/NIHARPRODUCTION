@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TransactionLog } from "@/types/inventory";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUpCircle, ArrowDownCircle, History, RefreshCcw, Package, ShoppingCart, Wrench, Edit, AlertCircle, ExternalLink } from "lucide-react";
+import { ArrowUpCircle, ArrowDownCircle, History, RefreshCcw, Package, ShoppingCart, Wrench, Edit, AlertCircle, ExternalLink, Calculator } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { showToast } from "@/components/ui/enhanced-toast";
@@ -22,24 +22,28 @@ interface CleanTransactionViewProps {
   onRefresh?: () => void;
   isLoading?: boolean;
   materialId?: string;
+  currentStock?: number; // Current actual stock quantity
 }
 
 export const CleanTransactionView = ({ 
   transactionLogs = [],
   onRefresh,
   isLoading = false,
-  materialId
+  materialId,
+  currentStock = 0
 }: CleanTransactionViewProps) => {
   const [filteredTransactions, setFilteredTransactions] = useState<ExtendedTransactionLog[]>([]);
   const [localLoading, setLocalLoading] = useState<boolean>(isLoading);
   const [hasError, setHasError] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [actualCurrentStock, setActualCurrentStock] = useState<number>(currentStock);
 
   // Reset error state when new data comes in
   useEffect(() => {
     setHasError(false);
     setErrorMessage("");
-  }, [transactionLogs, materialId]);
+    setActualCurrentStock(currentStock);
+  }, [transactionLogs, materialId, currentStock]);
 
   // Format date for display
   const formatDate = (dateString: string) => {
@@ -310,6 +314,19 @@ export const CleanTransactionView = ({
     try {
       console.log(`Refreshing clean transaction view for material ID: ${materialId}`);
       
+      // Fetch current stock quantity
+      const { data: stockData, error: stockError } = await supabase
+        .from("inventory")
+        .select("quantity")
+        .eq("id", materialId)
+        .single();
+        
+      if (stockError) {
+        console.error("Error fetching current stock:", stockError);
+      } else if (stockData) {
+        setActualCurrentStock(stockData.quantity || 0);
+      }
+      
       // Fetch transaction logs
       const { data: logData, error: logError } = await supabase
         .from("inventory_transaction_log")
@@ -389,6 +406,37 @@ export const CleanTransactionView = ({
   };
 
   const isEmpty = filteredTransactions.length === 0;
+
+  // Calculate running balances for each transaction
+  const calculateRunningBalances = () => {
+    if (filteredTransactions.length === 0) return [];
+    
+    // Sort transactions by date (newest first for display, but we need to calculate from oldest)
+    const sortedForCalculation = [...filteredTransactions].sort((a, b) => {
+      try {
+        return new Date(a.transaction_date).getTime() - new Date(b.transaction_date).getTime();
+      } catch (error) {
+        console.warn("Date sorting error for balance calculation:", error);
+        return 0;
+      }
+    });
+    
+    // Calculate running balance by working backwards from current stock
+    // Start with current stock and subtract transactions going backwards in time
+    let runningBalance = actualCurrentStock;
+    const balances = new Map<string, number>();
+    
+    // Work backwards through transactions to calculate what balance was at each point
+    for (let i = sortedForCalculation.length - 1; i >= 0; i--) {
+      const transaction = sortedForCalculation[i];
+      balances.set(transaction.id, runningBalance);
+      runningBalance -= (transaction.quantity || 0);
+    }
+    
+    return balances;
+  };
+
+  const runningBalances = calculateRunningBalances();
 
   // Show error state if there's an error
   if (hasError) {
@@ -518,6 +566,29 @@ export const CleanTransactionView = ({
         </div>
       </CardHeader>
       <CardContent className="p-4">
+        {/* Closing Balance Section */}
+        <div className="mb-4 p-3 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+                <Calculator className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Current Stock</p>
+                <p className="text-xs text-blue-700 dark:text-blue-300">Actual inventory quantity</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {actualCurrentStock.toFixed(2)}
+              </p>
+              <p className="text-xs text-blue-600 dark:text-blue-400">
+                Current Stock Quantity
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="flex items-center mb-3 gap-2">
           <History className="h-4 w-4" />
           <h3 className="text-sm font-medium">Clean Transactions</h3>
@@ -659,8 +730,9 @@ export const CleanTransactionView = ({
                     </div>
 
                     <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
-                      <span>New Qty: {transaction.new_quantity || 0}</span>
-                      <span>Previous: {transaction.previous_quantity || 0}</span>
+                      <span>Qty Change: {(transaction.quantity || 0) > 0 ? '+' : ''}{(transaction.quantity || 0).toFixed(2)}</span>
+                      <span>Balance After: <span className="font-semibold text-blue-600 dark:text-blue-400">{(runningBalances.get(transaction.id) || 0).toFixed(2)}</span></span>
+                      <span>Previous: {(transaction.previous_quantity || 0).toFixed(2)}</span>
                       <span>{formatDate(transaction.transaction_date)}</span>
                     </div>
                   </div>

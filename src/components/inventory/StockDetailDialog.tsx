@@ -416,6 +416,7 @@ export const StockDetailDialog = ({
                 transactionLogs={transactionLogs || []}
                 isLoading={isRefreshing || isTransactionsLoading}
                 onRefresh={refreshTransactions}
+                currentStock={stockItem?.quantity || 0}
               />
             </TabsContent>
           </Tabs>

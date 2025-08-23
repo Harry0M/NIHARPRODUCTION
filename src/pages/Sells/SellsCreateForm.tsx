@@ -25,6 +25,7 @@ interface SellsFormData {
   transportCharge: number;
   gstPercentage: number;
   otherExpenses: number;
+  createdDate: string; // Added creation date field
 }
 
 const SellsCreateForm = () => {
@@ -43,6 +44,7 @@ const SellsCreateForm = () => {
     transportCharge: 0,
     gstPercentage: 18, // Default GST
     otherExpenses: 0,
+    createdDate: new Date().toISOString().split('T')[0], // Default to today's date
   });
 
   const fetchOrder = useCallback(async () => {
@@ -127,6 +129,7 @@ const SellsCreateForm = () => {
         other_expenses: formData.otherExpenses,
         subtotal: calculateSubtotal(),
         total_amount: calculateTotal(),
+        created_at: new Date(formData.createdDate).toISOString(), // Use selected date
       };
 
       // Insert into sales_invoices table
@@ -146,7 +149,7 @@ const SellsCreateForm = () => {
           amount: calculateTotal(),
           order_id: order.id,
           notes: `Invoice: ${formData.invoiceNumber} - ${formData.productName}`,
-          date: new Date().toISOString().split('T')[0],
+          date: formData.createdDate, // Use selected date for transaction
         });
 
       if (transactionError) throw transactionError;      toast({
@@ -245,6 +248,19 @@ const SellsCreateForm = () => {
                   </div>
 
                   <div className="space-y-2">
+                    <Label htmlFor="createdDate">Creation Date *</Label>
+                    <Input
+                      id="createdDate"
+                      type="date"
+                      value={formData.createdDate}
+                      onChange={(e) => handleInputChange('createdDate', e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
                     <Label htmlFor="companyName">Company Name</Label>
                     <Input
                       id="companyName"
@@ -254,17 +270,17 @@ const SellsCreateForm = () => {
                       className="bg-muted"
                     />
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="productName">Product</Label>
-                  <Input
-                    id="productName"
-                    value={formData.productName}
-                    onChange={(e) => handleInputChange('productName', e.target.value)}
-                    readOnly
-                    className="bg-muted"
-                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="productName">Product</Label>
+                    <Input
+                      id="productName"
+                      value={formData.productName}
+                      onChange={(e) => handleInputChange('productName', e.target.value)}
+                      readOnly
+                      className="bg-muted"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
