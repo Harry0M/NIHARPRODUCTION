@@ -22,6 +22,13 @@ import { Database } from "@/integrations/supabase/types";
 type CompletedOrder = Database["public"]["Tables"]["orders"]["Row"] & {
   sales_invoices?: { id: string }[];
   has_sales_invoice?: boolean;
+  order_dispatches?: Array<{
+    id: string;
+    dispatch_batches: Array<{
+      quantity: number;
+    }>;
+  }>;
+  dispatched_quantity?: number;
 };
 
 interface SellsFilters {
@@ -74,7 +81,13 @@ const SellsList = () => {
         .from('orders')
         .select(`
           *,
-          sales_invoices(id)
+          sales_invoices(id),
+          order_dispatches(
+            id,
+            dispatch_batches(
+              quantity
+            )
+          )
         `)
         .eq('status', 'completed');
 
@@ -98,11 +111,21 @@ const SellsList = () => {
 
       if (error) throw error;
       
-      // Process the data to add has_sales_invoice boolean
-      const processedData = (data || []).map(order => ({
-        ...order,
-        has_sales_invoice: order.sales_invoices && order.sales_invoices.length > 0
-      }));
+      // Process the data to add has_sales_invoice boolean and calculate dispatched quantity
+      const processedData = (data || []).map(order => {
+        // Calculate total dispatched quantity from all dispatch batches
+        const dispatchedQuantity = order.order_dispatches?.reduce((total, dispatch) => {
+          return total + (dispatch.dispatch_batches?.reduce((batchTotal, batch) => {
+            return batchTotal + (batch.quantity || 0);
+          }, 0) || 0);
+        }, 0) || 0;
+
+        return {
+          ...order,
+          has_sales_invoice: order.sales_invoices && order.sales_invoices.length > 0,
+          dispatched_quantity: dispatchedQuantity
+        };
+      });
       
       setOrders(processedData as CompletedOrder[]);
     } catch (error) {
@@ -169,16 +192,19 @@ const SellsList = () => {
     return new Date(dateString).toLocaleDateString();
   };
   const getQuantityDisplay = (order: CompletedOrder) => {
-    return order.quantity || 0;
+    return order.dispatched_quantity || 0;
   };
 
   const getOrderAmount = (order: CompletedOrder) => {
-    // Use calculated_selling_price if available, otherwise calculate from rate * quantity
+    // Use calculated_selling_price if available, otherwise calculate from rate * dispatched_quantity
     if (order.calculated_selling_price) {
-      return order.calculated_selling_price;
+      // If there's a calculated price, we need to adjust it based on dispatched vs ordered quantity
+      const dispatchedQuantity = order.dispatched_quantity || 0;
+      const originalQuantity = order.quantity || 1; // Avoid division by zero
+      return (order.calculated_selling_price * dispatchedQuantity) / originalQuantity;
     }
-    if (order.rate && order.quantity) {
-      return order.rate * order.quantity;
+    if (order.rate && order.dispatched_quantity) {
+      return order.rate * order.dispatched_quantity;
     }
     return 0;
   };
@@ -332,7 +358,7 @@ const SellsList = () => {
                 <TableHeader>
                   <TableRow>                    <TableHead>Order Number</TableHead>
                     <TableHead>Company</TableHead>
-                    <TableHead>Quantity</TableHead>
+                    <TableHead>Dispatched Quantity</TableHead>
                     <TableHead>Order Date</TableHead>
                     <TableHead>Delivery Date</TableHead>
                     <TableHead>Amount</TableHead>
