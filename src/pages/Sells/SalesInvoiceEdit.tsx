@@ -31,6 +31,7 @@ interface EditFormData {
   gstPercentage: number;
   otherExpenses: number;
   notes: string;
+  createdDate: string; // Added creation date field
 }
 
 const SalesInvoiceEdit = () => {
@@ -50,6 +51,7 @@ const SalesInvoiceEdit = () => {
     gstPercentage: 18,
     otherExpenses: 0,
     notes: "",
+    createdDate: new Date().toISOString().split('T')[0], // Default to today's date
   });
 
   const fetchInvoice = useCallback(async () => {
@@ -82,6 +84,7 @@ const SalesInvoiceEdit = () => {
         gstPercentage: data.gst_percentage,
         otherExpenses: data.other_expenses,
         notes: data.notes || "",
+        createdDate: data.created_at ? new Date(data.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       });
     } catch (error) {
       toast({
@@ -176,6 +179,7 @@ const SalesInvoiceEdit = () => {
         subtotal: financials.subtotal,
         total_amount: financials.totalAmount,
         notes: formData.notes || null,
+        created_at: new Date(formData.createdDate).toISOString(), // Update creation date
         updated_at: new Date().toISOString(),
       };      console.log('Updating invoice with data:', updateData);
       console.log('Invoice ID:', invoice.id);
@@ -296,6 +300,18 @@ const SalesInvoiceEdit = () => {
                   />
                 </div>
                 <div>
+                  <Label htmlFor="createdDate">Creation Date</Label>
+                  <Input
+                    id="createdDate"
+                    type="date"
+                    value={formData.createdDate}
+                    onChange={(e) => handleInputChange('createdDate', e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
                   <Label htmlFor="companyName">Company Name</Label>
                   <Input
                     id="companyName"
@@ -315,6 +331,8 @@ const SalesInvoiceEdit = () => {
                     required
                   />
                 </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="quantity">Quantity</Label>
                   <Input
