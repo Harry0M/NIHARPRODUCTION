@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { FileText, Truck, Edit2, Package, Save, X } from "lucide-react";
+import { FileText, Truck, Edit2, Package, Save, X, Activity, CheckCircle } from "lucide-react";
 import type { DispatchData } from "@/types/dispatch";
 import type { DispatchBatch } from "@/types/dispatch";
 import { downloadAsCSV } from "@/utils/downloadUtils";
@@ -15,16 +15,18 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import type { Order } from "@/hooks/use-dispatch-data";
 
 interface DispatchDetailsProps {
   dispatch: DispatchData;
   batches: DispatchBatch[];
   orderNumber?: string;
   companyName?: string;
+  order?: Order;
   onBatchesUpdated?: () => void;
 }
 
-export const DispatchDetails = ({ dispatch, batches, orderNumber, companyName, onBatchesUpdated }: DispatchDetailsProps) => {
+export const DispatchDetails = ({ dispatch, batches, orderNumber, companyName, order, onBatchesUpdated }: DispatchDetailsProps) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -37,6 +39,13 @@ export const DispatchDetails = ({ dispatch, batches, orderNumber, companyName, o
     quantity_checked: dispatch.quantity_checked
   });
   const navigate = useNavigate();
+
+  // Calculate quantity summaries
+  const totalStitchingReceived = order?.job_cards?.[0]?.stitching_jobs?.reduce((total, job) => 
+    total + (job.received_quantity || 0), 0
+  ) || 0;
+  
+  const totalDispatched = batches.reduce((sum, batch) => sum + batch.quantity, 0);
 
   // Handle saving dispatch details
   const handleSaveDetails = async () => {
@@ -197,6 +206,36 @@ export const DispatchDetails = ({ dispatch, batches, orderNumber, companyName, o
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Quantity Summary Section */}
+        <div className="grid grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Activity className="h-4 w-4 text-blue-600" />
+              <span className="text-sm font-medium text-muted-foreground">Stitching Received</span>
+            </div>
+            <div className="text-2xl font-bold text-blue-600">{totalStitchingReceived}</div>
+            <div className="text-xs text-muted-foreground">Total from stitching jobs</div>
+          </div>
+          
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Truck className="h-4 w-4 text-green-600" />
+              <span className="text-sm font-medium text-muted-foreground">Total Dispatched</span>
+            </div>
+            <div className="text-2xl font-bold text-green-600">{totalDispatched}</div>
+            <div className="text-xs text-muted-foreground">Across all batches</div>
+          </div>
+          
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <CheckCircle className="h-4 w-4 text-orange-600" />
+              <span className="text-sm font-medium text-muted-foreground">Remaining</span>
+            </div>
+            <div className="text-2xl font-bold text-orange-600">{totalStitchingReceived - totalDispatched}</div>
+            <div className="text-xs text-muted-foreground">Yet to dispatch</div>
+          </div>
+        </div>
+
         {isEditingDetails ? (
           // Edit form for dispatch details
           <div className="space-y-4 p-4 border rounded-md bg-muted/20">

@@ -9,12 +9,23 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save, Calculator, Package, FileText } from "lucide-react";
+import { ArrowLeft, Save, Calculator, Package, FileText, Activity, Truck, CheckCircle } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { Database } from "@/integrations/supabase/types";
 
 type SalesInvoice = Database["public"]["Tables"]["sales_invoices"]["Row"];
-type Order = Database["public"]["Tables"]["orders"]["Row"];
+type Order = Database["public"]["Tables"]["orders"]["Row"] & {
+  job_cards?: {
+    id: string;
+    job_name: string;
+    status: string;
+    stitching_jobs: {
+      id: string;
+      received_quantity: number | null;
+      status: string;
+    }[];
+  }[];
+};
 
 interface SalesInvoiceWithOrder extends SalesInvoice {
   orders?: Order;
@@ -63,7 +74,19 @@ const SalesInvoiceEdit = () => {
         .from('sales_invoices')
         .select(`
           *,
-          orders (*)
+          orders (
+            *,
+            job_cards (
+              id,
+              job_name,
+              status,
+              stitching_jobs (
+                id,
+                received_quantity,
+                status
+              )
+            )
+          )
         `)
         .eq('id', invoiceId)
         .single();
@@ -117,6 +140,11 @@ const SalesInvoiceEdit = () => {
   }, [formData]);
 
   const financials = calculateFinancials();
+
+  // Calculate production quantities
+  const totalStitchingReceived = invoice?.orders?.job_cards?.[0]?.stitching_jobs?.reduce((total, job) => 
+    total + (job.received_quantity || 0), 0
+  ) || 0;
 
   const handleInputChange = (field: keyof EditFormData, value: string | number | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -471,6 +499,46 @@ const SalesInvoiceEdit = () => {
                 <div className="flex justify-between text-lg font-bold">
                   <span>Total:</span>
                   <span className="text-primary">{formatCurrency(financials.totalAmount)}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Quantity Summary */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Quantity Tracking
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Activity className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-medium text-muted-foreground">Stitching Received</span>
+                  </div>
+                  <div className="text-2xl font-bold text-blue-600">{totalStitchingReceived}</div>
+                  <div className="text-xs text-muted-foreground">From production</div>
+                </div>
+                
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Truck className="h-4 w-4 text-green-600" />
+                    <span className="text-sm font-medium text-muted-foreground">Sales Quantity</span>
+                  </div>
+                  <div className="text-2xl font-bold text-green-600">{formData.quantity}</div>
+                  <div className="text-xs text-muted-foreground">To be sold</div>
+                </div>
+                
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <CheckCircle className="h-4 w-4 text-orange-600" />
+                    <span className="text-sm font-medium text-muted-foreground">Remaining</span>
+                  </div>
+                  <div className="text-2xl font-bold text-orange-600">{totalStitchingReceived - formData.quantity}</div>
+                  <div className="text-xs text-muted-foreground">After sale</div>
                 </div>
               </div>
             </CardContent>

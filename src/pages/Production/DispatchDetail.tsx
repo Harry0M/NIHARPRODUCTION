@@ -91,6 +91,7 @@ const DispatchDetail = () => {
               batches={dispatchBatches}
               orderNumber={order?.order_number}
               companyName={order?.company_name}
+              order={order}
               onBatchesUpdated={() => {
                 // Refresh the data when batches are updated
                 window.location.reload();

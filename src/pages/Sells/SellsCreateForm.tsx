@@ -8,11 +8,22 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save, Calculator, Package, Building } from "lucide-react";
+import { ArrowLeft, Save, Calculator, Package, Building, Activity, Truck, CheckCircle } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { Database } from "@/integrations/supabase/types";
 
-type Order = Database["public"]["Tables"]["orders"]["Row"];
+type Order = Database["public"]["Tables"]["orders"]["Row"] & {
+  job_cards?: {
+    id: string;
+    job_name: string;
+    status: string;
+    stitching_jobs: {
+      id: string;
+      received_quantity: number | null;
+      status: string;
+    }[];
+  }[];
+};
 type SalesInvoiceInsert = Database["public"]["Tables"]["sales_invoices"]["Insert"];
 
 interface SellsFormData {
@@ -54,7 +65,19 @@ const SellsCreateForm = () => {
     try {
       const { data, error } = await supabase
         .from('orders')
-        .select('*')
+        .select(`
+          *,
+          job_cards (
+            id,
+            job_name,
+            status,
+            stitching_jobs (
+              id,
+              received_quantity,
+              status
+            )
+          )
+        `)
         .eq('id', orderId)
         .single();
 
@@ -109,6 +132,11 @@ const SellsCreateForm = () => {
     const transport = formData.transportIncluded ? 0 : formData.transportCharge;
     return subtotal + gstAmount + transport + formData.otherExpenses;
   };
+
+  // Calculate production quantities
+  const totalStitchingReceived = order?.job_cards?.[0]?.stitching_jobs?.reduce((total, job) => 
+    total + (job.received_quantity || 0), 0
+  ) || 0;
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!order) return;
@@ -417,6 +445,46 @@ const SellsCreateForm = () => {
                     <span>{new Date(order.delivery_date).toLocaleDateString()}</span>
                   </div>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Quantity Summary */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Quantity Tracking
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Activity className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-medium text-muted-foreground">Stitching Received</span>
+                  </div>
+                  <div className="text-2xl font-bold text-blue-600">{totalStitchingReceived}</div>
+                  <div className="text-xs text-muted-foreground">From production</div>
+                </div>
+                
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Truck className="h-4 w-4 text-green-600" />
+                    <span className="text-sm font-medium text-muted-foreground">Sales Quantity</span>
+                  </div>
+                  <div className="text-2xl font-bold text-green-600">{formData.quantity}</div>
+                  <div className="text-xs text-muted-foreground">To be sold</div>
+                </div>
+                
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <CheckCircle className="h-4 w-4 text-orange-600" />
+                    <span className="text-sm font-medium text-muted-foreground">Remaining</span>
+                  </div>
+                  <div className="text-2xl font-bold text-orange-600">{totalStitchingReceived - formData.quantity}</div>
+                  <div className="text-xs text-muted-foreground">After sale</div>
+                </div>
               </div>
             </CardContent>
           </Card>
