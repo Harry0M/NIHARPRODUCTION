@@ -22,7 +22,7 @@ interface StockTransactionHistoryProps {
   materialId?: string;
 }
 
-export const StockTransactionHistory = ({ 
+export const StockTransactionHistory = ({
   transactions = [],
   transactionLogs = [],
   onRefresh,
@@ -32,11 +32,152 @@ export const StockTransactionHistory = ({
   const navigate = useNavigate();
   const [localLoading, setLocalLoading] = useState<boolean>(isLoading);
   const [hoveredTransaction, setHoveredTransaction] = useState<string | null>(null);
-  
+
   // Transaction selection and deletion state
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
   const [selectionMode, setSelectionMode] = useState(true); // Enable selection by default
+  const [filterType, setFilterType] = useState<'all' | 'inward' | 'outward'>('all');
+
+  // Deduplicate and filter transactions
+  const filteredTransactions = React.useMemo(() => {
+    // Enable debugging
+    const DEBUG = false;
+
+    // Sort by transaction date to process in chronological order
+    const chronologicalTransactions = [...transactionLogs].sort((a, b) =>
+      new Date(a.transaction_date).getTime() - new Date(b.transaction_date).getTime()
+    );
+
+    // First pass: filter out decrease transactions that represent excess consumption
+    let processedTransactions = [...chronologicalTransactions];
+    const transactionsToRemove = new Set<string>();
+
+    // For each material, find and remove excess consumption decrease entries
+    const materialGroups = new Map<string, typeof transactionLogs>();
+    chronologicalTransactions.forEach(tx => {
+      const materialId = tx.material_id;
+      if (!materialGroups.has(materialId)) {
+        materialGroups.set(materialId, []);
+      }
+      materialGroups.get(materialId)!.push(tx);
+    });
+
+    // Process each material group to identify excess consumption patterns
+    materialGroups.forEach((transactions, materialId) => {
+      // Look for patterns where decrease transactions represent excess consumption  
+      for (let i = transactions.length - 1; i >= 0; i--) {
+        const tx = transactions[i];
+
+        // Look for decrease transactions that bring quantity to 0 and match previous quantity exactly
+        if (tx.transaction_type.toLowerCase().includes('decrease') &&
+          tx.new_quantity === 0 &&
+          Math.abs(tx.previous_quantity - Math.abs(tx.quantity)) < 0.01) {
+
+          // Mark this transaction for removal
+          transactionsToRemove.add(tx.id);
+        }
+      }
+    });
+
+    // Apply the filtering
+    processedTransactions = processedTransactions.filter(tx => !transactionsToRemove.has(tx.id));
+
+    // Group potential duplicates by numerical values and time proximity
+    const groupedByQuantity: { [key: string]: typeof transactionLogs } = {};
+
+    // Create groups of transactions with same numerical values and close timestamps
+    processedTransactions.forEach(transaction => {
+      let foundGroup = false;
+      const transactionTime = new Date(transaction.transaction_date).getTime();
+
+      // Check existing groups for a match based on quantity and time proximity
+      Object.keys(groupedByQuantity).forEach(key => {
+        if (foundGroup) return; // Skip if already found a group
+
+        const group = groupedByQuantity[key];
+        if (group.length === 0) return;
+
+        // Check first transaction in group to see if this transaction belongs with it
+        const firstTransaction = group[0];
+        const firstTime = new Date(firstTransaction.transaction_date).getTime();
+
+        // If quantities match exactly and time is within 1 minute, add to this group
+        if (Math.abs(firstTransaction.quantity - transaction.quantity) < 0.01 &&
+          Math.abs(firstTransaction.previous_quantity - transaction.previous_quantity) < 0.01 &&
+          Math.abs(firstTransaction.new_quantity - transaction.new_quantity) < 0.01 &&
+          Math.abs(transactionTime - firstTime) < 60000) { // 1 minute
+
+          groupedByQuantity[key].push(transaction);
+          foundGroup = true;
+        }
+      });
+
+      // If no matching group found, create a new one
+      if (!foundGroup) {
+        const key = `${transaction.previous_quantity}-${transaction.new_quantity}-${transaction.quantity}-${transactionTime}`;
+        groupedByQuantity[key] = [transaction];
+      }
+    });
+
+    // Process each group to eliminate duplicates
+    const deduplicatedTransactions: typeof transactionLogs = [];
+
+    Object.values(groupedByQuantity).forEach(group => {
+      if (group.length === 1) {
+        // If only one transaction in the group, keep it
+        deduplicatedTransactions.push(group[0]);
+        return;
+      }
+
+      // Check for purchase + manual entry duplicate pattern
+      const hasPurchase = group.some(transaction =>
+        transaction.transaction_type.toLowerCase().includes('purchase'));
+      const hasManual = group.some(transaction =>
+        !transaction.reference_type ||
+        transaction.transaction_type.toLowerCase().includes('manual') ||
+        transaction.transaction_type.toLowerCase().includes('adjustment'));
+
+      if (hasPurchase && hasManual) {
+        // Keep only purchase transactions from this group
+        const purchases = group.filter(transaction =>
+          transaction.transaction_type.toLowerCase().includes('purchase'));
+        deduplicatedTransactions.push(...purchases);
+      } else {
+        // Check for consumption + decrease duplicate pattern
+        const hasConsumption = group.some(transaction =>
+          transaction.transaction_type.toLowerCase().includes('consumption'));
+        const hasDecrease = group.some(transaction =>
+          transaction.transaction_type.toLowerCase().includes('decrease'));
+
+        if (hasConsumption && hasDecrease) {
+          // Keep only consumption transactions
+          const consumptions = group.filter(transaction =>
+            transaction.transaction_type.toLowerCase().includes('consumption'));
+          deduplicatedTransactions.push(...consumptions);
+        } else {
+          // Keep the most recent transaction from other duplicate groups
+          const sortedGroup = [...group].sort(
+            (a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime()
+          );
+          deduplicatedTransactions.push(sortedGroup[0]);
+        }
+      }
+    });
+
+    // Sort by transaction date (newest first)
+    const finalSortedTransactions = deduplicatedTransactions.sort(
+      (a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime()
+    );
+
+    // Apply the user selected filter
+    return finalSortedTransactions.filter(tx => {
+      if (filterType === 'all') return true;
+      if (filterType === 'inward') return tx.quantity >= 0;
+      if (filterType === 'outward') return tx.quantity < 0;
+      return true;
+    });
+  }, [transactionLogs, filterType]);
 
   // Format date for display
   const formatDate = (dateString: string) => {
@@ -50,7 +191,7 @@ export const StockTransactionHistory = ({
   // Get transaction type badge color (enhanced from analysis page)
   const getTransactionTypeColor = (type: string) => {
     const typeLower = type.toLowerCase();
-    
+
     if (typeLower.includes('purchase') || typeLower.includes('increase')) {
       return {
         bg: "bg-green-100 border-green-300 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400",
@@ -61,7 +202,7 @@ export const StockTransactionHistory = ({
     else if (typeLower.includes('order') || typeLower.includes('consumption')) {
       return {
         bg: "bg-red-100 border-red-300 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400",
-        label: "Consumption", 
+        label: "Consumption",
         icon: ArrowDownCircle
       };
     }
@@ -79,7 +220,7 @@ export const StockTransactionHistory = ({
         icon: AlertCircle
       };
     }
-    
+
     return {
       bg: "bg-gray-100 border-gray-300 text-gray-800 dark:bg-gray-800/30 dark:border-gray-700 dark:text-gray-400",
       label: "Unknown",
@@ -90,12 +231,12 @@ export const StockTransactionHistory = ({
   // Get reference type display (from analysis page)
   const getReferenceTypeDisplay = (type: string | null) => {
     if (!type) return "Manual Entry";
-    
+
     switch (type) {
       case 'Order':
         return "Order";
       case 'JobCard':
-        return "Job Card";  
+        return "Job Card";
       case 'Purchase':
         return "Purchase";
       case 'Adjustment':
@@ -108,7 +249,7 @@ export const StockTransactionHistory = ({
   // Navigate to reference (from analysis page)
   const navigateToReference = (type: string | null, id: string | null) => {
     if (!type || !id) return;
-    
+
     switch (type) {
       case 'Order':
       case 'JobCard':
@@ -118,7 +259,7 @@ export const StockTransactionHistory = ({
         navigate(`/purchases/${id}`);
         break;
       default:
-        // Do nothing for unknown reference types
+      // Do nothing for unknown reference types
     }
   };
 
@@ -132,8 +273,8 @@ export const StockTransactionHistory = ({
   };
 
   const handleSelectAllTransactions = (isSelected: boolean) => {
-    if (isSelected && transactionLogs.length > 0) {
-      setSelectedTransactionIds(transactionLogs.map(t => t.id));
+    if (isSelected && filteredTransactions.length > 0) {
+      setSelectedTransactionIds(filteredTransactions.map(t => t.id));
     } else {
       setSelectedTransactionIds([]);
     }
@@ -158,7 +299,7 @@ export const StockTransactionHistory = ({
     if (!open && selectedTransactionIds.length > 0) {
       // When dialog closes after deletion, refresh data and clear selected items
       setSelectedTransactionIds([]);
-      
+
       // Trigger refresh if available
       if (onRefresh) {
         onRefresh();
@@ -167,41 +308,41 @@ export const StockTransactionHistory = ({
       }
     }
   };
-  
+
   // Local refresh function when parent handler not provided
   const handleLocalRefresh = async () => {
     if (!materialId) return;
-    
+
     setLocalLoading(true);
     try {
       console.log(`Manually refreshing transactions for material ID: ${materialId}`);
-      
+
       // Fetch standard transactions
       const { data: txData, error: txError } = await supabase
         .from("inventory_transactions")
         .select("*")
         .eq("material_id", materialId)
         .order("created_at", { ascending: false });
-      
+
       if (txError) {
         console.error("Error fetching transactions:", txError);
         throw txError;
       }
-      
+
       // Fetch transaction logs
       const { data: logData, error: logError } = await supabase
         .from("inventory_transaction_log")
         .select("*")
         .eq("material_id", materialId)
         .order("transaction_date", { ascending: false });
-        
+
       if (logError) {
         console.error("Error fetching transaction logs:", logError);
         throw logError;
       }
-      
+
       console.log(`Fetched ${txData?.length || 0} transactions and ${logData?.length || 0} transaction logs`);
-      
+
       showToast({
         title: "Transactions refreshed",
         description: `Found ${(txData?.length || 0) + (logData?.length || 0)} transaction records`,
@@ -234,19 +375,19 @@ export const StockTransactionHistory = ({
       const date = new Date(dateString);
       const now = new Date();
       const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-      
+
       if (seconds < 60) return 'just now';
-      
+
       const minutes = Math.floor(seconds / 60);
       if (minutes < 60) return `${minutes}m ago`;
-      
+
       const hours = Math.floor(minutes / 60);
       if (hours < 24) return `${hours}h ago`;
-      
+
       const days = Math.floor(hours / 24);
       if (days === 1) return 'yesterday';
       if (days < 7) return `${days}d ago`;
-      
+
       return formatDate(dateString);
     } catch (e) {
       return 'unknown date';
@@ -257,42 +398,42 @@ export const StockTransactionHistory = ({
   const deduplicateTransactions = () => {
     // Create a map to track unique transactions
     const uniqueTransactions = new Map();
-    
+
     // Add transactions to the map
     transactions.forEach(tx => {
       const key = tx.id || tx.reference_id || `${tx.created_at}-${tx.quantity}`;
       uniqueTransactions.set(key, tx);
     });
-    
+
     // Add transaction logs, but avoid duplicates
     transactionLogs.forEach(log => {
       const key = log.id || log.reference_id || `${log.transaction_date}-${log.new_quantity}`;
-      
+
       // Only add if not already in the map or if we want to prioritize log entry
       if (!uniqueTransactions.has(key)) {
         uniqueTransactions.set(key, log);
       }
     });
-    
+
     return uniqueTransactions.size;
   };
-  
+
   const isEmpty = !transactions.length && !transactionLogs.length;
   const totalRecords = deduplicateTransactions();
 
   // Show empty state if no transactions
   if (isEmpty) {
     return (
-      <Card className="mt-6 border-border/60 overflow-hidden slide-up" style={{animationDelay: '0.1s'}}>
+      <Card className="mt-6 border-border/60 overflow-hidden slide-up" style={{ animationDelay: '0.1s' }}>
         <CardHeader className="flex flex-row items-center justify-between bg-muted/30 dark:bg-muted/10 border-b border-border/40">
           <CardTitle className="flex items-center gap-2 text-primary">
             <History className="h-5 w-5" />
             Transaction History
           </CardTitle>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleRefresh} 
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
             disabled={localLoading || isLoading}
             className="flex items-center gap-1 border-border/60 shadow-sm hover:bg-muted/80 dark:hover:bg-muted/20"
           >
@@ -311,9 +452,9 @@ export const StockTransactionHistory = ({
               {(localLoading || isLoading) ? " Checking for latest transactions..." : ""}
             </p>
             {!localLoading && !isLoading && (
-              <Button 
-                variant="outline" 
-                onClick={handleRefresh} 
+              <Button
+                variant="outline"
+                onClick={handleRefresh}
                 className="mt-4 border-border/60 gap-2 shadow-sm hover:bg-muted/80 dark:hover:bg-muted/20"
               >
                 <RefreshCcw className="h-4 w-4" />
@@ -327,7 +468,7 @@ export const StockTransactionHistory = ({
   }
 
   return (
-    <Card className="mt-4 border-border/60 overflow-hidden slide-up" style={{animationDelay: '0.15s'}}>
+    <Card className="mt-4 border-border/60 overflow-hidden slide-up" style={{ animationDelay: '0.15s' }}>
       <CardHeader className="flex flex-row items-center justify-between bg-muted/30 dark:bg-muted/10 border-b border-border/40">
         <CardTitle className="flex items-center gap-2 text-primary">
           <History className="h-5 w-5" />
@@ -352,7 +493,7 @@ export const StockTransactionHistory = ({
               >
                 {selectionMode ? "Disable Selection" : "Enable Selection"}
               </Button>
-              
+
               {selectionMode && selectedTransactionIds.length > 0 && (
                 <Button
                   variant="destructive"
@@ -366,14 +507,14 @@ export const StockTransactionHistory = ({
               )}
             </>
           )}
-          
+
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleRefresh} 
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefresh}
                   disabled={localLoading || isLoading}
                   className="border-border/60 shadow-sm hover:bg-muted/80 dark:hover:bg-muted/20"
                 >
@@ -397,11 +538,39 @@ export const StockTransactionHistory = ({
               {transactionLogs.length}
             </span>
           )}
-          
+
           {selectionMode && transactionLogs.length > 0 && (
             <div className="flex items-center gap-2 ml-auto">
+              {/* Filter Controls */}
+              <div className="flex items-center gap-1 mr-4 bg-muted/20 p-1 rounded-md">
+                <Button
+                  variant={filterType === 'all' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setFilterType('all')}
+                  className="h-7 px-2 text-xs"
+                >
+                  All
+                </Button>
+                <Button
+                  variant={filterType === 'inward' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setFilterType('inward')}
+                  className="h-7 px-2 text-xs text-green-600 hover:text-green-700 dark:text-green-400"
+                >
+                  Inward
+                </Button>
+                <Button
+                  variant={filterType === 'outward' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setFilterType('outward')}
+                  className="h-7 px-2 text-xs text-red-600 hover:text-red-700 dark:text-red-400"
+                >
+                  Outward
+                </Button>
+              </div>
+
               <Checkbox
-                checked={selectedTransactionIds.length === transactionLogs.length}
+                checked={selectedTransactionIds.length === filteredTransactions.length && filteredTransactions.length > 0}
                 onCheckedChange={handleSelectAllTransactions}
                 aria-label="Select all transactions"
               />
@@ -409,213 +578,19 @@ export const StockTransactionHistory = ({
             </div>
           )}
         </div>
-        
+
         <div className="space-y-3">
           {/* Enhanced deduplication logic from analysis page */}
-          {(() => {
-            // Enable debugging
-            const DEBUG = false;
-            
-            if (DEBUG) {
-              console.log('===== ENHANCED TRANSACTION DEDUPLICATION DEBUG =====');
-              console.log(`Starting with ${transactionLogs.length} transaction logs`);
-              console.log('All transaction logs:', transactionLogs);
-            }
-            
-            // Sort by transaction date to process in chronological order
-            const chronologicalTransactions = [...transactionLogs].sort((a, b) => 
-              new Date(a.transaction_date).getTime() - new Date(b.transaction_date).getTime()
-            );
-            
-            // First pass: filter out decrease transactions that represent excess consumption
-            let filteredTransactions = [...chronologicalTransactions];
-            const transactionsToRemove = new Set<string>();
-            
-            // For each material, find and remove excess consumption decrease entries
-            const materialGroups = new Map<string, typeof transactionLogs>();
-            chronologicalTransactions.forEach(tx => {
-              const materialId = tx.material_id;
-              if (!materialGroups.has(materialId)) {
-                materialGroups.set(materialId, []);
-              }
-              materialGroups.get(materialId)!.push(tx);
-            });
-            
-            // Process each material group to identify excess consumption patterns
-            materialGroups.forEach((transactions, materialId) => {
-              if (DEBUG) {
-                console.log(`Processing material ${materialId} with ${transactions.length} transactions`);
-              }
-              
-              // Look for patterns where decrease transactions represent excess consumption  
-              for (let i = transactions.length - 1; i >= 0; i--) {
-                const tx = transactions[i];
-                
-                // Look for decrease transactions that bring quantity to 0 and match previous quantity exactly
-                if (tx.transaction_type.toLowerCase().includes('decrease') && 
-                    tx.new_quantity === 0 && 
-                    Math.abs(tx.previous_quantity - Math.abs(tx.quantity)) < 0.01) {
-                  
-                  if (DEBUG) {
-                    console.log(`Found potential excess consumption decrease: ${JSON.stringify(tx)}`);
-                  }
-                  
-                  // Mark this transaction for removal
-                  transactionsToRemove.add(tx.id);
-                  if (DEBUG) {
-                    console.log(`Marked excess consumption decrease transaction for removal: ${tx.id}`);
-                  }
-                }
-              }
-            });
-            
-            // Apply the filtering
-            filteredTransactions = filteredTransactions.filter(tx => !transactionsToRemove.has(tx.id));
-            
-            if (DEBUG && filteredTransactions.length !== chronologicalTransactions.length) {
-              const removedCount = chronologicalTransactions.length - filteredTransactions.length;
-              console.log(`Filtered out ${removedCount} decrease transactions that represent excess consumption`);
-            }
-            
-            // Group potential duplicates by numerical values and time proximity
-            const groupedByQuantity: { [key: string]: typeof transactionLogs } = {};
-            
-            if (DEBUG && filteredTransactions.length !== chronologicalTransactions.length) {
-              const removedCount = chronologicalTransactions.length - filteredTransactions.length;
-              console.log(`Filtered out ${removedCount} decrease transactions that represent excess consumption`);
-            }
-            
-            // Create groups of transactions with same numerical values and close timestamps
-            filteredTransactions.forEach(transaction => {
-              let foundGroup = false;
-              const transactionTime = new Date(transaction.transaction_date).getTime();
-              
-              // Check existing groups for a match based on quantity and time proximity
-              Object.keys(groupedByQuantity).forEach(key => {
-                if (foundGroup) return; // Skip if already found a group
-                
-                const group = groupedByQuantity[key];
-                if (group.length === 0) return;
-                
-                // Check first transaction in group to see if this transaction belongs with it
-                const firstTransaction = group[0];
-                const firstTime = new Date(firstTransaction.transaction_date).getTime();
-                
-                // If quantities match exactly and time is within 1 minute, add to this group
-                if (Math.abs(firstTransaction.quantity - transaction.quantity) < 0.01 &&
-                    Math.abs(firstTransaction.previous_quantity - transaction.previous_quantity) < 0.01 &&
-                    Math.abs(firstTransaction.new_quantity - transaction.new_quantity) < 0.01 &&
-                    Math.abs(transactionTime - firstTime) < 60000) { // 1 minute
-                  
-                  groupedByQuantity[key].push(transaction);
-                  foundGroup = true;
-                }
-              });
-              
-              // If no matching group found, create a new one
-              if (!foundGroup) {
-                const key = `${transaction.previous_quantity}-${transaction.new_quantity}-${transaction.quantity}-${transactionTime}`;
-                groupedByQuantity[key] = [transaction];
-              }
-            });
-            
-            if (DEBUG) {
-              console.log('Grouped transactions by numerical values:');
-              Object.keys(groupedByQuantity).forEach(key => {
-                console.log(`Group ${key}:`, groupedByQuantity[key]);
-              });
-            }
-            
-            // Process each group to eliminate duplicates
-            const deduplicatedTransactions: typeof transactionLogs = [];
-            
-            Object.values(groupedByQuantity).forEach(group => {
-              if (group.length === 1) {
-                // If only one transaction in the group, keep it
-                deduplicatedTransactions.push(group[0]);
-                if (DEBUG) console.log(`Single transaction in group - keeping:`, group[0]);
-                return;
-              }
-              
-              // Check for purchase + manual entry duplicate pattern
-              const hasPurchase = group.some(transaction => 
-                transaction.transaction_type.toLowerCase().includes('purchase'));
-              const hasManual = group.some(transaction => 
-                !transaction.reference_type || 
-                transaction.transaction_type.toLowerCase().includes('manual') || 
-                transaction.transaction_type.toLowerCase().includes('adjustment'));
-              
-              if (hasPurchase && hasManual) {
-                // Keep only purchase transactions from this group
-                const purchases = group.filter(transaction => 
-                  transaction.transaction_type.toLowerCase().includes('purchase'));
-                
-                if (DEBUG) {
-                  console.log('Found purchase + manual entry group:');
-                  console.log('- All transactions in group:', group);
-                  console.log('- Keeping only purchases:', purchases);
-                }
-                
-                deduplicatedTransactions.push(...purchases);
-              } else {
-                // Check for consumption + decrease duplicate pattern
-                const hasConsumption = group.some(transaction => 
-                  transaction.transaction_type.toLowerCase().includes('consumption'));
-                const hasDecrease = group.some(transaction => 
-                  transaction.transaction_type.toLowerCase().includes('decrease'));
-                
-                if (hasConsumption && hasDecrease) {
-                  // Keep only consumption transactions
-                  const consumptions = group.filter(transaction => 
-                    transaction.transaction_type.toLowerCase().includes('consumption'));
-                  
-                  if (DEBUG) {
-                    console.log('Found consumption + decrease group:');
-                    console.log('- All transactions in group:', group);
-                    console.log('- Keeping only consumptions:', consumptions);
-                  }
-                  
-                  deduplicatedTransactions.push(...consumptions);
-                } else {
-                  // Keep the most recent transaction from other duplicate groups
-                  const sortedGroup = [...group].sort(
-                    (a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime()
-                  );
-                  
-                  if (DEBUG) {
-                    console.log('Other duplicate group - keeping most recent:');
-                    console.log('- All transactions in group:', group);
-                    console.log('- Keeping:', sortedGroup[0]);
-                  }
-                  
-                  deduplicatedTransactions.push(sortedGroup[0]);
-                }
-              }
-            });
-            
-            // Sort by transaction date (newest first)
-            const finalSortedTransactions = deduplicatedTransactions.sort(
-              (a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime()
-            );
-            
-            if (DEBUG) {
-              console.log(`Deduplication complete. Reduced from ${transactionLogs.length} to ${finalSortedTransactions.length} transactions`);
-              console.log('Final deduplicated transactions:', finalSortedTransactions);
-              console.log('===== END ENHANCED TRANSACTION DEDUPLICATION DEBUG =====');
-            }
-            
-            return finalSortedTransactions;
-          })().map((transaction) => {
+          {filteredTransactions.map((transaction) => {
             const typeInfo = getTransactionTypeColor(transaction.transaction_type);
             const { icon: Icon } = typeInfo;
             const isNegative = transaction.quantity < 0;
-            
+
             return (
-              <div 
-                key={transaction.id} 
-                className={`border rounded-lg p-0 overflow-hidden shadow-sm ${hoveredTransaction === transaction.id ? 'border-primary shadow-md' : 'border-border'} ${
-                  selectedTransactionIds.includes(transaction.id) ? 'border-primary bg-primary/5' : ''
-                } transition-all duration-200`}
+              <div
+                key={transaction.id}
+                className={`border rounded-lg p-0 overflow-hidden shadow-sm ${hoveredTransaction === transaction.id ? 'border-primary shadow-md' : 'border-border'} ${selectedTransactionIds.includes(transaction.id) ? 'border-primary bg-primary/5' : ''
+                  } transition-all duration-200`}
                 onMouseEnter={() => setHoveredTransaction(transaction.id)}
                 onMouseLeave={() => setHoveredTransaction(null)}
               >
@@ -626,7 +601,7 @@ export const StockTransactionHistory = ({
                       {selectionMode && (
                         <Checkbox
                           checked={selectedTransactionIds.includes(transaction.id)}
-                          onCheckedChange={(checked) => 
+                          onCheckedChange={(checked) =>
                             handleSelectTransaction(transaction.id, !!checked)
                           }
                           aria-label={`Select transaction ${transaction.id}`}
@@ -641,7 +616,7 @@ export const StockTransactionHistory = ({
                     <span className="text-xs opacity-80">{formatDate(transaction.transaction_date)}</span>
                   </div>
                 </div>
-                
+
                 {/* Main content */}
                 <div className="p-4 space-y-3">
                   {/* Material name */}
@@ -661,11 +636,10 @@ export const StockTransactionHistory = ({
                         <span className="font-bold text-orange-600 dark:text-orange-400">{transaction.previous_quantity.toFixed(2)}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className={`text-lg font-bold px-2 py-1 rounded ${
-                          isNegative 
-                            ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30' 
-                            : 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30'
-                        }`}>
+                        <span className={`text-lg font-bold px-2 py-1 rounded ${isNegative
+                          ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30'
+                          : 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30'
+                          }`}>
                           {isNegative ? '' : '+'}{transaction.quantity.toFixed(2)}
                         </span>
                       </div>
@@ -738,18 +712,21 @@ export const StockTransactionHistory = ({
                 </div>
               </div>
             );
-          })}
-          
-          {transactionLogs.length === 0 && (
-            <div className="text-center py-6 text-muted-foreground">
-              No transaction logs found for this material
-            </div>
-          )}
+          })
+          }
+
+          {
+            transactionLogs.length === 0 && (
+              <div className="text-center py-6 text-muted-foreground">
+                No transaction logs found for this material
+              </div>
+            )
+          }
         </div>
       </CardContent>
 
       {/* Transaction History Delete Dialog */}
-      <TransactionHistoryDeleteDialog 
+      <TransactionHistoryDeleteDialog
         open={isDeleteDialogOpen}
         onOpenChange={handleDeleteDialogClose}
         selectedTransactionIds={selectedTransactionIds}

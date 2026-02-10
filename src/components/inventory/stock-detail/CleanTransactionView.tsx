@@ -25,7 +25,7 @@ interface CleanTransactionViewProps {
   currentStock?: number; // Current actual stock quantity
 }
 
-export const CleanTransactionView = ({ 
+export const CleanTransactionView = ({
   transactionLogs = [],
   onRefresh,
   isLoading = false,
@@ -37,6 +37,7 @@ export const CleanTransactionView = ({
   const [hasError, setHasError] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [actualCurrentStock, setActualCurrentStock] = useState<number>(currentStock);
+  const [viewFilter, setViewFilter] = useState<'all' | 'inward' | 'outward'>('all');
 
   // Reset error state when new data comes in
   useEffect(() => {
@@ -60,7 +61,7 @@ export const CleanTransactionView = ({
   const getTransactionTypeDisplay = (transaction: ExtendedTransactionLog) => {
     const type = transaction.transaction_type.toLowerCase();
     const refType = transaction.reference_type?.toLowerCase();
-    
+
     if (type.includes('purchase') || refType === 'purchase') {
       if (transaction.isUpdated) {
         return {
@@ -80,12 +81,12 @@ export const CleanTransactionView = ({
     else if (type.includes('consumption') || refType === 'jobcard') {
       return {
         bg: "bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400",
-        label: "Job Consumption", 
+        label: "Job Consumption",
         icon: Wrench,
         description: "Material consumed for job card production"
       };
     }
-    
+
     return {
       bg: "bg-gray-100 border-gray-300 text-gray-800 dark:bg-gray-800/30 dark:border-gray-700 dark:text-gray-400",
       label: "Other",
@@ -98,7 +99,7 @@ export const CleanTransactionView = ({
   // Also consolidate purchase updates (reversal + new purchase) into single "updated" entries
   const filterTransactions = async (transactions: TransactionLog[]) => {
     console.log(`🔍 CleanTransactionView: Starting filterTransactions with ${transactions?.length || 0} transactions`);
-    
+
     if (!transactions || transactions.length === 0) {
       console.log("No transactions to filter, setting empty array");
       setFilteredTransactions([]);
@@ -107,7 +108,7 @@ export const CleanTransactionView = ({
 
     try {
       console.log(`🔍 CleanTransactionView: Processing ${transactions.length} transactions`);
-      
+
       const filtered: ExtendedTransactionLog[] = [];
       const processedPurchaseIds = new Set<string>();
 
@@ -202,7 +203,7 @@ export const CleanTransactionView = ({
       // First, collect all unique job card IDs to batch query them
       const jobCardIds = new Set<string>();
       const jobConsumptionTransactions: TransactionLog[] = [];
-      
+
       for (const transaction of otherTransactions) {
         const type = transaction.transaction_type.toLowerCase();
         const refType = transaction.reference_type?.toLowerCase();
@@ -226,7 +227,7 @@ export const CleanTransactionView = ({
       if (jobCardIds.size > 0) {
         try {
           console.log(`Checking ${jobCardIds.size} unique job cards for existence:`, Array.from(jobCardIds));
-          
+
           const { data: existingJobCards, error: jobCardsError } = await supabase
             .from('job_cards')
             .select('id')
@@ -239,7 +240,7 @@ export const CleanTransactionView = ({
           } else {
             existingJobCardIds = new Set(existingJobCards?.map(jc => jc.id) || []);
             console.log(`Found ${existingJobCardIds.size} existing job cards out of ${jobCardIds.size} checked`);
-            
+
             // Include only job consumption transactions with existing job cards
             for (const transaction of jobConsumptionTransactions) {
               if (existingJobCardIds.has(transaction.reference_id!)) {
@@ -271,7 +272,7 @@ export const CleanTransactionView = ({
       }
 
       console.log(`✅ CleanTransactionView: Final result - ${filtered.length} transactions after filtering and consolidation`);
-      
+
       setFilteredTransactions(filtered);
     } catch (error) {
       console.error("Error filtering transactions:", error);
@@ -302,49 +303,49 @@ export const CleanTransactionView = ({
         });
       }
     };
-    
+
     runFilter();
   }, [transactionLogs]);
 
   // Local refresh function when parent handler not provided
   const handleLocalRefresh = async () => {
     if (!materialId) return;
-    
+
     setLocalLoading(true);
     try {
       console.log(`Refreshing clean transaction view for material ID: ${materialId}`);
-      
+
       // Fetch current stock quantity
       const { data: stockData, error: stockError } = await supabase
         .from("inventory")
         .select("quantity")
         .eq("id", materialId)
         .single();
-        
+
       if (stockError) {
         console.error("Error fetching current stock:", stockError);
       } else if (stockData) {
         setActualCurrentStock(stockData.quantity || 0);
       }
-      
+
       // Fetch transaction logs
       const { data: logData, error: logError } = await supabase
         .from("inventory_transaction_log")
         .select("*")
         .eq("material_id", materialId)
         .order("transaction_date", { ascending: false });
-        
+
       if (logError) {
         console.error("Error fetching transaction logs:", logError);
         throw logError;
       }
-      
+
       console.log(`Fetched ${logData?.length || 0} transaction logs for filtering`);
-      
+
       if (logData) {
         await filterTransactions(logData);
       }
-      
+
       showToast({
         title: "Clean transactions refreshed",
         description: `Found ${filteredTransactions.length} purchase and active job consumption transactions`,
@@ -375,29 +376,29 @@ export const CleanTransactionView = ({
   const getTimeAgo = (dateString: string) => {
     try {
       if (!dateString) return 'unknown date';
-      
+
       const date = new Date(dateString);
       const now = new Date();
-      
+
       // Check if date is valid
       if (isNaN(date.getTime())) {
         return 'invalid date';
       }
-      
+
       const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-      
+
       if (seconds < 60) return 'just now';
-      
+
       const minutes = Math.floor(seconds / 60);
       if (minutes < 60) return `${minutes}m ago`;
-      
+
       const hours = Math.floor(minutes / 60);
       if (hours < 24) return `${hours}h ago`;
-      
+
       const days = Math.floor(hours / 24);
       if (days === 1) return 'yesterday';
       if (days < 7) return `${days}d ago`;
-      
+
       return formatDate(dateString);
     } catch (e) {
       console.warn("Time ago calculation error:", e, "for date:", dateString);
@@ -409,8 +410,8 @@ export const CleanTransactionView = ({
 
   // Calculate running balances for each transaction
   const calculateRunningBalances = () => {
-    if (filteredTransactions.length === 0) return [];
-    
+    if (filteredTransactions.length === 0) return new Map<string, number>();
+
     // Sort transactions by date (newest first for display, but we need to calculate from oldest)
     const sortedForCalculation = [...filteredTransactions].sort((a, b) => {
       try {
@@ -420,19 +421,19 @@ export const CleanTransactionView = ({
         return 0;
       }
     });
-    
+
     // Calculate running balance by working backwards from current stock
     // Start with current stock and subtract transactions going backwards in time
     let runningBalance = actualCurrentStock;
     const balances = new Map<string, number>();
-    
+
     // Work backwards through transactions to calculate what balance was at each point
     for (let i = sortedForCalculation.length - 1; i >= 0; i--) {
       const transaction = sortedForCalculation[i];
       balances.set(transaction.id, runningBalance);
       runningBalance -= (transaction.quantity || 0);
     }
-    
+
     return balances;
   };
 
@@ -441,16 +442,16 @@ export const CleanTransactionView = ({
   // Show error state if there's an error
   if (hasError) {
     return (
-      <Card className="mt-6 border-border/60 overflow-hidden slide-up" style={{animationDelay: '0.1s'}}>
+      <Card className="mt-6 border-border/60 overflow-hidden slide-up" style={{ animationDelay: '0.1s' }}>
         <CardHeader className="flex flex-row items-center justify-between bg-red-50 dark:bg-red-900/10 border-b border-red-200 dark:border-red-800">
           <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-400">
             <AlertCircle className="h-5 w-5" />
             Error in Clean Transaction View
           </CardTitle>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleRefresh} 
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
             disabled={localLoading || isLoading}
             className="flex items-center gap-1 border-red-200 hover:bg-red-50"
           >
@@ -467,9 +468,9 @@ export const CleanTransactionView = ({
             <p className="text-sm text-muted-foreground text-center max-w-md">
               {errorMessage || "An error occurred while processing the transaction data."}
             </p>
-            <Button 
-              variant="outline" 
-              onClick={handleRefresh} 
+            <Button
+              variant="outline"
+              onClick={handleRefresh}
               className="mt-4 border-red-200 text-red-700 hover:bg-red-50"
             >
               <RefreshCcw className="h-4 w-4 mr-2" />
@@ -484,7 +485,7 @@ export const CleanTransactionView = ({
   // Show empty state if no filtered transactions
   if (isEmpty) {
     return (
-      <Card className="mt-6 border-border/60 overflow-hidden slide-up" style={{animationDelay: '0.1s'}}>
+      <Card className="mt-6 border-border/60 overflow-hidden slide-up" style={{ animationDelay: '0.1s' }}>
         <CardHeader className="flex flex-row items-center justify-between bg-muted/30 dark:bg-muted/10 border-b border-border/40">
           <CardTitle className="flex items-center gap-2 text-primary">
             <History className="h-5 w-5" />
@@ -493,10 +494,10 @@ export const CleanTransactionView = ({
               Filtered
             </Badge>
           </CardTitle>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleRefresh} 
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
             disabled={localLoading || isLoading}
             className="flex items-center gap-1 border-border/60 shadow-sm hover:bg-muted/80 dark:hover:bg-muted/20"
           >
@@ -515,9 +516,9 @@ export const CleanTransactionView = ({
               {(localLoading || isLoading) ? " Checking for transactions..." : ""}
             </p>
             {!localLoading && !isLoading && (
-              <Button 
-                variant="outline" 
-                onClick={handleRefresh} 
+              <Button
+                variant="outline"
+                onClick={handleRefresh}
                 className="mt-4 border-border/60 gap-2 shadow-sm hover:bg-muted/80 dark:hover:bg-muted/20"
               >
                 <RefreshCcw className="h-4 w-4" />
@@ -531,7 +532,7 @@ export const CleanTransactionView = ({
   }
 
   return (
-    <Card className="mt-4 border-border/60 overflow-hidden slide-up" style={{animationDelay: '0.15s'}}>
+    <Card className="mt-4 border-border/60 overflow-hidden slide-up" style={{ animationDelay: '0.15s' }}>
       <CardHeader className="flex flex-row items-center justify-between bg-muted/30 dark:bg-muted/10 border-b border-border/40">
         <CardTitle className="flex items-center gap-2 text-primary">
           <History className="h-5 w-5" />
@@ -544,13 +545,41 @@ export const CleanTransactionView = ({
           </Badge>
         </CardTitle>
         <div className="flex items-center gap-2">
+          {/* Filter Controls */}
+          <div className="flex items-center gap-1 mr-2 bg-muted/20 p-1 rounded-md">
+            <Button
+              variant={viewFilter === 'all' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewFilter('all')}
+              className="h-7 px-2 text-xs"
+            >
+              All
+            </Button>
+            <Button
+              variant={viewFilter === 'inward' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewFilter('inward')}
+              className="h-7 px-2 text-xs text-green-600 hover:text-green-700 dark:text-green-400"
+            >
+              Inward
+            </Button>
+            <Button
+              variant={viewFilter === 'outward' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewFilter('outward')}
+              className="h-7 px-2 text-xs text-red-600 hover:text-red-700 dark:text-red-400"
+            >
+              Outward
+            </Button>
+          </div>
+
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleRefresh} 
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefresh}
                   disabled={localLoading || isLoading}
                   className="border-border/60 shadow-sm hover:bg-muted/80 dark:hover:bg-muted/20"
                 >
@@ -599,9 +628,14 @@ export const CleanTransactionView = ({
             (Purchases with Updates + Active Job Consumption + Manual)
           </span>
         </div>
-        
+
         <div className="space-y-3">
-          {filteredTransactions.map((transaction) => {
+          {filteredTransactions.filter(tx => {
+            if (viewFilter === 'all') return true;
+            if (viewFilter === 'inward') return (tx.quantity || 0) >= 0;
+            if (viewFilter === 'outward') return (tx.quantity || 0) < 0;
+            return true;
+          }).map((transaction) => {
             // Safety check for transaction data
             if (!transaction || !transaction.id) {
               console.warn("Skipping invalid transaction in render:", transaction);
@@ -613,7 +647,7 @@ export const CleanTransactionView = ({
               const IconComponent = typeDisplay.icon;
               const quantity = Math.abs(transaction.quantity || 0);
               const isIncrease = (transaction.quantity || 0) > 0;
-            
+
               return (
                 <div
                   key={transaction.id}
@@ -638,10 +672,10 @@ export const CleanTransactionView = ({
                         {(transaction.transaction_type?.toLowerCase().includes('manual') ||
                           transaction.reference_type?.toLowerCase() === 'manual' ||
                           transaction.notes?.toLowerCase().includes('manual')) && (
-                          <Badge variant="outline" className="ml-2 bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-900/20 dark:border-orange-800 dark:text-orange-400">
-                            Manual
-                          </Badge>
-                        )}
+                            <Badge variant="outline" className="ml-2 bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-900/20 dark:border-orange-800 dark:text-orange-400">
+                              Manual
+                            </Badge>
+                          )}
                         {/* Purchase update indicator */}
                         {transaction.isUpdated && (
                           <Badge variant="outline" className="ml-2 bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400">
@@ -681,23 +715,23 @@ export const CleanTransactionView = ({
                       {(transaction.transaction_type?.toLowerCase().includes('manual') ||
                         transaction.reference_type?.toLowerCase() === 'manual' ||
                         transaction.notes?.toLowerCase().includes('manual')) && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="mt-2"
-                          onClick={() => {
-                            // Replace with your manual view logic
-                            showToast({
-                              title: 'Manual Consumption',
-                              description: transaction.notes || 'Manual transaction',
-                              type: 'info',
-                            });
-                          }}
-                        >
-                          View Manual
-                        </Button>
-                      )}
-                      
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="mt-2"
+                            onClick={() => {
+                              // Replace with your manual view logic
+                              showToast({
+                                title: 'Manual Consumption',
+                                description: transaction.notes || 'Manual transaction',
+                                type: 'info',
+                              });
+                            }}
+                          >
+                            View Manual
+                          </Button>
+                        )}
+
                       {/* Job Card link button */}
                       {transaction.reference_type?.toLowerCase() === 'jobcard' && transaction.reference_id && (
                         <Link to={`/production/job-cards/${transaction.reference_id}`}>
@@ -711,22 +745,22 @@ export const CleanTransactionView = ({
                           </Button>
                         </Link>
                       )}
-                      
+
                       {/* Purchase link button */}
-                      {(transaction.reference_type?.toLowerCase() === 'purchase' || 
-                        transaction.transaction_type?.toLowerCase().includes('purchase')) && 
+                      {(transaction.reference_type?.toLowerCase() === 'purchase' ||
+                        transaction.transaction_type?.toLowerCase().includes('purchase')) &&
                         transaction.reference_id && (
-                        <Link to={`/purchases/${transaction.reference_id}`}>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="mt-2 gap-1"
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                            View Purchase
-                          </Button>
-                        </Link>
-                      )}
+                          <Link to={`/purchases/${transaction.reference_id}`}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="mt-2 gap-1"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                              View Purchase
+                            </Button>
+                          </Link>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
@@ -748,7 +782,7 @@ export const CleanTransactionView = ({
             }
           }).filter(Boolean)}
         </div>
-        
+
         <div className="mt-4 p-3 rounded-lg bg-muted/20 dark:bg-muted/10 border border-border/40">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Package className="h-4 w-4" />
